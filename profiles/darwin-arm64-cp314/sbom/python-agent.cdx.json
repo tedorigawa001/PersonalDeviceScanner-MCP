@@ -1,0 +1,1599 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "bom-ref": "pkg:pypi/annotated-types@0.8.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/annotated-types/0.8.0/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "annotated-types",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "License-Expression"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "614985b278f601b8ef863f82783b991cc3ada4b89f592eb71c7c48c5f2ef2298"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "annotated_types-0.8.0-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/annotated-types@0.8.0",
+      "scope": "required",
+      "type": "library",
+      "version": "0.8.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/anyio@4.15.1",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/anyio/4.15.1/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "6152fdbbf9a77fdec97731721bebf7c4c44f7c29b424b0065826173efc7ed101"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "anyio",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "License-Expression"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "043aecb571af7189e8a6c528f5d8e32545f1b2cdfaaf761d51e6d5b67ea3ca81"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "anyio-4.15.1-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/anyio@4.15.1",
+      "scope": "required",
+      "type": "library",
+      "version": "4.15.1"
+    },
+    {
+      "bom-ref": "pkg:pypi/attrs@26.1.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/attrs/26.1.0/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "attrs",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "License-Expression"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "4cd40e690f23bf37cbcad34efd6758e062df1df07c86833f7e3ce95bf1fa38cc"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "attrs-26.1.0-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/attrs@26.1.0",
+      "scope": "required",
+      "type": "library",
+      "version": "26.1.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/certifi@2026.7.22",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/certifi/2026.7.22/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MPL-2.0"
+        }
+      ],
+      "name": "certifi",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "legacy License field (exact identifier)"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "ef5af1638fbb23676ac3c5777dfcfc2cd9c348fe4172ed5ba3d277655b248090"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "certifi-2026.7.22-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/certifi@2026.7.22",
+      "scope": "required",
+      "type": "library",
+      "version": "2026.7.22"
+    },
+    {
+      "bom-ref": "pkg:pypi/cffi@2.1.1",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/cffi/2.1.1/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "661c298b4821edebead0c91edd2b00374d67ad7c5a1f7a91d4442633b79d6a72"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT-0"
+        }
+      ],
+      "name": "cffi",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "License-Expression"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "558bafb9093a8e790175d9ecff9688382981d744877dad86fd6770db0f4dc918"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "cffi-2.1.1-cp314-cp314-macosx_11_0_arm64.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/cffi@2.1.1",
+      "scope": "required",
+      "type": "library",
+      "version": "2.1.1"
+    },
+    {
+      "bom-ref": "pkg:pypi/click@8.5.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/click/8.5.0/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "255bc9599cf7748b4b1a446ccc735421bd08a2ae529a8b88597d3de5664ee360"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "name": "click",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "License-Expression"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "e87bce0bd194de70dfb8e708e0a6b0483009f25611804eaf87bfeb63e6c20501"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "click-8.5.0-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/click@8.5.0",
+      "scope": "required",
+      "type": "library",
+      "version": "8.5.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/cryptography@48.0.1",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/cryptography/48.0.1/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "3e4a1a3232eef2e6c732827d5722db29a0cc8b27af2a4d865b094cf954be9ca1"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "Apache-2.0 OR BSD-3-Clause"
+        }
+      ],
+      "name": "cryptography",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "License-Expression"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "5b62dcfcaddf62e26f8c28f6055c0aba858eea2a3697a3fc8e7aced427bf8d94"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "cryptography-48.0.1-cp311-abi3-macosx_10_9_universal2.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/cryptography@48.0.1",
+      "scope": "required",
+      "type": "library",
+      "version": "48.0.1"
+    },
+    {
+      "bom-ref": "pkg:pypi/h11@0.16.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/h11/0.16.0/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "h11",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "legacy License field (exact identifier)"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "28f326098ac09fcba79b8f180f96087c841fe2456215cb7b872a9c7d5cd19d64"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "h11-0.16.0-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/h11@0.16.0",
+      "scope": "required",
+      "type": "library",
+      "version": "0.16.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/httpcore@1.0.9",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/httpcore/1.0.9/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "name": "httpcore",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "License-Expression"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "fe2d4fda6199128978779e0cf27f3c045c531863fcdd987eacc74f3a18d41c21"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "httpcore-1.0.9-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/httpcore@1.0.9",
+      "scope": "required",
+      "type": "library",
+      "version": "1.0.9"
+    },
+    {
+      "bom-ref": "pkg:pypi/httpx@0.28.1",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/httpx/0.28.1/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "name": "httpx",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "legacy License field (exact identifier)"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "febb9b0f8f3e80d57c8199c304f35c4336e8581d1d18d7983c92766b82793b25"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "httpx-0.28.1-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/httpx@0.28.1",
+      "scope": "required",
+      "type": "library",
+      "version": "0.28.1"
+    },
+    {
+      "bom-ref": "pkg:pypi/httpx-sse@0.4.3",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/httpx-sse/0.4.3/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "0ac1c9fe3c0afad2e0ebb25a934a59f4c7823b60792691f779fad2c5568830fc"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "httpx-sse",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "legacy License field (exact identifier)"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "d4c6d804ee5ac46e9b3b6595c27ab8ae2ba7cfb5f692c78b16ff463e4bd1a81e"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "httpx_sse-0.4.3-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/httpx-sse@0.4.3",
+      "scope": "required",
+      "type": "library",
+      "version": "0.4.3"
+    },
+    {
+      "bom-ref": "pkg:pypi/idna@3.20",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/idna/3.20/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "name": "idna",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "License-Expression"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "dbd8c14c1e4ca1e0c9824a6dbc7cbbf78884f38eb52d91148cd3025f671e4b85"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "idna-3.20-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/idna@3.20",
+      "scope": "required",
+      "type": "library",
+      "version": "3.20"
+    },
+    {
+      "bom-ref": "pkg:pypi/jsonschema@4.26.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/jsonschema/4.26.0/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "d489f15263b8d200f8387e64b4c3a75f06629559fb73deb8fdfb525f2dab50ce"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "jsonschema",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "License-Expression"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "05b189866ca98a96da3934bf6b83687ced3ff85325273b77e16b705f6d8b26d2"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "jsonschema-4.26.0-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/jsonschema@4.26.0",
+      "scope": "required",
+      "type": "library",
+      "version": "4.26.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/jsonschema-specifications@2025.9.1",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/jsonschema-specifications/2025.9.1/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "98802fee3a11ee76ecaca44429fda8a41bff98b00a0f2838151b113f210cc6fe"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "jsonschema-specifications",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "License-Expression"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "35abd41757f32b4ea24756920ded47b70173d77cbc052a5a6d3ab583b2e8d89d"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "jsonschema_specifications-2025.9.1-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/jsonschema-specifications@2025.9.1",
+      "scope": "required",
+      "type": "library",
+      "version": "2025.9.1"
+    },
+    {
+      "bom-ref": "pkg:pypi/mcp@1.30.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/mcp/1.30.0/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "666edb5009503e1047c9d60346a756f94b261f05cc2625f23d41c728ffc484d0"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "mcp",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "legacy License field (exact identifier)"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "3880c29896149862971af57942e3e5c0ad2a909696a66b9811c62f6e47e65111"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "mcp-1.30.0-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/mcp@1.30.0",
+      "scope": "required",
+      "type": "library",
+      "version": "1.30.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/pycparser@3.11",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/pycparser/3.11/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "51d5a8ba2be0bbe440b99d2112604c95bbbc3c2748a64260186c541e1729cd80"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "name": "pycparser",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "License-Expression"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "e3a74c846648bb55f4f907284b745e2003b87b96d9c9d17a8a50cf37804541c9"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "pycparser-3.11-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/pycparser@3.11",
+      "scope": "required",
+      "type": "library",
+      "version": "3.11"
+    },
+    {
+      "bom-ref": "pkg:pypi/pydantic@2.14.1",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/pydantic/2.14.1/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "9195d967ec791692a04438115466764fb8b9a27b31f14a760437694f40d6b454"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "pydantic",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "License-Expression"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "4d4c8e8d5e6a27d5208f0d7949f25628e6747133034969d4d1399b1ad5394036"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "pydantic-2.14.1-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/pydantic@2.14.1",
+      "scope": "required",
+      "type": "library",
+      "version": "2.14.1"
+    },
+    {
+      "bom-ref": "pkg:pypi/pydantic-core@2.50.1",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/pydantic-core/2.50.1/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "4df197990c15b5a37c5a277d131d9f2c67de6133f2e5dafd80d9bba4b99f46f9"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "pydantic-core",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "License-Expression"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "ae6817764b603fa2300cd31b9566ecc33476df46163c4150fffc353121a166f2"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "pydantic_core-2.50.1-cp314-cp314-macosx_11_0_arm64.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/pydantic-core@2.50.1",
+      "scope": "required",
+      "type": "library",
+      "version": "2.50.1"
+    },
+    {
+      "bom-ref": "pkg:pypi/pydantic-settings@2.15.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/pydantic-settings/2.15.0/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "0ba092c291c94baceb5eff768aa0d56400a457585bc0175925a5a5510303da42"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "pydantic-settings",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "License-Expression"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "5ac12e408df62f1d4c7643146d9df04ace749f1fe5cf28b3b794be0b2834ca6d"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "pydantic_settings-2.15.0-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/pydantic-settings@2.15.0",
+      "scope": "required",
+      "type": "library",
+      "version": "2.15.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/pyjwt@2.15.1",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/pyjwt/2.15.1/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "42d59d631f7768a1028a64c7ff581a9bf7519804daf91fc5b6c56e30eec5e193"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "pyjwt",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "License-Expression"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "1ea0c9f139b8c928276b3628af165955f6f764491448a6ad8f103cdcbb382da3"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "pyjwt-2.15.1-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/pyjwt@2.15.1",
+      "scope": "required",
+      "type": "library",
+      "version": "2.15.1"
+    },
+    {
+      "bom-ref": "pkg:pypi/python-dotenv@1.2.4",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/python-dotenv/1.2.4/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "42269a8a5b3fd54ffa6f3d84b18abed50064717576b4ecf03dc4a55d8aa04fdc"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "name": "python-dotenv",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "legacy License field (exact identifier)"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "87cfee6042412d48df1100ea7822684988c3f2b79de7a250f4717f4df3026d6f"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "python_dotenv-1.2.4-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/python-dotenv@1.2.4",
+      "scope": "required",
+      "type": "library",
+      "version": "1.2.4"
+    },
+    {
+      "bom-ref": "pkg:pypi/python-multipart@0.0.32",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/python-multipart/0.0.32/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "ff6d3f776f16878c894e52e107296ffc890e913c611b1a4ec6c44e2821fe2e23"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "Apache-2.0"
+        }
+      ],
+      "name": "python-multipart",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "License-Expression"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "e9d399d7dea5eddf0e4d24b5c24687a82e7e50bf2c2b30f8f8a06a64d887dd86"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "python_multipart-0.0.32-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/python-multipart@0.0.32",
+      "scope": "required",
+      "type": "library",
+      "version": "0.0.32"
+    },
+    {
+      "bom-ref": "pkg:pypi/referencing@0.37.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/referencing/0.37.0/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "381329a9f99628c9069361716891d34ad94af76e461dcb0335825aecc7692231"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "referencing",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "License-Expression"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "c93b00e6ab1524fd60848376604c189a114374776475c25a31d57be47b29de6a"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "referencing-0.37.0-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/referencing@0.37.0",
+      "scope": "required",
+      "type": "library",
+      "version": "0.37.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/rpds-py@2026.9.1",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/rpds-py/2026.9.1/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "3f0e9ac28fc067d4d34b88ae43c48e9489455c97fee9633d851f7eeed5a05d35"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "rpds-py",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "License-Expression"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "5d72dca2e387c8d2b4180b68ee87c15b64751e059100a6db58891ec9995445c3"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "rpds_py-2026.9.1-cp314-cp314-macosx_11_0_arm64.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/rpds-py@2026.9.1",
+      "scope": "required",
+      "type": "library",
+      "version": "2026.9.1"
+    },
+    {
+      "bom-ref": "pkg:pypi/sse-starlette@3.5.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/sse-starlette/3.5.0/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "3e6e1070df3f0f5d9cea81496de92dbb72f6721871d99748ece67441dd8b7997"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "name": "sse-starlette",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "License-Expression"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "6dc401682bdae1a3e1f31b1c320b7f926c354643993840393875ebfc171c9014"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "sse_starlette-3.5.0-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/sse-starlette@3.5.0",
+      "scope": "required",
+      "type": "library",
+      "version": "3.5.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/starlette@1.7.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/starlette/1.7.0/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "67f8e99895493dd2911a03f11314af6ceebeae4e704bb9f43dfc6a9db151c93e"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "name": "starlette",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "License-Expression"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "f7870fc19ab7c2e364887057340b9fb47e9bda74d24b06c58ca399494abfe019"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "starlette-1.7.0-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/starlette@1.7.0",
+      "scope": "required",
+      "type": "library",
+      "version": "1.7.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/typing-extensions@4.16.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/typing-extensions/4.16.0/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "PSF-2.0"
+        }
+      ],
+      "name": "typing-extensions",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "License-Expression"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "b05084ca1d50879865178d9fff9fabeab61bdfb1f361bfbde95421ffc8f9be46"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "typing_extensions-4.16.0-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/typing-extensions@4.16.0",
+      "scope": "required",
+      "type": "library",
+      "version": "4.16.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/typing-inspection@0.4.4",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/typing-inspection/0.4.4/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "65b8397ba37ccbce054456aaccddfc91e6e3083c92824df348d96ca832f3f147"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "typing-inspection",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "License-Expression"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "bad3d9e6342ef6750cf5128ec942327b8bebdce0b6e4d6f67cb15b27ae5118da"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "typing_inspection-0.4.4-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/typing-inspection@0.4.4",
+      "scope": "required",
+      "type": "library",
+      "version": "0.4.4"
+    },
+    {
+      "bom-ref": "pkg:pypi/uvicorn@0.54.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/uvicorn/0.54.0/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "505bdb0f318731d45f1f712071fc781a8981f6847a31c902c9f5e652d4f67faf"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "name": "uvicorn",
+      "properties": [
+        {
+          "name": "pc-scanner:license-evidence",
+          "value": "License-Expression"
+        },
+        {
+          "name": "pc-scanner:installed-metadata-sha256",
+          "value": "9399e5ddda3d26e842d6fb5420c38b0857aac568d53badbdc224b3a21339efa8"
+        },
+        {
+          "name": "pc-scanner:reference-wheel",
+          "value": "uvicorn-0.54.0-py3-none-any.whl"
+        },
+        {
+          "name": "pc-scanner:artifact-provenance",
+          "value": "downloaded reference wheel; installed origin not attested"
+        },
+        {
+          "name": "pc-scanner:license-match",
+          "value": "original notices match reference wheel bytes"
+        }
+      ],
+      "purl": "pkg:pypi/uvicorn@0.54.0",
+      "scope": "required",
+      "type": "library",
+      "version": "0.54.0"
+    }
+  ],
+  "compositions": [
+    {
+      "aggregate": "incomplete",
+      "assemblies": [
+        "pkg:pypi/personal-pc-scanner@0.1.0"
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "dependsOn": [],
+      "ref": "pkg:pypi/annotated-types@0.8.0"
+    },
+    {
+      "dependsOn": [
+        "pkg:pypi/idna@3.20",
+        "pkg:pypi/typing-extensions@4.16.0"
+      ],
+      "ref": "pkg:pypi/anyio@4.15.1"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:pypi/attrs@26.1.0"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:pypi/certifi@2026.7.22"
+    },
+    {
+      "dependsOn": [
+        "pkg:pypi/pycparser@3.11"
+      ],
+      "ref": "pkg:pypi/cffi@2.1.1"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:pypi/click@8.5.0"
+    },
+    {
+      "dependsOn": [
+        "pkg:pypi/cffi@2.1.1"
+      ],
+      "ref": "pkg:pypi/cryptography@48.0.1"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:pypi/h11@0.16.0"
+    },
+    {
+      "dependsOn": [
+        "pkg:pypi/certifi@2026.7.22",
+        "pkg:pypi/h11@0.16.0"
+      ],
+      "ref": "pkg:pypi/httpcore@1.0.9"
+    },
+    {
+      "dependsOn": [
+        "pkg:pypi/anyio@4.15.1",
+        "pkg:pypi/certifi@2026.7.22",
+        "pkg:pypi/httpcore@1.0.9",
+        "pkg:pypi/idna@3.20"
+      ],
+      "ref": "pkg:pypi/httpx@0.28.1"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:pypi/httpx-sse@0.4.3"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:pypi/idna@3.20"
+    },
+    {
+      "dependsOn": [
+        "pkg:pypi/attrs@26.1.0",
+        "pkg:pypi/jsonschema-specifications@2025.9.1",
+        "pkg:pypi/referencing@0.37.0",
+        "pkg:pypi/rpds-py@2026.9.1"
+      ],
+      "ref": "pkg:pypi/jsonschema@4.26.0"
+    },
+    {
+      "dependsOn": [
+        "pkg:pypi/referencing@0.37.0"
+      ],
+      "ref": "pkg:pypi/jsonschema-specifications@2025.9.1"
+    },
+    {
+      "dependsOn": [
+        "pkg:pypi/anyio@4.15.1",
+        "pkg:pypi/httpx-sse@0.4.3",
+        "pkg:pypi/httpx@0.28.1",
+        "pkg:pypi/jsonschema@4.26.0",
+        "pkg:pypi/pydantic-settings@2.15.0",
+        "pkg:pypi/pydantic@2.14.1",
+        "pkg:pypi/pyjwt@2.15.1",
+        "pkg:pypi/python-multipart@0.0.32",
+        "pkg:pypi/sse-starlette@3.5.0",
+        "pkg:pypi/starlette@1.7.0",
+        "pkg:pypi/typing-extensions@4.16.0",
+        "pkg:pypi/typing-inspection@0.4.4",
+        "pkg:pypi/uvicorn@0.54.0"
+      ],
+      "ref": "pkg:pypi/mcp@1.30.0"
+    },
+    {
+      "dependsOn": [
+        "pkg:pypi/mcp@1.30.0"
+      ],
+      "ref": "pkg:pypi/personal-pc-scanner@0.1.0"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:pypi/pycparser@3.11"
+    },
+    {
+      "dependsOn": [
+        "pkg:pypi/annotated-types@0.8.0",
+        "pkg:pypi/pydantic-core@2.50.1",
+        "pkg:pypi/typing-extensions@4.16.0",
+        "pkg:pypi/typing-inspection@0.4.4"
+      ],
+      "ref": "pkg:pypi/pydantic@2.14.1"
+    },
+    {
+      "dependsOn": [
+        "pkg:pypi/typing-extensions@4.16.0"
+      ],
+      "ref": "pkg:pypi/pydantic-core@2.50.1"
+    },
+    {
+      "dependsOn": [
+        "pkg:pypi/pydantic@2.14.1",
+        "pkg:pypi/python-dotenv@1.2.4",
+        "pkg:pypi/typing-inspection@0.4.4"
+      ],
+      "ref": "pkg:pypi/pydantic-settings@2.15.0"
+    },
+    {
+      "dependsOn": [
+        "pkg:pypi/cryptography@48.0.1"
+      ],
+      "ref": "pkg:pypi/pyjwt@2.15.1"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:pypi/python-dotenv@1.2.4"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:pypi/python-multipart@0.0.32"
+    },
+    {
+      "dependsOn": [
+        "pkg:pypi/attrs@26.1.0",
+        "pkg:pypi/rpds-py@2026.9.1"
+      ],
+      "ref": "pkg:pypi/referencing@0.37.0"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:pypi/rpds-py@2026.9.1"
+    },
+    {
+      "dependsOn": [
+        "pkg:pypi/anyio@4.15.1",
+        "pkg:pypi/starlette@1.7.0"
+      ],
+      "ref": "pkg:pypi/sse-starlette@3.5.0"
+    },
+    {
+      "dependsOn": [
+        "pkg:pypi/anyio@4.15.1"
+      ],
+      "ref": "pkg:pypi/starlette@1.7.0"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:pypi/typing-extensions@4.16.0"
+    },
+    {
+      "dependsOn": [
+        "pkg:pypi/typing-extensions@4.16.0"
+      ],
+      "ref": "pkg:pypi/typing-inspection@0.4.4"
+    },
+    {
+      "dependsOn": [
+        "pkg:pypi/click@8.5.0",
+        "pkg:pypi/h11@0.16.0"
+      ],
+      "ref": "pkg:pypi/uvicorn@0.54.0"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "bom-ref": "pkg:pypi/personal-pc-scanner@0.1.0",
+      "name": "personal-pc-scanner",
+      "properties": [
+        {
+          "name": "pc-scanner:own-license-status",
+          "value": "MIT proposed, not granted"
+        }
+      ],
+      "purl": "pkg:pypi/personal-pc-scanner@0.1.0",
+      "type": "application",
+      "version": "0.1.0"
+    },
+    "properties": [
+      {
+        "name": "pc-scanner:profile",
+        "value": "agent"
+      },
+      {
+        "name": "pc-scanner:scope",
+        "value": "Python runtime dependency graph; native libraries, external tools and interpreter excluded"
+      },
+      {
+        "name": "pc-scanner:environment",
+        "value": "{\"architecture\": \"arm64\", \"implementation\": \"CPython\", \"marker_environment\": \"evaluated for this interpreter only\", \"os\": \"Darwin\", \"python\": \"3.14.7\"}"
+      },
+      {
+        "name": "pc-scanner:generator",
+        "value": "scripts/generate_compliance.py"
+      }
+    ]
+  },
+  "serialNumber": "urn:uuid:1cc0be72-05ea-590b-b066-a1c2e629efdf",
+  "specVersion": "1.6",
+  "version": 1
+}

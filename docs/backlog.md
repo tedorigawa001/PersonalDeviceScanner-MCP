@@ -84,9 +84,10 @@
 - [ ] **実際のMCPクライアントで長時間の検査を試す**
   - Claude Desktop・Claude Code などで、10分程度の検査中に切断されないか、進捗通知でタイムアウトが延長されるかを確認する。
 
-- [ ] **macOS以外のロックファイルとSBOMを用意する**
-  - `requirements-agent.lock` と SBOM は macOS x86_64 / CPython 3.14.7 専用です。Windows では pywin32 などの依存が増えます。
-  - Windows・Linux・macOS arm64 向けのプロファイルを生成する。
+- [x] **macOS以外のロックファイルとSBOMを用意する**（2026-10-12 完了。Windows の pywin32 は下の「要判断」）
+  - 対応: 手動実行のワークフロー「Compliance profiles」で、各OS上で生成・検証し、`profiles/<OS>-<CPU>-cp314/` に取り込んだ。
+    macOS arm64・Linux x86_64 は検証に合格。Windows は pywin32 のライセンス表記が未確定のため未合格。
+  - 詳細は `docs/compliance.md` の「OS別プロファイル」。
 
 ## 低
 
@@ -108,6 +109,12 @@
   - `build/` と `personal_pc_scanner.egg-info/` には古い版が残っています（`.gitignore` で除外済み）。
 
 ## 要判断
+
+- [ ] **pywin32 のライセンス表記（Windows 版プロファイル）を確定する**
+  - メタデータは `License: PSF` だけで、同梱の原文は本体が BSD 形式（Mark Hammond）、adodbapi が LGPL 2.1、
+    MAPIStubLibrary が MIT 形式、Scintilla が HPND 形式、idle が PSF と HPND 形式。
+  - SPDX 式をどう記録するか、LGPL 部分を配布でどう扱うかは法的な判断。確定するまで Windows 版は検証に合格しない。
+  - 確定したら、確認済みの表記を記録する仕組み（確認日・根拠つき）を生成ツールに加え、ワークフローを再実行して作り直す。
 
 - [ ] **Wazuh の鮮度を確認するために、追加の情報源を使うか**
   - 脆弱性インデックスに検査時刻がないため、現状では鮮度を確認できない（`freshness: unverified`）。

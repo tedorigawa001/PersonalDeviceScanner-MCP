@@ -3,6 +3,8 @@ include THIRD_PARTY_NOTICES.md
 include requirements-agent.lock
 recursive-include third_party *
 recursive-include sbom *.json
+recursive-include profiles *
+include .gitattributes
 include docs/licensing.md
 include docs/license-recommendation.md
 include docs/compliance.md

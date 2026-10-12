@@ -374,6 +374,7 @@ Windows（PowerShell）：
 - [docs/backlog.md](docs/backlog.md)：未対応の課題と、実機で確認すべき項目
 - [docs/licensing.md](docs/licensing.md)：ライセンス方針と配布前チェック
 - [docs/compliance.md](docs/compliance.md)：SBOM・第三者表示の対象範囲と再生成手順
+- [profiles/](profiles/)：Windows・Linux・macOS arm64 向けのロック・SBOM・第三者表示（直下は macOS x86_64 の参照版）
 - [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)・[CycloneDX SBOM](sbom/python-agent.cdx.json)：MCP 用 Python 依存パッケージの表示
 
 独自コードのライセンスは [MIT を提案](docs/license-recommendation.md)していますが、まだ正式には適用していません。

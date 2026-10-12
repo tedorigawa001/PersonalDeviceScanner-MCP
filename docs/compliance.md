@@ -112,10 +112,27 @@ Windows / Linux / macOS（arm64）それぞれで次を行い、結果を成果�
 
 この手順は、ローカルのmacOS x86_64で実行すると、リポジトリ直下の参照プロファイルを1バイトも違わず再生成できることを確認しています。
 
+### 現在のプロファイル（2026-10-12 生成）
+
+| 置き場所 | 環境 | パッケージ | 検証 |
+|---|---|---|---|
+| リポジトリ直下 | macOS x86_64 / CPython 3.14.7（ローカル生成、参照） | 29 | 合格 |
+| `profiles/darwin-arm64-cp314/` | macOS arm64 / CPython 3.14.7 | 29 | 合格 |
+| `profiles/linux-x86_64-cp314/` | Linux x86_64 / CPython 3.14.8 | 29 | 合格 |
+| `profiles/windows-amd64-cp314/` | Windows AMD64 / CPython 3.14.7 | 30（pywin32 312 を含む） | **未合格**：pywin32 のライセンス表記が未確定 |
+
+- 4つとも同じバージョンです（Windows の pywin32 を除く）。macOS arm64 と Linux のライセンス原文は参照と完全に同じです。
+- Windows の pydantic-core と rpds-py の LICENSE は、内容は同じで改行コードだけが CRLF です（Windows 向け wheel の中身どおり）。
+  原文はバイト単位でハッシュを記録しているため、`.gitattributes` で改行コードの変換を禁止しています。
+- pywin32 のメタデータは `License: PSF` だけで、同梱の原文は部品ごとに異なります：本体（win32・COM・Pythonwin）は
+  Mark Hammond の BSD 形式、adodbapi は LGPL 2.1、MAPIStubLibrary は MIT 形式、Scintilla は HPND 形式、idle は PSF と HPND 形式。
+  原文はすべて `profiles/windows-amd64-cp314/third_party/licenses/pywin32/` に保存してあります。
+  ライセンス表記（SPDX 式）と LGPL 部分の扱いを所有者が判断するまで、Windows 版は `validate_compliance.py` に合格しません。
+
 ## 配布に進む前の未確定事項
 
 1. 独自コードのMIT採用と権利者名の確定。現在は提案本文のみで正式なLICENSEなし。
-2. Windows/Linuxの実際の配布環境でロック・SBOM・表示を生成。
+2. Windows 版プロファイルの pywin32 のライセンス表記の確定（Linux・macOS arm64 は生成・検証済み）。
 3. 単体wheel/sdist配布か、Pythonや依存wheelを含む実行ファイル/インストーラー配布かを確定。
 4. 同梱するネイティブ依存物のバージョン・ライセンス・対応ソース要件を実物で確認。
 5. Wazuh/ClamAV等を同梱する場合、GPL対応ソース等を準備し、結合形態を確認。

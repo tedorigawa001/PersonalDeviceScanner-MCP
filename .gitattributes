@@ -1,0 +1,4 @@
+# License texts and metadata are kept byte-for-byte; their SHA-256 hashes are recorded
+# in the license manifests, so line-ending conversion must never touch them.
+third_party/** -text
+profiles/** -text
