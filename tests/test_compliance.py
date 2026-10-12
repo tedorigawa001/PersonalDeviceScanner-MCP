@@ -1,12 +1,20 @@
 import ast
 import importlib.metadata as metadata
+import importlib.util
+import io
+import json
 import sys
+import tempfile
 import tomllib
 import unittest
+from contextlib import redirect_stdout
 from itertools import chain
+from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
-from scripts.generate_compliance import ROOT, Requirement, active_requirement, canonicalize_name, resolve_graph
+from scripts.generate_compliance import (ROOT, Requirement, active_requirement, canonicalize_name, main,
+                                         resolve_graph)
 
 
 class DependencyGraphTests(unittest.TestCase):
@@ -88,6 +96,76 @@ class OwnLicenseTests(unittest.TestCase):
         self.assertTrue(text.startswith("MIT License\n"))
         self.assertIn("Copyright (c) 2026 tedorigawa001\n", text)
         self.assertNotIn("<", text)  # no placeholder left
+
+
+def write_files(root, relatives):
+    for relative in relatives:
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("old")
+
+
+class StaleEvidenceTests(unittest.TestCase):
+    """Evidence of an older version must not survive regeneration (cryptography 48.0.1 once did)."""
+
+    def generate(self, root, outputs, *options):
+        with patch("scripts.generate_compliance.collect", return_value=(outputs, [])), \
+                patch.object(sys, "argv", ["generate_compliance.py", "--output", str(root), *options]), \
+                redirect_stdout(io.StringIO()) as printed:
+            return main(), printed.getvalue()
+
+    def test_regeneration_removes_evidence_of_older_versions(self):
+        old_license = "third_party/licenses/pkg/1.0/pkg-1.0.dist-info/licenses/LICENSE"
+        old_metadata = "third_party/metadata/pkg-1.0.METADATA"
+        outputs = {"third_party/licenses/pkg/2.0/LICENSE": b"new", "third_party/metadata/pkg-2.0.METADATA": b"new"}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.assertEqual(self.generate(root, outputs)[0], 0)
+            write_files(root, [old_license, old_metadata, "third_party/licenses/.DS_Store", "README.md"])
+
+            code, printed = self.generate(root, outputs, "--check")
+            self.assertEqual(code, 1)
+            self.assertEqual(json.loads(printed), {"different_files": [], "stale_files": [old_license, old_metadata],
+                                                   "unresolved": []})
+            self.assertTrue((root / old_license).exists(), "--check must not remove anything")
+
+            self.assertEqual(self.generate(root, outputs)[0], 0)
+            self.assertFalse((root / "third_party/licenses/pkg/1.0").exists())
+            self.assertFalse((root / old_metadata).exists())
+            self.assertTrue((root / "third_party/licenses/.DS_Store").exists())  # the file manager's own
+            self.assertTrue((root / "README.md").exists())  # outside the evidence folders
+            self.assertEqual(self.generate(root, outputs, "--check")[0], 0)
+
+    def test_notice_renamed_only_in_case_is_kept(self):
+        # On macOS and Windows LICENSE and License are the same file.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_files(root, ["third_party/licenses/pkg/1.0/LICENSE"])
+            self.assertEqual(self.generate(root, {"third_party/licenses/pkg/1.0/License": b"new"})[0], 0)
+            folder = root / "third_party/licenses/pkg/1.0"
+            self.assertEqual([path.name for path in folder.iterdir()], ["License"])
+            self.assertEqual((folder / "License").read_bytes(), b"new")
+
+
+@unittest.skipUnless(importlib.util.find_spec("jsonschema"), "jsonschema not installed")
+class UnlistedEvidenceTests(unittest.TestCase):
+    def test_evidence_the_manifest_does_not_list_is_reported(self):
+        from scripts.validate_compliance import unlisted_evidence
+
+        listed = ["third_party/licenses/pkg/2.0/LICENSE", "third_party/metadata/pkg-2.0.METADATA"]
+        manifest = {"components": [{"metadata_path": listed[1], "notices": [{"path": listed[0]}]}]}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_files(root, [*listed, "third_party/licenses/pkg/1.0/LICENSE", "third_party/metadata/.DS_Store"])
+            self.assertEqual(unlisted_evidence(root, manifest), ["third_party/licenses/pkg/1.0/LICENSE"])
+
+    def test_committed_profiles_hold_only_listed_evidence(self):
+        from scripts.validate_compliance import unlisted_evidence
+
+        for root in [ROOT, *sorted(p for p in (ROOT / "profiles").iterdir() if p.is_dir())]:
+            with self.subTest(profile=root.name):
+                manifest = json.loads((root / "third_party/license-manifest.json").read_text())
+                self.assertEqual(unlisted_evidence(root, manifest), [])
 
 
 if __name__ == "__main__":

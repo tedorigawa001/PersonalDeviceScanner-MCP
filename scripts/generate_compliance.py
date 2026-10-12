@@ -30,6 +30,11 @@ except ImportError:
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_URL = "http://cyclonedx.org/schema/bom-1.6.schema.json"
+# The generator owns these folders: a file in them that the current output does not list
+# is evidence left from an older version and is removed.
+EVIDENCE_DIRECTORIES = ("third_party/licenses", "third_party/metadata")
+# Files that file managers create on their own; never evidence, never removed.
+FILE_MANAGER_FILES = {".DS_Store", "Thumbs.db", "desktop.ini"}
 
 
 def encode_json(value):
@@ -225,6 +230,23 @@ def collect(project_path=ROOT / "pyproject.toml", wheels_dir=None):
     return output, unresolved
 
 
+def stale_evidence(root, outputs):
+    """Files in the evidence folders that the current output no longer lists."""
+    return sorted(relative for directory in EVIDENCE_DIRECTORIES for path in (root / directory).rglob("*")
+                  if path.is_file() and path.name not in FILE_MANAGER_FILES
+                  and (relative := path.relative_to(root).as_posix()) not in outputs)
+
+
+def remove_stale_evidence(root, stale):
+    for relative in stale:
+        (root / relative).unlink()
+    for directory in EVIDENCE_DIRECTORIES:
+        folders = [p for p in (root / directory).rglob("*") if p.is_dir() and not p.is_symlink()]
+        for folder in sorted(folders, key=lambda p: len(p.parts), reverse=True):
+            if not any(folder.iterdir()):
+                folder.rmdir()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=ROOT)
@@ -233,7 +255,14 @@ def main():
     args = parser.parse_args()
     try:
         outputs, unresolved = collect(wheels_dir=args.wheels_dir)
-        differences = []
+        differences, stale = [], stale_evidence(args.output, outputs)
+        if not args.check:
+            # Before writing: on a case-insensitive file system a stale LICENSE is the same file
+            # as a new License, and removing it afterwards would delete the new evidence.
+            remove_stale_evidence(args.output, stale)
+            for relative in stale:
+                print(f"Removed stale evidence: {relative}")
+            stale = []
         for relative, data in outputs.items():
             path = args.output / relative
             if args.check:
@@ -242,8 +271,9 @@ def main():
             else:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(data)
-        if differences or unresolved:
-            print(json.dumps({"different_files": differences, "unresolved": unresolved}, indent=2))
+        if differences or stale or unresolved:
+            print(json.dumps({"different_files": differences, "stale_files": stale, "unresolved": unresolved},
+                             indent=2))
             return 1
         print(f"{'Verified' if args.check else 'Generated'} {len(outputs)} compliance files; no missing Python license evidence")
         return 0

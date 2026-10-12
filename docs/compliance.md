@@ -60,6 +60,11 @@ certifiを改変して配布する場合は、上流ソースだけでは足り�
 .venv/bin/python scripts/validate_compliance.py --schema-dir .compliance-schema
 ```
 
+`third_party/licenses/` と `third_party/metadata/` は生成ツールが管理するフォルダーです。
+生成時は、今回の出力に含まれないファイル（古いバージョンの原文など）を削除してから書き込み、
+`--check` ではそれらを `stale_files` として報告します。検証ツールも、ライセンス一覧（manifest）にないファイルがあると不合格にします。
+ファイルマネージャーが自動で作る `.DS_Store`・`Thumbs.db`・`desktop.ini` は対象外です。
+
 公式スキーマはCycloneDX specificationの1.6タグの `schema/` にある
 `bom-1.6.schema.json`、`spdx.schema.json`、`jsf-0.82.schema.json` を使用します。
 [公式仕様](https://github.com/CycloneDX/specification/tree/1.6/schema)
@@ -105,12 +110,13 @@ Windows / Linux / macOS（arm64）それぞれで次を行い、結果を成果�
 1. 参照ロックと同じバージョンを制約にして、agent extraの依存をビルド済みwheelだけで導入
    （参照ロックの固定がそのOSでのagent extraの条件と矛盾する場合だけ、その固定を外して解決し直す。例：`cryptography>=50`）
 2. 導入したバージョンの参照wheelを取得
-3. `generate_compliance.py --output profiles/<プロファイル名>` で生成
+3. `generate_compliance.py --output profiles/<プロファイル名>` で生成（チェックアウトに残る古い原文はここで削除される）
 4. 固定したコミットのCycloneDX 1.6公式スキーマで `validate_compliance.py` を実行
 
 ライセンス表記を確定できない依存があると生成は失敗扱いになりますが、成果物は人が確認できるようアップロードします。
 表記の確定は法的な判断なので、生成ツールは推測で埋めません。成果物を `profiles/` に取り込み、
-確認した結果とあわせてコミットしてください。
+確認した結果とあわせてコミットしてください。取り込むときは、既存の `profiles/<プロファイル名>/` に上書きせず、
+中身を成果物で置き換えます（上書きすると古い原文が残り、テストと検証が失敗します）。
 
 この手順は、ローカルのmacOS x86_64で実行すると、リポジトリ直下の参照プロファイルを1バイトも違わず再生成できることを確認しています。
 

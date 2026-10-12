@@ -9,6 +9,18 @@ from jsonschema import Draft7Validator
 from referencing import Registry, Resource
 
 ROOT = Path(__file__).resolve().parents[1]
+# Same folders and file-manager files as generate_compliance.py; checked independently here.
+EVIDENCE_DIRECTORIES = ("third_party/licenses", "third_party/metadata")
+FILE_MANAGER_FILES = {".DS_Store", "Thumbs.db", "desktop.ini"}
+
+
+def unlisted_evidence(root, manifest):
+    """Files in the evidence folders that the manifest does not list, e.g. left from an older version."""
+    listed = {path for entry in manifest["components"]
+              for path in [entry["metadata_path"], *(notice["path"] for notice in entry["notices"])]}
+    return sorted(relative for directory in EVIDENCE_DIRECTORIES for path in (root / directory).rglob("*")
+                  if path.is_file() and path.name not in FILE_MANAGER_FILES
+                  and (relative := path.relative_to(root).as_posix()) not in listed)
 
 
 def validate(root, schema_dir):
@@ -31,6 +43,8 @@ def validate(root, schema_dir):
     assert {d["ref"] for d in bom["dependencies"]} == refs, "Incomplete dependency graph"
     assert all(set(d["dependsOn"]) <= refs for d in bom["dependencies"]), "Dangling edge"
     manifest = json.loads((root / "third_party/license-manifest.json").read_text())
+    unlisted = unlisted_evidence(root, manifest)
+    assert not unlisted, f"Evidence the manifest does not list (left from an older version?): {unlisted}"
     assert not manifest["unresolved"], "Unresolved Python license evidence"
     assert {c["name"] for c in manifest["components"]} == set(by_name), "Manifest/BOM mismatch"
     for entry in manifest["components"]:
