@@ -7,6 +7,7 @@ import locale
 import os
 import platform
 import re
+import signal
 import ssl
 import stat
 import subprocess
@@ -15,6 +16,7 @@ import time
 import tomllib
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import (HTTPSHandler, HTTPRedirectHandler, ProxyHandler,
@@ -128,6 +130,94 @@ def decode(data: bytes) -> str:
         return data.decode(locale.getpreferredencoding(False) or "utf-8", errors="replace")
 
 
+def windows_job(pid: int):
+    """Put a process in a new job object; None if Windows refuses.
+
+    Its descendants join the job automatically, and closing the job handle kills
+    them all, even if this process dies first. A child started in the moment
+    before assignment would escape, but engines do not start children that early.
+    """
+    import ctypes
+    from ctypes import wintypes
+
+    class IO_COUNTERS(ctypes.Structure):
+        _fields_ = [(name, ctypes.c_ulonglong) for name in (
+            "ReadOperationCount", "WriteOperationCount", "OtherOperationCount",
+            "ReadTransferCount", "WriteTransferCount", "OtherTransferCount")]
+
+    class JOBOBJECT_BASIC_LIMIT_INFORMATION(ctypes.Structure):
+        _fields_ = [("PerProcessUserTimeLimit", ctypes.c_int64), ("PerJobUserTimeLimit", ctypes.c_int64),
+                    ("LimitFlags", wintypes.DWORD), ("MinimumWorkingSetSize", ctypes.c_size_t),
+                    ("MaximumWorkingSetSize", ctypes.c_size_t), ("ActiveProcessLimit", wintypes.DWORD),
+                    ("Affinity", ctypes.c_size_t), ("PriorityClass", wintypes.DWORD),
+                    ("SchedulingClass", wintypes.DWORD)]
+
+    class JOBOBJECT_EXTENDED_LIMIT_INFORMATION(ctypes.Structure):
+        _fields_ = [("BasicLimitInformation", JOBOBJECT_BASIC_LIMIT_INFORMATION), ("IoInfo", IO_COUNTERS),
+                    ("ProcessMemoryLimit", ctypes.c_size_t), ("JobMemoryLimit", ctypes.c_size_t),
+                    ("PeakProcessMemoryUsed", ctypes.c_size_t), ("PeakJobMemoryUsed", ctypes.c_size_t)]
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
+    kernel32.CreateJobObjectW.restype = wintypes.HANDLE
+    kernel32.SetInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD]
+    kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+    kernel32.TerminateJobObject.argtypes = [wintypes.HANDLE, wintypes.UINT]
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+
+    job = kernel32.CreateJobObjectW(None, None)
+    if not job:
+        return None
+    limits = JOBOBJECT_EXTENDED_LIMIT_INFORMATION()
+    limits.BasicLimitInformation.LimitFlags = 0x2000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+    process = kernel32.OpenProcess(0x0101, False, pid)  # PROCESS_SET_QUOTA | PROCESS_TERMINATE
+    assigned = bool(process) and kernel32.SetInformationJobObject(
+        job, 9, ctypes.byref(limits), ctypes.sizeof(limits)) and kernel32.AssignProcessToJobObject(job, process)
+    if process:
+        kernel32.CloseHandle(process)
+    if not assigned:
+        kernel32.CloseHandle(job)
+        return None
+    return SimpleNamespace(stop=lambda: kernel32.TerminateJobObject(job, 1),
+                           close=lambda: kernel32.CloseHandle(job))
+
+
+class ProcessTree:
+    """An engine and every process it starts, stopped together.
+
+    POSIX: the engine leads its own process group. Windows: it is placed in a job
+    object; if that is refused, only the engine itself can be stopped.
+    """
+
+    def __init__(self, process: subprocess.Popen):
+        self.process = process
+        self.lock = threading.Lock()
+        self.closed = False
+        self.job = windows_job(process.pid) if os.name == "nt" else None
+
+    def stop(self) -> None:
+        with self.lock:
+            if self.closed:
+                return
+            if self.job:
+                self.job.stop()
+            elif os.name != "nt":
+                try:
+                    os.killpg(self.process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+            if self.process.poll() is None:
+                self.process.kill()
+
+    def close(self) -> None:
+        with self.lock:
+            self.closed = True
+            if self.job:
+                self.job.close()
+
+
 def run_bounded(argv: list[str], timeout: float, limit: int,
                 cancel: threading.Event | None = None) -> tuple[int, str, str]:
     check_cancel(cancel)
@@ -139,9 +229,11 @@ def run_bounded(argv: list[str], timeout: float, limit: int,
     env.update({"LC_ALL": "C", "LANG": "C"})
     try:
         process = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE, shell=False, env=env)
+                                   stderr=subprocess.PIPE, shell=False, env=env,
+                                   start_new_session=os.name != "nt")
     except OSError:
         raise ScannerError("Configured engine could not be started") from None
+    tree = ProcessTree(process)
     buffers = [bytearray(), bytearray()]
     exceeded = threading.Event()
     lock = threading.Lock()
@@ -154,7 +246,7 @@ def run_bounded(argv: list[str], timeout: float, limit: int,
                     buffers[slot].extend(chunk[:max(0, remaining)])
                     if len(chunk) > remaining:
                         exceeded.set()
-                        process.kill()
+                        tree.stop()
                         break
         finally:
             stream.close()
@@ -166,18 +258,22 @@ def run_bounded(argv: list[str], timeout: float, limit: int,
     # Wait in short slices so a cancel request stops the engine promptly.
     deadline = time.monotonic() + timeout
     stopped = None
-    while stopped is None:
-        try:
-            process.wait(timeout=CANCEL_POLL_SECONDS)
-            break
-        except subprocess.TimeoutExpired:
-            if cancel is not None and cancel.is_set():
-                stopped = "Scan cancelled; engine stopped before completing"
-            elif time.monotonic() >= deadline:
-                stopped = "Engine timed out; scan was not completed"
-    if stopped:
-        process.kill()
+    try:
+        while stopped is None:
+            try:
+                process.wait(timeout=CANCEL_POLL_SECONDS)
+                break
+            except subprocess.TimeoutExpired:
+                if cancel is not None and cancel.is_set():
+                    stopped = "Scan cancelled; engine stopped before completing"
+                elif time.monotonic() >= deadline:
+                    stopped = "Engine timed out; scan was not completed"
+    finally:
+        # Also after a normal exit or an unexpected error such as Ctrl+C: stop the
+        # engine if it still runs and anything it left behind.
+        tree.stop()
         process.wait()
+        tree.close()
     for thread in threads:
         thread.join(timeout=2)
     if stopped:
@@ -185,7 +281,8 @@ def run_bounded(argv: list[str], timeout: float, limit: int,
     if exceeded.is_set():
         raise ScannerError("Engine output exceeded limits; scan was not completed")
     if any(t.is_alive() for t in threads):
-        raise ScannerError("Engine output stayed open after exit; a child process may still be running")
+        raise ScannerError("Engine output stayed open after exit; a child process that left the engine's "
+                           "process group may still be running")
     return process.returncode, *(decode(bytes(b)) for b in buffers)
 
 

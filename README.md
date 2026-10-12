@@ -308,7 +308,10 @@ A single page, and any page after the first, is reported as `partial`. The maxim
 
 - Run as a **standard user**, not an administrator. The tool never elevates privileges.
 - The folder restriction is not an OS sandbox. It does not protect against a malicious local user swapping files.
-- The time limit, output limit, and cancellation apply only to the engine started directly. Child processes started by the engine are not stopped.
+- On a time limit, output limit, or cancellation, the engine is stopped together with every process it started
+  (a process group on macOS / Linux, a job object on Windows). Processes the engine leaves behind after a normal exit are stopped too.
+  A process that deliberately leaves the group (for example by starting a new session on macOS / Linux) is not stopped;
+  if it keeps the engine's output open, the result is an error.
 
 ## Safety design
 
@@ -321,7 +324,7 @@ A single page, and any page after the first, is reported as `partial`. The maxim
 - **AI-facing text is untrusted**: the AI is instructed to treat file and application names in results as untrusted strings, never as instructions.
 - **Responsive during long scans**: scans run in a worker thread, and engines run one at a time.
   Progress is reported every 10 seconds, so clients that extend their timeout on progress can wait for long scans.
-- **Stops on cancel**: when the AI client cancels a request, the running engine is stopped within about 0.1 seconds,
+- **Stops on cancel**: when the AI client cancels a request, the running engine and the processes it started are stopped within about 0.1 seconds,
   and a scan still waiting for its turn never starts.
 - **Character encoding**: on Windows, engine output that is not UTF-8 is decoded with the system's default code page (cp932 on Japanese Windows).
 

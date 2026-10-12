@@ -14,6 +14,39 @@ from unittest.mock import patch
 from pc_scanner.core import NoRedirect, Scanner, ScannerError, is_link, run_bounded
 
 
+def wait_for(condition, seconds):
+    deadline = time.monotonic() + seconds
+    while not condition():
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.05)
+    return True
+
+
+def process_running(pid):
+    if os.name == "nt":
+        # os.kill(pid, 0) would terminate the process on Windows, so ask the OS instead.
+        import ctypes
+        from ctypes import wintypes
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        kernel32.OpenProcess.restype = wintypes.HANDLE
+        kernel32.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+        kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+        handle = kernel32.OpenProcess(0x00100000, False, pid)  # SYNCHRONIZE
+        if not handle:
+            return False
+        try:
+            return kernel32.WaitForSingleObject(handle, 0) == 0x102  # WAIT_TIMEOUT: still running
+        finally:
+            kernel32.CloseHandle(handle)
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    return True
+
+
 def as_standard_user(func):
     """Call func with the file access a standard user would have.
 
@@ -411,11 +444,46 @@ class ScannerTests(unittest.TestCase):
             _, output, _ = run_bounded([sys.executable, "-c", script], 5, 1024)
         self.assertEqual(output, "ダウンロード")
 
-    @unittest.skipIf(os.name == "nt", "Windows children do not inherit redirected handles by default")
-    def test_runner_reports_pipes_held_by_child_process(self):
+    def engine_with_grandchild(self, exit_after_start, **popen_options):
+        """Write an engine script that starts a long-running grandchild and records its PID."""
+        pid_file = self.root / "grandchild.pid"
+        script = self.root / "engine.py"
+        script.write_text(
+            "import os, subprocess, sys, time\n"
+            f"child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'], **{popen_options!r})\n"
+            f"with open({str(pid_file) + '.tmp'!r}, 'w') as f:\n"
+            "    f.write(str(child.pid))\n"
+            f"os.replace({str(pid_file) + '.tmp'!r}, {str(pid_file)!r})\n"
+            + ("" if exit_after_start else "time.sleep(30)\n"))
+        return [sys.executable, str(script)], pid_file
+
+    def test_runner_stops_descendants_when_cancelled(self):
+        argv, pid_file = self.engine_with_grandchild(exit_after_start=False)
+        cancel = threading.Event()
+
+        def cancel_once_started():
+            wait_for(pid_file.exists, 20)
+            cancel.set()
+
+        threading.Thread(target=cancel_once_started, daemon=True).start()
+        with self.assertRaisesRegex(ScannerError, "cancelled"):
+            run_bounded(argv, 60, 1024, cancel=cancel)
+        grandchild = int(pid_file.read_text())
+        self.assertTrue(wait_for(lambda: not process_running(grandchild), 5), "grandchild still running")
+
+    def test_runner_stops_descendants_left_after_exit(self):
+        argv, pid_file = self.engine_with_grandchild(exit_after_start=True)
+        code, _, _ = run_bounded(argv, 60, 1024)
+        self.assertEqual(code, 0)
+        grandchild = int(pid_file.read_text())
+        self.assertTrue(wait_for(lambda: not process_running(grandchild), 5), "grandchild still running")
+
+    @unittest.skipIf(os.name == "nt", "Processes cannot leave the engine's job object on Windows")
+    def test_runner_reports_pipes_held_by_escaped_process(self):
+        # A new session leaves the engine's process group, so stopping the group misses it.
         script = ("import subprocess, sys; "
-                  "subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(5)'])")
-        with self.assertRaisesRegex(ScannerError, "child process may still be running"):
+                  "subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(6)'], start_new_session=True)")
+        with self.assertRaisesRegex(ScannerError, "left the engine's process group"):
             run_bounded([sys.executable, "-c", script], 10, 1024)
 
     def test_runner_stops_engine_when_cancelled(self):
