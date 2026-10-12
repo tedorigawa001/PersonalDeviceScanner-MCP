@@ -88,6 +88,30 @@ bdo .venv/bin/python scripts/verify_distribution.py .compliance-build
 リリース時は、取得済みwheelから `pip install --no-index --find-links ... --require-hashes -r ...` で
 新しいvenvへ導入し直して生成することで、出荷対象との対応をより明確にできます。
 
+## OS別プロファイル
+
+リポジトリ直下のロック・SBOM・第三者表示は **macOS x86_64 / CPython 3.14.7** の参照プロファイルで、
+wheelに同梱する表示もこれです。ほかのOS向けは `profiles/<OS>-<CPU>-cp<版>/` に、同じ構成一式
+（`requirements-agent.lock`、`sbom/`、`third_party/`、`THIRD_PARTY_NOTICES.md`）を置きます。
+
+生成スクリプトは導入済み環境を読むため、各OSのプロファイルはそのOS上で作ります。
+pipで別OS向けに解決しても `sys_platform` などの条件は実行中のOSで判定され、
+Windowsだけの依存（pywin32など）を拾えないためです。
+
+GitHub Actionsの「Compliance profiles」ワークフロー（`.github/workflows/compliance-profiles.yml`、手動実行）が、
+Windows / Linux / macOS（arm64）それぞれで次を行い、結果を成果物（artifact）としてアップロードします。
+
+1. 参照ロックと同じバージョンを制約にして、agent extraの依存をビルド済みwheelだけで導入
+2. 導入したバージョンの参照wheelを取得
+3. `generate_compliance.py --output profiles/<プロファイル名>` で生成
+4. 固定したコミットのCycloneDX 1.6公式スキーマで `validate_compliance.py` を実行
+
+ライセンス表記を確定できない依存があると生成は失敗扱いになりますが、成果物は人が確認できるようアップロードします。
+表記の確定は法的な判断なので、生成ツールは推測で埋めません。成果物を `profiles/` に取り込み、
+確認した結果とあわせてコミットしてください。
+
+この手順は、ローカルのmacOS x86_64で実行すると、リポジトリ直下の参照プロファイルを1バイトも違わず再生成できることを確認しています。
+
 ## 配布に進む前の未確定事項
 
 1. 独自コードのMIT採用と権利者名の確定。現在は提案本文のみで正式なLICENSEなし。
