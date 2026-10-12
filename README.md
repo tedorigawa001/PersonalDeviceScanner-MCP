@@ -317,6 +317,7 @@ Inventory and Wazuh results come in pages of 500. A single page, and any page af
 - It reads data **already stored** in Wazuh. The index records no scan time, so freshness cannot be verified
   (`data.freshness` stays `unverified`), and it does not tell whether the PC is currently online.
 - A Wazuh request is limited to about 30 seconds in total, runs one at a time, and can be cancelled.
+  An answer that trickles in or stalls is cut off within about 0.1 seconds of the limit or a cancel.
 - To catch results that belong to another device, the agent name in the index is compared with this PC's host name
   (or `wazuh.agent_name`). If they differ, or the name is missing, the result is `partial` with a warning.
   The names, the expected name, and the OS recorded by Wazuh are in `data.device`.

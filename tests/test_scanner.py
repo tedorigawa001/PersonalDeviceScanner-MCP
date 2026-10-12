@@ -1,8 +1,12 @@
 import base64
 import http.client
+import importlib.util
 import io
+import ipaddress
 import json
 import os
+import re
+import socket
 import ssl
 import subprocess
 import sys
@@ -134,6 +138,88 @@ def as_standard_user(func):
             kernel32.CloseHandle(restricted)
     finally:
         advapi32.RevertToSelf()
+
+
+class SlowWazuhServer:
+    """A real HTTPS server on 127.0.0.1 that answers a byte at a time, never, or in separate chunks.
+
+    Its self-signed certificate is made at test time, so no private key is kept in the repository.
+    """
+
+    def __init__(self, directory, drip_seconds=None, answer=None):
+        from cryptography import x509
+        from cryptography.hazmat.primitives import hashes, serialization
+        from cryptography.hazmat.primitives.asymmetric import ec
+        from cryptography.x509.oid import NameOID
+
+        key = ec.generate_private_key(ec.SECP256R1())
+        name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "pc-scanner slow test server")])
+        now = datetime.now(timezone.utc)
+        certificate = (
+            x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(key.public_key())
+            .serial_number(x509.random_serial_number())
+            .not_valid_before(now - timedelta(minutes=5)).not_valid_after(now + timedelta(days=1))
+            .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
+            .add_extension(x509.KeyUsage(digital_signature=True, content_commitment=False, key_encipherment=False,
+                                         data_encipherment=False, key_agreement=False, key_cert_sign=True,
+                                         crl_sign=False, encipher_only=False, decipher_only=False), critical=True)
+            .add_extension(x509.SubjectKeyIdentifier.from_public_key(key.public_key()), critical=False)
+            .add_extension(x509.AuthorityKeyIdentifier.from_issuer_public_key(key.public_key()), critical=False)
+            .add_extension(x509.SubjectAlternativeName([x509.IPAddress(ipaddress.ip_address("127.0.0.1"))]),
+                           critical=False)
+            .sign(key, hashes.SHA256()))
+        self.ca_file = Path(directory) / "slow-server.pem"
+        key_file = Path(directory) / "slow-server.key"
+        self.ca_file.write_bytes(certificate.public_bytes(serialization.Encoding.PEM))
+        key_file.write_bytes(key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                                               serialization.NoEncryption()))
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(self.ca_file, key_file)
+        self.listener = socket.create_server(("127.0.0.1", 0))
+        self.url = f"https://127.0.0.1:{self.listener.getsockname()[1]}"
+        self.stopped = threading.Event()
+        self.thread = threading.Thread(target=self.serve, args=(context, drip_seconds, answer), daemon=True)
+        self.thread.start()
+
+    def serve(self, context, drip_seconds, answer):
+        try:
+            connection, _ = self.listener.accept()
+            with context.wrap_socket(connection, server_side=True) as tls:
+                request = b""
+                while b"\r\n\r\n" not in request:
+                    request += tls.recv(4096)
+                head, _, body = request.partition(b"\r\n\r\n")
+                length = int(re.search(rb"(?im)^content-length:\s*(\d+)", head).group(1))
+                while len(body) < length:  # read it all, or closing would reset the connection
+                    body += tls.recv(4096)
+                if answer is not None:
+                    tls.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n"
+                                b"Transfer-Encoding: chunked\r\n\r\n")
+                    for start in range(0, len(answer), 4096):
+                        piece = answer[start:start + 4096]
+                        tls.sendall(b"%x\r\n%s\r\n" % (len(piece), piece))
+                        time.sleep(0.01)
+                    tls.sendall(b"0\r\n\r\n")
+                    return
+                if drip_seconds is None:  # never answers
+                    self.stopped.wait(30)
+                    return
+                tls.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 100\r\n\r\n")
+                for _ in range(100):
+                    if self.stopped.wait(drip_seconds):
+                        return
+                    tls.sendall(b" ")
+        except OSError:
+            pass  # the client cut the connection off
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.stopped.set()
+        self.listener.close()
+        self.thread.join(5)
+        return False
 
 
 class ScannerTests(unittest.TestCase):
@@ -1041,7 +1127,7 @@ class ScannerTests(unittest.TestCase):
             def __exit__(self, *exc):
                 return False
 
-            def read(self, size):
+            def read1(self, size):
                 time.sleep(0.05)
                 return b" "
 
@@ -1055,6 +1141,54 @@ class ScannerTests(unittest.TestCase):
         self.assertEqual(report["status"], "error")
         self.assertIn("did not finish answering within 1 seconds", report["error"])
         self.assertLess(time.monotonic() - started, 5)
+
+    def wazuh_request_threads(self):
+        return [thread for thread in threading.enumerate() if thread.name == "wazuh-request"]
+
+    @unittest.skipUnless(importlib.util.find_spec("cryptography"), "cryptography not installed")
+    def test_trickling_wazuh_server_stops_at_the_deadline(self):
+        # Each byte restarts the socket timeout, and a blocking read waits for a full block,
+        # so only the overall deadline can stop this answer (5 seconds in all) after 1 second.
+        with SlowWazuhServer(self.root, drip_seconds=0.05) as server:
+            scanner = Scanner({"local": {"timeout_seconds": 1},
+                               "wazuh": {"url": server.url, "agent_id": "001", "ca_file": str(server.ca_file)}})
+            started = time.monotonic()
+            with patch.dict(os.environ, {"PC_SCANNER_WAZUH_USER": "reader", "PC_SCANNER_WAZUH_PASSWORD": "secret"}):
+                report = scanner.invoke("vulnerabilities")
+            elapsed = time.monotonic() - started
+            self.assertTrue(wait_for(lambda: not self.wazuh_request_threads(), 3), "the cut-off request must end")
+        self.assertEqual(report["status"], "error")
+        self.assertIn("did not finish answering within 1 seconds", report["error"])
+        self.assertLess(elapsed, 1.6)
+
+    @unittest.skipUnless(importlib.util.find_spec("cryptography"), "cryptography not installed")
+    def test_cancel_reaches_a_waiting_wazuh_request(self):
+        with SlowWazuhServer(self.root, drip_seconds=None) as server:
+            scanner = Scanner({"local": {"timeout_seconds": 20},
+                               "wazuh": {"url": server.url, "agent_id": "001", "ca_file": str(server.ca_file)}})
+            cancel = threading.Event()
+            timer = threading.Timer(0.3, cancel.set)
+            started = time.monotonic()
+            timer.start()
+            with patch.dict(os.environ, {"PC_SCANNER_WAZUH_USER": "reader", "PC_SCANNER_WAZUH_PASSWORD": "secret"}):
+                report = scanner.invoke("vulnerabilities", cancel=cancel)
+            elapsed = time.monotonic() - started
+            self.assertTrue(wait_for(lambda: not self.wazuh_request_threads(), 3), "the cut-off request must end")
+        self.assertEqual(report["status"], "error")
+        self.assertIn("cancelled", report["error"])
+        self.assertLess(elapsed, 1.3)
+
+    @unittest.skipUnless(importlib.util.find_spec("cryptography"), "cryptography not installed")
+    def test_real_wazuh_answer_in_chunks_is_read_whole(self):
+        answer = json.dumps({"hits": {"total": {"value": 60, "relation": "eq"}, "hits": self.wazuh_hits(60)}}).encode()
+        self.assertGreater(len(answer), 3 * 4096)  # several chunks, so several reads
+        with SlowWazuhServer(self.root, answer=answer) as server:
+            scanner = Scanner({"wazuh": {"url": server.url, "agent_id": "001", "ca_file": str(server.ca_file)}})
+            with patch.dict(os.environ, {"PC_SCANNER_WAZUH_USER": "reader", "PC_SCANNER_WAZUH_PASSWORD": "secret"}), \
+                    patch("pc_scanner.core.socket.gethostname", return_value="test-pc"):
+                report = scanner.invoke("vulnerabilities")
+        self.assertEqual(report["status"], "completed", report.get("error"))
+        self.assertEqual(len(report["findings"]), 60)
 
     def test_cancelled_wazuh_request_never_connects(self):
         cancel = threading.Event()

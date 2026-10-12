@@ -238,6 +238,68 @@ class NoRedirect(HTTPRedirectHandler):
         raise ScannerError("Wazuh redirect rejected; configure the final HTTPS origin")
 
 
+class TrackedHTTPSHandler(HTTPSHandler):
+    """Keeps the connections it opens, so a request that was given up on can be cut off."""
+
+    def __init__(self, context: ssl.SSLContext):
+        super().__init__(context=context)
+        self.context = context
+        self.connections: list[http.client.HTTPSConnection] = []
+
+    def https_open(self, req):
+        def connection(host, **kwargs):
+            self.connections.append(http.client.HTTPSConnection(host, **kwargs))
+            return self.connections[-1]
+        return self.do_open(connection, req, context=self.context)
+
+    def cut_off(self) -> None:
+        for connection in self.connections:
+            try:
+                # The plain socket call: wakes a read blocked in another thread without
+                # touching the TLS state that thread is using.
+                socket.socket.shutdown(connection.sock, socket.SHUT_RDWR)
+            except (OSError, TypeError):
+                pass  # not connected yet, already closed, or still in the TLS handshake
+
+
+def fetch_bounded(opener, handler: TrackedHTTPSHandler, request: Request, budget: int, limit: int,
+                  cancel: threading.Event | None = None) -> bytes:
+    """Read the whole answer within budget seconds, stopping promptly on cancel.
+
+    A blocking read cannot be interrupted, and each byte that arrives restarts the socket
+    timeout, so a slow server could hold the read far past the budget. The request runs in
+    a helper thread instead; this thread keeps the deadline and cuts the connection off.
+    """
+    deadline = time.monotonic() + budget
+    done, abandoned, outcome = threading.Event(), threading.Event(), {}
+
+    def fetch() -> None:
+        try:
+            with opener.open(request, timeout=budget) as response:
+                raw = bytearray()
+                # read1 returns what has arrived instead of waiting for a full block.
+                while not abandoned.is_set() and (chunk := response.read1(65536)):
+                    raw += chunk
+                    if len(raw) > limit:
+                        raise ScannerError("Wazuh response exceeded size limit")
+            outcome["body"] = bytes(raw)
+        except Exception as exc:  # handed over to the caller
+            outcome["error"] = exc
+        finally:
+            done.set()
+
+    threading.Thread(target=fetch, name="wazuh-request", daemon=True).start()
+    while not done.wait(max(0.0, min(CANCEL_POLL_SECONDS, deadline - time.monotonic()))):
+        if (cancel is not None and cancel.is_set()) or time.monotonic() >= deadline:
+            abandoned.set()
+            handler.cut_off()
+            check_cancel(cancel)
+            raise ScannerError(f"Wazuh did not finish answering within {budget} seconds; search was not completed")
+    if "error" in outcome:
+        raise outcome["error"]
+    return outcome["body"]
+
+
 def decode(data: bytes) -> str:
     try:
         return data.decode("utf-8")
@@ -768,23 +830,11 @@ class Scanner:
             raise ScannerError("Wazuh ca_file is not a valid PEM CA certificate") from None
         except OSError:
             raise ScannerError("Wazuh ca_file cannot be read; check the path and permissions") from None
-        opener = build_opener(ProxyHandler({}), HTTPSHandler(context=context), NoRedirect())
+        handler = TrackedHTTPSHandler(context)
+        opener = build_opener(ProxyHandler({}), handler, NoRedirect())
         check_cancel(cancel)
-        budget = min(self.timeout, 30)
-        deadline = time.monotonic() + budget
         try:
-            with opener.open(request, timeout=budget) as response:
-                raw = bytearray()
-                # In pieces, so a slow or endless response cannot hold the call past its budget.
-                while chunk := response.read(65536):
-                    raw += chunk
-                    if len(raw) > self.limit:
-                        raise ScannerError("Wazuh response exceeded size limit")
-                    check_cancel(cancel)
-                    if time.monotonic() > deadline:
-                        raise ScannerError(f"Wazuh did not finish answering within {budget} seconds; "
-                                           "search was not completed")
-            payload = json.loads(raw)
+            payload = json.loads(fetch_bounded(opener, handler, request, min(self.timeout, 30), self.limit, cancel))
         except HTTPError as exc:
             raise ScannerError(f"Wazuh HTTP error {exc.code}; access or index may be unavailable") from None
         except (URLError, TimeoutError, OSError):
