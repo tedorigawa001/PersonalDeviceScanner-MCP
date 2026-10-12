@@ -495,7 +495,8 @@ class Scanner:
         if not query:
             raise ScannerError("Unsupported inventory query_id or platform")
         code, output, diagnostic = run_bounded(
-            [self.binary("osquery_binary"), "--json", "--disable_extensions=true",
+            # Official macOS osqueryi resolves to osqueryd; force shell mode.
+            [self.binary("osquery_binary"), "-S", "--json", "--disable_extensions=true",
              f"{query} LIMIT {PAGE_SIZE + 1} OFFSET {offset};"],
             self.timeout, self.limit, cancel=cancel)
         if code != 0:

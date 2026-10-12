@@ -172,6 +172,21 @@ class ScannerTests(unittest.TestCase):
             self.scanner.invoke("inventory", query_id="applications")
         self.assertIn("deb_packages UNION ALL", run.call_args.args[0][-1])
 
+    def test_osquery_symlink_target_runs_in_shell_mode(self):
+        daemon = self.root / "osqueryd"
+        daemon.write_text("test engine")
+        shell = self.root / "osqueryi"
+        try:
+            shell.symlink_to(daemon)
+        except OSError:
+            self.skipTest("Symlinks unavailable")
+        scanner = Scanner({"local": {"osquery_binary": str(shell)}})
+        with patch("pc_scanner.core.run_bounded", return_value=(0, '[{"name":"OS"}]', "")) as run:
+            report = scanner.invoke("inventory", query_id="os_version")
+        self.assertEqual(report["status"], "completed")
+        self.assertEqual(run.call_args.args[0][0], str(daemon.resolve()))
+        self.assertIn("-S", run.call_args.args[0])
+
     def test_inventory_pages(self):
         with patch("pc_scanner.core.run_bounded", return_value=(0, json.dumps([{}] * 501), "")) as run:
             first = self.scanner.invoke("inventory", query_id="os_version")
