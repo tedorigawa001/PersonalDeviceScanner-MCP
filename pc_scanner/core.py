@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import base64
 import difflib
+import http.client
 import json
 import locale
 import math
@@ -41,6 +42,12 @@ REPORTED_DIRECTORIES = 20
 # stat defines this only on Windows; the value is fixed by the Windows SDK.
 JUNCTION_TAG = getattr(stat, "IO_REPARSE_TAG_MOUNT_POINT", 0xA0000003)
 FOUND = re.compile(r"(.+): (.+) FOUND")
+# Characters that can hide or reorder text for a reader: C0/C1 controls, bidi controls,
+# zero-width characters and the byte order mark.
+HIDDEN_CHARACTERS = re.compile("[\x00-\x1f\x7f-\x9f\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]")
+NAME_CHARS, PATH_CHARS = 256, 1024
+# Sort values can be long package paths; cursors stay bounded for the AI's context.
+SORT_VALUE_CHARS, CURSOR_CHARS = 4096, 65536
 SOURCES = {"status": "bridge", "inventory": "osquery", "malware": "clamav", "vulnerabilities": "wazuh"}
 
 
@@ -53,36 +60,57 @@ def is_link(path: Path) -> bool:
     return stat.S_ISLNK(info.st_mode) or getattr(info, "st_reparse_tag", 0) == JUNCTION_TAG
 
 
+def clean_text(value, limit: int | None = NAME_CHARS) -> str:
+    """Untrusted text (file, app or package names) made safe to show to the AI or a terminal.
+
+    Hidden characters are escaped as \\uXXXX, file-name bytes that are not UTF-8 as
+    \\xNN, and the length is capped.
+    """
+    text = value if isinstance(value, str) else str(value)
+    try:
+        # surrogateescape restores undecodable file-name bytes; backslashreplace then shows them.
+        text = text.encode("utf-8", "surrogateescape").decode("utf-8", "backslashreplace")
+    except UnicodeEncodeError:
+        text = text.encode("utf-8", "backslashreplace").decode("utf-8")
+    text = HIDDEN_CHARACTERS.sub(lambda match: f"\\u{ord(match.group()):04x}", text)
+    return text if limit is None or len(text) <= limit else text[:limit] + "...(truncated)"
+
+
 def check_cancel(cancel: threading.Event | None) -> None:
     if cancel is not None and cancel.is_set():
         raise ScannerError("Scan cancelled; scan was not completed")
 
 
 def inspect_directories(target: Path, deadline: float,
-                        cancel: threading.Event | None = None) -> tuple[bool, list[str]]:
-    """Find directories ClamAV silently skips or cannot read, without following links.
+                        cancel: threading.Event | None = None) -> tuple[bool, list[str], list[str]]:
+    """Find directories ClamAV silently skips or cannot read, and names with line breaks,
+    without following links.
 
     ClamAV counts the target directory as level 1. Stop at the last scanned
     level; only the presence of a real child directory is needed there.
+    clamscan reports one line per file, so a line break in a name can make a
+    detection read as if it named another file.
     """
+    line_breaks = [str(target)] if "\n" in str(target) or "\r" in str(target) else []
     if not target.is_dir():
-        return False, []
+        return False, [], line_breaks
     limit_reached, unreadable = False, []
 
     def record(error):
         unreadable.append(error.filename or str(target))
 
-    for directory, children, _ in os.walk(target, followlinks=False, onerror=record):
+    for directory, children, files in os.walk(target, followlinks=False, onerror=record):
         check_cancel(cancel)
         if time.monotonic() >= deadline:
             raise ScannerError("Directory coverage check timed out; scan was not completed")
+        line_breaks += [str(Path(directory) / name) for name in children + files if "\n" in name or "\r" in name]
         # os.walk only skips symlinks, so junctions must be pruned here.
         children[:] = [name for name in children if not is_link(Path(directory) / name)]
         level = len(Path(directory).relative_to(target).parts) + 1
         if level >= MAX_DIRECTORY_LEVELS:
             limit_reached = limit_reached or bool(children)
             children.clear()
-    return limit_reached, unreadable
+    return limit_reached, unreadable, line_breaks
 
 
 def check_offset(offset) -> None:
@@ -112,7 +140,7 @@ def decode_cursor(cursor) -> list | None:
     """Sort values of the last record already returned; the cursor comes from the AI, so check it."""
     if cursor == "":
         return None
-    if not isinstance(cursor, str) or len(cursor) > 4096:
+    if not isinstance(cursor, str) or len(cursor) > CURSOR_CHARS:
         raise ScannerError("Invalid cursor; pass data.next_cursor unchanged")
     try:
         values = json.loads(base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4)))
@@ -122,14 +150,27 @@ def decode_cursor(cursor) -> list | None:
             # CVSS base scores are 0..10 and -1 marks a missing score. Comparing, unlike
             # float conversion, cannot overflow on huge integers, and it rejects NaN and infinity.
             and type(values[0]) in (int, float) and -1 <= values[0] <= 10
-            and all(isinstance(v, str) and len(v) <= 1024 for v in values[1:])):
+            and all(isinstance(v, str) and len(v) <= SORT_VALUE_CHARS for v in values[1:])):
         raise ScannerError("Invalid cursor; pass data.next_cursor unchanged")
     return values
 
 
-def encode_cursor(values: list) -> str:
-    cursor = base64.urlsafe_b64encode(json.dumps(values, separators=(",", ":")).encode()).decode().rstrip("=")
-    decode_cursor(cursor)  # never hand out a cursor that would be refused
+def encode_cursor(values: list) -> str | None:
+    """A cursor after the record with these sort values; None when they are too long to carry.
+
+    UTF-8 rather than JSON escapes keeps non-ASCII package names compact. Values of the
+    wrong shape raise ValueError, since they mean an unexpected index schema.
+    """
+    if isinstance(values, list) and any(isinstance(v, str) and len(v) > SORT_VALUE_CHARS for v in values):
+        return None
+    text = json.dumps(values, ensure_ascii=False, separators=(",", ":"))
+    cursor = base64.urlsafe_b64encode(text.encode()).decode().rstrip("=")
+    if len(cursor) > CURSOR_CHARS:
+        return None
+    try:
+        decode_cursor(cursor)  # never hand out a cursor that would be refused
+    except ScannerError:
+        raise ValueError("unexpected sort values") from None
     return cursor
 
 
@@ -137,6 +178,7 @@ def excerpt(text: str) -> tuple[str, bool]:
     """Keep engine text small enough for an AI context; head and tail carry errors and summary."""
     rows, cut = [], False
     for row in text.splitlines():
+        row = clean_text(row, None)
         if len(row) > REPORT_LINE_CHARS:
             # Long paths come first and the error reason last, so keep both ends.
             half = REPORT_LINE_CHARS // 2
@@ -291,6 +333,12 @@ def windows_job(pid: int):
                            close=lambda: kernel32.CloseHandle(job))
 
 
+# Engines running now, so a server asked to terminate can stop them. Reentrant locks:
+# the SIGTERM handler may run on a thread that is already inside one of these blocks.
+LIVE_TREES: set = set()
+LIVE_TREES_LOCK = threading.RLock()
+
+
 class ProcessTree:
     """An engine and every process it starts, stopped together.
 
@@ -300,9 +348,11 @@ class ProcessTree:
 
     def __init__(self, process: subprocess.Popen):
         self.process = process
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
         self.closed = False
         self.job = windows_job(process.pid) if os.name == "nt" else None
+        with LIVE_TREES_LOCK:
+            LIVE_TREES.add(self)
 
     def stop(self) -> None:
         with self.lock:
@@ -323,6 +373,55 @@ class ProcessTree:
             self.closed = True
             if self.job:
                 self.job.close()
+        with LIVE_TREES_LOCK:
+            LIVE_TREES.discard(self)
+
+
+def stop_all_engines() -> None:
+    with LIVE_TREES_LOCK:
+        trees = list(LIVE_TREES)
+    for tree in trees:
+        tree.stop()
+
+
+def stop_engines_on_terminate() -> None:
+    """Stop running engines when this process receives SIGTERM, then terminate as before.
+
+    Engines lead their own process groups, so a signal sent to this process alone would
+    leave them running. SIGKILL cannot be caught; Windows jobs already end with the process.
+    """
+    if os.name == "nt" or threading.current_thread() is not threading.main_thread():
+        return
+    previous = signal.getsignal(signal.SIGTERM)
+    if previous == signal.SIG_IGN:
+        return
+
+    def terminate(signum, frame):
+        stop_all_engines()
+        if callable(previous):
+            previous(signum, frame)
+        else:
+            signal.signal(signum, signal.SIG_DFL)
+            os.kill(os.getpid(), signum)
+
+    signal.signal(signal.SIGTERM, terminate)
+
+
+def engine_argument(text: str) -> str:
+    """Untrusted text (a scan target path) to put on an engine command line.
+
+    Windows hands an ANSI program its command line converted to the system code page
+    with best-fit mapping, so a character such as U+FF02 (fullwidth quotation mark)
+    can turn into '"' and split the path into extra options (--remove, --log=...).
+    Strict "mbcs" encoding refuses anything the code page cannot represent exactly.
+    """
+    if os.name == "nt":
+        try:
+            text.encode("mbcs")
+        except UnicodeEncodeError:
+            raise ScannerError("The scan target's name cannot be passed safely to the engine on this system; "
+                               "scan its parent folder or rename it") from None
+    return text
 
 
 def run_bounded(argv: list[str], timeout: float, limit: int,
@@ -494,6 +593,10 @@ class Scanner:
         query = queries.get(query_id)
         if not query:
             raise ScannerError("Unsupported inventory query_id or platform")
+        # Names come from whatever is installed, so only known columns pass, as cleaned text.
+        columns = {"os_version": ("name", "version", "major", "minor", "patch", "platform"),
+                   "listening_ports": ("pid", "process", "address", "port", "protocol", "family"),
+                   "applications": ("name", "version", "bundle_short_version")}[query_id]
         code, output, diagnostic = run_bounded(
             # Official macOS osqueryi resolves to osqueryd; force shell mode.
             [self.binary("osquery_binary"), "-S", "--json", "--disable_extensions=true",
@@ -507,7 +610,7 @@ class Scanner:
             raise ScannerError("osquery returned invalid JSON") from None
         if not isinstance(rows, list) or not all(isinstance(r, dict) for r in rows):
             raise ScannerError("Unexpected osquery result schema")
-        page = rows[:PAGE_SIZE]
+        page = [{key: clean_text(row[key]) for key in columns if key in row} for row in rows[:PAGE_SIZE]]
         next_offset, page_warnings = next_page(offset, len(page), len(rows) > PAGE_SIZE)
         partial = len(rows) > PAGE_SIZE or offset > 0 or bool(diagnostic.strip()) or not rows
         return result("osquery", "partial" if partial else "completed",
@@ -534,12 +637,20 @@ class Scanner:
         if not (target.is_dir() or target.is_file()):
             raise ScannerError("Scan target must be a regular file or directory")
 
-        def within_root(location: str) -> str:
-            # Report paths relative to the alias so owner paths are not passed onward.
+        def shown(path: str) -> str:
+            # Paths relative to the alias, so owner paths are not passed onward.
             try:
-                return Path(location).relative_to(root).as_posix()
+                return clean_text(Path(path).relative_to(root).as_posix(), PATH_CHARS)
             except ValueError:
-                return location
+                return clean_text(Path(path).name, PATH_CHARS)
+
+        def attributed(location: str) -> str | None:
+            # Only an existing file inside the root counts; a line break in a name can turn
+            # the text before ": <signature> FOUND" into a fragment naming another file.
+            path = Path(location)
+            if line_breaks or not (path.is_absolute() and path.is_relative_to(root) and os.path.lexists(path)):
+                return None
+            return shown(location)
 
         def mask(text: str) -> str:
             return text.replace(str(root), f"<{root_alias}>")
@@ -559,7 +670,8 @@ class Scanner:
             if age_seconds is None else
             [f"Signatures are {age_days} days old (limit {self.max_signature_age} days); update them with freshclam"]
             if age_seconds > self.max_signature_age * 86400 else [])
-        directory_limit, unreadable = inspect_directories(target, deadline, cancel)
+        target_argument = engine_argument(str(target))
+        directory_limit, unreadable, line_breaks = inspect_directories(target, deadline, cancel)
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise ScannerError("Directory coverage check used the time budget; scan was not completed")
@@ -568,7 +680,8 @@ class Scanner:
             "--follow-dir-symlinks=0", "--follow-file-symlinks=0",
             f"--max-dir-recursion={MAX_DIRECTORY_LEVELS}",
             "--max-filesize=100M", "--max-scansize=200M", "--max-recursion=16",
-            "--alert-exceeds-max=yes", str(target)], remaining, self.limit, cancel=cancel)
+            # The target stays last, so a mis-parsed quote cannot place options after it.
+            "--alert-exceeds-max=yes", target_argument], remaining, self.limit, cancel=cancel)
         findings, messages = [], []
         for line in output.splitlines():
             match = FOUND.fullmatch(line)
@@ -579,21 +692,33 @@ class Scanner:
             limit_hit = signature.startswith("Heuristics.Limits.Exceeded")
             findings.append({"kind": "scan_limit" if limit_hit else "malware",
                              "severity": "unknown" if limit_hit else "high",
-                             "path": within_root(location), "signature": signature})
+                             "path": attributed(location), "signature": clean_text(signature)})
         findings.sort(key=lambda f: f["kind"] != "malware")
         findings_capped = len(findings) > PAGE_SIZE
         engine_report, report_truncated = excerpt(mask("\n".join(messages)))
         engine_diagnostic, diagnostic_truncated = excerpt(mask(diagnostic))
-        scanned = re.search(r"^Scanned files:\s*(\d+)\s*$", output, re.MULTILINE)
+
+        def summary(label: str) -> int | None:
+            match = re.search(rf"^{label}:\s*(\d+)\s*$", output, re.MULTILINE)
+            return int(match.group(1)) if match else None
+
+        # The summary is the engine's own account; detections read from the report must match it.
+        scanned, infected, errors = summary("Scanned files"), summary("Infected files"), summary("Total errors") or 0
+        detections = sum(f["kind"] == "malware" for f in findings)
+        unattributed = sum(f["path"] is None for f in findings)
+        miscounted = infected != detections
         partial = (directory_limit or bool(unreadable) or findings_capped or bool(signature_warnings)
+                   or bool(line_breaks) or bool(unattributed) or miscounted or errors > 0
                    or code not in (0, 1) or bool(diagnostic.strip()) or "ERROR" in output
-                   or not scanned or int(scanned.group(1)) == 0
+                   or not scanned
                    or any(f["kind"] == "scan_limit" for f in findings)
                    or (code == 1 and not findings))
         return result("clamav", "partial" if partial else "completed", findings=findings[:PAGE_SIZE],
-                      data={"root_alias": root_alias, "relative_path": relative_path,
+                      data={"root_alias": root_alias, "relative_path": clean_text(relative_path, PATH_CHARS),
                             "exit_code": code, "findings_total": len(findings),
-                            "unreadable_directories": [within_root(p) for p in unreadable[:REPORTED_DIRECTORIES]],
+                            "engine_counts": {"scanned": scanned, "infected": infected, "errors": errors},
+                            "unreadable_directories": [shown(p) for p in unreadable[:REPORTED_DIRECTORIES]],
+                            "line_break_names": [shown(p) for p in line_breaks[:REPORTED_DIRECTORIES]],
                             "engine_report": engine_report, "diagnostic": engine_diagnostic,
                             "engine_text_truncated": report_truncated or diagnostic_truncated,
                             "signatures": {"engine": signatures["engine"], "version": signatures["version"],
@@ -604,10 +729,17 @@ class Scanner:
                       + signature_warnings
                       + (["Directory depth limit reached; deeper directories were not scanned"] if directory_limit else [])
                       + ([f"{len(unreadable)} directories could not be read and were not scanned"] if unreadable else [])
+                      + ([f"The engine reported {errors} errors; some files were not scanned"] if errors else [])
+                      + ([f"{len(line_breaks)} names contain line breaks, so detections cannot be matched to files; "
+                          "see data.line_break_names"] if line_breaks else
+                         [f"{unattributed} detections could not be matched to a file in the scanned folder"]
+                         if unattributed else [])
+                      + ([f"The engine counted {infected} infected files but {detections} detections were read; "
+                          "the report may be incomplete"] if miscounted else [])
                       + ([f"Findings capped at {PAGE_SIZE}; malware findings are listed first"] if findings_capped else [])
                       + (["Scan coverage incomplete or engine error; do not report this PC as safe"] if partial else []))
 
-    def vulnerabilities(self, cursor: str = "") -> dict:
+    def vulnerabilities(self, cursor: str = "", cancel: threading.Event | None = None) -> dict:
         search_after = decode_cursor(cursor)
         origin = self.wazuh.get("url", "")
         if not origin:
@@ -637,16 +769,29 @@ class Scanner:
         except OSError:
             raise ScannerError("Wazuh ca_file cannot be read; check the path and permissions") from None
         opener = build_opener(ProxyHandler({}), HTTPSHandler(context=context), NoRedirect())
+        check_cancel(cancel)
+        budget = min(self.timeout, 30)
+        deadline = time.monotonic() + budget
         try:
-            with opener.open(request, timeout=min(self.timeout, 30)) as response:
-                raw = response.read(self.limit + 1)
-            if len(raw) > self.limit:
-                raise ScannerError("Wazuh response exceeded size limit")
+            with opener.open(request, timeout=budget) as response:
+                raw = bytearray()
+                # In pieces, so a slow or endless response cannot hold the call past its budget.
+                while chunk := response.read(65536):
+                    raw += chunk
+                    if len(raw) > self.limit:
+                        raise ScannerError("Wazuh response exceeded size limit")
+                    check_cancel(cancel)
+                    if time.monotonic() > deadline:
+                        raise ScannerError(f"Wazuh did not finish answering within {budget} seconds; "
+                                           "search was not completed")
             payload = json.loads(raw)
         except HTTPError as exc:
             raise ScannerError(f"Wazuh HTTP error {exc.code}; access or index may be unavailable") from None
         except (URLError, TimeoutError, OSError):
             raise ScannerError("Wazuh connection or TLS verification failed") from None
+        except http.client.HTTPException:
+            # Truncated bodies, malformed status or header lines: not OSError subclasses.
+            raise ScannerError("Wazuh response could not be read; the connection may have been cut") from None
         except ValueError:
             raise ScannerError("Wazuh returned invalid JSON") from None
         try:
@@ -664,20 +809,26 @@ class Scanner:
                 if source["agent"]["id"] != self.agent_id:
                     raise ScannerError("Wazuh returned data for an unauthorized agent")
                 name = source["agent"].get("name")
-                names.add(name[:128] if isinstance(name, str) and name.strip() else None)
+                names.add(clean_text(name, 128) if isinstance(name, str) and name.strip() else None)
                 system = source.get("host", {}).get("os", {}).get("full")
                 if isinstance(system, str):
-                    systems.add(system[:128])
-                vulnerability = source["vulnerability"]
+                    systems.add(clean_text(system, 128))
+                # Index data is untrusted too: fixed fields, checked types, cleaned text.
+                vulnerability, package = source["vulnerability"], source.get("package", {})
+                if not isinstance(vulnerability["id"], str) or not isinstance(package, dict):
+                    raise ValueError()
                 severity = str(vulnerability.get("severity", "unknown")).lower()
                 score = vulnerability.get("score")
-                findings.append({"kind": "vulnerability", "id": vulnerability["id"],
+                base = score.get("base") if isinstance(score, dict) else None
+                detected_at = vulnerability.get("detected_at")
+                findings.append({"kind": "vulnerability", "id": clean_text(vulnerability["id"], 128),
                                  "severity": severity if severity in {"critical", "high", "medium", "low"} else "unknown",
-                                 "score": score.get("base") if isinstance(score, dict) else None,
-                                 "package": source.get("package", {}),
-                                 "detected_at": vulnerability.get("detected_at")})
+                                 "score": base if type(base) in (int, float) and 0 <= base <= 10 else None,
+                                 "package": {key: clean_text(package[key]) for key in ("name", "version") if key in package},
+                                 "detected_at": clean_text(detected_at, 64) if isinstance(detected_at, str) else None})
             more = len(hits) > PAGE_SIZE
             next_cursor = encode_cursor(hits[PAGE_SIZE - 1]["sort"]) if more else None
+            stuck = more and next_cursor is None
             incomplete = (relation != "eq" or search_after is not None or more or len(findings) != total_value
                           or payload.get("timed_out", False)
                           or payload.get("_shards", {}).get("failed", 0) > 0)
@@ -702,7 +853,9 @@ class Scanner:
                       + identity_warnings
                       + (["No vulnerability records for this agent_id; it may be wrong, unregistered or never scanned"]
                          if no_records else [])
-                      + (["More results exist; call again with cursor set to data.next_cursor"] if more else [])
+                      + (["More results exist, but a sort value of the last record is too long to continue from; "
+                          "later pages cannot be requested"] if stuck else
+                         ["More results exist; call again with cursor set to data.next_cursor"] if more else [])
                       + (["One page of results or index search incomplete"] if incomplete else []))
 
     def device_identity(self, names: set) -> tuple[str, str]:
@@ -712,7 +865,7 @@ class Scanner:
         host name is compared without its domain, as Wazuh names agents after it.
         """
         configured = self.wazuh.get("agent_name", "").strip()
-        expected = configured or socket.gethostname()
+        expected = clean_text(configured or socket.gethostname(), 128)
         if not names or None in names:
             return "unknown", expected
         if configured:
@@ -735,6 +888,10 @@ class Scanner:
             report = result(source, "error", error=str(exc))
         except (OSError, ValueError, TypeError, RuntimeError):
             report = result(source, "error", error="Operation could not complete; check configuration and input")
+        except Exception as exc:
+            # Whatever slipped through still becomes a result, never a crash of the CLI or server.
+            report = result(source, "error",
+                            error=f"Unexpected internal error ({type(exc).__name__}); the operation was not completed")
         # Every result carries them, as a misspelt setting can change any operation.
         report["warnings"] = self.config_warnings + report["warnings"]
         return report

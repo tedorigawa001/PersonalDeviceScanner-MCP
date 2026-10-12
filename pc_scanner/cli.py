@@ -1,7 +1,8 @@
 import argparse
 import json
+import sys
 
-from .core import Scanner, ScannerError, result
+from .core import Scanner, ScannerError, result, stop_engines_on_terminate
 
 
 def main():
@@ -19,6 +20,9 @@ def main():
     vulnerabilities.add_argument("--cursor", default="", help="continue from data.next_cursor")
     commands.add_parser("serve", help="MCP over local stdio; requires agent extra")
     args = parser.parse_args()
+    # File and app names may hold characters the terminal cannot encode; never crash on them.
+    sys.stdout.reconfigure(errors="backslashreplace")
+    stop_engines_on_terminate()
     try:
         scanner = Scanner.load(args.config)
         if args.command == "serve":
@@ -31,6 +35,10 @@ def main():
         report = result("bridge", "error", error=str(exc))
     except ImportError:
         report = result("bridge", "error", error="Install the agent extra to use MCP")
+    except Exception as exc:
+        # Exit 2 ("not completed"), never 1, which means "completed with findings".
+        report = result("bridge", "error",
+                        error=f"Unexpected internal error ({type(exc).__name__}); the operation was not completed")
     print(json.dumps(report, ensure_ascii=False, indent=2))
     if report["status"] in {"partial", "error"}:
         raise SystemExit(2)

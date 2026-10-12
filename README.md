@@ -264,7 +264,7 @@ Every operation returns JSON with the same shape:
 |---|---|
 | `0` | Completed with no findings |
 | `1` | Completed with findings (malware, vulnerabilities, etc.) |
-| `2` | `partial` or `error`. **A `partial` result returns 2 even when it has findings** |
+| `2` | `partial` or `error` (unexpected internal errors too, still printed as JSON). **A `partial` result returns 2 even when it has findings** |
 
 ### Large results (paging)
 
@@ -300,6 +300,11 @@ Inventory and Wazuh results come in pages of 500. A single page, and any page af
 - Symbolic links are not followed. Windows junctions are excluded from the folder depth check,
   but whether clamscan itself follows junctions must be verified on each environment.
 - Unreadable folders do not stop the scan. They are listed in `data.unreadable_directories` (up to 20) and the result is `partial`.
+- Detections are checked against ClamAV's own summary. If its count of infected files or of errors does not match
+  what was read, or a detection does not name an existing file inside the authorized folder, the result is `partial`
+  and that finding has no `path`. ClamAV's counts are in `data.engine_counts`.
+- A line break in a file name can make one detection read as another file's. If any name contains one, no finding
+  gets a `path`, the result is `partial`, and the names are listed (escaped) in `data.line_break_names`.
 - Before each scan, the signature date is read from `clamscan --version`. If the signatures are older than
   `max_signature_age_days` (7 days by default, the same point at which ClamAV itself warns) or their date is unknown,
   the scan still runs but the result is `partial` with a warning to run `freshclam`.
@@ -311,6 +316,7 @@ Inventory and Wazuh results come in pages of 500. A single page, and any page af
 
 - It reads data **already stored** in Wazuh. The index records no scan time, so freshness cannot be verified
   (`data.freshness` stays `unverified`), and it does not tell whether the PC is currently online.
+- A Wazuh request is limited to about 30 seconds in total, runs one at a time, and can be cancelled.
 - To catch results that belong to another device, the agent name in the index is compared with this PC's host name
   (or `wazuh.agent_name`). If they differ, or the name is missing, the result is `partial` with a warning.
   The names, the expected name, and the OS recorded by Wazuh are in `data.device`.
@@ -321,6 +327,9 @@ Inventory and Wazuh results come in pages of 500. A single page, and any page af
 
 - Passing results to a cloud AI may send application names, process IDs, file names, host names, and similar data. The PC owner decides where results go and how much is shared.
 - To reduce what is sent, file paths are returned relative to the authorized folder, and absolute paths in engine output are replaced with `<alias>`.
+- Text from the PC or the index (file, application and package names, engine output) is cleaned before it is returned:
+  control, bidi and zero-width characters are shown as `\uXXXX`, bytes that are not UTF-8 as `\xNN`, and names are
+  capped at 256 characters (paths at 1,024). osquery rows keep only the expected columns; Wazuh fields are type-checked.
 - Engine output is shortened to its first and last 60 lines in total, and lines over 500 characters keep both ends (`data.engine_text_truncated` is true when anything was shortened). Findings are capped at 500, with malware listed first.
 
 ### Operating assumptions
@@ -331,6 +340,7 @@ Inventory and Wazuh results come in pages of 500. A single page, and any page af
   (a process group on macOS / Linux, a job object on Windows). Processes the engine leaves behind after a normal exit are stopped too.
   A process that deliberately leaves the group (for example by starting a new session on macOS / Linux) is not stopped;
   if it keeps the engine's output open, the result is an error.
+- On macOS / Linux, a SIGTERM sent to the scanner also stops the engines it is running. SIGKILL cannot be intercepted.
 
 ## Safety design
 
@@ -338,6 +348,8 @@ Inventory and Wazuh results come in pages of 500. A single page, and any page af
 - **Read-only**: options that delete or quarantine files are never used. All tools carry the read-only annotation (`readOnlyHint`).
   Some clients use this annotation to run tools without asking, so configure your client if you want to approve every call.
 - **No shell**: engines are started directly, without a shell. Windows `.bat` / `.cmd` files are never run.
+  On Windows, the scan target's path must be exactly representable in the system code page; otherwise the scan is refused
+  before the engine starts, because best-fit conversion could turn a character such as U+FF02 into a quote and add options.
 - **No credentials passed on**: engines receive only path-related environment variables (including Windows `USERPROFILE`, `PROGRAMDATA`, etc.).
 - **Restricted network access**: Wazuh is reached over HTTPS only, and certificate verification cannot be turned off. Proxies and redirects are not used.
 - **AI-facing text is untrusted**: the AI is instructed to treat file and application names in results as untrusted strings, never as instructions.

@@ -23,6 +23,8 @@ def create_server(scanner: Scanner):
     # Blocking work runs in worker threads so long scans do not stall pings, cancellation
     # or other requests. One local engine at a time: each clamscan loads its full database.
     engine_lock = anyio.Lock()
+    # Wazuh requests are serialized too: each may buffer up to max_output_bytes.
+    wazuh_lock = anyio.Lock()
 
     async def heartbeat(ctx: Context, operation: str):
         # Clients that reset their timeout on progress keep waiting for long scans.
@@ -43,13 +45,13 @@ def create_server(scanner: Scanner):
         finally:
             cancel.set()
 
-    async def run_engine(ctx: Context, operation: str, **kwargs) -> dict:
+    async def run_engine(ctx: Context, operation: str, lock=engine_lock, **kwargs) -> dict:
         cancel = threading.Event()
         async with anyio.create_task_group() as group:
             group.start_soon(heartbeat, ctx, operation)
             group.start_soon(stop_on_cancel, cancel)
             # The lock is held until the engine has exited, even after a cancel.
-            async with engine_lock:
+            async with lock:
                 report = await anyio.to_thread.run_sync(
                     partial(scanner.invoke, operation, cancel=cancel, **kwargs))
             group.cancel_scope.cancel()
@@ -76,10 +78,10 @@ def create_server(scanner: Scanner):
         return await run_engine(ctx, "malware", root_alias=root_alias, relative_path=relative_path)
 
     @server.tool(annotations=remote)
-    async def get_vulnerabilities(cursor: str = "") -> dict:
+    async def get_vulnerabilities(ctx: Context, cursor: str = "") -> dict:
         """Read existing Wazuh index inventory for the one configured agent; no live scan.
         Most severe first, in pages of 500; pass data.next_cursor as cursor to continue."""
-        return await anyio.to_thread.run_sync(partial(scanner.invoke, "vulnerabilities", cursor=cursor))
+        return await run_engine(ctx, "vulnerabilities", lock=wazuh_lock, cursor=cursor)
 
     return server
 

@@ -21,6 +21,7 @@ class SlowScanner:
         self.lock = threading.Lock()
 
     def invoke(self, operation, **kwargs):
+        self.last_kwargs = kwargs
         with self.lock:
             self.active += 1
             self.max_active = max(self.max_active, self.active)
@@ -137,6 +138,25 @@ class MCPTests(unittest.TestCase):
 
         asyncio.run(exercise())
         self.assertTrue(scanner.stopped_by_cancel, "cancellation must reach the running engine")
+
+    def test_wazuh_requests_are_serialized_and_cancellable(self):
+        import anyio
+        from mcp.shared.memory import create_connected_server_and_client_session
+        from pc_scanner.server import create_server
+
+        scanner = SlowScanner(delay=0.2)
+
+        async def exercise():
+            async with create_connected_server_and_client_session(create_server(scanner)) as session:
+                tools = {t.name: t for t in (await session.list_tools()).tools}
+                self.assertEqual(set(tools["get_vulnerabilities"].inputSchema["properties"]), {"cursor"})
+                async with anyio.create_task_group() as group:
+                    for _ in range(3):
+                        group.start_soon(session.call_tool, "get_vulnerabilities", {})
+
+        asyncio.run(exercise())
+        self.assertEqual(scanner.max_active, 1)
+        self.assertIn("cancel", scanner.last_kwargs)
 
     def test_engine_runs_are_serialized(self):
         import anyio
