@@ -1,3 +1,4 @@
+include README.ja.md
 include THIRD_PARTY_NOTICES.md
 include requirements-agent.lock
 recursive-include third_party *
