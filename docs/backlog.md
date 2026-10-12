@@ -19,9 +19,10 @@
     - [ ] Wazuh: agent_id の3桁ゼロ埋め正規化が実データと一致すること
   - 完了条件: OSごとの結果を記録し、README の検証欄を更新する。
 
-- [ ] **CIで3つのOSのテストを自動化する**
+- [x] **CIで3つのOSのテストを自動化する**（`.github/workflows/ci.yml`）
   - GitHub Actions などで Windows / macOS / Linux のマトリクスを組み、agent extra を入れてMCPのテストもスキップなしで実行する。
-  - Windows では `mklink /J` で本物のジャンクションを作るテストを追加する（現在はモックでのみ検証）。
+  - Windows では `mklink /J` で本物のジャンクションを作るテストを追加済み。
+  - 残り: 一覧取得を拒否する旧ジャンクション（`My Music` 等）での確認は、実機受入試験で行う。
 
 ## 中
 

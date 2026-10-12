@@ -1,5 +1,7 @@
 # Personal PC Scanner MCP
 
+[![CI](https://github.com/tedorigawa001/PersonalPCScannerMCP/actions/workflows/ci.yml/badge.svg)](https://github.com/tedorigawa001/PersonalPCScannerMCP/actions/workflows/ci.yml)
+
 [English](README.md) | **日本語**
 
 個人PC（Windows / macOS / Linux）の状態を、AIエージェントから**読み取り専用で**確認するための MCP サーバーです。
@@ -196,7 +198,8 @@ indexer のアカウントには、対象端末の脆弱性インデックスへ
 
 ### うまく導入できないとき
 
-- **`cryptography` のビルドに失敗する**：ビルド済みパッケージに限定して導入します。
+- **`cryptography` のビルドに失敗する**：ビルド済みパッケージに限定して導入します。Intel Mac（x86_64）では、
+  最新の `cryptography` にビルド済みパッケージがなく、ソースからのビルドになるため発生します。
 
   ```sh
   .venv/bin/python -m pip install --only-binary=cryptography '.[agent]'
@@ -322,14 +325,26 @@ indexer のアカウントには、対象端末の脆弱性インデックスへ
 
 ## テスト
 
+[手順2](#2-このプロジェクトを導入する)で作った仮想環境の Python で実行します。
+
+macOS / Linux：
+
 ```sh
-python3 -m unittest discover -s tests -v
+.venv/bin/python -m unittest discover -s tests -v
+```
+
+Windows（PowerShell）：
+
+```powershell
+.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
 - テストは、エンジンの出力と Wazuh の応答を模したデータで、境界値や失敗時の扱いを確認します。
-- MCP のテストは `agent` extra を導入した環境で実行されます（未導入ならスキップ）。
+- MCP のテスト4件には `agent` extra が必要です。システムの `python3` など、未導入の Python で実行するとスキップされます。
   実際にサーバーを起動して接続・ツール一覧・呼び出しを確認し、長時間の検査中の応答・順番待ち・進捗通知はメモリ内の接続で確認します。
-- 2026-10-12 に macOS / Python 3.14.7 / MCP SDK 1.30.0 で 48 件すべて成功し、`pip check` も問題ないことを確認しました。
+- GitHub Actions が、`main` への push とプルリクエストのたびに、Windows / macOS / Linux × Python 3.11 / 3.14 でテストを実行します。
+  `agent` extra を導入するので、MCP のテストもスキップされません。あわせて wheel と sdist をビルドし、
+  第三者表示と SBOM が含まれていることを確認します。Windows では本物のジャンクションを作り、辿らないことを確認します。
 - 実際のエンジンでの検出精度や、各 OS での動作は保証していません。配布前に、各 OS の実機での受入試験が必要です。
 
 ## 関連ドキュメント・ライセンス

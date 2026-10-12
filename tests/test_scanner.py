@@ -9,7 +9,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from pc_scanner.core import NoRedirect, Scanner, ScannerError, run_bounded
+from pc_scanner.core import NoRedirect, Scanner, ScannerError, is_link, run_bounded
 
 
 class ScannerTests(unittest.TestCase):
@@ -188,6 +188,20 @@ class ScannerTests(unittest.TestCase):
             report = self.scanner.invoke("malware", root_alias="test")
         self.assertEqual(report["status"], "completed")
 
+    @unittest.skipUnless(os.name == "nt", "Real junctions exist only on Windows")
+    def test_real_windows_junction_is_not_followed(self):
+        directory = self.root.joinpath(*(["d"] * 15))
+        directory.mkdir(parents=True)
+        junction = directory / "junction"
+        # Points back at the root, so following it would hit the depth limit.
+        subprocess.run(["cmd", "/c", "mklink", "/J", str(junction), str(self.root)],
+                       check=True, capture_output=True)
+        self.addCleanup(os.rmdir, junction)
+        self.assertTrue(is_link(junction))
+        with patch("pc_scanner.core.run_bounded", return_value=(0, "Scanned files: 1\n", "")):
+            report = self.scanner.invoke("malware", root_alias="test")
+        self.assertEqual(report["status"], "completed")
+
     def test_depth_check_excludes_windows_junctions(self):
         directory = self.root.joinpath(*(["d"] * 15))
         (directory / "junction").mkdir(parents=True)
@@ -306,6 +320,7 @@ class ScannerTests(unittest.TestCase):
             _, output, _ = run_bounded([sys.executable, "-c", script], 5, 1024)
         self.assertEqual(output, "ダウンロード")
 
+    @unittest.skipIf(os.name == "nt", "Windows children do not inherit redirected handles by default")
     def test_runner_reports_pipes_held_by_child_process(self):
         script = ("import subprocess, sys; "
                   "subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(5)'])")
@@ -323,7 +338,7 @@ class ScannerTests(unittest.TestCase):
                                      "SYSTEMDRIVE": "C:"}):
             code, output, _ = run_bounded([sys.executable, "-c", "import os; print(os.getenv('PC_SCANNER_WAZUH_PASSWORD')); print(os.getenv('OPENAI_API_KEY')); print(os.getenv('SYSTEMDRIVE'))"], 5, 1024)
         self.assertEqual(code, 0)
-        self.assertEqual(output.strip(), "None\nNone\nC:")
+        self.assertEqual(output.splitlines(), ["None", "None", "C:"])
 
     def wazuh_response(self, payload, agent_id="001", offset=0):
         scanner = Scanner({"wazuh": {"url": "https://localhost:9200", "agent_id": agent_id}})

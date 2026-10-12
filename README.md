@@ -1,5 +1,7 @@
 # Personal PC Scanner MCP
 
+[![CI](https://github.com/tedorigawa001/PersonalPCScannerMCP/actions/workflows/ci.yml/badge.svg)](https://github.com/tedorigawa001/PersonalPCScannerMCP/actions/workflows/ci.yml)
+
 **English** | [日本語](README.ja.md)
 
 An MCP server that lets AI agents inspect a personal computer (Windows / macOS / Linux) **read-only**.
@@ -196,7 +198,8 @@ Give the indexer account **read access only** to the target device's vulnerabili
 
 ### Troubleshooting
 
-- **`cryptography` fails to build**: install prebuilt packages only.
+- **`cryptography` fails to build**: install prebuilt packages only. This happens on Intel Macs (x86_64),
+  where the latest `cryptography` has no prebuilt package and pip falls back to building from source.
 
   ```sh
   .venv/bin/python -m pip install --only-binary=cryptography '.[agent]'
@@ -322,14 +325,26 @@ A single page, and any page after the first, is reported as `partial`. The maxim
 
 ## Testing
 
+Run the tests with the virtual environment's Python from [step 2](#2-install-this-project).
+
+macOS / Linux:
+
 ```sh
-python3 -m unittest discover -s tests -v
+.venv/bin/python -m unittest discover -s tests -v
+```
+
+Windows (PowerShell):
+
+```powershell
+.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
 - Tests use simulated engine output and Wazuh responses to check boundaries and failure handling.
-- MCP tests run when the `agent` extra is installed (otherwise they are skipped).
+- The 4 MCP tests need the `agent` extra. With a Python that does not have it, such as the system `python3`, they are skipped.
   They start a real server to check connection, tool listing, and calls, and use an in-memory connection to check responsiveness during long scans, queuing, and progress notifications.
-- On 2026-10-12, all 48 tests passed on macOS / Python 3.14.7 / MCP SDK 1.30.0, and `pip check` reported no problems.
+- GitHub Actions runs the tests on Windows / macOS / Linux with Python 3.11 and 3.14 for every push to `main` and every pull request,
+  installing the `agent` extra so MCP tests are never skipped. It also builds the wheel and sdist and checks that
+  the third-party notices and SBOM files are included. On Windows, a real junction is created to verify it is not followed.
 - Detection accuracy with real engines and behavior on each OS are not guaranteed. Acceptance testing on real machines for each OS is required before distribution.
 
 ## Related documents and license
