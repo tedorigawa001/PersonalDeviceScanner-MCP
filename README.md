@@ -382,5 +382,6 @@ These documents are in Japanese.
 - [profiles/](profiles/): the lock, SBOM and notices for Windows, Linux and macOS arm64 (the root holds the macOS x86_64 reference)
 - [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the [CycloneDX SBOM](sbom/python-agent.cdx.json): notices for the Python dependencies used for MCP
 
-An [MIT license is proposed](docs/license-recommendation.md) for this project's own code but has not been formally applied yet.
+This project's own code is licensed under the [MIT License](LICENSE) (Copyright (c) 2026 tedorigawa001);
+the reasoning is in [docs/license-recommendation.md](docs/license-recommendation.md). Third-party components keep their own licenses.
 This repository does not contain any Wazuh, osquery, or ClamAV code, binaries, rules, or signatures.

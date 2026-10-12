@@ -67,7 +67,8 @@ certifiを改変して配布する場合は、上流ソースだけでは足り�
 
 第三者表示はwheelの `.dist-info/licenses/`、ソース配布には表示・原文・SBOM・更新ツールを収録します。
 wheelのSBOMは外部添付用の `sbom/python-agent.cdx.json` を一緒に提供してください。
-インストーラーや公開リリースは作成していません。正式な独自LICENSE確定前に公開しないでください。
+独自コードのライセンス（MIT）の `LICENSE` も、wheel の `.dist-info/licenses/` とソース配布に含まれます。
+インストーラーや公開リリースは作成していません。
 
 ```sh
 # build / setuptoolsはビルド用ツールとして別途導入
@@ -131,7 +132,7 @@ Windows / Linux / macOS（arm64）それぞれで次を行い、結果を成果�
 
 ## 配布に進む前の未確定事項
 
-1. 独自コードのMIT採用と権利者名の確定。現在は提案本文のみで正式なLICENSEなし。
+1. （完了）独自コードのライセンス：2026-10-12 に MIT を適用（著作権者 tedorigawa001）。
 2. Windows 版プロファイルの pywin32 のライセンス表記の確定（Linux・macOS arm64 は生成・検証済み）。
 3. 単体wheel/sdist配布か、Pythonや依存wheelを含む実行ファイル/インストーラー配布かを確定。
 4. 同梱するネイティブ依存物のバージョン・ライセンス・対応ソース要件を実物で確認。

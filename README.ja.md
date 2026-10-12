@@ -379,5 +379,6 @@ Windows（PowerShell）：
 - [profiles/](profiles/)：Windows・Linux・macOS arm64 向けのロック・SBOM・第三者表示（直下は macOS x86_64 の参照版）
 - [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)・[CycloneDX SBOM](sbom/python-agent.cdx.json)：MCP 用 Python 依存パッケージの表示
 
-独自コードのライセンスは [MIT を提案](docs/license-recommendation.md)していますが、まだ正式には適用していません。
+独自コードのライセンスは [MIT License](LICENSE)（Copyright (c) 2026 tedorigawa001）です。
+選んだ理由は [docs/license-recommendation.md](docs/license-recommendation.md) にあります。第三者のコンポーネントはそれぞれのライセンスのままです。
 このリポジトリは Wazuh・osquery・ClamAV のコード、バイナリ、ルール、定義ファイルを含みません。

@@ -8,9 +8,9 @@ version = "0.1.0"
 description = "Local, restricted OSS security scanner bridge for AI agents"
 requires-python = ">=3.11"
 readme = "README.md"
-# Own-code license is proposed, not granted. See docs/license-recommendation.md.
-# These files retain third-party permissions; they do not license our own code.
-license-files = ["THIRD_PARTY_NOTICES.md", "third_party/licenses/**/*"]
+# The project's own code is MIT; the other files keep third-party permissions and notices.
+license = "MIT"
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "third_party/licenses/**/*"]
 
 [project.optional-dependencies]
 # anyio is imported directly by the MCP server; mcp itself requires anyio>=4.5.

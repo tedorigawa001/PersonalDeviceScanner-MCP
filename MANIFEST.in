@@ -8,6 +8,5 @@ include .gitattributes
 include docs/licensing.md
 include docs/license-recommendation.md
 include docs/compliance.md
-include docs/LICENSE-MIT.proposed.txt
 include scanner.example.toml
 recursive-include scripts *.py

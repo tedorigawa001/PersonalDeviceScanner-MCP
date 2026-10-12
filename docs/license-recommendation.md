@@ -1,8 +1,8 @@
-# 独自コードのライセンス提案
+# 独自コードのライセンス
 
 2026-10-12。現在の「OSSを同梱せず、別導入されたCLI/APIへ接続する」構成には **MIT** を推奨します。
 この提案は独自コードに対するものです。第三者コンポーネントのライセンスは変更しません。
-**現在は提案段階で、独自コードのMIT許諾は正式に適用していません。**
+**2026-10-12 に MIT を正式に適用しました。著作権者は tedorigawa001、本文はリポジトリ直下の [LICENSE](../LICENSE) です。**
 
 | 候補 | 適性 | 注意点 |
 |---|---|---|
@@ -16,17 +16,15 @@ GPLv2と結合して派生物になる場合の全体の条件は、コード・
 「MITなら依存関係もすべてGPLv2互換」という意味ではありません。
 第三者のApache-2.0部分も含めたGPLv2-onlyでの一体化は避け、現状の独立した接続境界を維持してください。
 
-## 適用案
+## 適用内容（2026-10-12）
 
-[MIT本文の提案](LICENSE-MIT.proposed.txt) は公式MIT本文のテンプレートです。
-ファイル名を `.proposed.txt` とし、著作権者欄を未確定にしています。正式な `LICENSE` ではありません。
-依頼が「提案」であるため、公開許諾を先行させず、判断できる具体案として用意しています。
-
-正式採用する際は、権利を持つ個人または法人の表示名を確定し、提案本文のプレースホルダーを置換して
-リポジトリ直下の `LICENSE` に保存します。その後、`pyproject.toml` に `license = "MIT"` を追加し、
-`license-files` に `LICENSE` を追加します。必要に応じて独自Pythonソースへ `SPDX-License-Identifier: MIT` を付けます。
-その時点で第三者表示・SBOMを再生成し、独自コードのライセンスもSBOMへ反映します。
-第三者ファイルへ独自のMIT表示を上書きしないでください。
+- 提案していた公式MIT本文のテンプレート（`docs/LICENSE-MIT.proposed.txt`）の著作権者欄を
+  `tedorigawa001` に置き換え、リポジトリ直下の `LICENSE` にしました。本文はほかに変えていません。
+- `pyproject.toml` に `license = "MIT"` を追加し、`license-files` に `LICENSE` を加えました。
+  wheel のメタデータには `License-Expression: MIT` が入り、`LICENSE` は wheel と sdist の両方に含まれます。
+- SBOM を再生成し、プロジェクト自身のライセンスを `MIT` として記録しました。
+- 独自Pythonソースへの `SPDX-License-Identifier: MIT` は付けていません（任意）。
+- 第三者ファイルへ独自のMIT表示を上書きしないでください。
 
 配布物には独自コードの `LICENSE`、`THIRD_PARTY_NOTICES.md`、`third_party/licenses/` を含めます。
 MITだけの独自 `NOTICE` は必須ではありません。第三者のNOTICE/AUTHORS/COPYRIGHTは存在すれば原文を保持します。

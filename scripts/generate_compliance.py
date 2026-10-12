@@ -196,7 +196,7 @@ def collect(project_path=ROOT / "pyproject.toml", wheels_dir=None):
                       "Verify source availability at release time and retain this notice with the distribution."])
     root_component = {"type": "application", "bom-ref": root_ref, "name": project["name"],
                       "version": project["version"], "purl": root_ref,
-                      "properties": [{"name": "pc-scanner:own-license-status", "value": "MIT proposed, not granted"}]}
+                      "properties": [{"name": "pc-scanner:own-license-status", "value": "not declared"}]}
     if isinstance(project.get("license"), str):
         root_component["licenses"] = [{"expression": project["license"]}]
         root_component["properties"][0]["value"] = "declared in pyproject.toml"

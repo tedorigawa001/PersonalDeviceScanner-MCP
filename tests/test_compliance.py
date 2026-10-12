@@ -62,5 +62,16 @@ class DeclaredDependencyTests(unittest.TestCase):
                                 f"{module} is imported but not declared in pyproject.toml")
 
 
+class OwnLicenseTests(unittest.TestCase):
+    def test_project_code_is_mit_licensed(self):
+        project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
+        self.assertEqual(project.get("license"), "MIT")
+        self.assertIn("LICENSE", project.get("license-files", []))
+        text = (ROOT / "LICENSE").read_text()
+        self.assertTrue(text.startswith("MIT License\n"))
+        self.assertIn("Copyright (c) 2026 tedorigawa001\n", text)
+        self.assertNotIn("<", text)  # no placeholder left
+
+
 if __name__ == "__main__":
     unittest.main()

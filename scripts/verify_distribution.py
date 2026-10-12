@@ -15,7 +15,8 @@ def verify(directory, root=ROOT):
     project = tomllib.loads((root / "pyproject.toml").read_text())["project"]
     source_prefix = project["name"].replace("-", "_") + "-" + project["version"] + "/"
     manifest = json.loads((root / "third_party/license-manifest.json").read_text())
-    expected = {"THIRD_PARTY_NOTICES.md": (root / "THIRD_PARTY_NOTICES.md").read_bytes()}
+    expected = {"LICENSE": (root / "LICENSE").read_bytes(),
+                "THIRD_PARTY_NOTICES.md": (root / "THIRD_PARTY_NOTICES.md").read_bytes()}
     for component in manifest["components"]:
         for notice in component["notices"]:
             expected[notice["path"]] = (root / notice["path"]).read_bytes()
