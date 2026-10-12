@@ -234,6 +234,48 @@ class ScannerTests(unittest.TestCase):
             self.scanner.invoke("malware", root_alias="test")
         self.assertEqual(run.call_args.args[1], self.scanner.timeout - 100)
 
+    def test_minimum_timeout_still_starts_engine(self):
+        scanner = Scanner({"local": {"clamav_binary": sys.executable, "timeout_seconds": 1},
+                           "scan_roots": {"test": str(self.root)}})
+        with patch("pc_scanner.core.run_bounded", return_value=(0, "Scanned files: 1\n", "")) as run:
+            report = scanner.invoke("malware", root_alias="test", relative_path="sample.txt")
+        run.assert_called_once()
+        self.assertEqual(report["status"], "completed")
+
+    def test_remaining_time_boundary(self):
+        scanner = Scanner({"local": {"clamav_binary": sys.executable, "timeout_seconds": 1},
+                           "scan_roots": {"test": str(self.root)}})
+        for elapsed, starts in ((0.25, True), (1.0, False), (1.25, False)):
+            with self.subTest(elapsed=elapsed), patch(
+                    "pc_scanner.core.time.monotonic", side_effect=[0, elapsed]), patch(
+                    "pc_scanner.core.run_bounded", return_value=(0, "Scanned files: 1\n", "")) as run:
+                report = scanner.invoke("malware", root_alias="test", relative_path="sample.txt")
+                self.assertEqual(report["status"], "completed" if starts else "error")
+                if starts:
+                    run.assert_called_once()
+                    self.assertEqual(run.call_args.args[1], 0.75)
+                else:
+                    run.assert_not_called()
+
+    def test_engine_line_length_boundary(self):
+        from pc_scanner.core import excerpt
+        for length in (499, 500, 501):
+            with self.subTest(length=length):
+                text = "x" * (length - 4) + "TAIL"
+                report, truncated = excerpt(text)
+                self.assertEqual(truncated, length > 500)
+                self.assertTrue(report.endswith("TAIL"))
+                if length <= 500:
+                    self.assertEqual(report, text)
+
+    def test_long_engine_line_is_flagged_and_keeps_its_end(self):
+        diagnostic = "x" * 500 + " ERROR: disk read failure"
+        with patch("pc_scanner.core.run_bounded", return_value=(2, "Scanned files: 1\n", diagnostic)):
+            report = self.scanner.invoke("malware", root_alias="test")
+        self.assertTrue(report["data"]["engine_text_truncated"])
+        self.assertIn("ERROR: disk read failure", report["data"]["diagnostic"])
+        self.assertLess(len(report["data"]["diagnostic"]), len(diagnostic))
+
     def test_clamav_report_is_relative_and_bounded(self):
         root = self.root.resolve()
         output = "\n".join([f"{root / 'sample.txt'}: Test.Signature FOUND"]

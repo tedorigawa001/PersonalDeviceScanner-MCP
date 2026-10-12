@@ -30,6 +30,7 @@ PAGE_SIZE = 500
 # OpenSearch rejects from + size beyond the default index.max_result_window (10000).
 MAX_OFFSET = 10000 - PAGE_SIZE
 REPORT_LINES = 60
+REPORT_LINE_CHARS = 500
 REPORTED_DIRECTORIES = 20
 # stat defines this only on Windows; the value is fixed by the Windows SDK.
 JUNCTION_TAG = getattr(stat, "IO_REPARSE_TAG_MOUNT_POINT", 0xA0000003)
@@ -86,9 +87,15 @@ def next_page(offset: int, returned: int, more: bool) -> tuple[int | None, list[
 
 def excerpt(text: str) -> tuple[str, bool]:
     """Keep engine text small enough for an AI context; head and tail carry errors and summary."""
-    rows = [row[:500] for row in text.splitlines()]
+    rows, cut = [], False
+    for row in text.splitlines():
+        if len(row) > REPORT_LINE_CHARS:
+            # Long paths come first and the error reason last, so keep both ends.
+            half = REPORT_LINE_CHARS // 2
+            row, cut = f"{row[:half]} ... {row[-half:]}", True
+        rows.append(row)
     if len(rows) <= REPORT_LINES:
-        return "\n".join(rows), False
+        return "\n".join(rows), cut
     half = REPORT_LINES // 2
     omitted = f"... {len(rows) - 2 * half} lines omitted ..."
     return "\n".join(rows[:half] + [omitted] + rows[-half:]), True
@@ -306,7 +313,7 @@ class Scanner:
         binary = self.binary("clamav_binary")
         directory_limit, unreadable = inspect_directories(target, deadline)
         remaining = deadline - time.monotonic()
-        if remaining < 1:
+        if remaining <= 0:
             raise ScannerError("Directory coverage check used the time budget; scan was not completed")
         code, output, diagnostic = run_bounded([
             binary, "--recursive=yes", "--infected",
