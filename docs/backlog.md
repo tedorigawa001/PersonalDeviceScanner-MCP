@@ -17,7 +17,8 @@
     - [ ] 日本語版Windows: 日本語ファイル名が clamscan の出力で文字化けしないこと（cp932 での読み直し）
     - [ ] ClamAV: `--max-dir-recursion` の段数の数え方（検査対象を1段目とする前提）が実際と一致すること
     - [ ] osquery: 待受ポートのクエリ（`processes` との JOIN）が各OSで動き、一般ユーザー権限でどこまで見えるか
-    - [ ] Wazuh: 実際のバージョンで `vulnerability.score.base`・`vulnerability.id`・`package.name` による並べ替えが通ること
+    - [ ] Wazuh: 実際のバージョンで、深刻度（`vulnerability.score.base`）・CVE（`vulnerability.id`）と、パッケージを識別する5項目
+      （`package.name`・`version`・`architecture`・`type`・`path`）による並べ替えが通ること
     - [ ] Wazuh: agent_id の3桁ゼロ埋め正規化が実データと一致すること
     - [ ] Wazuh: 実際の indexer で、欠けた値（`missing`）を含む並べ替えと `search_after` によるページ送りが通ること
   - 完了条件: OSごとの結果を記録し、README の検証欄を更新する。

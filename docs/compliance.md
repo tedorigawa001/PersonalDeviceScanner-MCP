@@ -49,15 +49,15 @@ certifiを改変して配布する場合は、上流ソースだけでは足り�
 
 ```sh
 # インストール済みメタデータからバージョン一覧・原文・依存グラフを収集
-bdo .venv/bin/python scripts/generate_compliance.py
+.venv/bin/python scripts/generate_compliance.py
 # その環境向けの参照wheelを取得（成果物の出自を記録するときはPyPI report等も保管）
-bdo .venv/bin/python -m pip download --no-deps --only-binary=:all: -r requirements-agent.lock --dest .compliance-wheels
+.venv/bin/python -m pip download --no-deps --only-binary=:all: -r requirements-agent.lock --dest .compliance-wheels
 # 参照wheelのSHA-256を追加
-bdo .venv/bin/python scripts/generate_compliance.py --wheels-dir .compliance-wheels
+.venv/bin/python scripts/generate_compliance.py --wheels-dir .compliance-wheels
 # 同じ環境・wheelでの再生成差分確認
-bdo .venv/bin/python scripts/generate_compliance.py --wheels-dir .compliance-wheels --check
+.venv/bin/python scripts/generate_compliance.py --wheels-dir .compliance-wheels --check
 # 公式CycloneDXスキーマをローカルに用意して構造・グラフ・表示原文ハッシュを検証
-bdo .venv/bin/python scripts/validate_compliance.py --schema-dir .compliance-schema
+.venv/bin/python scripts/validate_compliance.py --schema-dir .compliance-schema
 ```
 
 公式スキーマはCycloneDX specificationの1.6タグの `schema/` にある
@@ -71,8 +71,8 @@ wheelのSBOMは外部添付用の `sbom/python-agent.cdx.json` を一緒に提�
 
 ```sh
 # build / setuptoolsはビルド用ツールとして別途導入
-bdo .venv/bin/python -m build --no-isolation --outdir .compliance-build
-bdo .venv/bin/python scripts/verify_distribution.py .compliance-build
+.venv/bin/python -m build --no-isolation --outdir .compliance-build
+.venv/bin/python scripts/verify_distribution.py .compliance-build
 ```
 
 検証用ビルドには build 1.6.1、setuptools 84.0.0、packaging 26.3、pyproject-hooks 1.3.3 を使いました。
