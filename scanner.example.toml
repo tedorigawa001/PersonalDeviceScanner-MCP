@@ -1,0 +1,21 @@
+# Copy to scanner.toml. Only the owner edits this file; do not let the AI edit it.
+# Empty values disable integrations. Use absolute paths, not PATH lookup.
+# Windows TOML paths: use single quotes, e.g. 'C:\Program Files\osquery\osqueryi.exe'
+[local]
+osquery_binary = ""
+clamav_binary = ""
+# Shared by the folder coverage check and the engine; clamscan reloads signatures on each run.
+timeout_seconds = 600
+max_output_bytes = 1048576
+
+# Explicitly grant scan access. Example: downloads = '/Users/you/Downloads'
+[scan_roots]
+
+[wazuh]
+# Existing Wazuh indexer, NOT the manager API on port 55000.
+url = ""
+# Numeric agent ID as shown by Wazuh, e.g. "001" ("1" is normalized to "001").
+agent_id = ""
+ca_file = ""
+# Credentials are read from PC_SCANNER_WAZUH_USER and PC_SCANNER_WAZUH_PASSWORD.
+# Grant this account read access only to the authorized agent's vulnerability data.

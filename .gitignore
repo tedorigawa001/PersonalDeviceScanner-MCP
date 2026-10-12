@@ -1,0 +1,9 @@
+# Local configuration holds personal paths; commit scanner.example.toml instead.
+scanner.toml
+.venv/
+__pycache__/
+*.py[cod]
+build/
+dist/
+*.egg-info/
+.DS_Store

@@ -1,0 +1,10 @@
+include THIRD_PARTY_NOTICES.md
+include requirements-agent.lock
+recursive-include third_party *
+recursive-include sbom *.json
+include docs/licensing.md
+include docs/license-recommendation.md
+include docs/compliance.md
+include docs/LICENSE-MIT.proposed.txt
+include scanner.example.toml
+recursive-include scripts *.py

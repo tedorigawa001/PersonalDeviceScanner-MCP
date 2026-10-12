@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "scope": "External integrations, not bundled Python dependencies",
+  "components": [
+    {
+      "name": "Wazuh",
+      "version": null,
+      "bundled": false,
+      "integration": "Existing indexer HTTPS API",
+      "license_summary": "GPL version 2; file-specific exceptions and redistribution interpretation apply",
+      "license_source": "https://github.com/wazuh/wazuh/blob/master/LICENSE",
+      "release_review_required": true
+    },
+    {
+      "name": "osquery",
+      "version": null,
+      "bundled": false,
+      "integration": "Independently installed osqueryi subprocess",
+      "license_expression": "Apache-2.0 OR GPL-2.0-only",
+      "license_source": "https://github.com/osquery/osquery/blob/master/LICENSE",
+      "release_review_required": true
+    },
+    {
+      "name": "ClamAV",
+      "version": null,
+      "bundled": false,
+      "integration": "Independently installed clamscan subprocess",
+      "license_summary": "GPL version 2; bundled libraries and signature data require individual review",
+      "license_source": "https://github.com/Cisco-Talos/clamav/blob/main/COPYING.txt",
+      "release_review_required": true
+    }
+  ],
+  "note": "Unknown installed versions are not guessed. Pin release, checksum and actual LICENSE before redistribution."
+}
