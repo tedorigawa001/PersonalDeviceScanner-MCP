@@ -1,5 +1,7 @@
 # Local configuration holds personal paths; commit scanner.example.toml instead.
 scanner.toml
+# Local drafts (blog posts and the like); not part of the project.
+drafts/
 .venv/
 __pycache__/
 *.py[cod]
