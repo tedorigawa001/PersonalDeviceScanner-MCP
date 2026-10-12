@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import json
 import locale
+import math
 import os
 import platform
 import re
@@ -465,14 +466,17 @@ class Scanner:
         deadline = time.monotonic() + self.timeout
         binary = self.binary("clamav_binary")
         signatures = clamav_signatures(binary, deadline, self.limit, cancel=cancel)
-        age_days = None
+        age_seconds = age_days = None
         if signatures["built_at"]:
-            age_days = round((datetime.now(timezone.utc) - signatures["built_at"]).total_seconds() / 86400, 1)
+            age_seconds = (datetime.now(timezone.utc) - signatures["built_at"]).total_seconds()
+            # Decide on the exact age; show it rounded up to 0.1 day so a shown value
+            # never sits at or under the limit while the age is over it.
+            age_days = math.ceil(age_seconds / 8640) / 10
         signature_warnings = (
             ["Signature database date could not be determined; run freshclam and check the database directory"]
-            if age_days is None else
+            if age_seconds is None else
             [f"Signatures are {age_days} days old (limit {self.max_signature_age} days); update them with freshclam"]
-            if age_days > self.max_signature_age else [])
+            if age_seconds > self.max_signature_age * 86400 else [])
         directory_limit, unreadable = inspect_directories(target, deadline, cancel)
         remaining = deadline - time.monotonic()
         if remaining <= 0:

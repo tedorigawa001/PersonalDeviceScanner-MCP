@@ -588,6 +588,19 @@ class ScannerTests(unittest.TestCase):
                 self.assertEqual(report["status"], "partial")
                 self.assertTrue(any(words in w and "freshclam" in w for w in report["warnings"]))
 
+    def test_signature_age_limit_boundary(self):
+        # The default limit is 7 days; any overrun must count, however small.
+        for age, status in ((timedelta(days=7) - timedelta(hours=1), "completed"),
+                            (timedelta(days=7) + timedelta(minutes=1), "partial"),
+                            (timedelta(days=7) + timedelta(hours=1), "partial")):
+            self.signature_check.side_effect = lambda *args, age=age, **kwargs: signatures(age)
+            with self.subTest(age=age), patch("pc_scanner.core.run_bounded", return_value=(0, "Scanned files: 1\n", "")):
+                report = self.scanner.invoke("malware", root_alias="test")
+                self.assertEqual(report["status"], status)
+                shown = report["data"]["signatures"]["age_days"]
+                # The shown age agrees with the decision: over the limit only when stale.
+                self.assertEqual(shown > 7, status == "partial")
+
     def test_signature_age_limit_is_configurable(self):
         self.signature_check.side_effect = lambda *args, **kwargs: signatures(timedelta(days=2))
         strict = Scanner({"local": {"clamav_binary": sys.executable, "max_signature_age_days": 1},

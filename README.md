@@ -293,7 +293,7 @@ A single page, and any page after the first, is reported as `partial`. The maxim
 - Before each scan, the signature date is read from `clamscan --version`. If the signatures are older than
   `max_signature_age_days` (7 days by default, the same point at which ClamAV itself warns) or their date is unknown,
   the scan still runs but the result is `partial` with a warning to run `freshclam`.
-  The engine version, signature version, build time, and age are in `data.signatures`.
+  The engine version, signature version, build time, and age (rounded up to 0.1 day) are in `data.signatures`.
 - Unsupported formats, encrypted files, or outdated signatures may prevent detection.
 - clamscan loads its signatures on every run, so a short time limit makes timeouts more likely.
 
