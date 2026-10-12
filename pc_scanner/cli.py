@@ -16,7 +16,7 @@ def main():
     malware.add_argument("root_alias")
     malware.add_argument("relative_path", nargs="?", default=".")
     vulnerabilities = commands.add_parser("vulnerabilities")
-    vulnerabilities.add_argument("--offset", type=int, default=0, help="continue from data.next_offset")
+    vulnerabilities.add_argument("--cursor", default="", help="continue from data.next_cursor")
     commands.add_parser("serve", help="MCP over local stdio; requires agent extra")
     args = parser.parse_args()
     try:

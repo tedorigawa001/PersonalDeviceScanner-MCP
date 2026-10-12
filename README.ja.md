@@ -66,7 +66,7 @@ AI が指定できるのは「どの固定クエリを使うか」「どの許�
 | `scanner_status()` | `status` | なし | 設定の有無を表示します。エンジンの動作や安全性は確認しません |
 | `collect_inventory(query_id, offset=0)` | `inventory <query_id> [--offset N]` | osqueryi | `os_version`・`applications`・`listening_ports` のいずれかを取得します |
 | `scan_malware(root_alias, relative_path=".")` | `malware <root_alias> [relative_path]` | clamscan | 許可フォルダー（またはその中のパス）を検査します |
-| `get_vulnerabilities(offset=0)` | `vulnerabilities [--offset N]` | Wazuh indexer | 設定した1台の端末の脆弱性を、深刻度の高い順に取得します |
+| `get_vulnerabilities(cursor="")` | `vulnerabilities [--cursor C]` | Wazuh indexer | 設定した1台の端末の脆弱性を、深刻度の高い順に取得します |
 | — | `serve` | — | MCP サーバーとして起動します |
 
 `listening_ports` は、待受アドレス（`0.0.0.0` なら全インターフェースに公開、`127.0.0.1` なら自PCのみ）とプロセス名も返します。
@@ -266,9 +266,14 @@ indexer のアカウントには、対象端末の脆弱性インデックスへ
 
 ### 件数が多いとき（ページング）
 
-インベントリと Wazuh の結果は、1回500件ずつ返します。続きがあると `data.next_offset` に数値が入るので、
-その値を `offset`（CLI では `--offset`）に渡してもう一度実行してください。
-1ページ分だけの結果や、2ページ目以降は `partial` になります。`offset` の上限は 9500 です（OpenSearch の既定の取得上限 10000 件に合わせています）。
+インベントリと Wazuh の結果は、1回500件ずつ返します。1ページ分だけの結果や、2ページ目以降は `partial` になります。
+
+- **インベントリ**：続きがあると `data.next_offset` に数値が入ります。その値を `offset`（CLI では `--offset`）に渡します。
+  `offset` の上限は 9500 です。
+- **Wazuh**：続きがあると `data.next_cursor` に文字列が入ります。その値を変えずに `cursor`（CLI では `--cursor`）に渡します。
+  上限はなく、1万件を超える結果も取得できます。各ページは前のページの最後の記録の続きから始まり、深刻度、CVE、
+  Wazuh がパッケージを識別する項目の順に並べるため、ページの境目で記録が抜けたり重複したりしません。
+  取得の途中で Wazuh のデータが更新されると、ページ間で記録がずれることがあります。
 
 ## 制限事項
 

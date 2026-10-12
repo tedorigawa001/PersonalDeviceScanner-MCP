@@ -66,7 +66,7 @@ It cannot supply arbitrary SQL, paths, executables, or connection targets.
 | `scanner_status()` | `status` | none | Shows what is configured. Does not check engines or PC safety |
 | `collect_inventory(query_id, offset=0)` | `inventory <query_id> [--offset N]` | osqueryi | Returns one of `os_version`, `applications`, `listening_ports` |
 | `scan_malware(root_alias, relative_path=".")` | `malware <root_alias> [relative_path]` | clamscan | Scans an authorized folder, or a path inside it |
-| `get_vulnerabilities(offset=0)` | `vulnerabilities [--offset N]` | Wazuh indexer | Returns vulnerabilities for the one configured device, most severe first |
+| `get_vulnerabilities(cursor="")` | `vulnerabilities [--cursor C]` | Wazuh indexer | Returns vulnerabilities for the one configured device, most severe first |
 | — | `serve` | — | Starts the MCP server |
 
 `listening_ports` also returns the listening address (`0.0.0.0` means exposed on all interfaces, `127.0.0.1` means this PC only) and the process name.
@@ -266,9 +266,15 @@ Every operation returns JSON with the same shape:
 
 ### Large results (paging)
 
-Inventory and Wazuh results come in pages of 500. When more remain, `data.next_offset` holds a number;
-pass it as `offset` (`--offset` in the CLI) and run again.
-A single page, and any page after the first, is reported as `partial`. The maximum `offset` is 9500 (matching OpenSearch's default limit of 10,000 retrievable results).
+Inventory and Wazuh results come in pages of 500. A single page, and any page after the first, is reported as `partial`.
+
+- **Inventory**: when more rows remain, `data.next_offset` holds a number; pass it as `offset` (`--offset` in the CLI).
+  The maximum `offset` is 9500.
+- **Wazuh**: when more results remain, `data.next_cursor` holds a string; pass it unchanged as `cursor`
+  (`--cursor` in the CLI). There is no upper limit, so more than 10,000 results can be read.
+  Each page continues after the last record of the previous one, ordered by severity and then by the CVE and
+  the fields Wazuh uses to identify a package, so no record is skipped or repeated at page boundaries.
+  If Wazuh updates its data while you are paging, records may shift between pages.
 
 ## Limitations
 

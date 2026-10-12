@@ -75,10 +75,10 @@ def create_server(scanner: Scanner):
         return await run_engine(ctx, "malware", root_alias=root_alias, relative_path=relative_path)
 
     @server.tool(annotations=remote)
-    async def get_vulnerabilities(offset: int = 0) -> dict:
+    async def get_vulnerabilities(cursor: str = "") -> dict:
         """Read existing Wazuh index inventory for the one configured agent; no live scan.
-        Most severe first, in pages of 500; pass next_offset to continue."""
-        return await anyio.to_thread.run_sync(partial(scanner.invoke, "vulnerabilities", offset=offset))
+        Most severe first, in pages of 500; pass data.next_cursor as cursor to continue."""
+        return await anyio.to_thread.run_sync(partial(scanner.invoke, "vulnerabilities", cursor=cursor))
 
     return server
 

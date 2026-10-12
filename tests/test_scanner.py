@@ -1,3 +1,4 @@
+import base64
 import io
 import json
 import os
@@ -590,11 +591,18 @@ class ScannerTests(unittest.TestCase):
 
     def test_signature_age_limit_boundary(self):
         # The default limit is 7 days; any overrun must count, however small.
+        fixed_now = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
         for age, status in ((timedelta(days=7) - timedelta(hours=1), "completed"),
+                            (timedelta(days=7), "completed"),
+                            (timedelta(days=7) + timedelta(microseconds=1), "partial"),
                             (timedelta(days=7) + timedelta(minutes=1), "partial"),
                             (timedelta(days=7) + timedelta(hours=1), "partial")):
-            self.signature_check.side_effect = lambda *args, age=age, **kwargs: signatures(age)
-            with self.subTest(age=age), patch("pc_scanner.core.run_bounded", return_value=(0, "Scanned files: 1\n", "")):
+            self.signature_check.side_effect = None
+            self.signature_check.return_value = {
+                "engine": "1.5.4", "version": 27800, "built_at": fixed_now - age}
+            with self.subTest(age=age), patch("pc_scanner.core.datetime") as clock, patch(
+                    "pc_scanner.core.run_bounded", return_value=(0, "Scanned files: 1\n", "")):
+                clock.now.return_value = fixed_now
                 report = self.scanner.invoke("malware", root_alias="test")
                 self.assertEqual(report["status"], status)
                 shown = report["data"]["signatures"]["age_days"]
@@ -609,14 +617,14 @@ class ScannerTests(unittest.TestCase):
             with self.subTest(status=status), patch("pc_scanner.core.run_bounded", return_value=(0, "Scanned files: 1\n", "")):
                 self.assertEqual(scanner.invoke("malware", root_alias="test")["status"], status)
 
-    def wazuh_response(self, payload, agent_id="001", offset=0, agent_name=""):
+    def wazuh_response(self, payload, agent_id="001", cursor="", agent_name=""):
         scanner = Scanner({"wazuh": {"url": "https://localhost:9200", "agent_id": agent_id,
                                      "agent_name": agent_name}})
         response = io.BytesIO(json.dumps(payload).encode())
         with patch.dict(os.environ, {"PC_SCANNER_WAZUH_USER": "reader", "PC_SCANNER_WAZUH_PASSWORD": "secret"}), patch(
                 "pc_scanner.core.socket.gethostname", return_value="test-pc"), patch("pc_scanner.core.build_opener") as build:
             build.return_value.open.return_value = response
-            report = scanner.invoke("vulnerabilities", offset=offset)
+            report = scanner.invoke("vulnerabilities", cursor=cursor)
             request = build.return_value.open.call_args.args[0]
         self.assertEqual(request.method, "GET")
         self.last_body = json.loads(request.data)
@@ -637,20 +645,64 @@ class ScannerTests(unittest.TestCase):
         payload["hits"]["hits"][0]["_source"]["agent"]["id"] = "002"
         self.assertEqual(self.wazuh_response(payload)["status"], "error")
 
-    def test_wazuh_sorts_most_severe_first_and_pages(self):
-        hit = {"_source": {"agent": {"id": "001", "name": "test-pc"}, "vulnerability": {
-            "id": "CVE-A", "severity": "Critical", "score": {"base": 9.8}}}}
-        first = self.wazuh_response({"hits": {"total": {"value": 501, "relation": "eq"}, "hits": [hit] * 500}})
-        self.assertEqual(list(self.last_body["sort"][0]), ["vulnerability.score.base"])
+    def wazuh_hits(self, count, score=9.8):
+        return [{"_source": {"agent": {"id": "001", "name": "test-pc"}, "vulnerability": {
+                     "id": f"CVE-{i:05d}", "severity": "Critical", "score": {"base": score}}},
+                 "sort": [score, f"CVE-{i:05d}", "openssl", "3.0.2", "amd64", "deb", ""]} for i in range(count)]
+
+    def test_wazuh_sorts_most_severe_first_with_unique_order(self):
+        report = self.wazuh_response({"hits": {"total": {"value": 1, "relation": "eq"}, "hits": self.wazuh_hits(1)}})
+        self.assertEqual(report["status"], "completed")
+        self.assertIsNone(report["data"]["next_cursor"])
+        self.assertEqual(report["findings"][0]["score"], 9.8)
+        # Severity first; then every field Wazuh uses to identify a package, so no two records tie.
+        self.assertEqual([next(iter(key)) for key in self.last_body["sort"]], [
+            "vulnerability.score.base", "vulnerability.id", "package.name", "package.version",
+            "package.architecture", "package.type", "package.path"])
         self.assertEqual(self.last_body["sort"][0]["vulnerability.score.base"]["order"], "desc")
-        self.assertEqual(self.last_body["from"], 0)
+        self.assertEqual(self.last_body["size"], 501)
+        self.assertNotIn("from", self.last_body)
+        self.assertNotIn("search_after", self.last_body)
+
+    def test_wazuh_pages_with_cursor_beyond_10000(self):
+        hits = self.wazuh_hits(501)
+        total = {"value": 25000, "relation": "eq"}
+        first = self.wazuh_response({"hits": {"total": total, "hits": hits}})
+        self.assertEqual(len(first["findings"]), 500)
         self.assertEqual(first["status"], "partial")
-        self.assertEqual(first["data"]["next_offset"], 500)
-        self.assertEqual(first["findings"][0]["score"], 9.8)
-        last = self.wazuh_response({"hits": {"total": {"value": 501, "relation": "eq"}, "hits": [hit]}}, offset=500)
-        self.assertEqual(self.last_body["from"], 500)
-        self.assertIsNone(last["data"]["next_offset"])
-        self.assertEqual(last["status"], "partial")
+        cursor = first["data"]["next_cursor"]
+        self.assertIsInstance(cursor, str)
+        self.assertTrue(any("next_cursor" in warning for warning in first["warnings"]))
+        # Offsets stopped at 10000; a cursor continues from the last record however deep.
+        middle = self.wazuh_response({"hits": {"total": total, "hits": hits}}, cursor=cursor)
+        self.assertEqual(self.last_body["search_after"], hits[499]["sort"])
+        self.assertNotIn("from", self.last_body)
+        self.assertIsNotNone(middle["data"]["next_cursor"])
+        last = self.wazuh_response({"hits": {"total": total, "hits": hits[:3]}}, cursor=middle["data"]["next_cursor"])
+        self.assertIsNone(last["data"]["next_cursor"])
+        self.assertEqual(last["status"], "partial")  # a continued page alone is not the full result
+
+    def test_wazuh_rejects_invalid_cursor(self):
+        def encode(value):
+            return base64.urlsafe_b64encode(json.dumps(value).encode()).decode()
+
+        scanner = Scanner({"wazuh": {"url": "https://localhost:9200", "agent_id": "001"}})
+        for cursor in ("not a cursor!", encode({"a": 1}), encode([9.8, "CVE-1"]),
+                       encode([True, "a", "b", "c", "d", "e", "f"]), encode([9.8, "a", "b", "c", "d", "e", ["f"]]),
+                       encode([float("nan"), "a", "b", "c", "d", "e", "f"]),
+                       encode([9.8] + ["x" * 2000] * 6), "A" * 5000, 7):
+            with self.subTest(cursor=str(cursor)[:40]), patch.dict(os.environ, {
+                    "PC_SCANNER_WAZUH_USER": "reader", "PC_SCANNER_WAZUH_PASSWORD": "secret"}), patch(
+                    "pc_scanner.core.build_opener") as build:
+                report = scanner.invoke("vulnerabilities", cursor=cursor)
+                self.assertEqual(report["status"], "error")
+                build.return_value.open.assert_not_called()
+
+    def test_wazuh_unexpected_sort_values_are_rejected(self):
+        hits = self.wazuh_hits(501)
+        hits[499]["sort"] = [True, "a", "b", "c", "d", "e", "f"]
+        report = self.wazuh_response({"hits": {"total": 501, "hits": hits}})
+        self.assertEqual(report["status"], "error")
 
     def test_wazuh_agent_id_is_zero_padded(self):
         payload = {"hits": {"total": 1, "hits": [{"_source": {

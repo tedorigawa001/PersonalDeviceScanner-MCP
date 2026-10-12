@@ -19,6 +19,7 @@
     - [ ] osquery: 待受ポートのクエリ（`processes` との JOIN）が各OSで動き、一般ユーザー権限でどこまで見えるか
     - [ ] Wazuh: 実際のバージョンで `vulnerability.score.base`・`vulnerability.id`・`package.name` による並べ替えが通ること
     - [ ] Wazuh: agent_id の3桁ゼロ埋め正規化が実データと一致すること
+    - [ ] Wazuh: 実際の indexer で、欠けた値（`missing`）を含む並べ替えと `search_after` によるページ送りが通ること
   - 完了条件: OSごとの結果を記録し、README の検証欄を更新する。
 
 - [x] **CIで3つのOSのテストを自動化する**（`.github/workflows/ci.yml`）
@@ -71,9 +72,14 @@
   - 調査結果（Wazuh 4.14.8 のインデックス定義）: 脆弱性インデックスには `agent.name`・`host.os.*` はあるが、
     時刻は `vulnerability.detected_at` と `published_at` だけで検査時刻がない。`wazuh-states-inventory-system` にも収集時刻はない。
 
-- [ ] **Wazuhで10000件を超える結果を取得できるようにする**
-  - 現在の `offset` は `from`/`size` 方式のため、上限は9500です。
-  - `search_after` と Point in Time を使えば上限なく取得できますが、AI に続きの位置を渡す形式を設計し直す必要があります。
+- [x] **Wazuhで10000件を超える結果を取得できるようにする**（2026-10-12 完了）
+  - 以前は `from`/`size` 方式の `offset` で、上限は9500でした。
+  - 対応: `search_after` に切り替え、前ページ最後の記録の並べ替え値を `data.next_cursor`（base64url の JSON）として返す。
+    AI や CLI はそれを `cursor` に渡す。カーソルは信用しない入力として、形・型・長さを検査する。
+  - 並べ替えは深刻度のあと CVE と、Wazuh がパッケージを識別する5項目（syscollector の `PACKAGES_ITEM_ID_FIELDS`:
+    名前・版・アーキテクチャ・形式・場所 → `package.name`/`version`/`architecture`/`type`/`path`）で、端末内で一意になる。
+  - Point in Time は使わない（indexer アカウントの権限追加と indexer 側の状態保持が必要なため。権限を増やさない方針に合わせた）。
+    そのため取得中に Wazuh が更新されると、ページ間で記録がずれることがある。
 
 - [ ] **実際のMCPクライアントで長時間の検査を試す**
   - Claude Desktop・Claude Code などで、10分程度の検査中に切断されないか、進捗通知でタイムアウトが延長されるかを確認する。
@@ -142,3 +148,4 @@
 - [x] タイムアウト・出力超過・キャンセル・正常終了後に、エンジンの子プロセスもまとめて停止
 - [x] ClamAV の定義ファイルの鮮度を確認し、古い・不明なら `partial` にする
 - [x] Wazuh の結果のエージェント名を、この PC のホスト名または設定値と照合する
+- [x] Wazuh の結果をカーソル（`search_after`）でページングし、1万件を超えても取得できるようにする

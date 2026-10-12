@@ -31,7 +31,7 @@ class ScannerError(Exception):
 
 MAX_DIRECTORY_LEVELS = 16
 PAGE_SIZE = 500
-# OpenSearch rejects from + size beyond the default index.max_result_window (10000).
+# Inventory offsets stay bounded; real inventories are far smaller.
 MAX_OFFSET = 10000 - PAGE_SIZE
 REPORT_LINES = 60
 CANCEL_POLL_SECONDS = 0.1
@@ -95,6 +95,39 @@ def next_page(offset: int, returned: int, more: bool) -> tuple[int | None, list[
     if offset + returned > MAX_OFFSET:
         return None, ["Paging limit reached; remaining rows cannot be retrieved"]
     return offset + returned, [f"More rows exist; call again with offset={offset + returned}"]
+
+
+# Most severe first, then every field Wazuh uses to identify a package (name, version,
+# architecture, format, location) plus the CVE, so no two records of an agent tie and
+# search_after can page past the 10000-result window without skipping any. Missing
+# values sort as fixed numbers or strings, so cursors never carry null.
+WAZUH_SORT = [{"vulnerability.score.base": {"order": "desc", "unmapped_type": "float", "missing": -1}}] + [
+    {field: {"order": "asc", "unmapped_type": "keyword", "missing": ""}}
+    for field in ("vulnerability.id", "package.name", "package.version", "package.architecture",
+                  "package.type", "package.path")]
+
+
+def decode_cursor(cursor) -> list | None:
+    """Sort values of the last record already returned; the cursor comes from the AI, so check it."""
+    if cursor == "":
+        return None
+    if not isinstance(cursor, str) or len(cursor) > 4096:
+        raise ScannerError("Invalid cursor; pass data.next_cursor unchanged")
+    try:
+        values = json.loads(base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4)))
+    except ValueError:
+        raise ScannerError("Invalid cursor; pass data.next_cursor unchanged") from None
+    if not (isinstance(values, list) and len(values) == len(WAZUH_SORT)
+            and type(values[0]) in (int, float) and math.isfinite(values[0])
+            and all(isinstance(v, str) and len(v) <= 1024 for v in values[1:])):
+        raise ScannerError("Invalid cursor; pass data.next_cursor unchanged")
+    return values
+
+
+def encode_cursor(values: list) -> str:
+    cursor = base64.urlsafe_b64encode(json.dumps(values, separators=(",", ":")).encode()).decode().rstrip("=")
+    decode_cursor(cursor)  # never hand out a cursor that would be refused
+    return cursor
 
 
 def excerpt(text: str) -> tuple[str, bool]:
@@ -526,8 +559,8 @@ class Scanner:
                       + ([f"Findings capped at {PAGE_SIZE}; malware findings are listed first"] if findings_capped else [])
                       + (["Scan coverage incomplete or engine error; do not report this PC as safe"] if partial else []))
 
-    def vulnerabilities(self, offset: int = 0) -> dict:
-        check_offset(offset)
+    def vulnerabilities(self, cursor: str = "") -> dict:
+        search_after = decode_cursor(cursor)
         origin = self.wazuh.get("url", "")
         if not origin:
             raise ScannerError("Wazuh indexer is not configured")
@@ -535,12 +568,10 @@ class Scanner:
         password = os.environ.get("PC_SCANNER_WAZUH_PASSWORD", "")
         if not user or not password or ":" in user:
             raise ScannerError("Valid Wazuh credentials must be set in environment variables")
-        body = {"from": offset, "size": PAGE_SIZE, "track_total_hits": True,
-                "query": {"term": {"agent.id": self.agent_id}},
-                # Most severe first, so a truncated result still carries the critical records.
-                "sort": [{"vulnerability.score.base": {"order": "desc", "unmapped_type": "float"}},
-                         {"vulnerability.id": {"order": "asc", "unmapped_type": "keyword"}},
-                         {"package.name": {"order": "asc", "unmapped_type": "keyword"}}],
+        # One extra record shows whether another page follows.
+        body = {"size": PAGE_SIZE + 1, "track_total_hits": True,
+                "query": {"term": {"agent.id": self.agent_id}}, "sort": WAZUH_SORT,
+                **({"search_after": search_after} if search_after else {}),
                 "_source": ["agent.id", "agent.name", "host.os.full", "package.name", "package.version", "vulnerability.id",
                             "vulnerability.severity", "vulnerability.score.base",
                             "vulnerability.detected_at"]}
@@ -589,8 +620,9 @@ class Scanner:
                                  "score": score.get("base") if isinstance(score, dict) else None,
                                  "package": source.get("package", {}),
                                  "detected_at": vulnerability.get("detected_at")})
-            next_offset, page_warnings = next_page(offset, len(findings), offset + len(findings) < total_value)
-            incomplete = (relation != "eq" or offset > 0 or offset + len(findings) != total_value
+            more = len(hits) > PAGE_SIZE
+            next_cursor = encode_cursor(hits[PAGE_SIZE - 1]["sort"]) if more else None
+            incomplete = (relation != "eq" or search_after is not None or more or len(findings) != total_value
                           or payload.get("timed_out", False)
                           or payload.get("_shards", {}).get("failed", 0) > 0)
             no_records = total_value == 0
@@ -605,8 +637,8 @@ class Scanner:
             if identity == "unknown" and names else [])
         return result("wazuh", "partial" if incomplete or no_records or identity != "matched" else "completed",
                       findings=findings,
-                      data={"agent_id": self.agent_id, "total": total_value, "offset": offset,
-                            "next_offset": next_offset, "freshness": "unverified", "live_scan_triggered": False,
+                      data={"agent_id": self.agent_id, "total": total_value, "continued": search_after is not None,
+                            "next_cursor": next_cursor, "freshness": "unverified", "live_scan_triggered": False,
                             "device": {"identity": identity, "expected_name": expected,
                                        "agent_names": known_names, "os": sorted(systems)}},
                       warnings=["Existing index inventory; the index records no scan time, so freshness cannot be verified",
@@ -614,7 +646,7 @@ class Scanner:
                       + identity_warnings
                       + (["No vulnerability records for this agent_id; it may be wrong, unregistered or never scanned"]
                          if no_records else [])
-                      + page_warnings
+                      + (["More results exist; call again with cursor set to data.next_cursor"] if more else [])
                       + (["One page of results or index search incomplete"] if incomplete else []))
 
     def device_identity(self, names: set) -> tuple[str, str]:
