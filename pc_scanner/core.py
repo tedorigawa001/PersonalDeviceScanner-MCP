@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import difflib
 import json
 import locale
 import math
@@ -146,6 +147,42 @@ def excerpt(text: str) -> tuple[str, bool]:
     half = REPORT_LINES // 2
     omitted = f"... {len(rows) - 2 * half} lines omitted ..."
     return "\n".join(rows[:half] + [omitted] + rows[-half:]), True
+
+
+# Settings each section understands; None means free-form keys (scan root aliases).
+SETTINGS = {"local": {"osquery_binary", "clamav_binary", "timeout_seconds", "max_output_bytes",
+                      "max_signature_age_days"},
+            "scan_roots": None,
+            "wazuh": {"url", "agent_id", "ca_file", "agent_name"}}
+
+
+def unknown_settings(config: dict) -> list[str]:
+    """Warn about settings that would otherwise be ignored silently, such as a misspelt section."""
+    everywhere = [*SETTINGS, *(f"{section}.{key}" for section, keys in SETTINGS.items() for key in keys or ())]
+    warnings = []
+
+    def warn(name, hint):
+        warnings.append(f"Unknown setting {name[:80]!r} is ignored" + (f"; {hint}" if hint else ""))
+
+    def did_you_mean(word, candidates, prefix=""):
+        guess = difflib.get_close_matches(word, candidates, n=1)
+        return f"did you mean {prefix + guess[0]!r}?" if guess else None
+
+    for section in config:
+        if section not in SETTINGS:
+            # A key outside its section is a likely slip too, so every known name is a candidate.
+            warn(section, did_you_mean(section, everywhere))
+    for section, keys in SETTINGS.items():
+        for key in config.get(section, {}) if keys is not None else ():
+            if key in keys:
+                continue
+            if section == "wazuh" and key in {"user", "username", "password"}:
+                warn(f"{section}.{key}", "Wazuh credentials are read only from PC_SCANNER_WAZUH_USER and "
+                                         "PC_SCANNER_WAZUH_PASSWORD; remove them from the file")
+            else:
+                # Only the section's own keys: the shared prefix would make anything look close.
+                warn(f"{section}.{key}", did_you_mean(key, sorted(keys), f"{section}."))
+    return warnings
 
 
 def result(source: str, status: str, **fields) -> dict:
@@ -366,6 +403,7 @@ class Scanner:
         self.wazuh = config.get("wazuh", {})
         if not all(isinstance(v, dict) for v in (self.local, self.roots, self.wazuh)):
             raise ScannerError("Configuration sections must be tables")
+        self.config_warnings = unknown_settings(config)
         self.timeout = self.local.get("timeout_seconds", 600)
         self.limit = self.local.get("max_output_bytes", 1048576)
         if type(self.timeout) is not int or not 1 <= self.timeout <= 3600:
@@ -676,8 +714,11 @@ class Scanner:
         try:
             if operation not in operations:
                 raise ScannerError("Unknown operation")
-            return operations[operation](**kwargs)
+            report = operations[operation](**kwargs)
         except ScannerError as exc:
-            return result(source, "error", error=str(exc))
+            report = result(source, "error", error=str(exc))
         except (OSError, ValueError, TypeError, RuntimeError):
-            return result(source, "error", error="Operation could not complete; check configuration and input")
+            report = result(source, "error", error="Operation could not complete; check configuration and input")
+        # Every result carries them, as a misspelt setting can change any operation.
+        report["warnings"] = self.config_warnings + report["warnings"]
+        return report

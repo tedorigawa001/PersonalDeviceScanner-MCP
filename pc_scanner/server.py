@@ -1,4 +1,5 @@
 """MCP v1 SDK transport; no public listener or cloud API key required."""
+import sys
 import threading
 from functools import partial
 from typing import Literal
@@ -83,4 +84,7 @@ def create_server(scanner: Scanner):
     return server
 
 def serve(scanner: Scanner):
+    # stdout carries the MCP protocol; stderr reaches the client's server log.
+    for warning in scanner.config_warnings:
+        print(f"pc-scanner: {warning}", file=sys.stderr)
     create_server(scanner).run(transport="stdio")

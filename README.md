@@ -144,6 +144,8 @@ downloads = '/Users/you/Downloads'
 - Use **single quotes** for paths. Windows backslashes then work as is (for example `'C:\Users\you\Downloads'`).
 - Leaving an engine path empty disables that engine.
 - Only the owner should edit this file. Do not let the AI edit it.
+- Unknown settings, such as a misspelt `[scan_root]`, are ignored but reported in `warnings` of every result
+  (and on the MCP server's log at startup), with a suggestion such as "did you mean 'scan_roots'?".
 
 ### 4. Check that it works
 

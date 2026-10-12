@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import tomllib
 import threading
 import time
 import unittest
@@ -215,6 +216,46 @@ class ScannerTests(unittest.TestCase):
                 argv = run.call_args.args[0]
                 self.assertNotIn("--remove", argv)
                 self.assertIn("--follow-dir-symlinks=0", argv)
+
+    def test_unknown_settings_are_warned_with_suggestions(self):
+        cases = [({"scan_root": {"docs": str(self.root)}}, "'scan_root'", "'scan_roots'"),  # missing s
+                 ({"local": {"timeout_second": 60}}, "'local.timeout_second'", "'local.timeout_seconds'"),
+                 ({"timeout_seconds": 60}, "'timeout_seconds'", "'local.timeout_seconds'"),  # outside its section
+                 ({"wazuh": {"agentid": "001"}}, "'wazuh.agentid'", "'wazuh.agent_id'"),
+                 ({"wazuh": {"timeout": 5}}, "'wazuh.timeout'", None),  # the shared section prefix is no match
+                 ({"extras": {}}, "'extras'", None)]
+        for config, name, suggestion in cases:
+            with self.subTest(config=config):
+                warnings = Scanner(config).config_warnings
+                self.assertEqual(len(warnings), 1)
+                self.assertIn(f"Unknown setting {name} is ignored", warnings[0])
+                if suggestion:
+                    self.assertIn(f"did you mean {suggestion}?", warnings[0])
+                else:
+                    self.assertNotIn("did you mean", warnings[0])
+
+    def test_credentials_in_config_point_to_environment(self):
+        for key in ("password", "user", "username"):
+            with self.subTest(key=key):
+                warning = Scanner({"wazuh": {key: "x"}}).config_warnings[0]
+                self.assertIn("PC_SCANNER_WAZUH_USER", warning)
+                self.assertNotIn("did you mean", warning)
+
+    def test_known_settings_and_any_alias_are_accepted(self):
+        with open("scanner.example.toml", "rb") as f:
+            self.assertEqual(Scanner(tomllib.load(f)).config_warnings, [])
+        scanner = Scanner({"local": {"timeout_seconds": 60, "max_output_bytes": 2048, "max_signature_age_days": 3},
+                           "scan_roots": {"any-alias_1": str(self.root)},
+                           "wazuh": {"url": "", "agent_id": "", "ca_file": "", "agent_name": ""}})
+        self.assertEqual(scanner.config_warnings, [])
+
+    def test_unknown_settings_reach_every_result(self):
+        scanner = Scanner({"local": {"clamav_binary": sys.executable}, "scan_root": {"docs": str(self.root)}})
+        for operation, kwargs in (("status", {}), ("malware", {"root_alias": "docs"})):
+            with self.subTest(operation=operation):
+                report = scanner.invoke(operation, **kwargs)
+                self.assertIn("did you mean 'scan_roots'?", report["warnings"][0])
+        self.assertEqual(scanner.invoke("malware", root_alias="docs")["status"], "error")  # the typo has an effect
 
     def test_config_rejects_http_and_relative_binary(self):
         for config in ({"wazuh": {"url": "http://localhost:9200", "agent_id": "001"}},
