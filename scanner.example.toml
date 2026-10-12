@@ -7,6 +7,8 @@ clamav_binary = ""
 # Shared by the folder coverage check and the engine; clamscan reloads signatures on each run.
 timeout_seconds = 600
 max_output_bytes = 1048576
+# ClamAV signatures older than this make scans partial; ClamAV itself warns after 7 days.
+max_signature_age_days = 7
 
 # Explicitly grant scan access. Example: downloads = '/Users/you/Downloads'
 [scan_roots]

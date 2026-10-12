@@ -130,6 +130,39 @@ def decode(data: bytes) -> str:
         return data.decode(locale.getpreferredencoding(False) or "utf-8", errors="replace")
 
 
+MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+DATABASE_STAMP = re.compile(r"/(\d+)/\w{3} (\w{3}) +(\d{1,2}) (\d{2}):(\d{2}):(\d{2}) (\d{4})")
+
+
+def clamav_signatures(binary: str, deadline: float, limit: int,
+                      cancel: threading.Event | None = None) -> dict:
+    """Engine version and newest daily signature database from `clamscan --version`.
+
+    clamscan prints "ClamAV <engine>/<daily version>/<build time>", the time in
+    local ctime() format, or only "ClamAV <engine>" when no daily database exists.
+    """
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise ScannerError("Time budget used before the signature check; scan was not completed")
+    code, output, _ = run_bounded([binary, "--version"], min(remaining, 30), limit, cancel=cancel)
+    info = {"engine": None, "version": None, "built_at": None}
+    engine = re.match(r"ClamAV ([^/\s]+)", output) if code == 0 else None
+    if not engine:
+        return info
+    info["engine"] = engine.group(1)
+    database = DATABASE_STAMP.match(output, engine.end())
+    if not database or database.group(2) not in MONTHS:
+        return info
+    version, month, day, hour, minute, second, year = database.groups()
+    try:
+        built = datetime(int(year), MONTHS.index(month) + 1, int(day), int(hour), int(minute), int(second))
+    except ValueError:
+        return info
+    # astimezone() reads the naive ctime() value as local time, as clamscan printed it.
+    info.update(version=int(version), built_at=built.astimezone(timezone.utc))
+    return info
+
+
 def windows_job(pid: int):
     """Put a process in a new job object; None if Windows refuses.
 
@@ -224,7 +257,7 @@ def run_bounded(argv: list[str], timeout: float, limit: int,
     # Never inherit cloud/API credentials into third-party engines; only locations.
     allowed = {"PATH", "SYSTEMROOT", "WINDIR", "TEMP", "TMP", "TMPDIR", "HOME",
                "SYSTEMDRIVE", "USERPROFILE", "HOMEDRIVE", "HOMEPATH", "PROGRAMDATA",
-               "PROGRAMFILES", "LOCALAPPDATA", "APPDATA"}
+               "PROGRAMFILES", "LOCALAPPDATA", "APPDATA", "TZ"}
     env = {k: v for k, v in os.environ.items() if k.upper() in allowed}
     env.update({"LC_ALL": "C", "LANG": "C"})
     try:
@@ -302,6 +335,10 @@ class Scanner:
             raise ScannerError("timeout_seconds must be 1..3600")
         if type(self.limit) is not int or not 1024 <= self.limit <= 8388608:
             raise ScannerError("max_output_bytes must be 1024..8388608")
+        # ClamAV itself warns once its database is older than 7 days.
+        self.max_signature_age = self.local.get("max_signature_age_days", 7)
+        if type(self.max_signature_age) is not int or not 1 <= self.max_signature_age <= 365:
+            raise ScannerError("max_signature_age_days must be 1..365")
         for key in ("osquery_binary", "clamav_binary"):
             value = self.local.get(key, "")
             if not isinstance(value, str) or (value and not Path(value).is_absolute()):
@@ -424,9 +461,18 @@ class Scanner:
         def mask(text: str) -> str:
             return text.replace(str(root), f"<{root_alias}>")
 
-        # Coverage check and engine share one time budget.
+        # Signature check, coverage check and engine share one time budget.
         deadline = time.monotonic() + self.timeout
         binary = self.binary("clamav_binary")
+        signatures = clamav_signatures(binary, deadline, self.limit, cancel=cancel)
+        age_days = None
+        if signatures["built_at"]:
+            age_days = round((datetime.now(timezone.utc) - signatures["built_at"]).total_seconds() / 86400, 1)
+        signature_warnings = (
+            ["Signature database date could not be determined; run freshclam and check the database directory"]
+            if age_days is None else
+            [f"Signatures are {age_days} days old (limit {self.max_signature_age} days); update them with freshclam"]
+            if age_days > self.max_signature_age else [])
         directory_limit, unreadable = inspect_directories(target, deadline, cancel)
         remaining = deadline - time.monotonic()
         if remaining <= 0:
@@ -453,7 +499,7 @@ class Scanner:
         engine_report, report_truncated = excerpt(mask("\n".join(messages)))
         engine_diagnostic, diagnostic_truncated = excerpt(mask(diagnostic))
         scanned = re.search(r"^Scanned files:\s*(\d+)\s*$", output, re.MULTILINE)
-        partial = (directory_limit or bool(unreadable) or findings_capped
+        partial = (directory_limit or bool(unreadable) or findings_capped or bool(signature_warnings)
                    or code not in (0, 1) or bool(diagnostic.strip()) or "ERROR" in output
                    or not scanned or int(scanned.group(1)) == 0
                    or any(f["kind"] == "scan_limit" for f in findings)
@@ -463,9 +509,13 @@ class Scanner:
                             "exit_code": code, "findings_total": len(findings),
                             "unreadable_directories": [within_root(p) for p in unreadable[:REPORTED_DIRECTORIES]],
                             "engine_report": engine_report, "diagnostic": engine_diagnostic,
-                            "engine_text_truncated": report_truncated or diagnostic_truncated},
+                            "engine_text_truncated": report_truncated or diagnostic_truncated,
+                            "signatures": {"engine": signatures["engine"], "version": signatures["version"],
+                                           "built_at": signatures["built_at"] and signatures["built_at"].isoformat(),
+                                           "age_days": age_days, "max_age_days": self.max_signature_age}},
                       warnings=["Signature-based detection only; no detection does not prove safety",
-                                "Symlinks excluded; file/archive limits apply; signature freshness not verified"]
+                                "Symlinks excluded; file/archive limits apply"]
+                      + signature_warnings
                       + (["Directory depth limit reached; deeper directories were not scanned"] if directory_limit else [])
                       + ([f"{len(unreadable)} directories could not be read and were not scanned"] if unreadable else [])
                       + ([f"Findings capped at {PAGE_SIZE}; malware findings are listed first"] if findings_capped else [])

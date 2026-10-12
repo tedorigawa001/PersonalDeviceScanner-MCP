@@ -221,6 +221,7 @@ Give the indexer account **read access only** to the target device's vulnerabili
 | `local.clamav_binary` | Absolute path to clamscan. Empty disables it. `.bat` / `.cmd` files are rejected | empty |
 | `local.timeout_seconds` | Time limit per operation (1–3600 seconds). For ClamAV it covers the folder check and the scan together; Wazuh uses at most 30 seconds | `600` |
 | `local.max_output_bytes` | Maximum engine output (1024–8388608 bytes) | `1048576` |
+| `local.max_signature_age_days` | ClamAV signatures older than this many days (1–365) make the scan `partial` | `7` |
 | `scan_roots.<alias>` | A folder allowed to be scanned (absolute path). Aliases use letters, digits, `_` and `-`, up to 64 characters | none |
 | `wazuh.url` | HTTPS address of the Wazuh indexer. Empty disables it | empty |
 | `wazuh.agent_id` | Numeric ID of the target device | empty |
@@ -250,7 +251,7 @@ Every operation returns JSON with the same shape:
 | status | Meaning | How to treat it |
 |---|---|---|
 | `completed` | The operation ran to the end | **This does not mean the PC is safe** |
-| `partial` | Only part could be checked (unreadable folders, limits reached, zero records, a single page, etc.) | Read `warnings`. Coverage is incomplete |
+| `partial` | Only part could be checked (unreadable folders, limits reached, outdated signatures, zero records, a single page, etc.) | Read `warnings`. Coverage is incomplete |
 | `error` | The operation could not run (not configured, permission denied, timeout, connection failure, etc.) | Treat it as not checked |
 
 ### CLI exit codes
@@ -289,6 +290,10 @@ A single page, and any page after the first, is reported as `partial`. The maxim
 - Symbolic links are not followed. Windows junctions are excluded from the folder depth check,
   but whether clamscan itself follows junctions must be verified on each environment.
 - Unreadable folders do not stop the scan. They are listed in `data.unreadable_directories` (up to 20) and the result is `partial`.
+- Before each scan, the signature date is read from `clamscan --version`. If the signatures are older than
+  `max_signature_age_days` (7 days by default, the same point at which ClamAV itself warns) or their date is unknown,
+  the scan still runs but the result is `partial` with a warning to run `freshclam`.
+  The engine version, signature version, build time, and age are in `data.signatures`.
 - Unsupported formats, encrypted files, or outdated signatures may prevent detection.
 - clamscan loads its signatures on every run, so a short time limit makes timeouts more likely.
 

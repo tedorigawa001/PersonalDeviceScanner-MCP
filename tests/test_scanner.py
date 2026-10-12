@@ -7,11 +7,17 @@ import tempfile
 import threading
 import time
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from pc_scanner.core import NoRedirect, Scanner, ScannerError, is_link, run_bounded
+from pc_scanner.core import NoRedirect, Scanner, ScannerError, clamav_signatures, is_link, run_bounded
+
+
+def signatures(age=timedelta(hours=3)):
+    built_at = None if age is None else datetime.now(timezone.utc) - age
+    return {"engine": "1.5.4", "version": None if age is None else 27800, "built_at": built_at}
 
 
 def wait_for(condition, seconds):
@@ -114,6 +120,9 @@ class ScannerTests(unittest.TestCase):
         self.scanner = Scanner({"local": {"clamav_binary": sys.executable,
                                           "osquery_binary": sys.executable},
                                 "scan_roots": {"test": str(self.root)}})
+        # Scans see fresh signatures unless a test says otherwise.
+        self.signature_check = self.enterContext(
+            patch("pc_scanner.core.clamav_signatures", side_effect=lambda *args, **kwargs: signatures()))
 
     def test_no_engines_is_error_not_safe(self):
         report = Scanner({}).invoke("inventory", query_id="os_version")
@@ -210,7 +219,9 @@ class ScannerTests(unittest.TestCase):
         for config in ({"wazuh": {"url": "http://localhost:9200", "agent_id": "001"}},
                        {"wazuh": {"url": "https://user:pass@localhost:9200", "agent_id": "001"}},
                        {"local": {"osquery_binary": "osqueryi"}},
-                       {"local": {"timeout_seconds": 0}}):
+                       {"local": {"timeout_seconds": 0}},
+                       {"local": {"max_signature_age_days": 0}},
+                       {"local": {"max_signature_age_days": "7"}}):
             with self.subTest(config=config), self.assertRaises(ScannerError):
                 Scanner(config)
 
@@ -525,10 +536,65 @@ class ScannerTests(unittest.TestCase):
 
     def test_runner_does_not_pass_secrets(self):
         with patch.dict(os.environ, {"PC_SCANNER_WAZUH_PASSWORD": "secret", "OPENAI_API_KEY": "secret",
-                                     "SYSTEMDRIVE": "C:"}):
-            code, output, _ = run_bounded([sys.executable, "-c", "import os; print(os.getenv('PC_SCANNER_WAZUH_PASSWORD')); print(os.getenv('OPENAI_API_KEY')); print(os.getenv('SYSTEMDRIVE'))"], 5, 1024)
+                                     "SYSTEMDRIVE": "C:", "TZ": "Asia/Tokyo"}):
+            code, output, _ = run_bounded([sys.executable, "-c", "import os; print(os.getenv('PC_SCANNER_WAZUH_PASSWORD')); print(os.getenv('OPENAI_API_KEY')); print(os.getenv('SYSTEMDRIVE')); print(os.getenv('TZ'))"], 5, 1024)
         self.assertEqual(code, 0)
-        self.assertEqual(output.splitlines(), ["None", "None", "C:"])
+        self.assertEqual(output.splitlines(), ["None", "None", "C:", "Asia/Tokyo"])
+
+    def test_signature_version_is_parsed(self):
+        # clamscan --version prints the newest daily database time in local ctime() format.
+        cases = {"ClamAV 1.5.4/27800/Mon Oct 12 07:43:35 2026\n": ("1.5.4", 27800, datetime(2026, 10, 12, 7, 43, 35)),
+                 "ClamAV 0.103.8/26827/Thu Feb  2 08:23:52 2023\n": ("0.103.8", 26827, datetime(2023, 2, 2, 8, 23, 52))}
+        for output, (engine, version, local_time) in cases.items():
+            with self.subTest(output=output), patch("pc_scanner.core.run_bounded", return_value=(0, output, "")) as run:
+                info = clamav_signatures("/engine/clamscan", time.monotonic() + 60, 1024)
+                self.assertEqual(run.call_args.args[0], ["/engine/clamscan", "--version"])
+                self.assertEqual((info["engine"], info["version"]), (engine, version))
+                self.assertEqual(info["built_at"], local_time.astimezone(timezone.utc))
+
+    def test_signature_date_unknown(self):
+        for code, output in ((0, "ClamAV 1.5.4\n"),  # no daily database found
+                             (2, "ClamAV 1.5.4/27800/Mon Oct 12 07:43:35 2026\n"),
+                             (0, "ClamAV 1.5.4/27800/Mon Foo 12 07:43:35 2026\n"),
+                             (0, "ClamAV 1.5.4/27800/Mon Feb 31 07:43:35 2026\n"),
+                             (0, "unexpected\n")):
+            with self.subTest(output=output), patch("pc_scanner.core.run_bounded", return_value=(code, output, "")):
+                self.assertIsNone(clamav_signatures("/engine/clamscan", time.monotonic() + 60, 1024)["built_at"])
+
+    def test_signature_check_needs_time_left(self):
+        with patch("pc_scanner.core.run_bounded") as run, self.assertRaises(ScannerError):
+            clamav_signatures("/engine/clamscan", time.monotonic() - 1, 1024)
+        run.assert_not_called()
+
+    def test_fresh_signatures_are_reported(self):
+        cancel = threading.Event()
+        with patch("pc_scanner.core.run_bounded", return_value=(0, "Scanned files: 1\n", "")):
+            report = self.scanner.invoke("malware", root_alias="test", cancel=cancel)
+        self.assertEqual(report["status"], "completed")
+        self.assertEqual(report["data"]["signatures"]["version"], 27800)
+        self.assertLess(report["data"]["signatures"]["age_days"], 1)
+        self.assertEqual(report["data"]["signatures"]["max_age_days"], 7)
+        binary, deadline, _ = self.signature_check.call_args.args
+        self.assertEqual(binary, str(Path(sys.executable).resolve()))
+        self.assertLessEqual(deadline, time.monotonic() + self.scanner.timeout)
+        self.assertIs(self.signature_check.call_args.kwargs["cancel"], cancel)
+
+    def test_stale_or_unknown_signatures_make_scan_partial(self):
+        for age, words in ((timedelta(days=8), "days old"), (None, "could not be determined")):
+            self.signature_check.side_effect = lambda *args, age=age, **kwargs: signatures(age)
+            with self.subTest(age=age), patch("pc_scanner.core.run_bounded", return_value=(0, "Scanned files: 1\n", "")) as run:
+                report = self.scanner.invoke("malware", root_alias="test")
+                run.assert_called_once()  # the scan still runs with what is installed
+                self.assertEqual(report["status"], "partial")
+                self.assertTrue(any(words in w and "freshclam" in w for w in report["warnings"]))
+
+    def test_signature_age_limit_is_configurable(self):
+        self.signature_check.side_effect = lambda *args, **kwargs: signatures(timedelta(days=2))
+        strict = Scanner({"local": {"clamav_binary": sys.executable, "max_signature_age_days": 1},
+                          "scan_roots": {"test": str(self.root)}})
+        for scanner, status in ((self.scanner, "completed"), (strict, "partial")):
+            with self.subTest(status=status), patch("pc_scanner.core.run_bounded", return_value=(0, "Scanned files: 1\n", "")):
+                self.assertEqual(scanner.invoke("malware", root_alias="test")["status"], status)
 
     def wazuh_response(self, payload, agent_id="001", offset=0):
         scanner = Scanner({"wazuh": {"url": "https://localhost:9200", "agent_id": agent_id}})
