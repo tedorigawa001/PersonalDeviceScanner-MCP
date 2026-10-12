@@ -1,4 +1,5 @@
 """MCP v1 SDK transport; no public listener or cloud API key required."""
+import threading
 from functools import partial
 from typing import Literal
 
@@ -33,12 +34,27 @@ def create_server(scanner: Scanner):
             except Exception:
                 return
 
+    async def stop_on_cancel(cancel: threading.Event):
+        # The worker-thread wait is shielded from cancellation, so this sibling task
+        # receives it instead and tells the engine to stop.
+        try:
+            await anyio.sleep_forever()
+        finally:
+            cancel.set()
+
     async def run_engine(ctx: Context, operation: str, **kwargs) -> dict:
+        cancel = threading.Event()
         async with anyio.create_task_group() as group:
             group.start_soon(heartbeat, ctx, operation)
+            group.start_soon(stop_on_cancel, cancel)
+            # The lock is held until the engine has exited, even after a cancel.
             async with engine_lock:
-                report = await anyio.to_thread.run_sync(partial(scanner.invoke, operation, **kwargs))
+                report = await anyio.to_thread.run_sync(
+                    partial(scanner.invoke, operation, cancel=cancel, **kwargs))
             group.cancel_scope.cancel()
+        # Stopping the helper tasks can absorb a cancel that arrived during the shielded
+        # wait; re-raise it so the SDK does not send a second response.
+        await anyio.lowlevel.checkpoint()
         return report
 
     @server.tool(annotations=local)

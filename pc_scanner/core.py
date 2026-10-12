@@ -30,6 +30,7 @@ PAGE_SIZE = 500
 # OpenSearch rejects from + size beyond the default index.max_result_window (10000).
 MAX_OFFSET = 10000 - PAGE_SIZE
 REPORT_LINES = 60
+CANCEL_POLL_SECONDS = 0.1
 REPORT_LINE_CHARS = 500
 REPORTED_DIRECTORIES = 20
 # stat defines this only on Windows; the value is fixed by the Windows SDK.
@@ -47,7 +48,13 @@ def is_link(path: Path) -> bool:
     return stat.S_ISLNK(info.st_mode) or getattr(info, "st_reparse_tag", 0) == JUNCTION_TAG
 
 
-def inspect_directories(target: Path, deadline: float) -> tuple[bool, list[str]]:
+def check_cancel(cancel: threading.Event | None) -> None:
+    if cancel is not None and cancel.is_set():
+        raise ScannerError("Scan cancelled; scan was not completed")
+
+
+def inspect_directories(target: Path, deadline: float,
+                        cancel: threading.Event | None = None) -> tuple[bool, list[str]]:
     """Find directories ClamAV silently skips or cannot read, without following links.
 
     ClamAV counts the target directory as level 1. Stop at the last scanned
@@ -61,6 +68,7 @@ def inspect_directories(target: Path, deadline: float) -> tuple[bool, list[str]]
         unreadable.append(error.filename or str(target))
 
     for directory, children, _ in os.walk(target, followlinks=False, onerror=record):
+        check_cancel(cancel)
         if time.monotonic() >= deadline:
             raise ScannerError("Directory coverage check timed out; scan was not completed")
         # os.walk only skips symlinks, so junctions must be pruned here.
@@ -120,7 +128,9 @@ def decode(data: bytes) -> str:
         return data.decode(locale.getpreferredencoding(False) or "utf-8", errors="replace")
 
 
-def run_bounded(argv: list[str], timeout: float, limit: int) -> tuple[int, str, str]:
+def run_bounded(argv: list[str], timeout: float, limit: int,
+                cancel: threading.Event | None = None) -> tuple[int, str, str]:
+    check_cancel(cancel)
     # Never inherit cloud/API credentials into third-party engines; only locations.
     allowed = {"PATH", "SYSTEMROOT", "WINDIR", "TEMP", "TMP", "TMPDIR", "HOME",
                "SYSTEMDRIVE", "USERPROFILE", "HOMEDRIVE", "HOMEPATH", "PROGRAMDATA",
@@ -153,17 +163,25 @@ def run_bounded(argv: list[str], timeout: float, limit: int) -> tuple[int, str, 
                for i, stream in enumerate((process.stdout, process.stderr))]
     for thread in threads:
         thread.start()
-    timed_out = False
-    try:
-        process.wait(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        timed_out = True
+    # Wait in short slices so a cancel request stops the engine promptly.
+    deadline = time.monotonic() + timeout
+    stopped = None
+    while stopped is None:
+        try:
+            process.wait(timeout=CANCEL_POLL_SECONDS)
+            break
+        except subprocess.TimeoutExpired:
+            if cancel is not None and cancel.is_set():
+                stopped = "Scan cancelled; engine stopped before completing"
+            elif time.monotonic() >= deadline:
+                stopped = "Engine timed out; scan was not completed"
+    if stopped:
         process.kill()
         process.wait()
     for thread in threads:
         thread.join(timeout=2)
-    if timed_out:
-        raise ScannerError("Engine timed out; scan was not completed")
+    if stopped:
+        raise ScannerError(stopped)
     if exceeded.is_set():
         raise ScannerError("Engine output exceeded limits; scan was not completed")
     if any(t.is_alive() for t in threads):
@@ -242,7 +260,7 @@ class Scanner:
             "scan_root_aliases": list(self.roots),
             "note": "Configuration status only; engines, signatures, connectivity and PC safety are unverified"})
 
-    def inventory(self, query_id: str, offset: int = 0) -> dict:
+    def inventory(self, query_id: str, offset: int = 0, cancel: threading.Event | None = None) -> dict:
         check_offset(offset)
         # Stable ORDER BY keeps offset paging consistent between calls.
         queries = {
@@ -263,7 +281,7 @@ class Scanner:
         code, output, diagnostic = run_bounded(
             [self.binary("osquery_binary"), "--json", "--disable_extensions=true",
              f"{query} LIMIT {PAGE_SIZE + 1} OFFSET {offset};"],
-            self.timeout, self.limit)
+            self.timeout, self.limit, cancel=cancel)
         if code != 0:
             raise ScannerError("osquery failed; table may be unsupported or permission denied")
         try:
@@ -283,7 +301,8 @@ class Scanner:
                       + page_warnings
                       + (["One page, engine warning, or no observable rows; coverage incomplete"] if partial else []))
 
-    def malware(self, root_alias: str, relative_path: str = ".") -> dict:
+    def malware(self, root_alias: str, relative_path: str = ".",
+                cancel: threading.Event | None = None) -> dict:
         if root_alias not in self.roots:
             raise ScannerError("Scan root alias is not authorized")
         if not isinstance(relative_path, str) or "\x00" in relative_path:
@@ -311,7 +330,7 @@ class Scanner:
         # Coverage check and engine share one time budget.
         deadline = time.monotonic() + self.timeout
         binary = self.binary("clamav_binary")
-        directory_limit, unreadable = inspect_directories(target, deadline)
+        directory_limit, unreadable = inspect_directories(target, deadline, cancel)
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise ScannerError("Directory coverage check used the time budget; scan was not completed")
@@ -320,7 +339,7 @@ class Scanner:
             "--follow-dir-symlinks=0", "--follow-file-symlinks=0",
             f"--max-dir-recursion={MAX_DIRECTORY_LEVELS}",
             "--max-filesize=100M", "--max-scansize=200M", "--max-recursion=16",
-            "--alert-exceeds-max=yes", str(target)], remaining, self.limit)
+            "--alert-exceeds-max=yes", str(target)], remaining, self.limit, cancel=cancel)
         findings, messages = [], []
         for line in output.splitlines():
             match = FOUND.fullmatch(line)

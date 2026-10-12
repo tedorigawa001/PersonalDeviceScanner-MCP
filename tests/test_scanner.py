@@ -4,6 +4,8 @@ import os
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -415,6 +417,37 @@ class ScannerTests(unittest.TestCase):
                   "subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(5)'])")
         with self.assertRaisesRegex(ScannerError, "child process may still be running"):
             run_bounded([sys.executable, "-c", script], 10, 1024)
+
+    def test_runner_stops_engine_when_cancelled(self):
+        cancel = threading.Event()
+        timer = threading.Timer(0.3, cancel.set)
+        timer.start()
+        self.addCleanup(timer.cancel)
+        started = time.monotonic()
+        with self.assertRaisesRegex(ScannerError, "cancelled"):
+            run_bounded([sys.executable, "-c", "import time; time.sleep(30)"], 60, 1024, cancel=cancel)
+        # run_bounded only returns after the engine process has exited.
+        self.assertLess(time.monotonic() - started, 10)
+
+    def test_cancel_before_engine_does_not_start_it(self):
+        cancel = threading.Event()
+        cancel.set()
+        for relative_path in (".", "sample.txt"):
+            with self.subTest(relative_path=relative_path), patch("subprocess.Popen") as popen:
+                report = self.scanner.invoke("malware", root_alias="test", relative_path=relative_path,
+                                             cancel=cancel)
+                self.assertEqual(report["status"], "error")
+                self.assertIn("cancelled", report["error"])
+                popen.assert_not_called()
+
+    def test_engines_receive_cancel_signal(self):
+        cancel = threading.Event()
+        with patch("pc_scanner.core.run_bounded", return_value=(0, "Scanned files: 1\n", "")) as run:
+            self.scanner.invoke("malware", root_alias="test", cancel=cancel)
+        self.assertIs(run.call_args.kwargs["cancel"], cancel)
+        with patch("pc_scanner.core.run_bounded", return_value=(0, '[{"name":"OS"}]', "")) as run:
+            self.scanner.invoke("inventory", query_id="os_version", cancel=cancel)
+        self.assertIs(run.call_args.kwargs["cancel"], cancel)
 
     def test_runner_timeout_and_output_limit(self):
         with self.assertRaisesRegex(ScannerError, "timed out"):

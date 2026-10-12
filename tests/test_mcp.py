@@ -29,6 +29,20 @@ class SlowScanner:
             self.active -= 1
         return {"source": operation, "status": "completed", "findings": [], "warnings": []}
 
+class CancellableScanner:
+    """Stands in for an engine that runs until it is told to stop."""
+
+    roots = {"test": ""}
+
+    def __init__(self):
+        self.started = threading.Event()
+        self.stopped_by_cancel = False
+
+    def invoke(self, operation, cancel=None, **kwargs):
+        self.started.set()
+        self.stopped_by_cancel = cancel is not None and cancel.wait(5)
+        return {"source": operation, "status": "error", "findings": [], "warnings": []}
+
 @unittest.skipUnless(importlib.util.find_spec("mcp"), "agent extra not installed")
 class MCPTests(unittest.TestCase):
     def test_stdio_round_trip(self):
@@ -97,6 +111,32 @@ class MCPTests(unittest.TestCase):
                     self.assertEqual(scanner.active, 1, "ping must be answered while the scan runs")
 
         asyncio.run(exercise())
+
+    def test_cancel_stops_running_engine(self):
+        import anyio
+        import mcp.types as types
+        from mcp.shared.exceptions import McpError
+        from mcp.shared.memory import create_connected_server_and_client_session
+        from pc_scanner.server import create_server
+
+        scanner = CancellableScanner()
+
+        async def exercise():
+            async with create_connected_server_and_client_session(create_server(scanner)) as session:
+                request_id = session._request_id  # id the next request will use
+
+                async def call():
+                    with self.assertRaises(McpError):
+                        await session.call_tool("scan_malware", {"root_alias": "test"})
+
+                async with anyio.create_task_group() as group:
+                    group.start_soon(call)
+                    self.assertTrue(await anyio.to_thread.run_sync(scanner.started.wait, 5))
+                    await session.send_notification(types.ClientNotification(types.CancelledNotification(
+                        params=types.CancelledNotificationParams(requestId=request_id))))
+
+        asyncio.run(exercise())
+        self.assertTrue(scanner.stopped_by_cancel, "cancellation must reach the running engine")
 
     def test_engine_runs_are_serialized(self):
         import anyio
