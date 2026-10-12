@@ -91,9 +91,11 @@
 
 ## 低
 
-- [ ] **`anyio` を agent extra に明示的に宣言する**
-  - `server.py` が直接使っていますが、現在は `mcp` 経由の間接的な依存です。
-  - 宣言すると SBOM の依存関係が変わるため、参照用 wheel を取得し直して `scripts/generate_compliance.py --wheels-dir` で再生成する必要があります。
+- [x] **`anyio` を agent extra に明示的に宣言する**（2026-10-12 完了）
+  - 対応: `pyproject.toml` の agent extra に `anyio>=4.5,<5` を追加（`mcp` 自身が `anyio>=4.5` を要求）。
+    直下の参照プロファイルを同じ環境・参照 wheel で再生成し、変化は SBOM のプロジェクト直下の依存に anyio が加わる1行だけ。
+    `profiles/` の3つはワークフロー「Compliance profiles」を再実行して作り直す。
+  - 再発防止: `pc_scanner` が直接 import する外部パッケージがすべて `pyproject.toml` に宣言されているかを確かめるテストを追加。
 
 - [ ] **設定ファイルの未知のキーを警告する**
   - `[scan_root]` のような綴り間違いが黙って無視されます。
@@ -156,3 +158,5 @@
 - [x] ClamAV の定義ファイルの鮮度を確認し、古い・不明なら `partial` にする
 - [x] Wazuh の結果のエージェント名を、この PC のホスト名または設定値と照合する
 - [x] Wazuh の結果をカーソル（`search_after`）でページングし、1万件を超えても取得できるようにする
+- [x] Windows・Linux・macOS arm64 のロック・SBOM・第三者表示を `profiles/` に追加（Windows は pywin32 が要判断）
+- [x] `anyio` を agent extra に明示的に宣言し、直接 import の宣言漏れを検出するテストを追加

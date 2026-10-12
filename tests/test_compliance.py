@@ -1,7 +1,12 @@
+import ast
+import importlib.metadata as metadata
+import sys
+import tomllib
 import unittest
+from itertools import chain
 from types import SimpleNamespace
 
-from scripts.generate_compliance import active_requirement, resolve_graph
+from scripts.generate_compliance import ROOT, Requirement, active_requirement, canonicalize_name, resolve_graph
 
 
 class DependencyGraphTests(unittest.TestCase):
@@ -31,6 +36,30 @@ class DependencyGraphTests(unittest.TestCase):
         self.assertIsNone(active_requirement("absent; python_version < '1'", set()))
         with self.assertRaisesRegex(ValueError, "provenance review"):
             active_requirement("package @ https://example.org/package.whl", set())
+
+
+class DeclaredDependencyTests(unittest.TestCase):
+    def test_direct_imports_are_declared(self):
+        # A package the code imports must be declared, not just arrive through another one,
+        # so the SBOM records it as a direct dependency.
+        project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
+        declared = {canonicalize_name(Requirement(text).name) for text in
+                    [*project.get("dependencies", []), *chain(*project.get("optional-dependencies", {}).values())]}
+        imported = set()
+        for source in (ROOT / "pc_scanner").glob("*.py"):
+            for node in ast.walk(ast.parse(source.read_text())):
+                if isinstance(node, ast.Import):
+                    imported.update(alias.name.split(".")[0] for alias in node.names)
+                elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                    imported.add(node.module.split(".")[0])
+        third_party = sorted(imported - set(sys.stdlib_module_names) - {"pc_scanner"})
+        self.assertTrue(third_party)
+        for module in third_party:
+            with self.subTest(module=module):
+                # A module maps to its distribution only when installed; the declared name covers the rest.
+                names = metadata.packages_distributions().get(module, [module])
+                self.assertTrue({canonicalize_name(name) for name in names} & declared,
+                                f"{module} is imported but not declared in pyproject.toml")
 
 
 if __name__ == "__main__":
