@@ -35,11 +35,25 @@ jobs:
           python -m pip install --upgrade pip
           python - <<'EOF'
           import tomllib
-          project = tomllib.load(open("pyproject.toml", "rb"))["project"]
+          from pip._vendor.packaging.requirements import Requirement
+          from pip._vendor.packaging.utils import canonicalize_name
+          agent = tomllib.load(open("pyproject.toml", "rb"))["project"]["optional-dependencies"]["agent"]
           with open("agent-requirements.txt", "w") as f:
-              f.write("\n".join(project["optional-dependencies"]["agent"]) + "\n")
+              f.write("\n".join(agent) + "\n")
+          # Keep the reference lock's versions, except where the project's own requirements
+          # for this platform exclude them (a security floor such as cryptography>=50).
+          own = [r for r in map(Requirement, agent) if r.marker is None or r.marker.evaluate()]
           with open("requirements-agent.lock") as lock, open("constraints.txt", "w") as f:
-              f.write("".join(line.split()[0] + "\n" for line in lock if line.strip() and not line.startswith("#")))
+              for line in lock:
+                  if not line.strip() or line.startswith("#"):
+                      continue
+                  pin = Requirement(line.split()[0])
+                  version = next(iter(pin.specifier)).version
+                  if all(canonicalize_name(r.name) != canonicalize_name(pin.name) or r.specifier.contains(version)
+                         for r in own):
+                      f.write(f"{pin}\n")
+                  else:
+                      print(f"::notice::{pin} conflicts with this project's requirements here; resolving it afresh")
           EOF
           python -m pip install --only-binary=:all: -c constraints.txt -r agent-requirements.txt
           python -m pip check

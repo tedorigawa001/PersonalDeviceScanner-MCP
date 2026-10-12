@@ -62,6 +62,23 @@ class DeclaredDependencyTests(unittest.TestCase):
                                 f"{module} is imported but not declared in pyproject.toml")
 
 
+class SecurityFloorTests(unittest.TestCase):
+    def test_cryptography_floor_applies_where_fixed_wheels_exist(self):
+        # cryptography 50 fixes CVE-2026-69247/69248/69249 but ships no Intel macOS wheel.
+        project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
+        floors = [Requirement(text) for text in project["optional-dependencies"]["agent"]
+                  if Requirement(text).name == "cryptography"]
+        self.assertEqual(len(floors), 1)
+        floor = floors[0]
+        self.assertTrue(floor.specifier.contains("50.0.2"))
+        self.assertFalse(floor.specifier.contains("48.0.1"))
+        for platform, machine, applies in (("win32", "AMD64", True), ("linux", "x86_64", True),
+                                           ("darwin", "arm64", True), ("darwin", "x86_64", False)):
+            with self.subTest(platform=platform, machine=machine):
+                self.assertEqual(floor.marker.evaluate({"sys_platform": platform, "platform_machine": machine}),
+                                 applies)
+
+
 class OwnLicenseTests(unittest.TestCase):
     def test_project_code_is_mit_licensed(self):
         project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
