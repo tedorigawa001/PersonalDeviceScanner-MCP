@@ -103,6 +103,7 @@ GitHub Actionsの「Compliance profiles」ワークフロー（`.github/workflow
 Windows / Linux / macOS（arm64）それぞれで次を行い、結果を成果物（artifact）としてアップロードします。
 
 1. 参照ロックと同じバージョンを制約にして、agent extraの依存をビルド済みwheelだけで導入
+   （参照ロックの固定がそのOSでのagent extraの条件と矛盾する場合だけ、その固定を外して解決し直す。例：`cryptography>=50`）
 2. 導入したバージョンの参照wheelを取得
 3. `generate_compliance.py --output profiles/<プロファイル名>` で生成
 4. 固定したコミットのCycloneDX 1.6公式スキーマで `validate_compliance.py` を実行
@@ -115,14 +116,18 @@ Windows / Linux / macOS（arm64）それぞれで次を行い、結果を成果�
 
 ### 現在のプロファイル（2026-10-12 生成）
 
-| 置き場所 | 環境 | パッケージ | 検証 |
-|---|---|---|---|
-| リポジトリ直下 | macOS x86_64 / CPython 3.14.7（ローカル生成、参照） | 29 | 合格 |
-| `profiles/darwin-arm64-cp314/` | macOS arm64 / CPython 3.14.7 | 29 | 合格 |
-| `profiles/linux-x86_64-cp314/` | Linux x86_64 / CPython 3.14.8 | 29 | 合格 |
-| `profiles/windows-amd64-cp314/` | Windows AMD64 / CPython 3.14.7 | 30（pywin32 312 を含む） | **未合格**：pywin32 のライセンス表記が未確定 |
+| 置き場所 | 環境 | パッケージ | cryptography | 検証 |
+|---|---|---|---|---|
+| リポジトリ直下 | macOS x86_64 / CPython 3.14.7（ローカル生成、参照） | 29 | 48.0.1 | 合格 |
+| `profiles/darwin-arm64-cp314/` | macOS arm64 / CPython 3.14.7 | 29 | 50.0.2 | 合格 |
+| `profiles/linux-x86_64-cp314/` | Linux x86_64 / CPython 3.14.8 | 29 | 50.0.2 | 合格 |
+| `profiles/windows-amd64-cp314/` | Windows AMD64 / CPython 3.14.7 | 30（pywin32 312 を含む） | 50.0.2 | **未合格**：pywin32 のライセンス表記が未確定 |
 
-- 4つとも同じバージョンです（Windows の pywin32 を除く）。macOS arm64 と Linux のライセンス原文は参照と完全に同じです。
+- 4つとも同じバージョンです（cryptography と、Windows の pywin32 を除く）。macOS arm64 と Linux のライセンス原文は参照と完全に同じです
+  （cryptography 50.0.2 の原文も 48.0.1 とバイト単位で同じ）。
+- cryptography 49.0.0 以降には Intel Mac（x86_64）向けのビルド済みパッケージがないため、参照プロファイルだけ 48.0.1 のままです。
+  48.0.1 の既知の脆弱性（CVE-2026-69249・CVE-2026-69247・CVE-2026-69248）は、この基盤の使い方（stdio のみ、
+  JWT・`x509.verification`・PKCS#7 を使わない）では到達しません。2026-10-12 の OSV 検査では、ほかの3つに既知の脆弱性はありません。
 - Windows の pydantic-core と rpds-py の LICENSE は、内容は同じで改行コードだけが CRLF です（Windows 向け wheel の中身どおり）。
   原文はバイト単位でハッシュを記録しているため、`.gitattributes` で改行コードの変換を禁止しています。
 - pywin32 のメタデータは `License: PSF` だけで、同梱の原文は部品ごとに異なります：本体（win32・COM・Pythonwin）は

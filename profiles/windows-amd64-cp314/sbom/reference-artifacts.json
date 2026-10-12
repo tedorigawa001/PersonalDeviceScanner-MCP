@@ -43,11 +43,11 @@
       "version": "8.5.0"
     },
     {
-      "filename": "cryptography-48.0.1-cp311-abi3-win_amd64.whl",
+      "filename": "cryptography-50.0.2-cp311-abi3-win_amd64.whl",
       "name": "cryptography",
-      "sha256": "39489bfca54c7a1f6b297efcd8bc608ab92d16c4ca631b0cad4da46724588b24",
-      "source": "https://pypi.org/project/cryptography/48.0.1/",
-      "version": "48.0.1"
+      "sha256": "7afa5a6602a9f29af1f3a2965f831bae7c9d5d597b7cbb716d41ab3b7d89879c",
+      "source": "https://pypi.org/project/cryptography/50.0.2/",
+      "version": "50.0.2"
     },
     {
       "filename": "h11-0.16.0-py3-none-any.whl",

@@ -93,27 +93,27 @@
     {
       "license_evidence": "License-Expression",
       "license_expression": "Apache-2.0 OR BSD-3-Clause",
-      "metadata_path": "third_party/metadata/cryptography-48.0.1.METADATA",
-      "metadata_sha256": "5b62dcfcaddf62e26f8c28f6055c0aba858eea2a3697a3fc8e7aced427bf8d94",
+      "metadata_path": "third_party/metadata/cryptography-50.0.2.METADATA",
+      "metadata_sha256": "047cfc71226409de4318b360aef15c63a2adf609731e3dcf7fe932f14ea042ee",
       "name": "cryptography",
       "notices": [
         {
-          "path": "third_party/licenses/cryptography/48.0.1/cryptography-48.0.1.dist-info/licenses/LICENSE",
+          "path": "third_party/licenses/cryptography/50.0.2/cryptography-50.0.2.dist-info/licenses/LICENSE",
           "sha256": "3e0c7c091a948b82533ba98fd7cbb40432d6f1a9acbf85f5922d2f99a93ae6bb",
-          "source_path": "cryptography-48.0.1.dist-info/licenses/LICENSE"
+          "source_path": "cryptography-50.0.2.dist-info/licenses/LICENSE"
         },
         {
-          "path": "third_party/licenses/cryptography/48.0.1/cryptography-48.0.1.dist-info/licenses/LICENSE.APACHE",
+          "path": "third_party/licenses/cryptography/50.0.2/cryptography-50.0.2.dist-info/licenses/LICENSE.APACHE",
           "sha256": "aac73b3148f6d1d7111dbca32099f68d26c644c6813ae1e4f05f6579aa2663fe",
-          "source_path": "cryptography-48.0.1.dist-info/licenses/LICENSE.APACHE"
+          "source_path": "cryptography-50.0.2.dist-info/licenses/LICENSE.APACHE"
         },
         {
-          "path": "third_party/licenses/cryptography/48.0.1/cryptography-48.0.1.dist-info/licenses/LICENSE.BSD",
+          "path": "third_party/licenses/cryptography/50.0.2/cryptography-50.0.2.dist-info/licenses/LICENSE.BSD",
           "sha256": "602c4c7482de6479dd2e9793cda275e5e63d773dacd1eca689232ab7008fb4fb",
-          "source_path": "cryptography-48.0.1.dist-info/licenses/LICENSE.BSD"
+          "source_path": "cryptography-50.0.2.dist-info/licenses/LICENSE.BSD"
         }
       ],
-      "version": "48.0.1"
+      "version": "50.0.2"
     },
     {
       "license_evidence": "legacy License field (exact identifier)",

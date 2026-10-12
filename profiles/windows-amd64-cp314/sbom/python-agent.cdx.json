@@ -285,17 +285,17 @@
       "version": "8.5.0"
     },
     {
-      "bom-ref": "pkg:pypi/cryptography@48.0.1",
+      "bom-ref": "pkg:pypi/cryptography@50.0.2",
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://pypi.org/project/cryptography/48.0.1/"
+          "url": "https://pypi.org/project/cryptography/50.0.2/"
         }
       ],
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "39489bfca54c7a1f6b297efcd8bc608ab92d16c4ca631b0cad4da46724588b24"
+          "content": "7afa5a6602a9f29af1f3a2965f831bae7c9d5d597b7cbb716d41ab3b7d89879c"
         }
       ],
       "licenses": [
@@ -311,11 +311,11 @@
         },
         {
           "name": "pc-scanner:installed-metadata-sha256",
-          "value": "5b62dcfcaddf62e26f8c28f6055c0aba858eea2a3697a3fc8e7aced427bf8d94"
+          "value": "047cfc71226409de4318b360aef15c63a2adf609731e3dcf7fe932f14ea042ee"
         },
         {
           "name": "pc-scanner:reference-wheel",
-          "value": "cryptography-48.0.1-cp311-abi3-win_amd64.whl"
+          "value": "cryptography-50.0.2-cp311-abi3-win_amd64.whl"
         },
         {
           "name": "pc-scanner:artifact-provenance",
@@ -326,10 +326,10 @@
           "value": "original notices match reference wheel bytes"
         }
       ],
-      "purl": "pkg:pypi/cryptography@48.0.1",
+      "purl": "pkg:pypi/cryptography@50.0.2",
       "scope": "required",
       "type": "library",
-      "version": "48.0.1"
+      "version": "50.0.2"
     },
     {
       "bom-ref": "pkg:pypi/h11@0.16.0",
@@ -1450,7 +1450,7 @@
       "dependsOn": [
         "pkg:pypi/cffi@2.1.1"
       ],
-      "ref": "pkg:pypi/cryptography@48.0.1"
+      "ref": "pkg:pypi/cryptography@50.0.2"
     },
     {
       "dependsOn": [],
@@ -1517,6 +1517,7 @@
     {
       "dependsOn": [
         "pkg:pypi/anyio@4.15.1",
+        "pkg:pypi/cryptography@50.0.2",
         "pkg:pypi/mcp@1.30.0"
       ],
       "ref": "pkg:pypi/personal-pc-scanner@0.1.0"
@@ -1550,7 +1551,7 @@
     },
     {
       "dependsOn": [
-        "pkg:pypi/cryptography@48.0.1"
+        "pkg:pypi/cryptography@50.0.2"
       ],
       "ref": "pkg:pypi/pyjwt@2.15.1"
     },
@@ -1646,7 +1647,7 @@
       }
     ]
   },
-  "serialNumber": "urn:uuid:e091180f-52e0-5f3f-9645-b08fc38299c1",
+  "serialNumber": "urn:uuid:79920413-4e34-5c2b-a1dd-f526236c0223",
   "specVersion": "1.6",
   "version": 1
 }
