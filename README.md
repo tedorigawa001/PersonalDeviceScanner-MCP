@@ -184,6 +184,7 @@ Set the following in the `[wazuh]` section of `scanner.toml`:
 url = 'https://indexer.example:9200'   # HTTPS address of the indexer (not the manager API on port 55000)
 agent_id = '001'                        # Device ID in Wazuh; '1' is treated as '001'
 ca_file = '/path/to/root-ca.pem'        # CA certificate of the indexer
+agent_name = ''                         # Optional: the agent's name in Wazuh, if it differs from this PC's host name
 ```
 
 Pass the user name and password as environment variables, **never in the configuration file**:
@@ -226,6 +227,7 @@ Give the indexer account **read access only** to the target device's vulnerabili
 | `wazuh.url` | HTTPS address of the Wazuh indexer. Empty disables it | empty |
 | `wazuh.agent_id` | Numeric ID of the target device | empty |
 | `wazuh.ca_file` | CA certificate of the indexer. Empty uses the system certificates | empty |
+| `wazuh.agent_name` | The agent name expected in Wazuh (exact, ignoring case). Empty compares with this PC's host name, ignoring the domain | empty |
 | Environment variables `PC_SCANNER_WAZUH_USER` / `PC_SCANNER_WAZUH_PASSWORD` | Wazuh credentials | — |
 
 ## Reading the results
@@ -299,13 +301,17 @@ A single page, and any page after the first, is reported as `partial`. The maxim
 
 ### Wazuh
 
-- It reads data **already stored** in Wazuh. It does not guarantee freshness or that the PC is currently online.
+- It reads data **already stored** in Wazuh. The index records no scan time, so freshness cannot be verified
+  (`data.freshness` stays `unverified`), and it does not tell whether the PC is currently online.
+- To catch results that belong to another device, the agent name in the index is compared with this PC's host name
+  (or `wazuh.agent_name`). If they differ, or the name is missing, the result is `partial` with a warning.
+  The names, the expected name, and the OS recorded by Wazuh are in `data.device`.
 - When the device has zero records, the result is `partial`, because a wrong device ID, an unregistered device, and a never-scanned device look the same.
   Check the device ID, name, registration, and collection time in Wazuh.
 
 ### Privacy
 
-- Passing results to a cloud AI may send application names, process IDs, file names, and similar data. The PC owner decides where results go and how much is shared.
+- Passing results to a cloud AI may send application names, process IDs, file names, host names, and similar data. The PC owner decides where results go and how much is shared.
 - To reduce what is sent, file paths are returned relative to the authorized folder, and absolute paths in engine output are replaced with `<alias>`.
 - Engine output is shortened to its first and last 60 lines in total, and lines over 500 characters keep both ends (`data.engine_text_truncated` is true when anything was shortened). Findings are capped at 500, with malware listed first.
 

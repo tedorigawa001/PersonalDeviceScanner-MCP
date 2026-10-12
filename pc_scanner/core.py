@@ -9,6 +9,7 @@ import os
 import platform
 import re
 import signal
+import socket
 import ssl
 import stat
 import subprocess
@@ -349,7 +350,7 @@ class Scanner:
                 raise ScannerError("Invalid scan root alias")
             if not isinstance(value, str) or not Path(value).is_absolute():
                 raise ScannerError("Scan roots must be absolute paths")
-        for key in ("url", "agent_id", "ca_file"):
+        for key in ("url", "agent_id", "ca_file", "agent_name"):
             if not isinstance(self.wazuh.get(key, ""), str):
                 raise ScannerError("Wazuh settings must be strings")
         url = self.wazuh.get("url", "")
@@ -540,7 +541,7 @@ class Scanner:
                 "sort": [{"vulnerability.score.base": {"order": "desc", "unmapped_type": "float"}},
                          {"vulnerability.id": {"order": "asc", "unmapped_type": "keyword"}},
                          {"package.name": {"order": "asc", "unmapped_type": "keyword"}}],
-                "_source": ["agent.id", "package.name", "package.version", "vulnerability.id",
+                "_source": ["agent.id", "agent.name", "host.os.full", "package.name", "package.version", "vulnerability.id",
                             "vulnerability.severity", "vulnerability.score.base",
                             "vulnerability.detected_at"]}
         token = base64.b64encode(f"{user}:{password}".encode()).decode()
@@ -570,11 +571,16 @@ class Scanner:
                 total_value, relation = total, "eq"
             if not isinstance(hits, list) or type(total_value) is not int:
                 raise ValueError()
-            findings = []
+            findings, names, systems = [], set(), set()
             for hit in hits[:PAGE_SIZE]:
                 source = hit["_source"]
                 if source["agent"]["id"] != self.agent_id:
                     raise ScannerError("Wazuh returned data for an unauthorized agent")
+                name = source["agent"].get("name")
+                names.add(name[:128] if isinstance(name, str) and name.strip() else None)
+                system = source.get("host", {}).get("os", {}).get("full")
+                if isinstance(system, str):
+                    systems.add(system[:128])
                 vulnerability = source["vulnerability"]
                 severity = str(vulnerability.get("severity", "unknown")).lower()
                 score = vulnerability.get("score")
@@ -590,15 +596,44 @@ class Scanner:
             no_records = total_value == 0
         except (KeyError, TypeError, ValueError, AttributeError):
             raise ScannerError("Unexpected Wazuh vulnerability result schema") from None
-        return result("wazuh", "partial" if incomplete or no_records else "completed", findings=findings,
+        identity, expected = self.device_identity(names)
+        known_names = sorted(n for n in names if n)
+        identity_warnings = (
+            [f"Wazuh agent {self.agent_id} is named {', '.join(known_names)}, but this PC is {expected}; "
+             "the results may belong to another device"] if identity == "mismatch" else
+            ["The agent name is missing from the index; device identity could not be verified"]
+            if identity == "unknown" and names else [])
+        return result("wazuh", "partial" if incomplete or no_records or identity != "matched" else "completed",
+                      findings=findings,
                       data={"agent_id": self.agent_id, "total": total_value, "offset": offset,
-                            "next_offset": next_offset, "freshness": "unverified", "live_scan_triggered": False},
-                      warnings=["Existing index inventory; endpoint identity and inventory freshness require verification",
+                            "next_offset": next_offset, "freshness": "unverified", "live_scan_triggered": False,
+                            "device": {"identity": identity, "expected_name": expected,
+                                       "agent_names": known_names, "os": sorted(systems)}},
+                      warnings=["Existing index inventory; the index records no scan time, so freshness cannot be verified",
                                 "Zero findings can mean no inventory; this is not a safety verdict"]
+                      + identity_warnings
                       + (["No vulnerability records for this agent_id; it may be wrong, unregistered or never scanned"]
                          if no_records else [])
                       + page_warnings
                       + (["One page of results or index search incomplete"] if incomplete else []))
+
+    def device_identity(self, names: set) -> tuple[str, str]:
+        """Compare the agent names in the index with this PC: matched, mismatch or unknown.
+
+        A configured agent_name must match exactly (ignoring case). Otherwise the
+        host name is compared without its domain, as Wazuh names agents after it.
+        """
+        configured = self.wazuh.get("agent_name", "").strip()
+        expected = configured or socket.gethostname()
+        if not names or None in names:
+            return "unknown", expected
+        if configured:
+            same = {name.lower() for name in names} == {configured.lower()}
+        else:
+            def short(name):
+                return name.strip().lower().split(".")[0]
+            same = {short(name) for name in names} == {short(expected)}
+        return ("matched" if same else "mismatch"), expected
 
     def invoke(self, operation: str, **kwargs) -> dict:
         operations = {"status": self.status, "inventory": self.inventory,

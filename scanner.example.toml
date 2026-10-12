@@ -19,5 +19,8 @@ url = ""
 # Numeric agent ID as shown by Wazuh, e.g. "001" ("1" is normalized to "001").
 agent_id = ""
 ca_file = ""
+# Optional: the agent's name in Wazuh if it is not this PC's host name. Results whose
+# agent name does not match are reported as partial (they may belong to another device).
+agent_name = ""
 # Credentials are read from PC_SCANNER_WAZUH_USER and PC_SCANNER_WAZUH_PASSWORD.
 # Grant this account read access only to the authorized agent's vulnerability data.

@@ -609,10 +609,12 @@ class ScannerTests(unittest.TestCase):
             with self.subTest(status=status), patch("pc_scanner.core.run_bounded", return_value=(0, "Scanned files: 1\n", "")):
                 self.assertEqual(scanner.invoke("malware", root_alias="test")["status"], status)
 
-    def wazuh_response(self, payload, agent_id="001", offset=0):
-        scanner = Scanner({"wazuh": {"url": "https://localhost:9200", "agent_id": agent_id}})
+    def wazuh_response(self, payload, agent_id="001", offset=0, agent_name=""):
+        scanner = Scanner({"wazuh": {"url": "https://localhost:9200", "agent_id": agent_id,
+                                     "agent_name": agent_name}})
         response = io.BytesIO(json.dumps(payload).encode())
-        with patch.dict(os.environ, {"PC_SCANNER_WAZUH_USER": "reader", "PC_SCANNER_WAZUH_PASSWORD": "secret"}), patch("pc_scanner.core.build_opener") as build:
+        with patch.dict(os.environ, {"PC_SCANNER_WAZUH_USER": "reader", "PC_SCANNER_WAZUH_PASSWORD": "secret"}), patch(
+                "pc_scanner.core.socket.gethostname", return_value="test-pc"), patch("pc_scanner.core.build_opener") as build:
             build.return_value.open.return_value = response
             report = scanner.invoke("vulnerabilities", offset=offset)
             request = build.return_value.open.call_args.args[0]
@@ -624,7 +626,7 @@ class ScannerTests(unittest.TestCase):
 
     def test_wazuh_reports_findings_and_freshness(self):
         payload = {"hits": {"total": {"value": 1, "relation": "eq"}, "hits": [{"_source": {
-            "agent": {"id": "001"}, "package": {"name": "test", "version": "1"},
+            "agent": {"id": "001", "name": "test-pc"}, "package": {"name": "test", "version": "1"},
             "vulnerability": {"id": "CVE-TEST", "severity": "High"}}}]}}
         report = self.wazuh_response(payload)
         self.assertEqual(report["status"], "completed")
@@ -636,7 +638,7 @@ class ScannerTests(unittest.TestCase):
         self.assertEqual(self.wazuh_response(payload)["status"], "error")
 
     def test_wazuh_sorts_most_severe_first_and_pages(self):
-        hit = {"_source": {"agent": {"id": "001"}, "vulnerability": {
+        hit = {"_source": {"agent": {"id": "001", "name": "test-pc"}, "vulnerability": {
             "id": "CVE-A", "severity": "Critical", "score": {"base": 9.8}}}}
         first = self.wazuh_response({"hits": {"total": {"value": 501, "relation": "eq"}, "hits": [hit] * 500}})
         self.assertEqual(list(self.last_body["sort"][0]), ["vulnerability.score.base"])
@@ -652,10 +654,38 @@ class ScannerTests(unittest.TestCase):
 
     def test_wazuh_agent_id_is_zero_padded(self):
         payload = {"hits": {"total": 1, "hits": [{"_source": {
-            "agent": {"id": "001"}, "vulnerability": {"id": "CVE-TEST", "severity": "Low"}}}]}}
+            "agent": {"id": "001", "name": "test-pc"}, "vulnerability": {"id": "CVE-TEST", "severity": "Low"}}}]}}
         report = self.wazuh_response(payload, agent_id="1")
         self.assertEqual(report["status"], "completed")
         self.assertEqual(report["data"]["agent_id"], "001")
+
+    def test_wazuh_device_identity(self):
+        def payload(*names):
+            agents = [{"id": "001", **({"name": n} if n is not None else {})} for n in names]
+            return {"hits": {"total": len(agents), "hits": [
+                {"_source": {"agent": agent, "host": {"os": {"full": "Windows 11 Pro"}},
+                             "vulnerability": {"id": f"CVE-{i}", "severity": "Low"}}} for i, agent in enumerate(agents)]}}
+
+        # This PC's host name is patched to "test-pc"; agent_name overrides it when configured.
+        cases = [(("TEST-PC.local",), "", "completed", "matched"),  # case and domain suffix ignored
+                 (("other-pc",), "", "partial", "mismatch"),
+                 (("test-pc", "other-pc"), "", "partial", "mismatch"),
+                 (("lab-desktop",), "lab-desktop", "completed", "matched"),
+                 (("lab-desktop.dev",), "lab-desktop", "partial", "mismatch"),  # configured name is exact
+                 ((None,), "", "partial", "unknown")]
+        for names, agent_name, status, identity in cases:
+            with self.subTest(names=names, agent_name=agent_name):
+                report = self.wazuh_response(payload(*names), agent_name=agent_name)
+                self.assertEqual(report["status"], status)
+                self.assertEqual(report["data"]["device"]["identity"], identity)
+                self.assertEqual(len(report["findings"]), len(names))  # findings are kept either way
+                if identity != "matched":
+                    self.assertTrue(any("another device" in w or "could not be verified" in w
+                                        for w in report["warnings"]))
+        self.assertIn("agent.name", self.last_body["_source"])
+        report = self.wazuh_response(payload("test-pc"))
+        self.assertEqual(report["data"]["device"], {"identity": "matched", "expected_name": "test-pc",
+                                                  "agent_names": ["test-pc"], "os": ["Windows 11 Pro"]})
 
     def test_wazuh_zero_records_is_not_completed(self):
         report = self.wazuh_response({"hits": {"total": {"value": 0, "relation": "eq"}, "hits": []}})
