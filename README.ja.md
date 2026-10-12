@@ -228,7 +228,7 @@ indexer のアカウントには、対象端末の脆弱性インデックスへ
 | `scan_roots.<エイリアス>` | 検査を許可するフォルダー（絶対パス）。エイリアスは英数字・`_`・`-` で64文字まで | なし |
 | `wazuh.url` | Wazuh indexer の HTTPS アドレス。空欄なら無効 | 空欄 |
 | `wazuh.agent_id` | 対象端末の数字の ID | 空欄 |
-| `wazuh.ca_file` | indexer の CA 証明書。空欄ならシステムの証明書を使います | 空欄 |
+| `wazuh.ca_file` | indexer の CA 証明書（PEM 形式）の絶対パス。空欄ならシステムの証明書を使います。ファイルがなければ読み込み時に警告し、読めない・PEM でない場合は接続前にエラーにします | 空欄 |
 | `wazuh.agent_name` | Wazuh 上で期待するエージェント名（大文字小文字を除き完全一致）。空欄ならこの PC のホスト名とドメイン部分を除いて照合します | 空欄 |
 | 環境変数 `PC_SCANNER_WAZUH_USER` / `PC_SCANNER_WAZUH_PASSWORD` | Wazuh の認証情報 | — |
 

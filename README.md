@@ -228,7 +228,7 @@ Give the indexer account **read access only** to the target device's vulnerabili
 | `scan_roots.<alias>` | A folder allowed to be scanned (absolute path). Aliases use letters, digits, `_` and `-`, up to 64 characters | none |
 | `wazuh.url` | HTTPS address of the Wazuh indexer. Empty disables it | empty |
 | `wazuh.agent_id` | Numeric ID of the target device | empty |
-| `wazuh.ca_file` | CA certificate of the indexer. Empty uses the system certificates | empty |
+| `wazuh.ca_file` | Absolute path to the indexer's CA certificate (PEM). Empty uses the system certificates. A missing file is warned about at load; an unreadable or non-PEM file fails the Wazuh request before connecting | empty |
 | `wazuh.agent_name` | The agent name expected in Wazuh (exact, ignoring case). Empty compares with this PC's host name, ignoring the domain | empty |
 | Environment variables `PC_SCANNER_WAZUH_USER` / `PC_SCANNER_WAZUH_PASSWORD` | Wazuh credentials | — |
 

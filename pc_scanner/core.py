@@ -426,6 +426,9 @@ class Scanner:
         for key in ("url", "agent_id", "ca_file", "agent_name"):
             if not isinstance(self.wazuh.get(key, ""), str):
                 raise ScannerError("Wazuh settings must be strings")
+        ca_file = self.wazuh.get("ca_file", "")
+        if ca_file and not Path(ca_file).is_absolute():
+            raise ScannerError("Wazuh ca_file must be an absolute path")
         url = self.wazuh.get("url", "")
         self.agent_id = ""
         if url:
@@ -442,6 +445,10 @@ class Scanner:
                 raise ScannerError("Configure one numeric Wazuh agent_id")
             # Wazuh indexes agent.id zero-padded ("001"); "1" would silently match nothing.
             self.agent_id = f"{int(self.wazuh['agent_id']):03d}"
+            # Only a warning: a missing CA file must not stop the local engines from working.
+            if ca_file and not Path(ca_file).is_file():
+                self.config_warnings.append(f"Wazuh ca_file not found ({Path(ca_file).name}); "
+                                            "Wazuh requests will fail until it exists")
 
     @classmethod
     def load(cls, path: str):
@@ -619,7 +626,15 @@ class Scanner:
         request = Request(origin.rstrip("/") + "/wazuh-states-vulnerabilities-*/_search",
                           data=json.dumps(body).encode(), method="GET",
                           headers={"Authorization": f"Basic {token}", "Content-Type": "application/json"})
-        context = ssl.create_default_context(cafile=self.wazuh.get("ca_file") or None)
+        ca_file = self.wazuh.get("ca_file", "")
+        if ca_file and not Path(ca_file).is_file():
+            raise ScannerError("Wazuh ca_file cannot be read; check the path and permissions")
+        try:
+            context = ssl.create_default_context(cafile=ca_file or None)
+        except ssl.SSLError:
+            raise ScannerError("Wazuh ca_file is not a valid PEM CA certificate") from None
+        except OSError:
+            raise ScannerError("Wazuh ca_file cannot be read; check the path and permissions") from None
         opener = build_opener(ProxyHandler({}), HTTPSHandler(context=context), NoRedirect())
         try:
             with opener.open(request, timeout=min(self.timeout, 30)) as response:

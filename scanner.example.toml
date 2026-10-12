@@ -18,6 +18,7 @@ max_signature_age_days = 7
 url = ""
 # Numeric agent ID as shown by Wazuh, e.g. "001" ("1" is normalized to "001").
 agent_id = ""
+# Absolute path to the indexer's CA certificate (PEM); empty uses the system certificates.
 ca_file = ""
 # Optional: the agent's name in Wazuh if it is not this PC's host name. Results whose
 # agent name does not match are reported as partial (they may belong to another device).

@@ -3,6 +3,7 @@ import io
 import json
 import os
 import subprocess
+import ssl
 import sys
 import tempfile
 import tomllib
@@ -20,6 +21,22 @@ from pc_scanner.core import NoRedirect, Scanner, ScannerError, clamav_signatures
 def signatures(age=timedelta(hours=3)):
     built_at = None if age is None else datetime.now(timezone.utc) - age
     return {"engine": "1.5.4", "version": None if age is None else 27800, "built_at": built_at}
+
+
+# Self-signed CA certificate for tests only (no key is kept), valid until 2126.
+TEST_CA_PEM = """\
+-----BEGIN CERTIFICATE-----
+MIIBkjCCATegAwIBAgIUbPn4p5zMEWqEC8by2tbe7W02ZpIwCgYIKoZIzj0EAwIw
+HTEbMBkGA1UEAwwScGMtc2Nhbm5lciB0ZXN0IENBMCAXDTI2MTAxMjA4NTgwN1oY
+DzIxMjYwOTE4MDg1ODA3WjAdMRswGQYDVQQDDBJwYy1zY2FubmVyIHRlc3QgQ0Ew
+WTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARmfUNnU5WPfGgQAmYZ7O3Y0ralRSbW
+fHtiPxDv1+D88+vZeW3DFreUIk4gh1sAq3IW8uRhk2KvIVAhCfEqPs3No1MwUTAd
+BgNVHQ4EFgQU/XBGgFTQxeYb1mkeGxXm5tBnZDgwHwYDVR0jBBgwFoAU/XBGgFTQ
+xeYb1mkeGxXm5tBnZDgwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNJADBG
+AiEA9BR319+u/Fyre+tZ28xx9CgexhMyWeFBrXPTcfab/SICIQCBNlPLDQSj+/tH
+1iPfHl9kaixk6clG8Mv+/p/wFyynVQ==
+-----END CERTIFICATE-----
+"""
 
 
 def wait_for(condition, seconds):
@@ -794,6 +811,47 @@ class ScannerTests(unittest.TestCase):
                                 ({"unexpected": True}, "error")]:
             with self.subTest(payload=payload):
                 self.assertEqual(self.wazuh_response(payload)["status"], status)
+
+    def test_wazuh_ca_file_must_be_absolute(self):
+        with self.assertRaisesRegex(ScannerError, "ca_file must be an absolute path"):
+            Scanner({"wazuh": {"url": "https://localhost:9200", "agent_id": "001", "ca_file": "root-ca.pem"}})
+
+    def test_missing_wazuh_ca_file_is_warned_at_load(self):
+        missing = str(self.root / "missing-ca.pem")
+        warned = Scanner({"wazuh": {"url": "https://localhost:9200", "agent_id": "001", "ca_file": missing}})
+        self.assertTrue(any("ca_file" in w and "not found" in w for w in warned.config_warnings))
+        # Unused without a Wazuh URL, so not worth a warning.
+        self.assertEqual(Scanner({"wazuh": {"ca_file": missing}}).config_warnings, [])
+
+    def test_unusable_wazuh_ca_file_fails_before_connecting(self):
+        not_pem = self.root / "not-a-ca.pem"
+        not_pem.write_text("this is not a certificate")
+        for ca_file, reason in ((self.root / "missing-ca.pem", "cannot be read"), (self.root, "cannot be read"),
+                                (not_pem, "not a valid PEM CA certificate")):
+            scanner = Scanner({"wazuh": {"url": "https://localhost:9200", "agent_id": "001", "ca_file": str(ca_file)}})
+            with self.subTest(ca_file=ca_file.name), patch.dict(os.environ, {
+                    "PC_SCANNER_WAZUH_USER": "reader", "PC_SCANNER_WAZUH_PASSWORD": "secret"}), patch(
+                    "pc_scanner.core.build_opener") as build:
+                report = scanner.invoke("vulnerabilities")
+                self.assertEqual(report["status"], "error")
+                self.assertIn(reason, report["error"])
+                build.assert_not_called()
+
+    def test_valid_wazuh_ca_file_is_used(self):
+        ca_file = self.root / "root-ca.pem"
+        ca_file.write_text(TEST_CA_PEM)
+        scanner = Scanner({"wazuh": {"url": "https://localhost:9200", "agent_id": "001", "ca_file": str(ca_file)}})
+        self.assertEqual(scanner.config_warnings, [])
+        payload = {"hits": {"total": 1, "hits": [{"_source": {"agent": {"id": "001", "name": "test-pc"},
+                                                              "vulnerability": {"id": "CVE-1", "severity": "Low"}}}]}}
+        with patch.dict(os.environ, {"PC_SCANNER_WAZUH_USER": "reader", "PC_SCANNER_WAZUH_PASSWORD": "secret"}), patch(
+                "pc_scanner.core.socket.gethostname", return_value="test-pc"), patch(
+                "pc_scanner.core.ssl.create_default_context", wraps=ssl.create_default_context) as context, patch(
+                "pc_scanner.core.build_opener") as build:
+            build.return_value.open.return_value = io.BytesIO(json.dumps(payload).encode())
+            report = scanner.invoke("vulnerabilities")
+        self.assertEqual(report["status"], "completed")
+        self.assertEqual(context.call_args.kwargs["cafile"], str(ca_file))
 
     def test_redirect_rejected(self):
         with self.assertRaises(ScannerError):
