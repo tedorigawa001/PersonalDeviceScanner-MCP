@@ -12,6 +12,64 @@ from unittest.mock import patch
 from pc_scanner.core import NoRedirect, Scanner, ScannerError, is_link, run_bounded
 
 
+def as_standard_user(func):
+    """Call func with the file access a standard user would have.
+
+    GitHub's Windows runners enable SeBackupPrivilege, which bypasses ACL deny
+    entries, so on Windows func runs on this thread with a restricted token:
+    all privileges removed and Administrators deny-only. Elsewhere it is a plain call.
+    """
+    if os.name != "nt":
+        return func()
+    import ctypes
+    from ctypes import wintypes
+
+    advapi32 = ctypes.WinDLL("advapi32", use_last_error=True)
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+
+    class SID_AND_ATTRIBUTES(ctypes.Structure):
+        _fields_ = [("Sid", ctypes.c_void_p), ("Attributes", wintypes.DWORD)]
+
+    advapi32.ImpersonateSelf.argtypes = [ctypes.c_int]
+    advapi32.OpenThreadToken.argtypes = [wintypes.HANDLE, wintypes.DWORD, wintypes.BOOL,
+                                         ctypes.POINTER(wintypes.HANDLE)]
+    advapi32.ConvertStringSidToSidW.argtypes = [wintypes.LPCWSTR, ctypes.POINTER(ctypes.c_void_p)]
+    advapi32.CreateRestrictedToken.argtypes = [
+        wintypes.HANDLE, wintypes.DWORD, wintypes.DWORD, ctypes.POINTER(SID_AND_ATTRIBUTES),
+        wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD, ctypes.c_void_p, ctypes.POINTER(wintypes.HANDLE)]
+    advapi32.SetThreadToken.argtypes = [ctypes.POINTER(wintypes.HANDLE), wintypes.HANDLE]
+    kernel32.GetCurrentThread.restype = wintypes.HANDLE
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel32.LocalFree.argtypes = [ctypes.c_void_p]
+
+    def check(ok):
+        if not ok:
+            raise ctypes.WinError(ctypes.get_last_error())
+
+    security_impersonation, token_all_access, disable_max_privilege = 2, 0xF01FF, 0x1
+    check(advapi32.ImpersonateSelf(security_impersonation))
+    try:
+        own = wintypes.HANDLE()
+        check(advapi32.OpenThreadToken(kernel32.GetCurrentThread(), token_all_access, True, ctypes.byref(own)))
+        administrators = ctypes.c_void_p()
+        check(advapi32.ConvertStringSidToSidW("S-1-5-32-544", ctypes.byref(administrators)))
+        restricted = wintypes.HANDLE()
+        try:
+            deny_only = SID_AND_ATTRIBUTES(administrators, 0)
+            check(advapi32.CreateRestrictedToken(own, disable_max_privilege, 1, ctypes.byref(deny_only),
+                                                 0, None, 0, None, ctypes.byref(restricted)))
+        finally:
+            kernel32.LocalFree(administrators)
+            kernel32.CloseHandle(own)
+        try:
+            check(advapi32.SetThreadToken(None, restricted))
+            return func()
+        finally:
+            kernel32.CloseHandle(restricted)
+    finally:
+        advapi32.RevertToSelf()
+
+
 class ScannerTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -197,9 +255,9 @@ class ScannerTests(unittest.TestCase):
                        check=True, capture_output=True)
         self.addCleanup(os.rmdir, junction)
         self.deny_listing(junction, junction=True)
-        self.assertTrue(is_link(junction))
+        self.assertTrue(as_standard_user(lambda: is_link(junction)))
         with patch("pc_scanner.core.run_bounded", return_value=(0, "Scanned files: 1\n", "")):
-            report = self.scanner.invoke("malware", root_alias="test")
+            report = as_standard_user(lambda: self.scanner.invoke("malware", root_alias="test"))
         self.assertEqual(report["status"], "completed")
         self.assertEqual(report["data"]["unreadable_directories"], [])
 
@@ -247,7 +305,7 @@ class ScannerTests(unittest.TestCase):
             directory.chmod(0)
             self.addCleanup(directory.chmod, 0o755)
         try:
-            os.listdir(directory)
+            as_standard_user(lambda: os.listdir(directory))
         except PermissionError:
             return
         self.skipTest("Directory permissions are not enforced for this user")
@@ -258,7 +316,7 @@ class ScannerTests(unittest.TestCase):
         self.deny_listing(locked)
         output = f"{self.root.resolve() / 'sample.txt'}: Test.Signature FOUND\nScanned files: 1\n"
         with patch("pc_scanner.core.run_bounded", return_value=(1, output, "")) as run:
-            report = self.scanner.invoke("malware", root_alias="test")
+            report = as_standard_user(lambda: self.scanner.invoke("malware", root_alias="test"))
         run.assert_called_once()
         self.assertEqual(report["status"], "partial")
         self.assertEqual(report["findings"][0]["kind"], "malware")
