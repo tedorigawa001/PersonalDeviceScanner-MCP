@@ -1,6 +1,6 @@
 # Personal PC Scanner MCP
 
-[![CI](https://github.com/tedorigawa001/PersonalPCScannerMCP/actions/workflows/ci.yml/badge.svg)](https://github.com/tedorigawa001/PersonalPCScannerMCP/actions/workflows/ci.yml)
+[![CI](https://github.com/tedorigawa001/PersonalPCScanner-MCP/actions/workflows/ci.yml/badge.svg)](https://github.com/tedorigawa001/PersonalPCScanner-MCP/actions/workflows/ci.yml)
 
 **English** | [日本語](README.ja.md)
 
