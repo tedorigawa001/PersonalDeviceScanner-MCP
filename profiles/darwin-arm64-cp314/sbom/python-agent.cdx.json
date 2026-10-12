@@ -1564,11 +1564,16 @@
   "metadata": {
     "component": {
       "bom-ref": "pkg:pypi/personal-pc-scanner@0.1.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
       "name": "personal-pc-scanner",
       "properties": [
         {
           "name": "pc-scanner:own-license-status",
-          "value": "MIT proposed, not granted"
+          "value": "declared in pyproject.toml"
         }
       ],
       "purl": "pkg:pypi/personal-pc-scanner@0.1.0",
@@ -1594,7 +1599,7 @@
       }
     ]
   },
-  "serialNumber": "urn:uuid:b2e0331b-030a-5578-a2ef-95fd9a9ce597",
+  "serialNumber": "urn:uuid:1ed875d3-506e-57d3-a2eb-92ebec42d2fe",
   "specVersion": "1.6",
   "version": 1
 }
