@@ -1,0 +1,217 @@
+{
+  "performed_at": "2026-10-12T19:38:15.805746+09:00",
+  "environment": {
+    "os": "macOS",
+    "version": "26.7.1",
+    "architecture": "x86_64",
+    "user_mode": "standard user; installation and definition placement performed by owner with administrator authentication"
+  },
+  "engines": {
+    "osquery": "5.23.1",
+    "clamav": "1.5.4",
+    "package_verification": "Both official packages passed Apple installer signature and notarization checks outside the Codex sandbox",
+    "osquery_installation": "Official signed osquery 5.23.1 package installed by owner; /usr/local/bin/osqueryi verified; standalone shell mode only",
+    "clamav_installation": "Official signed package installed by owner; no daemon configured"
+  },
+  "osquery": {
+    "os_version": {
+      "status": "completed",
+      "rows": 1,
+      "warnings": [
+        "Inventory only; this does not confirm vulnerabilities or malware"
+      ],
+      "error": null
+    },
+    "applications": {
+      "status": "completed",
+      "rows": 429,
+      "warnings": [
+        "Inventory only; this does not confirm vulnerabilities or malware"
+      ],
+      "sandbox_result": {
+        "status": "partial",
+        "rows": 40,
+        "reason": "LaunchServices app enumeration denied in the Codex sandbox"
+      }
+    },
+    "listening_ports": {
+      "status": "completed",
+      "rows": 39,
+      "warnings": [
+        "Inventory only; this does not confirm vulnerabilities or malware",
+        "Standard-user runs may omit sockets owned by other users or the system"
+      ],
+      "error": null
+    }
+  },
+  "loopback_listener_address_port_pid_verified": true,
+  "mcp_stdio": {
+    "actual_osquery_os_version": "passed",
+    "actual_clamav_eicar_detection": "passed"
+  },
+  "clamav": {
+    "clean": {
+      "status": "completed",
+      "findings": [],
+      "warnings": [
+        "Signature-based detection only; no detection does not prove safety",
+        "Symlinks excluded; file/archive limits apply"
+      ],
+      "signatures": {
+        "engine": "1.5.4",
+        "version": 28151,
+        "built_at": "2026-10-12T06:24:02+00:00",
+        "age_days": 0.2,
+        "max_age_days": 7
+      },
+      "exit_code": 0,
+      "unreadable_directories": []
+    },
+    "infected": {
+      "status": "completed",
+      "findings": [
+        {
+          "kind": "malware",
+          "severity": "high",
+          "path": "infected/検出試験.txt",
+          "signature": "Eicar-Test-Signature"
+        }
+      ],
+      "warnings": [
+        "Signature-based detection only; no detection does not prove safety",
+        "Symlinks excluded; file/archive limits apply"
+      ],
+      "signatures": {
+        "engine": "1.5.4",
+        "version": 28151,
+        "built_at": "2026-10-12T06:24:02+00:00",
+        "age_days": 0.2,
+        "max_age_days": 7
+      },
+      "exit_code": 1,
+      "unreadable_directories": []
+    },
+    "links": {
+      "status": "completed",
+      "findings": [],
+      "warnings": [
+        "Signature-based detection only; no detection does not prove safety",
+        "Symlinks excluded; file/archive limits apply"
+      ],
+      "signatures": {
+        "engine": "1.5.4",
+        "version": 28151,
+        "built_at": "2026-10-12T06:24:02+00:00",
+        "age_days": 0.2,
+        "max_age_days": 7
+      },
+      "exit_code": 0,
+      "unreadable_directories": []
+    },
+    "depth-16": {
+      "status": "completed",
+      "findings": [
+        {
+          "kind": "malware",
+          "severity": "high",
+          "path": "depth-16/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/test.txt",
+          "signature": "Eicar-Test-Signature"
+        }
+      ],
+      "warnings": [
+        "Signature-based detection only; no detection does not prove safety",
+        "Symlinks excluded; file/archive limits apply"
+      ],
+      "signatures": {
+        "engine": "1.5.4",
+        "version": 28151,
+        "built_at": "2026-10-12T06:24:02+00:00",
+        "age_days": 0.2,
+        "max_age_days": 7
+      },
+      "exit_code": 1,
+      "unreadable_directories": []
+    },
+    "depth-17": {
+      "status": "partial",
+      "findings": [],
+      "warnings": [
+        "Signature-based detection only; no detection does not prove safety",
+        "Symlinks excluded; file/archive limits apply",
+        "Directory depth limit reached; deeper directories were not scanned",
+        "Scan coverage incomplete or engine error; do not report this PC as safe"
+      ],
+      "signatures": {
+        "engine": "1.5.4",
+        "version": 28151,
+        "built_at": "2026-10-12T06:24:02+00:00",
+        "age_days": 0.2,
+        "max_age_days": 7
+      },
+      "exit_code": 0,
+      "unreadable_directories": []
+    },
+    "large": {
+      "status": "partial",
+      "findings": [
+        {
+          "kind": "scan_limit",
+          "severity": "unknown",
+          "path": "large/over-limit.dat",
+          "signature": "Heuristics.Limits.Exceeded.MaxFileSize"
+        }
+      ],
+      "warnings": [
+        "Signature-based detection only; no detection does not prove safety",
+        "Symlinks excluded; file/archive limits apply",
+        "Scan coverage incomplete or engine error; do not report this PC as safe"
+      ],
+      "signatures": {
+        "engine": "1.5.4",
+        "version": 28151,
+        "built_at": "2026-10-12T06:24:02+00:00",
+        "age_days": 0.2,
+        "max_age_days": 7
+      },
+      "exit_code": 2,
+      "unreadable_directories": []
+    },
+    "unreadable": {
+      "status": "partial",
+      "findings": [],
+      "warnings": [
+        "Signature-based detection only; no detection does not prove safety",
+        "Symlinks excluded; file/archive limits apply",
+        "1 directories could not be read and were not scanned",
+        "Scan coverage incomplete or engine error; do not report this PC as safe"
+      ],
+      "signatures": {
+        "engine": "1.5.4",
+        "version": 28151,
+        "built_at": "2026-10-12T06:24:02+00:00",
+        "age_days": 0.2,
+        "max_age_days": 7
+      },
+      "exit_code": 2,
+      "unreadable_directories": [
+        "unreadable/locked"
+      ]
+    }
+  },
+  "fixtures_preserved": true,
+  "regression_fix": "Force osquery shell mode with -S after resolving the official osqueryi symlink",
+  "unit_tests": {
+    "total": 79,
+    "passed": 77,
+    "skipped": 2,
+    "skip_reason": "Windows-only junction tests",
+    "mcp_passed": 5
+  },
+  "limitations": [
+    "Wazuh not tested",
+    "Windows, Linux and macOS arm64 not tested",
+    "Tests use dedicated fixtures; this is not a full-device malware scan",
+    "Long-running real-client timeout/progress/cancellation acceptance remains untested"
+  ],
+  "raw_local_evidence": "/tmp/pc-scanner-mac-acceptance"
+}

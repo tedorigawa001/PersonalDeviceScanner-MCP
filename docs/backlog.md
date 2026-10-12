@@ -6,17 +6,26 @@
 ## 高
 
 - [ ] **各OSの実機で受入試験を行う**
+  - 2026-10-12: macOS 26.7.1 / x86_64 の osquery 5.23.1・ClamAV 1.5.4 を通常ユーザーで試験済み。
+    [受入試験記録](acceptance/macos-x86_64-2026-10-12.json)に結果を保存。OS・アプリ・待受ポート、日本語ファイル、
+    EICAR検出、リンク除外、深度16/17段、サイズ上限、読み取り不可、実エンジンのMCP stdio呼び出しを確認。
+    公式osqueryiのリンク解決でデーモンモードになる不具合を修正（`-S`でシェルモードを明示）。
+    続いてosquery 5.23.1を正式導入し、`/usr/local/bin/osqueryi`からの取得も確認済み。
+    Wazuh・他OSの試験は引き続き未完了。
   - 対象: Windows / macOS / Linux。公式配布の osquery・ClamAV（定義更新済み）と、読み取り専用アカウントで接続する Wazuh indexer。
-  - 現在のテストは偽のエンジン出力と偽のWazuh応答のみで、実エンジンでの動作は未確認です。
+  - ユニットテストは偽のエンジン出力と偽のWazuh応答を使用。上記macOS実機試験を除き、実エンジンでの動作は未確認です。
   - 実機でしか確認できない項目:
     - [ ] Windows: clamscan がジャンクションを辿るか（この基盤の深さ確認は除外済み。エンジン側の挙動と一致するか）
     - [ ] Windows: `Documents` などの旧ジャンクション（`My Music` 等）を含むフォルダーで、clamscan 自体がエラーを出さないこと
       （この基盤側でジャンクションを除外して `completed` になることは、CIで確認済み）
     - [ ] Windows: 渡す環境変数を絞った状態で osqueryi・clamscan が正常に動くこと
     - [ ] ClamAV: 各OSで `clamscan --version` が定義の版と作成日時を表示し、鮮度が正しく判定されること
+      （macOS x86_64 / ClamAV 1.5.4 は確認済み：ローカル時刻の作成日時を読み、経過0.3日・上限7日で判定）
     - [ ] 日本語版Windows: 日本語ファイル名が clamscan の出力で文字化けしないこと（cp932 での読み直し）
     - [ ] ClamAV: `--max-dir-recursion` の段数の数え方（検査対象を1段目とする前提）が実際と一致すること
+      （macOS x86_64 は確認済み：16段目の EICAR は検出、17段目は ClamAV も検査せず、この基盤は `partial` を返す）
     - [ ] osquery: 待受ポートのクエリ（`processes` との JOIN）が各OSで動き、一般ユーザー権限でどこまで見えるか
+      （macOS x86_64 / osquery 5.23.1 は確認済み：一般ユーザーで39件、すべてにアドレスとプロセス名あり。管理者権限との比較は未実施）
     - [ ] Wazuh: 実際のバージョンで、深刻度（`vulnerability.score.base`）・CVE（`vulnerability.id`）と、パッケージを識別する5項目
       （`package.name`・`version`・`architecture`・`type`・`path`）による並べ替えが通ること
     - [ ] Wazuh: agent_id の3桁ゼロ埋め正規化が実データと一致すること
@@ -82,8 +91,13 @@
   - Point in Time は使わない（indexer アカウントの権限追加と indexer 側の状態保持が必要なため。権限を増やさない方針に合わせた）。
     そのため取得中に Wazuh が更新されると、ページ間で記録がずれることがある。
 
-- [ ] **実際のMCPクライアントで長時間の検査を試す**
-  - Claude Desktop・Claude Code などで、10分程度の検査中に切断されないか、進捗通知でタイムアウトが延長されるかを確認する。
+- [x] **実際のMCPクライアントで長時間の検査を試す**（2026-10-12、Claude Code CLI 2.1.191）
+  - [試験記録](acceptance/macos-mcp-client-2026-10-12.json)。試験専用のネイティブ起動ラッパーで600秒待機後に実ClamAVを起動。
+    約609秒で`completed`を受信し、進捗通知を10秒間隔で60件確認。人工的な通常ファイル1件だけを検査した。
+  - 別セッションで30秒分の進捗後にCtrl+C相当のSIGINTを送り、MCPキャンセル通知と約0.56秒以内のエンジン停止を確認。
+  - 試験データのAnthropic送信は所有者が明示許可。既存のClaude Desktop MCP設定は保持し、試験用の追加は除去済み。
+  - 限界: 実データの検査自体が10分かかったわけではない。Claude DesktopのUIは未検証。
+    既定設定での接続維持を確認したが、進捗通知がタイムアウト延長の原因かどうかを分離した比較試験は未実施。
 
 - [x] **macOS以外のロックファイルとSBOMを用意する**（2026-10-12 完了。Windows の pywin32 は下の「要判断」）
   - 対応: 手動実行のワークフロー「Compliance profiles」で、各OS上で生成・検証し、`profiles/<OS>-<CPU>-cp314/` に取り込んだ。

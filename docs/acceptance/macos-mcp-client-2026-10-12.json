@@ -1,0 +1,86 @@
+{
+  "performed_at": "2026-10-12T20:00:13.024112+09:00",
+  "client": {
+    "name": "Claude Code CLI",
+    "version": "2.1.191",
+    "mode": "print / stream-json",
+    "desktop_ui_tested": false
+  },
+  "osquery": {
+    "installed_version": "5.23.1",
+    "package_receipt": "io.osquery.agent",
+    "configured_path": "/usr/local/bin/osqueryi",
+    "bridge_os_version_query": "passed"
+  },
+  "long_scan": {
+    "status": "passed",
+    "instrumentation": "Native test-only launcher waits 600 seconds then execs the installed real clamscan; --version runs real clamscan without a delay",
+    "artificial_delay_seconds": 600,
+    "mcp_call_elapsed_seconds": 609.056,
+    "tool_calls": 1,
+    "progress_token_supplied": true,
+    "progress_notifications": 60,
+    "last_progress_seconds": 600.0,
+    "mean_progress_interval_seconds": 10.003,
+    "max_progress_interval_seconds": 10.022,
+    "result": {
+      "schema_version": 1,
+      "source": "clamav",
+      "status": "completed",
+      "observed_at": "2026-10-12T10:58:46.250395+00:00",
+      "findings": [],
+      "warnings": [
+        "Signature-based detection only; no detection does not prove safety",
+        "Symlinks excluded; file/archive limits apply"
+      ],
+      "data": {
+        "root_alias": "acceptance",
+        "relative_path": ".",
+        "exit_code": 0,
+        "findings_total": 0,
+        "unreadable_directories": [],
+        "engine_report": "\n----------- SCAN SUMMARY -----------\nKnown viruses: 3628164\nEngine version: 1.5.4\nScanned directories: 1\nScanned files: 1\nInfected files: 0\nData scanned: 88 B\nData read: 44 B (ratio 2.00:1)\nTime: 8.461 sec (0 m 8 s)\nStart Date: 2026:10:12 19:58:37\nEnd Date:   2026:10:12 19:58:46",
+        "diagnostic": "",
+        "engine_text_truncated": false,
+        "signatures": {
+          "engine": "1.5.4",
+          "version": 28151,
+          "built_at": "2026-10-12T06:24:02+00:00",
+          "age_days": 0.2,
+          "max_age_days": 7
+        }
+      }
+    },
+    "client_final_text": "status: completed"
+  },
+  "cancellation": {
+    "client_exit_code": 0,
+    "progress_notifications": 3,
+    "cancel_sent_at": 1791802217.9362109,
+    "cancel_notification_seen": true,
+    "engine_pid": 28661,
+    "engine_stopped": true,
+    "engine_stop_observed_after_seconds": 0.56
+  },
+  "unit_tests": {
+    "total": 79,
+    "passed": 77,
+    "windows_only_skipped": 2,
+    "mcp_passed": 5
+  },
+  "scope": {
+    "root_alias": "acceptance",
+    "files": "One artificial harmless plain.txt file; no personal folders, application inventory or port inventory were sent to Anthropic",
+    "anthropic_transmission": "Explicitly permitted by owner for test data"
+  },
+  "cleanup": {
+    "desktop_configuration": "Temporary MCP entry removed; all original MCP entries preserved; unrelated subsequent preference changes retained",
+    "persistent_mcp_configuration_added": false
+  },
+  "limitations": [
+    "Claude Desktop UI was not restarted or tested because another session was running",
+    "Long duration was injected; actual ClamAV file processing took approximately 8.5 seconds",
+    "This verifies the default client configuration remained connected; it does not isolate whether progress notifications caused a timeout extension"
+  ],
+  "local_evidence_directory": "/tmp/pc-scanner-mac-client"
+}
