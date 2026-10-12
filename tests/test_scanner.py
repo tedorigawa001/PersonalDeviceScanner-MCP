@@ -188,6 +188,21 @@ class ScannerTests(unittest.TestCase):
             report = self.scanner.invoke("malware", root_alias="test")
         self.assertEqual(report["status"], "completed")
 
+    @unittest.skipUnless(os.name == "nt", "Legacy profile junctions exist only on Windows")
+    def test_legacy_profile_junction_does_not_block_scan(self):
+        music = self.root / "Music"
+        music.mkdir()
+        junction = self.root / "My Music"
+        subprocess.run(["cmd", "/c", "mklink", "/J", str(junction), str(music)],
+                       check=True, capture_output=True)
+        self.addCleanup(os.rmdir, junction)
+        self.deny_listing(junction, junction=True)
+        self.assertTrue(is_link(junction))
+        with patch("pc_scanner.core.run_bounded", return_value=(0, "Scanned files: 1\n", "")):
+            report = self.scanner.invoke("malware", root_alias="test")
+        self.assertEqual(report["status"], "completed")
+        self.assertEqual(report["data"]["unreadable_directories"], [])
+
     @unittest.skipUnless(os.name == "nt", "Real junctions exist only on Windows")
     def test_real_windows_junction_is_not_followed(self):
         directory = self.root.joinpath(*(["d"] * 15))
@@ -218,13 +233,29 @@ class ScannerTests(unittest.TestCase):
             report = self.scanner.invoke("malware", root_alias="test")
         self.assertEqual(report["status"], "completed")
 
+    def deny_listing(self, directory, junction=False):
+        """Deny listing as the OS would: chmod on POSIX, an ACL deny entry on Windows."""
+        if os.name == "nt":
+            # Everyone by SID so localized Windows works; (S,RD) matches the legacy
+            # profile junctions such as Documents\My Music. /L acts on a junction itself.
+            link = ["/L"] if junction else []
+            subprocess.run(["icacls", str(directory), "/deny", "*S-1-1-0:(S,RD)", *link],
+                           check=True, capture_output=True)
+            self.addCleanup(subprocess.run, ["icacls", str(directory), "/remove:d", "*S-1-1-0", *link],
+                            check=True, capture_output=True)
+        else:
+            directory.chmod(0)
+            self.addCleanup(directory.chmod, 0o755)
+        try:
+            os.listdir(directory)
+        except PermissionError:
+            return
+        self.skipTest("Directory permissions are not enforced for this user")
+
     def test_unreadable_directory_is_partial_and_keeps_findings(self):
         locked = self.root / "locked"
         locked.mkdir()
-        locked.chmod(0)
-        self.addCleanup(locked.chmod, 0o755)
-        if os.access(locked, os.R_OK):
-            self.skipTest("Directory permissions are not enforced for this user")
+        self.deny_listing(locked)
         output = f"{self.root.resolve() / 'sample.txt'}: Test.Signature FOUND\nScanned files: 1\n"
         with patch("pc_scanner.core.run_bounded", return_value=(1, output, "")) as run:
             report = self.scanner.invoke("malware", root_alias="test")

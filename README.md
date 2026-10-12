@@ -344,7 +344,8 @@ Windows (PowerShell):
   They start a real server to check connection, tool listing, and calls, and use an in-memory connection to check responsiveness during long scans, queuing, and progress notifications.
 - GitHub Actions runs the tests on Windows / macOS / Linux with Python 3.11 and 3.14 for every push to `main` and every pull request,
   installing the `agent` extra so MCP tests are never skipped. It also builds the wheel and sdist and checks that
-  the third-party notices and SBOM files are included. On Windows, a real junction is created to verify it is not followed.
+  the third-party notices and SBOM files are included. On Windows, real junctions and ACL-denied folders
+  (including a junction like `Documents\My Music`) are created to verify how scans handle them.
 - Detection accuracy with real engines and behavior on each OS are not guaranteed. Acceptance testing on real machines for each OS is required before distribution.
 
 ## Related documents and license
