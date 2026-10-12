@@ -141,12 +141,13 @@ def as_standard_user(func):
 
 
 class SlowWazuhServer:
-    """A real HTTPS server on 127.0.0.1 that answers a byte at a time, never, or in separate chunks.
+    """A real HTTPS server on 127.0.0.1 that answers a byte at a time, in separate chunks,
+    never, or with headers only.
 
     Its self-signed certificate is made at test time, so no private key is kept in the repository.
     """
 
-    def __init__(self, directory, drip_seconds=None, answer=None):
+    def __init__(self, directory, drip_seconds=None, answer=None, headers_only=False):
         from cryptography import x509
         from cryptography.hazmat.primitives import hashes, serialization
         from cryptography.hazmat.primitives.asymmetric import ec
@@ -178,10 +179,11 @@ class SlowWazuhServer:
         self.listener = socket.create_server(("127.0.0.1", 0))
         self.url = f"https://127.0.0.1:{self.listener.getsockname()[1]}"
         self.stopped = threading.Event()
-        self.thread = threading.Thread(target=self.serve, args=(context, drip_seconds, answer), daemon=True)
+        self.thread = threading.Thread(target=self.serve, args=(context, drip_seconds, answer, headers_only),
+                                       daemon=True)
         self.thread.start()
 
-    def serve(self, context, drip_seconds, answer):
+    def serve(self, context, drip_seconds, answer, headers_only):
         try:
             connection, _ = self.listener.accept()
             with context.wrap_socket(connection, server_side=True) as tls:
@@ -201,10 +203,13 @@ class SlowWazuhServer:
                         time.sleep(0.01)
                     tls.sendall(b"0\r\n\r\n")
                     return
-                if drip_seconds is None:  # never answers
+                if drip_seconds is None and not headers_only:  # never answers
                     self.stopped.wait(30)
                     return
                 tls.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 100\r\n\r\n")
+                if headers_only:  # the body never comes
+                    self.stopped.wait(30)
+                    return
                 for _ in range(100):
                     if self.stopped.wait(drip_seconds):
                         return
@@ -1141,42 +1146,57 @@ class ScannerTests(unittest.TestCase):
         self.assertEqual(report["status"], "error")
         self.assertIn("did not finish answering within 1 seconds", report["error"])
         self.assertLess(time.monotonic() - started, 5)
+        # The socket timeout must not race the deadline, or a slow answer reads as a failed connection.
+        self.assertGreater(build.return_value.open.call_args.kwargs["timeout"], 1)
 
     def wazuh_request_threads(self):
         return [thread for thread in threading.enumerate() if thread.name == "wazuh-request"]
 
     @unittest.skipUnless(importlib.util.find_spec("cryptography"), "cryptography not installed")
-    def test_trickling_wazuh_server_stops_at_the_deadline(self):
-        # Each byte restarts the socket timeout, and a blocking read waits for a full block,
-        # so only the overall deadline can stop this answer (5 seconds in all) after 1 second.
-        with SlowWazuhServer(self.root, drip_seconds=0.05) as server:
-            scanner = Scanner({"local": {"timeout_seconds": 1},
-                               "wazuh": {"url": server.url, "agent_id": "001", "ca_file": str(server.ca_file)}})
-            started = time.monotonic()
-            with patch.dict(os.environ, {"PC_SCANNER_WAZUH_USER": "reader", "PC_SCANNER_WAZUH_PASSWORD": "secret"}):
-                report = scanner.invoke("vulnerabilities")
-            elapsed = time.monotonic() - started
-            self.assertTrue(wait_for(lambda: not self.wazuh_request_threads(), 3), "the cut-off request must end")
-        self.assertEqual(report["status"], "error")
-        self.assertIn("did not finish answering within 1 seconds", report["error"])
-        self.assertLess(elapsed, 1.6)
+    def test_slow_real_wazuh_server_stops_at_the_deadline(self):
+        # Trickling: each byte restarts the socket timeout, and a blocking read waits for a full
+        # block, so only the overall deadline can stop this answer (5 seconds in all) after 1 second.
+        # Stalled body: the deadline, not a socket timeout racing it, decides what is reported.
+        for slow in ("trickling", "stalled body"):
+            with self.subTest(slow=slow), SlowWazuhServer(self.root, drip_seconds=0.05,
+                                                          headers_only=slow == "stalled body") as server:
+                scanner = Scanner({"local": {"timeout_seconds": 1},
+                                   "wazuh": {"url": server.url, "agent_id": "001", "ca_file": str(server.ca_file)}})
+                started = time.monotonic()
+                with patch.dict(os.environ, {"PC_SCANNER_WAZUH_USER": "reader",
+                                             "PC_SCANNER_WAZUH_PASSWORD": "secret"}):
+                    report = scanner.invoke("vulnerabilities")
+                elapsed = time.monotonic() - started
+                self.assertEqual(report["status"], "error")
+                self.assertIn("did not finish answering within 1 seconds", report["error"])
+                self.assertLess(elapsed, 1.6)
+                # Windows does not wake a cut-off read; it ends at the socket timeout (budget + 1).
+                self.assertTrue(wait_for(lambda: not self.wazuh_request_threads(), 4 if os.name == "nt" else 0.5),
+                                "the cut-off request must end")
 
     @unittest.skipUnless(importlib.util.find_spec("cryptography"), "cryptography not installed")
     def test_cancel_reaches_a_waiting_wazuh_request(self):
-        with SlowWazuhServer(self.root, drip_seconds=None) as server:
-            scanner = Scanner({"local": {"timeout_seconds": 20},
-                               "wazuh": {"url": server.url, "agent_id": "001", "ca_file": str(server.ca_file)}})
-            cancel = threading.Event()
-            timer = threading.Timer(0.3, cancel.set)
-            started = time.monotonic()
-            timer.start()
-            with patch.dict(os.environ, {"PC_SCANNER_WAZUH_USER": "reader", "PC_SCANNER_WAZUH_PASSWORD": "secret"}):
-                report = scanner.invoke("vulnerabilities", cancel=cancel)
-            elapsed = time.monotonic() - started
-            self.assertTrue(wait_for(lambda: not self.wazuh_request_threads(), 3), "the cut-off request must end")
-        self.assertEqual(report["status"], "error")
-        self.assertIn("cancelled", report["error"])
-        self.assertLess(elapsed, 1.3)
+        # urllib lets go of the connection's socket once the headers are in, so a body that
+        # stalls must be cut off through the socket the response is still reading from.
+        for stall in ("before the headers", "in the body"):
+            with self.subTest(stall=stall), SlowWazuhServer(self.root, headers_only=stall == "in the body") as server:
+                scanner = Scanner({"local": {"timeout_seconds": 3},
+                                   "wazuh": {"url": server.url, "agent_id": "001", "ca_file": str(server.ca_file)}})
+                cancel = threading.Event()
+                timer = threading.Timer(0.3, cancel.set)
+                started = time.monotonic()
+                timer.start()
+                with patch.dict(os.environ, {"PC_SCANNER_WAZUH_USER": "reader",
+                                             "PC_SCANNER_WAZUH_PASSWORD": "secret"}):
+                    report = scanner.invoke("vulnerabilities", cancel=cancel)
+                elapsed = time.monotonic() - started
+                self.assertEqual(report["status"], "error")
+                self.assertIn("cancelled", report["error"])
+                self.assertLess(elapsed, 1.3)
+                # Cutting the connection off wakes the waiting read, except on Windows, where the
+                # request ends at its socket timeout (budget + 1 = 4 seconds) instead.
+                self.assertTrue(wait_for(lambda: not self.wazuh_request_threads(), 6 if os.name == "nt" else 1),
+                                "the cut-off request must end")
 
     @unittest.skipUnless(importlib.util.find_spec("cryptography"), "cryptography not installed")
     def test_real_wazuh_answer_in_chunks_is_read_whole(self):

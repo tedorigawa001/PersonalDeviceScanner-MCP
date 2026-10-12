@@ -238,28 +238,41 @@ class NoRedirect(HTTPRedirectHandler):
         raise ScannerError("Wazuh redirect rejected; configure the final HTTPS origin")
 
 
+class TrackedHTTPSConnection(http.client.HTTPSConnection):
+    def __init__(self, *args, sockets: list[socket.socket], **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sockets = sockets
+
+    def connect(self) -> None:
+        super().connect()
+        self.sockets.append(self.sock)
+
+
 class TrackedHTTPSHandler(HTTPSHandler):
-    """Keeps the connections it opens, so a request that was given up on can be cut off."""
+    """Keeps the sockets it opens, so a request that was given up on can be cut off.
+
+    The socket itself is kept: once the headers are in, urllib drops the connection's
+    reference to it, while the response goes on reading the body from it.
+    """
 
     def __init__(self, context: ssl.SSLContext):
         super().__init__(context=context)
         self.context = context
-        self.connections: list[http.client.HTTPSConnection] = []
+        self.sockets: list[socket.socket] = []
 
     def https_open(self, req):
-        def connection(host, **kwargs):
-            self.connections.append(http.client.HTTPSConnection(host, **kwargs))
-            return self.connections[-1]
-        return self.do_open(connection, req, context=self.context)
+        return self.do_open(TrackedHTTPSConnection, req, context=self.context, sockets=self.sockets)
 
     def cut_off(self) -> None:
-        for connection in self.connections:
+        for sock in self.sockets:
             try:
                 # The plain socket call: wakes a read blocked in another thread without
-                # touching the TLS state that thread is using.
-                socket.socket.shutdown(connection.sock, socket.SHUT_RDWR)
-            except (OSError, TypeError):
-                pass  # not connected yet, already closed, or still in the TLS handshake
+                # touching the TLS state that thread is using. Windows does not wake it, so
+                # there the abandoned request ends when data arrives or at its socket timeout;
+                # closing the handle under it instead could let it read a reused handle.
+                socket.socket.shutdown(sock, socket.SHUT_RDWR)
+            except OSError:
+                pass  # already closed
 
 
 def fetch_bounded(opener, handler: TrackedHTTPSHandler, request: Request, budget: int, limit: int,
@@ -275,7 +288,9 @@ def fetch_bounded(opener, handler: TrackedHTTPSHandler, request: Request, budget
 
     def fetch() -> None:
         try:
-            with opener.open(request, timeout=budget) as response:
+            # A little longer than the budget, so the deadline below decides when to give up and
+            # what to report; the socket timeout only ends a cut-off request Windows does not wake.
+            with opener.open(request, timeout=budget + 1) as response:
                 raw = bytearray()
                 # read1 returns what has arrived instead of waiting for a full block.
                 while not abandoned.is_set() and (chunk := response.read1(65536)):
