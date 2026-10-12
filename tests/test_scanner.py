@@ -690,6 +690,8 @@ class ScannerTests(unittest.TestCase):
         for cursor in ("not a cursor!", encode({"a": 1}), encode([9.8, "CVE-1"]),
                        encode([True, "a", "b", "c", "d", "e", "f"]), encode([9.8, "a", "b", "c", "d", "e", ["f"]]),
                        encode([float("nan"), "a", "b", "c", "d", "e", "f"]),
+                       encode([10 ** 400, "a", "b", "c", "d", "e", "f"]),  # too large for a float
+                       encode([11, "a", "b", "c", "d", "e", "f"]), encode([-2, "a", "b", "c", "d", "e", "f"]),
                        encode([9.8] + ["x" * 2000] * 6), "A" * 5000, 7):
             with self.subTest(cursor=str(cursor)[:40]), patch.dict(os.environ, {
                     "PC_SCANNER_WAZUH_USER": "reader", "PC_SCANNER_WAZUH_PASSWORD": "secret"}), patch(
@@ -755,6 +757,17 @@ class ScannerTests(unittest.TestCase):
     def test_redirect_rejected(self):
         with self.assertRaises(ScannerError):
             NoRedirect().redirect_request(None, None, 302, "redirect", {}, "https://other")
+
+    def test_cli_rejects_huge_cursor_as_json_error(self):
+        config = self.root / "config.toml"
+        config.write_text('[wazuh]\nurl = "https://127.0.0.1:9"\nagent_id = "001"\n')
+        cursor = base64.urlsafe_b64encode(json.dumps([10 ** 400, "a", "b", "c", "d", "e", "f"]).encode()).decode()
+        run = subprocess.run([sys.executable, "-m", "pc_scanner.cli", "--config", str(config),
+                              "vulnerabilities", "--cursor", cursor], capture_output=True, text=True,
+                             env={**os.environ, "PC_SCANNER_WAZUH_USER": "r", "PC_SCANNER_WAZUH_PASSWORD": "p"})
+        self.assertEqual(run.returncode, 2, run.stderr)
+        self.assertEqual(json.loads(run.stdout)["status"], "error")
+        self.assertNotIn("Traceback", run.stderr)
 
     def test_cli_json_and_failure_exit(self):
         config = self.root / "config.toml"

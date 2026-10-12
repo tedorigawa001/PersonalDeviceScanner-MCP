@@ -118,7 +118,9 @@ def decode_cursor(cursor) -> list | None:
     except ValueError:
         raise ScannerError("Invalid cursor; pass data.next_cursor unchanged") from None
     if not (isinstance(values, list) and len(values) == len(WAZUH_SORT)
-            and type(values[0]) in (int, float) and math.isfinite(values[0])
+            # CVSS base scores are 0..10 and -1 marks a missing score. Comparing, unlike
+            # float conversion, cannot overflow on huge integers, and it rejects NaN and infinity.
+            and type(values[0]) in (int, float) and -1 <= values[0] <= 10
             and all(isinstance(v, str) and len(v) <= 1024 for v in values[1:])):
         raise ScannerError("Invalid cursor; pass data.next_cursor unchanged")
     return values
