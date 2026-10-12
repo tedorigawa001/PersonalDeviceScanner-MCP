@@ -1473,6 +1473,7 @@
     },
     {
       "dependsOn": [
+        "pkg:pypi/anyio@4.15.1",
         "pkg:pypi/mcp@1.30.0"
       ],
       "ref": "pkg:pypi/personal-pc-scanner@0.1.0"
@@ -1593,7 +1594,7 @@
       }
     ]
   },
-  "serialNumber": "urn:uuid:1cc0be72-05ea-590b-b066-a1c2e629efdf",
+  "serialNumber": "urn:uuid:b2e0331b-030a-5578-a2ef-95fd9a9ce597",
   "specVersion": "1.6",
   "version": 1
 }
