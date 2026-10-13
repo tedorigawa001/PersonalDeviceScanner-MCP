@@ -1,0 +1,42 @@
+{
+  "performed_at": "2026-10-14T00:02:53.167551+09:00",
+  "provider": "iCloud",
+  "real_provider_placeholder": true,
+  "placeholder_type": "SF_DATALESS",
+  "target": "<private iCloud placeholder; name withheld>",
+  "metadata_before": {
+    "flags": 1073741920,
+    "dataless": true,
+    "allocated_blocks": 0,
+    "size": 2279307,
+    "mtime_ns": 1752313755000000000,
+    "inode": 11709252
+  },
+  "metadata_after": {
+    "flags": 1073741920,
+    "dataless": true,
+    "allocated_blocks": 0,
+    "size": 2279307,
+    "mtime_ns": 1752313755000000000,
+    "inode": 11709252
+  },
+  "metadata_unchanged": true,
+  "status": "partial",
+  "scan_started": false,
+  "cloud_excluded_count": 1,
+  "engine_calls": 0,
+  "warnings": [
+    "1 cloud placeholder files or directories were excluded to avoid downloading their contents; scan coverage is incomplete"
+  ],
+  "file_contents_opened": false,
+  "scope": "One existing unmaterialized file, direct-target exclusion; no changes to sync settings",
+  "onedrive": {
+    "status": "not_tested",
+    "reason": "No registered OneDrive provider, legacy root or installed OneDrive app found"
+  },
+  "delayed_metadata_recheck": {
+    "dataless": true,
+    "allocated_blocks": 0,
+    "unchanged": true
+  }
+}

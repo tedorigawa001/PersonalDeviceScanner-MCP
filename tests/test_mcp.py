@@ -46,6 +46,30 @@ class CancellableScanner:
 
 @unittest.skipUnless(importlib.util.find_spec("mcp"), "agent extra not installed")
 class MCPTests(unittest.TestCase):
+    def test_cloud_placeholder_is_partial_over_mcp(self):
+        from unittest.mock import patch
+        from mcp.shared.memory import create_connected_server_and_client_session
+        from pc_scanner.core import Scanner
+        from pc_scanner.server import create_server
+
+        async def exercise(root):
+            # A configured engine (never started here): an unconfigured one is a configuration error.
+            scanner = Scanner({"local": {"clamav_binary": sys.executable}, "scan_roots": {"test": str(root)}})
+            async with create_connected_server_and_client_session(create_server(scanner)) as session:
+                reply = await session.call_tool("scan_malware", {"root_alias": "test", "relative_path": "remote.txt"})
+                self.assertFalse(reply.isError)
+                report = json.loads(reply.content[0].text)
+                self.assertEqual(report["status"], "partial")
+                self.assertFalse(report["data"]["scan_started"])
+                self.assertEqual(report["data"]["cloud_excluded_paths"], ["remote.txt"])
+                self.assertTrue(any("cloud placeholder" in warning for warning in report["warnings"]))
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "remote.txt").write_text("test")
+            with patch("pc_scanner.core.cloud_placeholder", return_value=True):
+                asyncio.run(exercise(root))
+
     def test_stdio_round_trip(self):
         from mcp import ClientSession, StdioServerParameters
         from mcp.client.stdio import stdio_client

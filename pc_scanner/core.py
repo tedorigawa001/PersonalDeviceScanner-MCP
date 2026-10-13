@@ -50,6 +50,34 @@ NAME_CHARS, PATH_CHARS = 256, 1024
 SORT_VALUE_CHARS, CURSOR_CHARS = 4096, 65536
 SOURCES = {"status": "bridge", "inventory": "osquery", "malware": "clamav", "vulnerabilities": "wazuh"}
 
+# Metadata only: opening placeholder contents can download them from the provider.
+SF_DATALESS = 0x40000000
+WINDOWS_RECALL_ATTRIBUTES = 0x1000 | 0x40000 | 0x400000
+MAX_EXCLUSION_CHARS = 8000  # keep the engine command bounded, including on Windows
+# clamscan matches an exclusion against the first 512 bytes (UTF-8) of a path (match_regex in
+# ClamAV's common/misc.c), so a longer path would be read, and downloaded, despite its exclusion.
+CLAMAV_MATCH_BYTES = 512
+
+
+def cloud_placeholder(path: Path) -> bool:
+    try:
+        info = os.lstat(path)
+    except OSError:
+        # Removed since the folder was listed, or its metadata cannot be read: ClamAV cannot open
+        # it either, and reports what it could not scan.
+        return False
+    return (bool(getattr(info, "st_flags", 0) & SF_DATALESS)
+            or bool(getattr(info, "st_file_attributes", 0) & WINDOWS_RECALL_ATTRIBUTES)
+            # Legacy iCloud stores an unmaterialized file as .<name>.icloud.
+            or (platform.system() == "Darwin" and path.name.startswith(".")
+                and path.name.endswith(".icloud")))
+
+
+def exclusion_pattern(path: str, directory: bool) -> str:
+    """Literal path in ClamAV's POSIX extended regex, not a user-supplied regex."""
+    escaped = re.sub(r'([\\.\[\]{}()*+?^$|])', r'\\\1', path)
+    return "^" + escaped + (r"($|[/\\])" if directory else "$")
+
 
 def is_link(path: Path) -> bool:
     """Symlink or Windows junction; scans never follow either."""
@@ -82,7 +110,8 @@ def check_cancel(cancel: threading.Event | None) -> None:
 
 
 def inspect_directories(target: Path, deadline: float,
-                        cancel: threading.Event | None = None) -> tuple[bool, list[str], list[str]]:
+                        cancel: threading.Event | None = None,
+                        cloud_excluded: list[tuple[str, bool]] | None = None) -> tuple[bool, list[str], list[str]]:
     """Find directories ClamAV silently skips or cannot read, and names with line breaks,
     without following links.
 
@@ -92,6 +121,9 @@ def inspect_directories(target: Path, deadline: float,
     detection read as if it named another file.
     """
     line_breaks = [str(target)] if "\n" in str(target) or "\r" in str(target) else []
+    if cloud_excluded is not None and cloud_placeholder(target):
+        cloud_excluded.append((str(target), target.is_dir()))
+        return False, [], line_breaks
     if not target.is_dir():
         return False, [], line_breaks
     limit_reached, unreadable = False, []
@@ -106,6 +138,20 @@ def inspect_directories(target: Path, deadline: float,
         line_breaks += [str(Path(directory) / name) for name in children + files if "\n" in name or "\r" in name]
         # os.walk only skips symlinks, so junctions must be pruned here.
         children[:] = [name for name in children if not is_link(Path(directory) / name)]
+        if cloud_excluded is not None:
+            retained = []
+            for name in children:
+                check_cancel(cancel)
+                if cloud_placeholder(Path(directory) / name):
+                    cloud_excluded.append((str(Path(directory) / name), True))
+                else:
+                    retained.append(name)
+            children[:] = retained
+            for name in files:
+                check_cancel(cancel)
+                entry = Path(directory) / name
+                if not is_link(entry) and cloud_placeholder(entry):
+                    cloud_excluded.append((str(entry), False))
         level = len(Path(directory).relative_to(target).parts) + 1
         if level >= MAX_DIRECTORY_LEVELS:
             limit_reached = limit_reached or bool(children)
@@ -732,9 +778,38 @@ class Scanner:
         def mask(text: str) -> str:
             return text.replace(str(root), f"<{root_alias}>")
 
+        # A missing engine is a configuration error, reported before any folder is walked.
+        binary = self.binary("clamav_binary")
         # Signature check, coverage check and engine share one time budget.
         deadline = time.monotonic() + self.timeout
-        binary = self.binary("clamav_binary")
+        check_cancel(cancel)
+        cloud_excluded: list[tuple[str, bool]] = []
+        directory_limit, unreadable, line_breaks = inspect_directories(target, deadline, cancel, cloud_excluded)
+        exclusions = [("--exclude-dir=" if directory else "--exclude=") + exclusion_pattern(path, directory)
+                      for path, directory in cloud_excluded]
+        unsafe_exclusions = False
+        try:
+            exclusions = [engine_argument(option) for option in exclusions]
+        except ScannerError:
+            unsafe_exclusions = True
+        cloud_paths = [shown(path) for path, _ in cloud_excluded[:REPORTED_DIRECTORIES]]
+        cloud_warnings = ([f"{len(cloud_excluded)} cloud placeholder files or directories were excluded to avoid "
+                           "downloading their contents; scan coverage is incomplete"] if cloud_excluded else [])
+        target_excluded = any(path == str(target) for path, _ in cloud_excluded)
+        exclusion_overflow = sum(len(option) for option in exclusions) > MAX_EXCLUSION_CHARS
+        too_long = sum(len(os.fsencode(path)) > CLAMAV_MATCH_BYTES for path, _ in cloud_excluded)
+        if target_excluded or exclusion_overflow or unsafe_exclusions or too_long:
+            return result("clamav", "partial", data={
+                "root_alias": root_alias, "relative_path": clean_text(relative_path, PATH_CHARS),
+                "exit_code": None, "scan_started": False,
+                "cloud_excluded_count": len(cloud_excluded), "cloud_excluded_paths": cloud_paths},
+                warnings=cloud_warnings + (["Cloud exclusions cannot be passed safely to the engine; no scan was started. "
+                                            "Select a smaller local folder"] if unsafe_exclusions else [])
+                + (["Cloud exclusions exceed the command-size limit; no scan was started. "
+                                            "Select a smaller local folder"] if exclusion_overflow else [])
+                + ([f"{too_long} cloud placeholders have paths longer than ClamAV can match for exclusion "
+                    f"({CLAMAV_MATCH_BYTES} bytes); no scan was started, so they are not downloaded. "
+                    "Shorten the folder names or scan a folder without them"] if too_long else []))
         signatures = clamav_signatures(binary, deadline, self.limit, cancel=cancel)
         age_seconds = age_days = None
         if signatures["built_at"]:
@@ -748,7 +823,6 @@ class Scanner:
             [f"Signatures are {age_days} days old (limit {self.max_signature_age} days); update them with freshclam"]
             if age_seconds > self.max_signature_age * 86400 else [])
         target_argument = engine_argument(str(target))
-        directory_limit, unreadable, line_breaks = inspect_directories(target, deadline, cancel)
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise ScannerError("Directory coverage check used the time budget; scan was not completed")
@@ -758,7 +832,7 @@ class Scanner:
             f"--max-dir-recursion={MAX_DIRECTORY_LEVELS}",
             "--max-filesize=100M", "--max-scansize=200M", "--max-recursion=16",
             # The target stays last, so a mis-parsed quote cannot place options after it.
-            "--alert-exceeds-max=yes", target_argument], remaining, self.limit, cancel=cancel)
+            "--alert-exceeds-max=yes", *exclusions, target_argument], remaining, self.limit, cancel=cancel)
         findings, messages = [], []
         for line in output.splitlines():
             match = FOUND.fullmatch(line)
@@ -784,7 +858,7 @@ class Scanner:
         detections = sum(f["kind"] == "malware" for f in findings)
         unattributed = sum(f["path"] is None for f in findings)
         miscounted = infected != detections
-        partial = (directory_limit or bool(unreadable) or findings_capped or bool(signature_warnings)
+        partial = (bool(cloud_excluded) or directory_limit or bool(unreadable) or findings_capped or bool(signature_warnings)
                    or bool(line_breaks) or bool(unattributed) or miscounted or errors > 0
                    or code not in (0, 1) or bool(diagnostic.strip()) or "ERROR" in output
                    or not scanned
@@ -795,6 +869,7 @@ class Scanner:
                             "exit_code": code, "findings_total": len(findings),
                             "engine_counts": {"scanned": scanned, "infected": infected, "errors": errors},
                             "unreadable_directories": [shown(p) for p in unreadable[:REPORTED_DIRECTORIES]],
+                            "cloud_excluded_count": len(cloud_excluded), "cloud_excluded_paths": cloud_paths,
                             "line_break_names": [shown(p) for p in line_breaks[:REPORTED_DIRECTORIES]],
                             "engine_report": engine_report, "diagnostic": engine_diagnostic,
                             "engine_text_truncated": report_truncated or diagnostic_truncated,
@@ -804,6 +879,7 @@ class Scanner:
                       warnings=["Signature-based detection only; no detection does not prove safety",
                                 "Symlinks excluded; file/archive limits apply"]
                       + signature_warnings
+                      + cloud_warnings
                       + (["Directory depth limit reached; deeper directories were not scanned"] if directory_limit else [])
                       + ([f"{len(unreadable)} directories could not be read and were not scanned"] if unreadable else [])
                       + ([f"The engine reported {errors} errors; some files were not scanned"] if errors else [])

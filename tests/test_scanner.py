@@ -344,6 +344,158 @@ class ScannerTests(unittest.TestCase):
     def test_unknown_scan_alias_rejected(self):
         self.assertEqual(self.scanner.invoke("malware", root_alias="other")["status"], "error")
 
+    def placeholder_metadata(self, entries):
+        original = os.lstat
+        def metadata(path, *args, **kwargs):
+            info = original(path, *args, **kwargs)
+            if Path(path).name not in entries:
+                return info
+            flags, attributes = entries[Path(path).name]
+            return SimpleNamespace(st_mode=info.st_mode, st_flags=flags,
+                                   st_file_attributes=attributes, st_reparse_tag=0)
+        return patch("pc_scanner.core.os.lstat", side_effect=metadata)
+
+    def test_cloud_placeholders_are_excluded_and_partial(self):
+        for attributes, flags in ((0, 0x40000000), (0x1000, 0), (0x40000, 0), (0x400000, 0)):
+            cloud = self.root / "cloud[1]+.txt"
+            cloud.write_text("This content must not be read by the scanner")
+            with self.subTest(attributes=attributes, flags=flags), self.placeholder_metadata(
+                    {cloud.name: (flags, attributes)}), patch(
+                    "pc_scanner.core.run_bounded", return_value=(0, "Scanned files: 1\nInfected files: 0\n", "")) as run:
+                report = self.scanner.invoke("malware", root_alias="test")
+                self.assertEqual(report["status"], "partial")
+                self.assertEqual(report["data"]["cloud_excluded_count"], 1)
+                self.assertEqual(report["data"]["cloud_excluded_paths"], [cloud.name])
+                self.assertTrue(any("cloud placeholder" in w for w in report["warnings"]))
+                pattern = next(arg.split("=", 1)[1] for arg in run.call_args.args[0] if arg.startswith("--exclude="))
+                self.assertIsNotNone(re.fullmatch(pattern, str(cloud.resolve())))
+                self.assertIsNone(re.fullmatch(pattern, str(self.root / "cloud11.txt")))
+
+    def test_direct_placeholder_target_does_not_start_scan(self):
+        for target in (self.root / "sample.txt", self.root):
+            with self.subTest(target=target.name), self.placeholder_metadata(
+                    {target.name: (0x40000000, 0)}), patch("pc_scanner.core.run_bounded") as run:
+                relative = str(target.relative_to(self.root))
+                report = self.scanner.invoke("malware", root_alias="test", relative_path=relative)
+                self.assertEqual(report["status"], "partial")
+                self.assertFalse(report["data"]["scan_started"])
+                run.assert_not_called()
+
+    def test_placeholder_directories_are_pruned_before_listing(self):
+        cloud = self.root / "remote-directory"
+        cloud.mkdir()
+        (cloud / "not-local.txt").write_text("test")
+        original = os.scandir
+        visited = []
+        def scandir(path):
+            visited.append(Path(path))
+            self.assertNotEqual(Path(path), cloud.resolve(), "placeholder directory was enumerated")
+            return original(path)
+        with self.placeholder_metadata({cloud.name: (0x40000000, 0)}), patch(
+                "pc_scanner.core.os.scandir", side_effect=scandir), patch(
+                "pc_scanner.core.run_bounded", return_value=(0, "Scanned files: 1\nInfected files: 0\n", "")) as run:
+            report = self.scanner.invoke("malware", root_alias="test")
+        self.assertEqual(report["status"], "partial")
+        self.assertEqual(report["data"]["cloud_excluded_paths"], [cloud.name])
+        self.assertTrue(any(arg.startswith("--exclude-dir=") for arg in run.call_args.args[0]))
+
+    def test_downloaded_cloud_files_remain_scannable(self):
+        with self.placeholder_metadata({"sample.txt": (0, 0x20)}), patch(
+                "pc_scanner.core.run_bounded", return_value=(0, "Scanned files: 1\nInfected files: 0\n", "")) as run:
+            report = self.scanner.invoke("malware", root_alias="test")
+        self.assertEqual(report["status"], "completed")
+        self.assertEqual(report["data"]["cloud_excluded_count"], 0)
+        self.assertFalse(any(arg.startswith("--exclude") for arg in run.call_args.args[0]))
+
+    def test_legacy_icloud_placeholder_is_excluded(self):
+        (self.root / ".notes.txt.icloud").write_text("legacy placeholder metadata")
+        with patch("pc_scanner.core.platform.system", return_value="Darwin"), patch(
+                "pc_scanner.core.run_bounded", return_value=(0, "Scanned files: 1\nInfected files: 0\n", "")):
+            report = self.scanner.invoke("malware", root_alias="test")
+        self.assertEqual(report["status"], "partial")
+        self.assertEqual(report["data"]["cloud_excluded_paths"], [".notes.txt.icloud"])
+
+    def test_cloud_exclusions_preserve_malware_findings(self):
+        cloud = self.root / "remote.txt"
+        cloud.write_text("test")
+        output = f"{self.root.resolve() / 'sample.txt'}: Test.Signature FOUND\nScanned files: 1\nInfected files: 1\n"
+        with self.placeholder_metadata({cloud.name: (0x40000000, 0)}), patch(
+                "pc_scanner.core.run_bounded", return_value=(1, output, "")):
+            report = self.scanner.invoke("malware", root_alias="test")
+        self.assertEqual(report["status"], "partial")
+        self.assertEqual(report["findings"][0]["path"], "sample.txt")
+
+    def test_cloud_detection_never_opens_placeholder_contents(self):
+        cloud = self.root / "remote.txt"
+        cloud.write_text("test")
+        with self.placeholder_metadata({cloud.name: (0x40000000, 0)}), patch(
+                "builtins.open", side_effect=AssertionError("placeholder contents must not be opened")), patch(
+                "pc_scanner.core.run_bounded", return_value=(0, "Scanned files: 1\nInfected files: 0\n", "")):
+            report = self.scanner.invoke("malware", root_alias="test")
+        self.assertEqual(report["status"], "partial")
+
+    def test_placeholder_paths_clamav_cannot_match_stop_the_scan(self):
+        # ClamAV matches an exclusion against the first 512 bytes (UTF-8) of a path, so a placeholder
+        # with a longer path would be read, and downloaded, despite its exclusion.
+        folder = self.root.joinpath(*["長い名前のフォルダー" * 8] * 2)
+        folder.mkdir(parents=True)
+        file = folder / "クラウド上の資料.txt"
+        file.write_text("This content must not be read by the scanner")
+        directory = folder / "クラウド上のフォルダー"
+        directory.mkdir()
+        for cloud in (file, directory):
+            length = len(os.fsencode(cloud.resolve()))
+            self.assertGreater(length, 512)
+            with self.subTest(cloud=cloud.name), self.placeholder_metadata({cloud.name: (0x40000000, 0)}), patch(
+                    "pc_scanner.core.run_bounded") as run:
+                report = self.scanner.invoke("malware", root_alias="test")
+                self.assertEqual(report["status"], "partial")
+                self.assertFalse(report["data"]["scan_started"])
+                self.assertTrue(any("512 bytes" in warning for warning in report["warnings"]), report["warnings"])
+                run.assert_not_called()
+            # The limit is in bytes, and a path of exactly the limit can still be matched.
+            for limit, started in ((length, True), (length - 1, False)):
+                with self.subTest(cloud=cloud.name, limit=limit), self.placeholder_metadata(
+                        {cloud.name: (0x40000000, 0)}), patch("pc_scanner.core.CLAMAV_MATCH_BYTES", limit), patch(
+                        "pc_scanner.core.run_bounded", return_value=(0, CLEAN_SCAN, "")) as run:
+                    self.scanner.invoke("malware", root_alias="test")
+                    self.assertEqual(run.called, started)
+
+    def test_file_removed_during_the_folder_check_does_not_fail_the_scan(self):
+        # Downloads and temporary files come and go; such a file is simply not scanned.
+        gone = self.root / "partial-download.tmp"
+        gone.write_text("x")
+        original = os.lstat
+        for error in (FileNotFoundError(2, "No such file or directory"), PermissionError(13, "Permission denied")):
+            def lstat(path, *args, **kwargs):
+                if Path(path).name == gone.name:
+                    raise error
+                return original(path, *args, **kwargs)
+            with self.subTest(error=type(error).__name__), patch("pc_scanner.core.os.lstat", side_effect=lstat), patch(
+                    "pc_scanner.core.run_bounded", return_value=(0, CLEAN_SCAN, "")) as run:
+                report = self.scanner.invoke("malware", root_alias="test")
+                self.assertEqual(report["status"], "completed", report.get("error"))
+                run.assert_called_once()
+
+    def test_missing_clamav_is_reported_before_checking_folders(self):
+        scanner = Scanner({"local": {"clamav_binary": ""}, "scan_roots": {"test": str(self.root)}})
+        with patch("pc_scanner.core.inspect_directories") as walk:
+            report = scanner.invoke("malware", root_alias="test")
+        self.assertEqual(report["status"], "error")
+        self.assertIn("clamav_binary is not configured", report["error"])
+        walk.assert_not_called()
+
+    def test_exclusion_overflow_does_not_scan_placeholders(self):
+        cloud = self.root / "remote.txt"
+        cloud.write_text("test")
+        with self.placeholder_metadata({cloud.name: (0x40000000, 0)}), patch(
+                "pc_scanner.core.MAX_EXCLUSION_CHARS", 1), patch("pc_scanner.core.run_bounded") as run:
+            report = self.scanner.invoke("malware", root_alias="test")
+        self.assertEqual(report["status"], "partial")
+        self.assertFalse(report["data"]["scan_started"])
+        self.assertTrue(any("command-size" in warning for warning in report["warnings"]))
+        run.assert_not_called()
+
     def test_clamav_exit_codes_and_limits(self):
         found = f"{self.root.resolve() / 'sample.txt'}: Test.Signature FOUND\n"
         cases = [(0, CLEAN_SCAN, "", "completed", 0),

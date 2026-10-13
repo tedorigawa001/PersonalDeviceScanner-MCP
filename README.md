@@ -330,6 +330,12 @@ Inventory and Wazuh results come in pages of 500. A single page, and any page af
 - If some folders exceed the depth limit, findings already made are kept and the result is `partial`.
 - Symbolic links are not followed. Windows junctions are excluded from the folder depth check,
   but whether clamscan itself follows junctions must be verified on each environment.
+- Unmaterialized iCloud/OneDrive files and directories are identified from macOS dataless flags or Windows offline/recall attributes and excluded without opening their contents.
+  Exclusions produce `partial` and a warning, with `data.cloud_excluded_count` and `data.cloud_excluded_paths` (up to 20 entries).
+  Downloaded files remain eligible. If exclusion arguments are too large or cannot be passed safely, no scan starts and the result is `partial`.
+  ClamAV compares exclusions with only the first 512 bytes (UTF-8) of a path, so a placeholder with a longer path
+  also stops the scan before it starts (`partial`), rather than letting ClamAV read and download it.
+  Detection reflects metadata at preflight time; concurrent sync-state changes and providers that do not expose these attributes are outside this guarantee.
 - Unreadable folders do not stop the scan. They are listed in `data.unreadable_directories` (up to 20) and the result is `partial`.
 - Detections are checked against ClamAV's own summary. If its count of infected files or of errors does not match
   what was read, or a detection does not name an existing file inside the authorized folder, the result is `partial`
