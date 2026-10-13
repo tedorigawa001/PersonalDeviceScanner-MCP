@@ -11,6 +11,8 @@ const test = require('node:test');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const OPT_IN = process.env.PC_SCANNER_NPM_E2E === '1';
+// Printed when an environment is built: with hash checks, or with the versions only.
+const SETUP_MESSAGE = /setting up Python|no lock was generated for Python/;
 
 function run(command, args, options = {}) {
   const result = childProcess.spawnSync(command, args, { encoding: 'utf8', shell: process.platform === 'win32', ...options });
@@ -98,7 +100,7 @@ test('the installed package sets itself up on first use and serves MCP on a clea
       client.server.stdin.end();
       assert.deepEqual(await client.exited, { code: 0, signal: null });
       assert.deepEqual(client.stray, [], 'setup output must not reach the MCP channel');
-      assert.match(client.stderr(), /setting up Python/);
+      assert.match(client.stderr(), SETUP_MESSAGE);
 
       // Python runs isolated (-I): modules planted in the current folder are never imported.
       const planted = path.join(work, 'planted');
@@ -133,7 +135,7 @@ test('the installed package sets itself up on first use and serves MCP on a clea
         // The environment is reused, and SIGTERM to the launcher stops the server too.
         const again = connect(launcherPath, ['--config', config, 'serve'], env);
         await initialize(again);
-        assert.doesNotMatch(again.stderr(), /setting up Python/);
+        assert.doesNotMatch(again.stderr(), SETUP_MESSAGE);
         const children = childProcess.spawnSync('pgrep', ['-P', String(again.server.pid)], { encoding: 'utf8' });
         const python = Number(children.stdout.trim().split('\n')[0]);
         assert.ok(python > 0, 'the server runs as a child of the launcher');
