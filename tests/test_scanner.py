@@ -21,7 +21,8 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from pc_scanner import cli
-from pc_scanner.core import NoRedirect, Scanner, ScannerError, clamav_signatures, is_link, run_bounded
+from pc_scanner.core import (NoRedirect, Scanner, ScannerError, clamav_signatures, engine_argument, is_link,
+                             run_bounded)
 
 
 def signatures(age=timedelta(hours=3)):
@@ -454,12 +455,17 @@ class ScannerTests(unittest.TestCase):
                 self.assertTrue(any("512 bytes" in warning for warning in report["warnings"]), report["warnings"])
                 run.assert_not_called()
             # The limit is in bytes, and a path of exactly the limit can still be matched.
-            for limit, started in ((length, True), (length - 1, False)):
+            for limit, too_long in ((length, False), (length - 1, True)):
                 with self.subTest(cloud=cloud.name, limit=limit), self.placeholder_metadata(
                         {cloud.name: (0x40000000, 0)}), patch("pc_scanner.core.CLAMAV_MATCH_BYTES", limit), patch(
                         "pc_scanner.core.run_bounded", return_value=(0, CLEAN_SCAN, "")) as run:
-                    self.scanner.invoke("malware", root_alias="test")
-                    self.assertEqual(run.called, started)
+                    report = self.scanner.invoke("malware", root_alias="test")
+                    self.assertEqual(any(f"({limit} bytes)" in warning for warning in report["warnings"]), too_long)
+                    try:
+                        engine_argument(str(cloud.resolve()))
+                    except ScannerError:
+                        continue  # this system's code page cannot hold these names, so no scan starts anyway
+                    self.assertEqual(run.called, not too_long)
 
     def test_file_removed_during_the_folder_check_does_not_fail_the_scan(self):
         # Downloads and temporary files come and go; such a file is simply not scanned.
