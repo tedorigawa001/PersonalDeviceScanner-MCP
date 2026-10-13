@@ -434,6 +434,7 @@ These documents are in Japanese.
 - [docs/backlog.md](docs/backlog.md): open issues and items to verify on real machines
 - [docs/licensing.md](docs/licensing.md): license policy and pre-distribution checks
 - [docs/compliance.md](docs/compliance.md): scope of the SBOM and third-party notices, and how to regenerate them
+- [docs/releasing.md](docs/releasing.md): how the npm package is released (staged publishing from GitHub Actions, in Japanese)
 - [profiles/](profiles/): the lock, SBOM and notices for Windows, Linux and macOS arm64 (the root holds the macOS x86_64 reference)
 - [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the [CycloneDX SBOM](sbom/python-agent.cdx.json): notices for the Python dependencies used for MCP
 

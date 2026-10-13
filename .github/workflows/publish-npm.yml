@@ -1,0 +1,78 @@
+name: Publish to npm
+
+# Submits the npm package of a published GitHub release (tag vX.Y.Z) as a staged publish.
+# Nothing reaches users until a maintainer approves it on npmjs.com with 2FA.
+# Trusted publishing (OIDC): no npm token is stored in GitHub, and npm can show which
+# commit and workflow built the package. Steps: docs/releasing.md.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  test:
+    # Installs packages from PyPI, so this job gets no OIDC permission: code from a
+    # dependency must never be able to ask for a publishing token.
+    name: Check versions and test the package
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        id: python
+        with:
+          python-version: "3.14"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          package-manager-cache: false # never reuse a cache in a release build
+      - name: The release tag names the package version
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version=$(node -p 'require("./package.json").version')
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error::Release tag $TAG does not match package.json version $version"
+            exit 1
+          fi
+      - name: Test the launcher, then pack, install and serve MCP from the package
+        env:
+          PC_SCANNER_NPM_E2E: "1"
+          PC_SCANNER_PYTHON: ${{ steps.python.outputs.python-path }}
+        run: node --test npm/test/launcher.test.js npm/test/roundtrip.test.js
+
+  publish:
+    name: Submit a staged publish
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write # trusted publishing only; nothing is installed in this job
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+      - name: npm supports staged publishing (11.15.0 or later)
+        run: |
+          node -e '
+            const [major, minor] = process.argv[1].split(".").map(Number);
+            if (major < 11 || (major === 11 && minor < 15)) {
+              console.error(`::error::npm ${process.argv[1]} cannot stage a publish; 11.15.0 or later is needed`);
+              process.exit(1);
+            }' "$(npm --version)"
+      - name: Stage the package for approval on npmjs.com
+        run: npm stage publish
