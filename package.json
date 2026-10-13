@@ -1,6 +1,6 @@
 {
   "name": "personal-pc-scanner-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MCP server that lets AI agents inspect a personal PC read-only with osquery, ClamAV and Wazuh (runs the Python server; needs Python 3.11+)",
   "license": "MIT",
   "author": "tedorigawa001",
