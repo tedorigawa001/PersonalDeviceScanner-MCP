@@ -6,7 +6,7 @@ npmjs.com で所有者が 2FA で承認するまで、利用者には届きま�
 
 - **認証**：信頼された公開元（trusted publishing、OIDC）。npm のトークンを GitHub に保存しません。
 - **出自の証明**：公開リポジトリからの公開なので、npm がどのコミットとワークフローから作ったか（provenance）を記録します。
-  ステージド公開で付くかどうかは npm の説明に明記がないため、最初の公開後に確認します（下の「公開後の確認」）。
+  ステージド公開でも付くことを 0.1.1 で確認しました（SLSA provenance v1、Sigstore の透明性ログに記録）。
 - **ジョブの分離**：テストのジョブは PyPI からパッケージを導入するため、公開用のトークンを要求する権限（`id-token`）を与えていません。
   公開のジョブは何も導入せず、`npm stage publish` だけを実行します。
 
@@ -40,6 +40,13 @@ npm は保存時に設定を検証しないため、誤りは最初の公開の�
 4. ワークフロー「Publish to npm」が、タグとバージョンの一致を確かめ、テストしてからステージド公開を提出する
 5. npmjs.com の「Staged Packages」タブで内容を確認し、2FA で承認する（CLI なら `npm stage approve <stage-id>`）
 
+## うまくいかないとき
+
+- **`npm error code E401` / `Unable to authenticate, your authentication token seems to be invalid.`**：
+  信頼された公開元（OIDC）での認証が npm に拒否され、トークンでの認証に切り替わって失敗しています。
+  npmjs.com の Trusted publishing の設定（上の「最初に一度だけ行う設定」の値、とくに Environment name が空欄か）を確認してください。
+  直したら、新しいリリースは作らずに、失敗したジョブだけを再実行します：`gh run rerun <run-id> --failed`
+
 ## 公開後の確認
 
 ```sh
@@ -47,5 +54,7 @@ npm view personal-pc-scanner-mcp@<バージョン> dist.integrity dist.attestati
 ```
 
 - `dist.attestations` があれば provenance が付いています。npmjs.com のパッケージのページにも表示されます。
+- 空のフォルダーで `npm install personal-pc-scanner-mcp@<バージョン>` してから `npm audit signatures` を実行し、
+  「verified attestation」と表示されることを確かめます。
 - 公開物の `dist.integrity` が、リリースしたコミットで `npm pack --json` して得た `integrity` と一致することを確かめます。
 - リポジトリの外で `npx -y personal-pc-scanner-mcp@<バージョン> setup` を実行し、導入できることを確かめます。
