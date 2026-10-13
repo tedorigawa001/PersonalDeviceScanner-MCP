@@ -1,0 +1,144 @@
+'use strict';
+const assert = require('node:assert/strict');
+const childProcess = require('node:child_process');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const test = require('node:test');
+
+const launcher = require('../launcher.js');
+
+const ROOT = path.resolve(__dirname, '..', '..');
+const LOCK_FILES = ['requirements-agent.lock', ...['darwin-arm64-cp314', 'linux-x86_64-cp314', 'windows-amd64-cp314']
+  .map((name) => path.join('profiles', name, 'requirements-agent.lock'))];
+
+function interpreter(os_, architecture, python, implementation = 'CPython') {
+  return { os: os_, architecture, python, implementation, executable: '/opt/python/bin/python3' };
+}
+
+test('bundled locks record their environment and pin every package with a hash', () => {
+  const locks = launcher.readLocks(ROOT);
+  assert.deepEqual(locks.map((lock) => lock.file), LOCK_FILES);
+  for (const lock of locks) {
+    assert.ok(['Darwin', 'Linux', 'Windows'].includes(lock.environment.os), lock.file);
+    assert.ok(lock.pins.length > 20, lock.file);
+    assert.ok(lock.pins.every((pin) => /^[0-9a-f]{64}$/.test(pin.sha256)), lock.file);
+  }
+});
+
+test('a lock line in an unexpected form is refused', () => {
+  const header = '# Python/OS: {"os": "Linux", "architecture": "x86_64", "implementation": "CPython", "python": "3.14.8"}\n';
+  assert.throws(() => launcher.parseLock('x.lock', `${header}mcp>=1.0\n`), launcher.LauncherError);
+  assert.throws(() => launcher.parseLock('x.lock', 'mcp==1.30.0\n'), launcher.LauncherError);
+  assert.throws(() => launcher.parseLock('x.lock', `${header}mcp==1.30.0 --index-url=https://example.com\n`),
+    launcher.LauncherError);
+});
+
+test('CPython of the same OS, CPU and minor version gets hash-checked packages', () => {
+  const locks = launcher.readLocks(ROOT);
+  for (const lock of locks) {
+    const { os: system, architecture } = lock.environment;
+    const choice = launcher.chooseEnvironment([interpreter(system, architecture, '3.14.0')], locks);
+    assert.equal(choice.lock, lock);
+    assert.equal(choice.hashed, true);
+  }
+});
+
+test('other Python versions and CPUs get the same versions without hash checks', () => {
+  const locks = launcher.readLocks(ROOT);
+  const older = launcher.chooseEnvironment([interpreter('Darwin', 'arm64', '3.12.9')], locks);
+  assert.equal(older.lock.file, LOCK_FILES[1]);
+  assert.equal(older.hashed, false);
+  const arm = launcher.chooseEnvironment([interpreter('Linux', 'aarch64', '3.14.0')], locks);
+  assert.equal(arm.lock.file, LOCK_FILES[2]);
+  assert.equal(arm.hashed, false);
+  assert.match(launcher.requirements(arm), /^mcp==1\.30\.0$/m);
+  assert.doesNotMatch(launcher.requirements(arm), /--hash/);
+  assert.match(launcher.requirements(launcher.chooseEnvironment([interpreter('Linux', 'x86_64', '3.14.8')], locks)),
+    /^mcp==1\.30\.0 --hash=sha256:[0-9a-f]{64}$/m);
+});
+
+test('an interpreter that allows hash checks is preferred over an earlier one', () => {
+  const locks = launcher.readLocks(ROOT);
+  const choice = launcher.chooseEnvironment([interpreter('Linux', 'x86_64', '3.12.3'),
+    interpreter('Linux', 'x86_64', '3.14.8')], locks);
+  assert.equal(choice.info.python, '3.14.8');
+  assert.equal(choice.hashed, true);
+});
+
+test('unsupported interpreters and systems are refused', () => {
+  const locks = launcher.readLocks(ROOT);
+  assert.equal(launcher.chooseEnvironment([interpreter('Linux', 'x86_64', '3.10.14')], locks), null);
+  assert.equal(launcher.chooseEnvironment([interpreter('Linux', 'x86_64', '3.14.0', 'PyPy')], locks), null);
+  assert.equal(launcher.chooseEnvironment([interpreter('FreeBSD', 'amd64', '3.14.0')], locks), null);
+  assert.equal(launcher.chooseEnvironment([], locks), null);
+});
+
+test('the environment folder changes with anything that goes into it', () => {
+  const locks = launcher.readLocks(ROOT);
+  const choice = launcher.chooseEnvironment([interpreter('Linux', 'x86_64', '3.14.8')], locks);
+  const sources = launcher.sourceFiles(ROOT);
+  const name = launcher.environmentName(choice, sources, '0.1.0');
+  assert.match(name, /^0\.1\.0-[0-9a-f]{16}$/);
+  assert.equal(launcher.environmentName(choice, sources, '0.1.0'), name);
+  const changed = [
+    launcher.environmentName(choice, sources, '0.1.1'),
+    launcher.environmentName({ ...choice, info: { ...choice.info, python: '3.14.9' } }, sources, '0.1.0'),
+    launcher.environmentName({ ...choice, lock: { ...choice.lock, text: `${choice.lock.text}\n` } }, sources, '0.1.0'),
+    launcher.environmentName({ ...choice, hashed: false }, sources, '0.1.0'),
+    launcher.environmentName(choice, [...sources.slice(1), { ...sources[0], data: Buffer.from('changed') }], '0.1.0'),
+  ];
+  assert.equal(new Set([name, ...changed]).size, changed.length + 1);
+});
+
+test('the cache folder follows each OS, and an override must be absolute', () => {
+  const home = path.join(path.sep, 'home', 'someone');
+  assert.equal(launcher.cacheRoot({}, 'darwin', home), path.join(home, 'Library', 'Caches', 'personal-pc-scanner-mcp'));
+  assert.equal(launcher.cacheRoot({}, 'linux', home), path.join(home, '.cache', 'personal-pc-scanner-mcp'));
+  assert.equal(launcher.cacheRoot({ XDG_CACHE_HOME: 'relative' }, 'linux', home),
+    path.join(home, '.cache', 'personal-pc-scanner-mcp'));
+  assert.equal(launcher.cacheRoot({ LOCALAPPDATA: path.join(home, 'Local') }, 'win32', home),
+    path.join(home, 'Local', 'personal-pc-scanner-mcp'));
+  assert.throws(() => launcher.cacheRoot({ PC_SCANNER_CACHE_DIR: 'cache' }, 'linux', home), launcher.LauncherError);
+});
+
+test('Python is found by fixed names, or only at an absolute path the owner set', () => {
+  assert.deepEqual(launcher.pythonCandidates({}, 'win32')[0], ['py', '-3.14']);
+  assert.deepEqual(launcher.pythonCandidates({}, 'linux')[0], ['python3.14']);
+  const absolute = path.resolve('opt', 'python3');
+  assert.deepEqual(launcher.pythonCandidates({ PC_SCANNER_PYTHON: absolute }, 'linux'), [[absolute]]);
+  assert.throws(() => launcher.pythonCandidates({ PC_SCANNER_PYTHON: 'python3' }, 'linux'), launcher.LauncherError);
+});
+
+test('only builds that were interrupted long ago are removed', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pc-scanner-cache-'));
+  try {
+    const old = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    const names = { stale: '0.1.0-aaaaaaaaaaaaaaaa.build-123-0123abcd', fresh: '0.1.0-bbbbbbbbbbbbbbbb.build-456-89abcdef',
+      ready: '0.1.0-cccccccccccccccc', other: 'notes.build-1-0123abcd.txt' };
+    for (const name of Object.values(names)) fs.mkdirSync(path.join(root, name));
+    for (const name of [names.stale, names.ready, names.other]) fs.utimesSync(path.join(root, name), old, old);
+    launcher.removeStaleBuilds(root);
+    assert.deepEqual(fs.readdirSync(root).sort(), [names.fresh, names.ready, names.other].sort());
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('the npm package version matches the Python package', () => {
+  const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
+  assert.equal(fs.readFileSync(path.join(ROOT, 'pyproject.toml'), 'utf8').match(/^version = "(.+)"$/m)[1], version);
+  assert.equal(fs.readFileSync(path.join(ROOT, 'pc_scanner', '__init__.py'), 'utf8').match(/__version__ = "(.+)"/)[1],
+    version);
+});
+
+test('the package holds only the launcher, the Python sources, the locks and the license', () => {
+  const result = childProcess.spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'],
+    { cwd: ROOT, encoding: 'utf8', shell: process.platform === 'win32' });
+  assert.equal(result.status, 0, result.stderr);
+  const files = JSON.parse(result.stdout)[0].files.map((file) => file.path).sort();
+  const sources = fs.readdirSync(path.join(ROOT, 'pc_scanner')).filter((name) => name.endsWith('.py'))
+    .map((name) => `pc_scanner/${name}`);
+  assert.deepEqual(files, ['LICENSE', 'README.ja.md', 'README.md', 'npm/launcher.js', 'package.json', ...sources,
+    ...LOCK_FILES.map((file) => file.split(path.sep).join('/'))].sort());
+});

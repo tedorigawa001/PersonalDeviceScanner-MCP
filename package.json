@@ -1,0 +1,43 @@
+{
+  "name": "personal-pc-scanner-mcp",
+  "version": "0.1.0",
+  "description": "MCP server that lets AI agents inspect a personal PC read-only with osquery, ClamAV and Wazuh (runs the Python server; needs Python 3.11+)",
+  "license": "MIT",
+  "author": "tedorigawa001",
+  "homepage": "https://github.com/tedorigawa001/PersonalPCScanner-MCP#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tedorigawa001/PersonalPCScanner-MCP.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tedorigawa001/PersonalPCScanner-MCP/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "security",
+    "osquery",
+    "clamav",
+    "wazuh"
+  ],
+  "bin": {
+    "personal-pc-scanner-mcp": "npm/launcher.js"
+  },
+  "files": [
+    "npm/launcher.js",
+    "pc_scanner/*.py",
+    "requirements-agent.lock",
+    "profiles/*/requirements-agent.lock"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "scripts": {
+    "test": "node --test npm/test/launcher.test.js npm/test/roundtrip.test.js"
+  }
+}

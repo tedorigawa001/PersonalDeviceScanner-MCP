@@ -141,11 +141,23 @@ Windows / Linux / macOS（arm64）それぞれで次を行い、結果を成果�
   原文はすべて `profiles/windows-amd64-cp314/third_party/licenses/pywin32/` に保存してあります。
   ライセンス表記（SPDX 式）と LGPL 部分の扱いを所有者が判断するまで、Windows 版は `validate_compliance.py` に合格しません。
 
+## npm パッケージ
+
+`npx` で起動するための npm パッケージ（`personal-pc-scanner-mcp`）に入るのは、起動用スクリプト（`npm/launcher.js`）、
+`pc_scanner/` の Python コード、ロックファイル（直下と `profiles/*/`）、`LICENSE`、README だけです。
+第三者のコードやバイナリは含みません。内容は `package.json` の `files` で限定し、テストで一覧を確認しています。
+
+第三者の Python パッケージは、利用者の PC で初回起動時に pip が PyPI から導入します。ロックの環境（OS・CPU・
+Python のマイナーバージョン）と一致する場合はロックのハッシュで検証し、一致しない場合は同じバージョンをハッシュなしで導入します。
+導入される依存とそのライセンスは、各プロファイルのロック・SBOM・第三者表示が対応します
+（ハッシュなしで導入した場合、wheel はプロファイルのものと異なります）。
+
 ## 配布に進む前の未確定事項
 
 1. （完了）独自コードのライセンス：2026-10-12 に MIT を適用（著作権者 tedorigawa001）。
 2. Windows 版プロファイルの pywin32 のライセンス表記の確定（Linux・macOS arm64 は生成・検証済み）。
-3. 単体wheel/sdist配布か、Pythonや依存wheelを含む実行ファイル/インストーラー配布かを確定。
+3. 配布形態：npm パッケージ（起動用スクリプト・独自コード・ロック。依存は利用者の PC で PyPI から導入）を用意した（2026-10-13、未公開）。
+   wheel/sdist の PyPI 公開や、Python・依存 wheel を含む実行ファイル/インストーラー配布は未定。
 4. 同梱するネイティブ依存物のバージョン・ライセンス・対応ソース要件を実物で確認。
 5. Wazuh/ClamAV等を同梱する場合、GPL対応ソース等を準備し、結合形態を確認。
 

@@ -82,6 +82,7 @@ The valid `query_id` values and the authorized folder aliases are part of the to
   - Wazuh: for vulnerabilities. **Installing the Wazuh agent on the PC is not enough.**
     You also need a Wazuh server / indexer (for example on Linux), the PC's agent registered to it, and vulnerability detection enabled
 - **For MCP**: the MCP Python SDK v1 (installed with the `agent` extra below)
+- **To start it with `npx` instead**: Node.js 22 or later, in addition to Python (see [Using npx](#using-npx-npm))
 
 ## Setup
 
@@ -176,6 +177,36 @@ Add the equivalent of the following to your MCP (stdio) client's configuration. 
 - On Windows, set `command` to something like `C:\\path\\to\\project\\.venv\\Scripts\\python.exe` (backslashes are written as `\\` in JSON).
 - Because the package was installed in step 2, you do not need to set a working directory (`cwd`).
 - This project itself does not need an API key for any AI service.
+
+### Using npx (npm)
+
+Instead of steps 2 and 5, you can start the server with `npx`. Python 3.11 or later is still needed:
+the npm package holds a small launcher, this project's Python code and the lock files, and no third-party code.
+
+```json
+{
+  "mcpServers": {
+    "personal-pc-scanner": {
+      "command": "npx",
+      "args": ["-y", "personal-pc-scanner-mcp@0.1.0", "--config", "/absolute/path/to/scanner.toml", "serve"]
+    }
+  }
+}
+```
+
+- On first use, the launcher creates its own virtual environment in your cache folder and installs the Python packages there
+  (macOS: `~/Library/Caches/personal-pc-scanner-mcp`, Linux: `~/.cache/personal-pc-scanner-mcp`,
+  Windows: `%LOCALAPPDATA%\personal-pc-scanner-mcp`). This can take longer than some clients wait for a server to start,
+  so run `npx -y personal-pc-scanner-mcp@0.1.0 setup` once beforehand.
+- With CPython 3.14 on Windows x64, macOS (Intel or Apple silicon) or Linux x86_64, packages are installed with the hashes
+  in the bundled lock files (`pip --require-hashes`). Other Python versions and CPUs get the same versions without hash
+  checks, and the launcher says so on stderr. Its own messages and pip's output go to stderr, never to the MCP channel.
+- It looks for `python3.14`, `python3.13` … `python3` (Windows: `py -3.14`, `py -3`, `python`). To choose one, set
+  `PC_SCANNER_PYTHON` to its absolute path; `PC_SCANNER_CACHE_DIR` (absolute) moves the cache.
+- Keep the version pinned (`@0.1.0`) so that updating is your decision. Each version and Python gets its own environment;
+  old ones in the cache folder can be deleted.
+- The CLI works the same way, for example `npx -y personal-pc-scanner-mcp@0.1.0 --config scanner.toml status`.
+- If a Windows client cannot start `npx` directly, use `"command": "cmd"` with `"args": ["/c", "npx", ...]`.
 
 ### Using Wazuh
 
@@ -383,6 +414,11 @@ Windows (PowerShell):
   installing the `agent` extra so MCP tests are never skipped. It also builds the wheel and sdist and checks that
   the third-party notices and SBOM files are included. On Windows, real junctions and ACL-denied folders
   (including a junction like `Documents\My Music`) are created to verify how scans handle them.
+- The npm launcher has its own tests (Node.js 22 or later): `node --test npm/test/launcher.test.js npm/test/roundtrip.test.js`.
+  With `PC_SCANNER_NPM_E2E=1` (it installs packages from PyPI), the package is packed and installed as a user gets it,
+  sets itself up on the first `serve` and answers MCP; the test also checks that stdout carries only MCP messages,
+  that a wrong hash in the lock stops the setup, that modules planted in the current folder are not imported,
+  and (macOS / Linux) that SIGTERM to the launcher stops the server. CI runs this on every OS with Python 3.11 and 3.14.
 - Detection accuracy with real engines and behavior on each OS are not guaranteed. Acceptance testing on real machines for each OS is required before distribution.
 
 ## Related documents and license

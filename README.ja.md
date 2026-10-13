@@ -82,6 +82,7 @@ AI クライアントには、`query_id` の選択肢と許可フォルダーの
   - Wazuh：脆弱性取得用。**PC に Wazuh エージェントを入れるだけでは動きません**。
     別途 Linux などで Wazuh server / indexer を用意し、PC のエージェントを登録して、脆弱性検出を有効にしておく必要があります
 - **MCP で使う場合**：Python 用 MCP SDK v1（下記の `agent` extra で入ります）
+- **代わりに `npx` で起動する場合**：Python に加えて Node.js 22 以上（[npx で使う場合](#npx-で使う場合npm)を参照）
 
 ## セットアップ
 
@@ -176,6 +177,36 @@ MCP（stdio）に対応したクライアントの設定に、次と同等の内
 - Windows では `command` を `C:\\path\\to\\project\\.venv\\Scripts\\python.exe` のようにします（JSON では `\` を `\\` と書きます）。
 - 手順2でパッケージを導入済みなので、作業フォルダー（`cwd`）の指定は不要です。
 - この基盤自体は、特定の AI サービスの API キーを必要としません。
+
+### npx で使う場合（npm）
+
+手順2と5の代わりに、`npx` で起動することもできます。Python 3.11 以上は引き続き必要です。
+npm パッケージに入っているのは、小さな起動用スクリプト・このプロジェクトの Python コード・ロックファイルだけで、第三者のコードは含みません。
+
+```json
+{
+  "mcpServers": {
+    "personal-pc-scanner": {
+      "command": "npx",
+      "args": ["-y", "personal-pc-scanner-mcp@0.1.0", "--config", "/absolute/path/to/scanner.toml", "serve"]
+    }
+  }
+}
+```
+
+- 初回の起動時に、キャッシュフォルダーへ専用の仮想環境を作り、Python のパッケージを導入します
+  （macOS：`~/Library/Caches/personal-pc-scanner-mcp`、Linux：`~/.cache/personal-pc-scanner-mcp`、
+  Windows：`%LOCALAPPDATA%\personal-pc-scanner-mcp`）。クライアントがサーバーの起動を待つ時間より長くかかることがあるため、
+  先に一度 `npx -y personal-pc-scanner-mcp@0.1.0 setup` を実行してください。
+- Windows x64・macOS（Intel / Apple シリコン）・Linux x86_64 の CPython 3.14 では、同梱のロックファイルのハッシュで
+  検証して導入します（`pip --require-hashes`）。それ以外の Python や CPU では、同じバージョンをハッシュの検証なしで導入し、
+  その旨を stderr に表示します。起動用スクリプトと pip の出力はすべて stderr に出し、MCP の通信路には混ぜません。
+- Python は `python3.14`、`python3.13` … `python3`（Windows は `py -3.14`、`py -3`、`python`）の順に探します。
+  指定する場合は `PC_SCANNER_PYTHON` に絶対パスを設定します。`PC_SCANNER_CACHE_DIR`（絶対パス）でキャッシュの場所を変えられます。
+- 更新を自分で判断できるよう、バージョンは固定（`@0.1.0`）してください。バージョンと Python ごとに別の環境を作るので、
+  キャッシュフォルダー内の古い環境は削除してかまいません。
+- CLI も同じように使えます。例：`npx -y personal-pc-scanner-mcp@0.1.0 --config scanner.toml status`
+- Windows のクライアントが `npx` を直接起動できない場合は、`"command": "cmd"`、`"args": ["/c", "npx", ...]` とします。
 
 ### Wazuh を使う場合
 
@@ -382,6 +413,11 @@ Windows（PowerShell）：
   `agent` extra を導入するので、MCP のテストもスキップされません。あわせて wheel と sdist をビルドし、
   第三者表示と SBOM が含まれていることを確認します。Windows では本物のジャンクションや、ACL で読み取りを拒否した
   フォルダー（`Documents\My Music` のようなジャンクションを含む）を作り、検査での扱いを確認します。
+- npm の起動用スクリプトには別のテストがあります（Node.js 22 以上）：`node --test npm/test/launcher.test.js npm/test/roundtrip.test.js`。
+  `PC_SCANNER_NPM_E2E=1` を設定すると（PyPI からパッケージを導入します）、利用者と同じようにパッケージを作って導入し、
+  初回の `serve` で自動的に準備して MCP に応答することを確かめます。あわせて、stdout に MCP のメッセージ以外が出ないこと、
+  ロックのハッシュが1つでも違えば準備が止まること、現在のフォルダーに置かれたモジュールを読み込まないこと、
+  （macOS / Linux）起動用スクリプトへの SIGTERM でサーバーも止まることを確認します。CI では全 OS × Python 3.11 / 3.14 で実行します。
 - 実際のエンジンでの検出精度や、各 OS での動作は保証していません。配布前に、各 OS の実機での受入試験が必要です。
 
 ## 関連ドキュメント・ライセンス
