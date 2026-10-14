@@ -3,7 +3,8 @@
 所有者自身の Android 端末を PC に USB でつなぎ、ADB（Android Debug Bridge）で**読み取り専用**に点検する。
 既存の方針（固定の操作だけ・読み取り専用・端末から来る文字列は信用しない・「安全」とは判定しない）をそのまま当てはめる。
 
-状態：設計（2026-10-14）。未実装。「要確認」の項目は、実装時に実機またはエミュレーターで確かめる。
+状態：設計（2026-10-14）。未実装。当初の「要確認」3点は、Android エミュレーター（Android 10 と 16）で確かめて反映した
+（[記録](acceptance/android-emulator-2026-10-14.json)）。USB 接続での値など、実機でしか確かめられない点は「実機で確認」と書いた。
 
 ## 目的と範囲
 
@@ -86,37 +87,67 @@ ADB の公式実装では、各接続は種類（USB か、TCP などのソケ�
 2. その一覧にある転送 ID（`transport_id`、数字）を控え、以降のコマンドは `adb -t <転送ID> …` で実行する。
    確認した接続とは別の接続（同じ端末のワイヤレス接続など）に送らないため。途中でつなぎ直すと ID が変わり、コマンドは失敗する（`error`）。
 
-- `track-devices` は一覧の変化を待ち続けるため、最初の一覧を受け取ったら止める仕組みが要る（既存の `run_bounded` は終了まで待つ）。
-- **要確認**：`--proto-text` が使える Platform-Tools の最低バージョン（必要なバージョンを README に書き、古ければ `error` で案内する）。
-  代わりの手段として `adb -s <シリアル> get-devpath` が `usb:` で始まるかを使えるか（USB の接続にだけ設定される値だが、
-  OS ごとの実装の違いを確かめる）。どちらでも USB と確認できなければ点検しない。
+**エミュレーターで確かめたこと**（Platform-Tools 37.0.1）：
+
+- 出力は、4桁の16進数の長さに続くテキスト形式のプロトコルバッファ。各端末は次のように出る：
+  `device { serial: "…" state: DEVICE product: "…" model: "…" device: "…" connection_type: SOCKET transport_id: 1 }`
+- エミュレーターは `connection_type: SOCKET` になる（TCP で接続するため）。したがってこの設計ではエミュレーターも点検の対象外になる。
+- **オプションは `--proto-text` だけを付ける**。adb は `track-devices` の直後の1つしか見ないため、`track-devices -l --proto-text`
+  ではテキスト形式になり、接続方式が出ない。
+- `track-devices` は終了しないので、既存の `run_bounded` では時間切れになる（3秒で確認）。最初の一覧（と、続く更新）を
+  読んだら止める専用の読み取りが要る。
+- ADB サーバーを起動した直後は、端末がまだ一覧にない、または `offline` のことがある（起動直後の `get-state` は
+  `error: device offline` だった）。`track-devices` は変化があるたびに新しい一覧を送ってくるので、決めた時間（例：5秒）まで
+  更新を待ち、設定した端末が `USB` かつ `DEVICE` になるのを確かめる。時間内にそうならなければ `error`。
+- `adb get-devpath` はエミュレーターでは `unknown` だった。USB の判定には使わず、`connection_type` だけで判断する。
+- `--proto-text` が使える最低の Platform-Tools の版は、公開のリリースノートにも変更履歴にも見当たらなかった。実行時に出力の形式を確かめ、
+  プロトコルバッファの形式でなければ「Platform-Tools が古い」として `error` で案内する（README には確認した 37.0.1 以上を推奨と書く）。
+- **実機で確認**：USB でつないだ端末が `connection_type: USB` になること（エミュレーターでは確かめられない）。
 
 ### 実行するコマンド
 
 | 用途 | コマンド（`adb -t <転送ID> shell` に続く部分） | 取り出す内容 |
 |---|---|---|
 | 基本情報 | `getprop` | 決めたプロパティだけ：`ro.build.version.release`・`ro.build.version.sdk`・`ro.build.version.security_patch`・`ro.product.manufacturer`・`ro.product.model`。ほかは捨てる（`ro.serialno` などを返さない） |
-| ユーザー | `pm list users` | 端末のユーザー（仕事用プロファイルを含む）の ID |
+| ユーザー | `pm list users` | 端末のユーザー（仕事用プロファイルを含む）の ID とフラグ（`UserInfo{ID:名前:フラグ}`） |
+| ユーザーの種類と親 | `cmd user list -v` | Android 14 以降などでは種類（`profile.MANAGED` など）と親（`parentId=0`）が出る |
 | アプリ（全パッケージ） | `pm list packages -i -U --show-versioncode --user <ID>` | パッケージ名・導入元（`installer=`）・UID・バージョンコード。システムアプリも含む |
 | システムアプリ | `pm list packages -s --user <ID>` | システムアプリ（更新されたものを含む）のパッケージ名。全パッケージに `is_system` を付けるために使う |
 | ランチャー活動 | `cmd package query-activities --brief --user <ID> -a android.intent.action.MAIN -c android.intent.category.LAUNCHER` | ランチャーに表示される活動（アクティビティ）を持つパッケージ |
-| ユーザー補助 | `settings --user <ID> get secure enabled_accessibility_services` | 有効なサービス（`パッケージ/クラス` を `:` 区切り。なければ `null`） |
+| ユーザー補助 | `settings --user <ID> get secure enabled_accessibility_services` | 有効なサービス（`パッケージ/クラス` を `:` 区切り。なければ `null`）。通常のユーザーだけで取得する（仕事用プロファイルは親と共有。下を参照） |
 | 通知へのアクセス | `settings --user <ID> get secure enabled_notification_listeners` | 同上 |
 | 端末管理 | `dumpsys device_policy` | ユーザーごとの有効な端末管理アプリと、デバイスオーナー／プロファイルオーナー（MDM など） |
 
 - **照合には全パッケージを使う**：`-3`（利用者が入れたアプリだけ）で絞ると、システムアプリとして入った監視アプリや、
   強い権限を持つシステムアプリが照合から漏れる。指標との照合と権限との突き合わせは全パッケージで行い、
   利用者に見せる一覧（`collect_android` の `apps`）だけを既定で `is_system` でないものに絞る。
-- **ユーザーの指定をそろえる**：ユーザーごとの項目（アプリ・ランチャー活動・ユーザー補助・通知へのアクセス）は、すべて同じ
+- **ユーザーの指定をそろえる**：ユーザーごとの項目（アプリ・ランチャー活動・通知へのアクセス）は、すべて同じ
   `--user <ID>` で取得する。`dumpsys device_policy` は全ユーザー分を一度に出すので、ユーザーごとに分けて読む。
   照合はすべて「ユーザー ID とパッケージ名」の組で行い、別のユーザーのアプリ一覧と現在のユーザーの設定を突き合わせない。
+  例外はユーザー補助で、仕事用プロファイルは親ユーザーの設定を共有するため、親ユーザーの値を親ユーザーのパッケージと突き合わせる（下を参照）。
 - ユーザー ID は `pm list users` の結果から取るが、数字だけを受け付ける（端末からの文字列をそのまま渡さない）。
-- **要確認**：
-  - `cmd package query-activities` の `--brief` と `--user`、`pm list packages` の `--show-versioncode` が使える Android の範囲
-  - `dumpsys device_policy` の出力形式（メーカーや版で差がある）
-  - 仕事用プロファイルや別ユーザーの各項目が、一般の ADB 権限で取得できるか
-
-  確認の結果、サポートする最低の Android バージョンを決める（目安は Android 10 以上）。
+- **エミュレーターで確かめたこと**（Android 10・API 29 と Android 16・API 36、どちらも Google のサービスなしのイメージ）：
+  - 上の表のコマンドは、両方の版で一般の ADB 権限のまま使えた（`--show-versioncode`・`-i`・`-U`・`-s`・`--user`、
+    `cmd package query-activities --brief --user`、`settings --user`、`dumpsys device_policy`）。
+    → **サポートする最低の版は Android 10 とする**（それより古い版は確かめていない）。
+  - `pm list packages -i` の出力：`package:<名前> versionCode:<数字>  installer=<値> uid:<数字>`。事前導入のアプリは `installer=null`。
+  - `cmd package query-activities --brief` の出力：`<N> activities found:` に続いて `Activity #<n>:` ごとに
+    `パッケージ/クラス`（`com.android.calendar/.AllInOneActivity` のような短縮形を含む）の行。
+  - `dumpsys device_policy` は `Enabled Device Admins (User <ID>, provisioningState: <n>):` の見出しでユーザーごとに分かれる
+    （Android 16 では前に `Immutable state:` などが加わり、長さは約 3.5KB）。
+  - 仕事用プロファイル（テスト用に作成）のパッケージ数は親ユーザーと違った（Android 16 で 181 対 168）。ユーザーごとの取得が必要。
+- **ユーザー補助は仕事用プロファイルと親で共有される**（エミュレーターで確認）：
+  - 仕事用プロファイルには `enabled_accessibility_services` の値がなく（`settings --user <ID> list secure` に出ない）、
+    読むと親ユーザーの値が返った。親とプロファイルに別の値を書いても、プロファイルから読むと親の値だった（Android 10）。
+  - したがって**ユーザー補助は、仕事用プロファイルでは取得せず、親ユーザーの値を親ユーザーのパッケージと突き合わせる**。
+    プロファイルについては「親ユーザーの設定を共有する」と結果に記す。
+  - 通知へのアクセスはユーザーごとに別の値を持った（両方の版で確認）。こちらは各ユーザーで取得し、そのユーザーのパッケージと突き合わせる。
+  - 仕事用プロファイルとその親は、`cmd user list -v` の `type=profile.MANAGED` と `parentId=` で分かる（Android 16）。
+    Android 10 では種類も親も出ず、`pm list users` のフラグ（16進数、`0x20` が MANAGED_PROFILE）だけが手がかりになる。
+    親が明示されず、通常のユーザーが1人だけならそのユーザーを親とする。それ以外で親が分からなければ、そのプロファイルの
+    ユーザー補助の扱いを「不明」として `partial` にする。
+  - Android 16 では、存在しないサービスを書き込むと設定から取り除かれた（Android 10 では残った）。読み取りの処理はどちらの状態も扱う。
+- **実機で確認**：メーカーによる出力の違い（とくに `dumpsys device_policy`）、MDM で作られた本物の仕事用プロファイルでの見え方。
 
 ### 観測した事実として返す（断定しない）
 
@@ -213,10 +244,15 @@ ADB の公式実装では、各接続は種類（USB か、TCP などのソケ�
 
 - `adb` は既存の `run_bounded`（シェルを使わない起動・時間制限・出力上限・キャンセル・プロセスツリーの停止）で実行する。
   渡す環境変数は既存の許可リストのまま。`HOME`（Windows は `USERPROFILE`）が渡るので、所有者の既存の承認鍵（`~/.android/adbkey`）が使われる。
-- **要確認：adb サーバーの扱い**。`adb` は初回にバックグラウンドで ADB サーバー（既定で localhost:5037）を起動し、それは残り続ける。
-  エンジンのプロセスグループを抜けたプロセスとして扱われ、既存の「グループを抜けた子プロセス」の検出に当たる可能性がある。
-  他のツール（Android Studio など）も同じサーバーを使うため、こちらから止める（`adb kill-server`）のは避けたい。
-  候補：点検の前に `adb start-server` を別の手順として実行し、その結果だけを許容する／サーバーがなければ起動方法を案内して中止する。
+- **ADB サーバーの扱い**（macOS のエミュレーターで、既存の `run_bounded` を通して確認）：
+  - サーバーが動いていないとき、`adb` は自分でサーバー（localhost:5037）を起動する。サーバーはエンジンのプロセスグループから離れ、
+    `run_bounded` の停止処理でも止まらず、出力も開いたままにしないため、既存の「グループを抜けた子プロセス」の検出には当たらなかった。
+    呼び出しの後もサーバーは動き続ける（adb の通常の動き）。
+  - 起動した直後の最初のコマンドは `error: device offline` になった。上の「接続方式の確認」で、端末が使えるようになるまで待つ。
+  - サーバーは他のツール（Android Studio など）と共有されるため、このツールからは止めない（`adb kill-server` しない）。
+    止めたいときの方法（`adb kill-server`）を README に書く。
+  - **Windows で確認**：エンジンを入れる Job Object にサーバーまで入ると、Job を閉じたときにサーバーが止まり、毎回起動し直して
+    `device offline` の待ちが増えるおそれがある。Windows の実機で確かめ、必要ならサーバーを Job の外で起動する手順を加える。
 - **パッケージ名とコンポーネント名は別々に確かめる**。ユーザー補助・通知へのアクセスの設定値や `dumpsys device_policy` の
   `ComponentInfo{…}` は「パッケージ/クラス」の形のコンポーネント名で、クラスは `.AccessibilityService` のような短縮形や、
   内部クラスの `$` を含むことがある。
@@ -237,7 +273,9 @@ ADB の公式実装では、各接続は種類（USB か、TCP などのソケ�
   Android のバージョンやメーカーの違いを複数用意する。とくに次を確かめる：
   - 接続方式：`SOCKET` の端末や、`:` を含まない mDNS 名のワイヤレス端末を拒否し、`USB` だけを点検すること。以降のコマンドが
     確認した転送 ID で実行されること
-  - ユーザー：仕事用プロファイルがある場合に、各項目が同じユーザー ID で取得され、別ユーザーの設定と突き合わせないこと
+  - ユーザー：仕事用プロファイルがある場合に、ユーザー補助を除く各項目が同じユーザー ID で取得され、別ユーザーの設定と突き合わせないこと。
+    例外として、仕事用プロファイルのユーザー補助は親ユーザーの設定を使い、親ユーザーのパッケージ一覧と突き合わせること。
+    結果に「親ユーザーの設定を共有する」と示し、親ユーザーが分からない場合は「不明」として `partial` にすること
   - 指標：stalkerware と watchware の分類が結果に残ること、分類の分からないものが `unknown` と警告になること
   - 導入元：`installer=null` を `unknown` とし、サイドロードと断定しないこと。ランチャー活動がないことだけで所見にしないこと
   - システムアプリ：システムアプリとして入った監視アプリが指標と一致し、強い権限を持つシステムアプリが権限の一覧に出ること

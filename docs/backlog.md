@@ -133,8 +133,13 @@
     導入元、強い権限（ユーザー補助・通知へのアクセス・端末管理）を持つアプリ、既知の監視アプリ（Echap の指標の stalkerware・watchware、
     CC-BY 4.0）との照合。接続方式を確かめて USB の端末だけを点検し、仕事用プロファイルを含めユーザーごとに調べる。
   - 設計は [android-design.md](android-design.md)。個人データ・APK の取り出し・端末への書き込み・Wi-Fi 経由の ADB は扱わない。
-  - 実装前に確かめること: 各コマンドが使える Android の範囲とメーカー差、仕事用プロファイルの見え方、ADB サーバーの起動と
-    プロセスグループの扱い、`adb track-devices --proto-text` が使える Platform-Tools の版。
+  - 実装前の確認（2026-10-14、Android 10 と 16 のエミュレーター）: 設計のコマンドはすべて一般の ADB 権限で動いた（最低の版は Android 10）。
+    接続方式は `adb track-devices --proto-text` の `connection_type` で分かる（エミュレーターは `SOCKET`）。ユーザー補助は
+    仕事用プロファイルと親で共有され、通知へのアクセスはユーザーごと。ADB サーバーは adb が自分で起動して残り、既存の
+    `run_bounded` の検出には当たらない（起動直後は `device offline` になるため待つ）。設計に反映し、
+    [記録](acceptance/android-emulator-2026-10-14.json)を残した。
+  - 実機で確認すること: USB 接続で `connection_type: USB` になること、メーカーによる出力の違い、MDM の仕事用プロファイル、
+    Windows で Job Object が ADB サーバーを止めないか。
   - 第2段階の候補: 署名証明書による照合、MVT / AndroidQF による詳細検査、iOS。
 
 ## 低

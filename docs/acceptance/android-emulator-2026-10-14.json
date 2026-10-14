@@ -1,0 +1,70 @@
+{
+  "performed_at": "2026-10-14",
+  "purpose": "Resolve the three open questions of docs/android-design.md (phase 1) on Android emulators before implementation",
+  "host": {
+    "os": "macOS 26.7.1",
+    "architecture": "arm64"
+  },
+  "tools": {
+    "platform_tools": "37.0.1 (adb 1.0.41, build 15733141)",
+    "emulator": "37.2.12 (build 16428233)",
+    "system_images": [
+      "system-images;android-29;default;arm64-v8a r08 (Android 10, no Google services)",
+      "system-images;android-36;default;arm64-v8a r02 (Android 16, no Google services)"
+    ],
+    "source": "https://dl.google.com/android/repository/ (SHA-1 and size matched Google's repository metadata)",
+    "license": "Android Software Development Kit License Agreement, accepted by the owner for this test",
+    "emulator_options": "-no-window -no-audio -no-snapshot -no-boot-anim -no-metrics -gpu swiftshader_indirect"
+  },
+  "connection_type": {
+    "command": "adb track-devices --proto-text",
+    "output_format": "4 hex digits of length, then protobuf text: device { serial state product model device connection_type transport_id }",
+    "emulator_connection_type": "SOCKET (both versions)",
+    "option_order": "adb reads only the first option after track-devices; 'track-devices -l --proto-text' printed plain text without connection_type",
+    "streaming": "never exits; run_bounded timed out after 3 s as expected",
+    "get_devpath_on_emulator": "unknown",
+    "minimum_platform_tools_for_proto_text": "not found in public release notes; detect the format at run time",
+    "not_verified": "connection_type on a USB-connected device (needs a real device)"
+  },
+  "commands": {
+    "android_10_api_29": "all design commands worked with ordinary adb permissions",
+    "android_16_api_36": "all design commands worked with ordinary adb permissions",
+    "checked": [
+      "getprop (5 selected properties)",
+      "pm list users",
+      "cmd user list -v",
+      "pm list packages -i -U --show-versioncode --user <ID>",
+      "pm list packages -s --user <ID>",
+      "cmd package query-activities --brief --user <ID> -a android.intent.action.MAIN -c android.intent.category.LAUNCHER",
+      "settings --user <ID> get secure enabled_accessibility_services",
+      "settings --user <ID> get secure enabled_notification_listeners",
+      "dumpsys device_policy"
+    ],
+    "formats": {
+      "packages": "package:<name> versionCode:<n>  installer=<value> uid:<n>; preinstalled apps show installer=null",
+      "launcher": "'<N> activities found:' then 'Activity #<n>:' blocks with 'package/class' lines, including short forms such as '/.AllInOneActivity'",
+      "device_policy": "per-user sections 'Enabled Device Admins (User <ID>, provisioningState: <n>):'; about 0.6 KB on Android 10 and 3.5 KB on Android 16"
+    },
+    "minimum_android": "Android 10 (older versions not tested)"
+  },
+  "work_profile": {
+    "created_with": "pm create-user --profileOf 0 --managed (emulator only, no DPC app)",
+    "package_counts_android_16": {
+      "owner": 181,
+      "work_profile": 168
+    },
+    "accessibility_services": "shared with the parent: the profile has no own value in 'settings list secure', and reads returned the parent's value even after writing a different one to the profile (Android 10)",
+    "notification_listeners": "separate value per user (Android 10 and 16)",
+    "profile_parent": "Android 16 'cmd user list -v' shows type=profile.MANAGED and parentId; Android 10 shows only the flags (0x20 = MANAGED_PROFILE)",
+    "android_16_note": "a nonexistent accessibility component written to the setting was removed by the system; Android 10 kept it"
+  },
+  "adb_server": {
+    "runner": "pc_scanner.core.run_bounded on macOS",
+    "no_server_running": "adb started the server itself; the server left the process group, survived run_bounded's cleanup and did not hold the output open (no 'stayed open' error)",
+    "first_command_after_start": "error: device offline (the server had not reached the device yet)",
+    "server_running": "get-state and shell commands returned in about 0.04 s",
+    "policy": "leave the shared server running; wait for the device through track-devices updates",
+    "not_verified": "Windows: whether the Job Object stops the server when it closes"
+  },
+  "cleanup": "emulators and the adb server were stopped; everything ran under a scratch HOME, and an empty ~/.android folder created by an early version check was removed"
+}
