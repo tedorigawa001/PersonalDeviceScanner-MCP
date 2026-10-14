@@ -63,6 +63,22 @@ class ConnectionTests(unittest.TestCase):
             with self.subTest(serial=serial), self.assertRaisesRegex(ScannerError, "not connected over USB"):
                 self.find(stream((0, frame(device(serial, connection="SOCKET")))), serial=serial)
 
+    def test_windows_line_ends_are_tolerated(self):
+        # Lengths count "\n"; a text-mode layer on Windows may print "\r\n". The write here is cut
+        # right after a frame's last "\r": counting that "\r" would end the frame one byte early
+        # and leave its "\n" in front of the next length.
+        offline = frame(device("R58TEST", state="OFFLINE", transport=9)).replace("\n", "\r\n")
+        ready = frame(device("R58TEST", transport=9)).replace("\n", "\r\n")
+        cut = len(offline) - 1
+        raw = """
+import sys, time
+for part in {parts!r}:
+    sys.stdout.buffer.write(part.encode()); sys.stdout.buffer.flush(); time.sleep(0.3)
+time.sleep(60)
+"""
+        argv = [sys.executable, "-c", raw.format(parts=[offline[:cut], offline[cut:] + ready])]
+        self.assertEqual(self.find(argv), "9")
+
     def test_unauthorized_device_asks_for_approval(self):
         with self.assertRaisesRegex(ScannerError, "approve this computer"):
             self.find(stream((0, frame(device("R58TEST", state="UNAUTHORIZED")))))
@@ -82,6 +98,9 @@ class ConnectionTests(unittest.TestCase):
             self.find(stream((0, text)))
         with self.assertRaisesRegex(ScannerError, "Platform-Tools"):
             self.find(stream((0, "not a length prefix")))
+        # int(..., 16) would accept " +0c"; a length must be exactly four hex digits.
+        with self.assertRaisesRegex(ScannerError, "Platform-Tools"):
+            self.find(stream((0, " +0c" + "x" * 12)))
         with self.assertRaisesRegex(ScannerError, "printed nothing"):
             self.find([sys.executable, "-c", "pass"])
 

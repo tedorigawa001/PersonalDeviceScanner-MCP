@@ -111,13 +111,18 @@ def find_usb_transport(argv: list[str], serial: str, wait: float, limit: int,
             received += len(chunk)
             if received > limit:
                 raise ScannerError("adb device list exceeded limits")
-            buffer += chunk
+            # The lengths count "\n" line ends. A Windows console layer may have written them as
+            # "\r\n"; the protobuf text itself never holds "\r", so turning "\r\n" back is safe. A
+            # trailing "\r" waits for the next chunk, which may start with its "\n".
+            buffer = (buffer + chunk).replace(b"\r\n", b"\n")
+            held = b""
+            if buffer.endswith(b"\r"):
+                buffer, held = buffer[:-1], b"\r"
             while len(buffer) >= 4:
-                try:
-                    length = int(buffer[:4], 16)
-                except ValueError:
+                if not re.fullmatch(rb"[0-9a-fA-F]{4}", buffer[:4]):
                     raise ScannerError("adb did not report connection types; update Android SDK Platform-Tools "
-                                       "(37.0.1 or later is known to work)") from None
+                                       "(37.0.1 or later is known to work)")
+                length = int(buffer[:4], 16)
                 if len(buffer) < 4 + length:
                     break
                 payload, buffer = buffer[4:4 + length], buffer[4 + length:]
@@ -146,6 +151,7 @@ def find_usb_transport(argv: list[str], serial: str, wait: float, limit: int,
                 if state == "NOPERMISSION":
                     raise ScannerError("No permission to use the USB device (on Linux, check the udev rules)")
                 last_state = clean_text(state, 32)
+            buffer += held
     finally:
         tree.stop()
         process.wait()
