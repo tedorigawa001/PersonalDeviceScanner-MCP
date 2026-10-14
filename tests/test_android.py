@@ -512,6 +512,11 @@ class DeviceTests(unittest.TestCase):
         self.assertEqual(report["status"], "partial")
         self.assertTrue(any("unexpected field types were ignored" in w for w in report["warnings"]))
         self.assertTrue(report["data"]["packages_checked"])
+        # Deep nesting makes the JSON parser give up with RecursionError; the device check still runs.
+        path.write_text('{"type": "bundle", "objects": ' + "[" * 200000 + "]" * 200000 + "}")
+        report = self.run_with(FakeDevice(answers()), "android_check")
+        self.assertEqual(report["status"], "partial")
+        self.assertTrue(any("could not be read as a STIX2 bundle" in w for w in report["warnings"]))
         # Whatever else the file holds, the check still runs and reports partial.
         with patch("pc_scanner.android.load_indicators", side_effect=TypeError("odd")):
             report = self.run_with(FakeDevice(answers()), "android_check")

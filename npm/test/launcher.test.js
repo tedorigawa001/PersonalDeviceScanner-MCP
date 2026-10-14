@@ -110,6 +110,44 @@ test('Python is found by fixed names, or only at an absolute path the owner set'
   assert.throws(() => launcher.pythonCandidates({ PC_SCANNER_PYTHON: 'python3' }, 'linux'), launcher.LauncherError);
 });
 
+test('Python is found only in absolute PATH folders, never in the current folder', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'pc-scanner-path-'));
+  const cwd = process.cwd();
+  try {
+    const name = process.platform === 'win32' ? 'python3.exe' : 'python3';
+    const planted = path.join(base, 'planted');
+    const real = path.join(base, 'real');
+    for (const folder of [planted, real]) {
+      fs.mkdirSync(folder);
+      fs.writeFileSync(path.join(folder, name), '');
+      fs.chmodSync(path.join(folder, name), 0o755);
+    }
+    process.chdir(planted);
+    const delimiter = process.platform === 'win32' ? ';' : ':';
+    // "." and an empty entry both mean the current folder; they are skipped.
+    const env = { PATH: ['.', '', 'relative/bin', real].join(delimiter) };
+    assert.equal(launcher.resolveOnPath('python3', env), path.join(real, name));
+    assert.equal(launcher.resolveOnPath('python3', { PATH: ['.', ''].join(delimiter) }), null);
+    assert.equal(launcher.resolveOnPath('python3', {}), null);
+    const absolute = path.join(real, name);
+    assert.equal(launcher.resolveOnPath(absolute, {}), absolute);
+  } finally {
+    process.chdir(cwd);
+    fs.rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test('on POSIX a file that is not executable is not Python', { skip: process.platform === 'win32' }, () => {
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'pc-scanner-path-'));
+  try {
+    fs.writeFileSync(path.join(folder, 'python3'), '');
+    fs.chmodSync(path.join(folder, 'python3'), 0o644);
+    assert.equal(launcher.resolveOnPath('python3', { PATH: folder }), null);
+  } finally {
+    fs.rmSync(folder, { recursive: true, force: true });
+  }
+});
+
 test('only builds that were interrupted long ago are removed', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pc-scanner-cache-'));
   try {

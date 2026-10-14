@@ -656,8 +656,8 @@ def check(scanner, device_alias: str, cancel: threading.Event | None = None) -> 
         try:
             indicators, meta, indicator_issues = load_indicators(path, scanner.max_indicator_age)
             issues += indicator_issues
-        except (OSError, ValueError, TypeError, KeyError, AttributeError):
-            # Whatever the file holds, the device check goes on, as partial.
+        except (OSError, ValueError, TypeError, KeyError, AttributeError, RecursionError):
+            # Whatever the file holds (deep nesting raises RecursionError), the device check goes on, as partial.
             issues.append("The indicator file could not be read as a STIX2 bundle; known monitoring apps were "
                           "not matched")
     session = connect(scanner, device_alias, cancel)

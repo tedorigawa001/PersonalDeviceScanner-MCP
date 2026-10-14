@@ -129,9 +129,37 @@ function pythonCandidates(env = process.env, platform = process.platform) {
   return [['python3.14'], ['python3.13'], ['python3.12'], ['python3.11'], ['python3'], ['python']];
 }
 
+/**
+ * The absolute path a command name resolves to, searching only the absolute folders on PATH.
+ * Started by bare name, Windows looks in the current folder first, where a planted python.exe
+ * would run; a relative PATH entry (".", or an empty one) does the same anywhere.
+ */
+function resolveOnPath(name, env = process.env, platform = process.platform) {
+  const paths = platform === 'win32' ? path.win32 : path.posix;
+  if (paths.isAbsolute(name)) return name;
+  const entries = (env.PATH ?? env.Path ?? '').split(platform === 'win32' ? ';' : ':');
+  const extensions = platform === 'win32' && !paths.extname(name) ? ['.exe', '.com'] : [''];
+  for (const entry of entries) {
+    if (!entry || !paths.isAbsolute(entry)) continue;
+    for (const extension of extensions) {
+      const candidate = paths.join(entry, name + extension);
+      try {
+        if (!fs.statSync(candidate).isFile()) continue;
+        if (platform !== 'win32') fs.accessSync(candidate, fs.constants.X_OK);
+        return candidate;
+      } catch {
+        // not here
+      }
+    }
+  }
+  return null;
+}
+
 function describe(command) {
+  const executable = resolveOnPath(command[0]);
+  if (!executable) return null;
   // -I: ignore the current folder and PYTHON* variables, so nothing there can run.
-  const result = childProcess.spawnSync(command[0], [...command.slice(1), '-I', '-c', DESCRIBE],
+  const result = childProcess.spawnSync(executable, [...command.slice(1), '-I', '-c', DESCRIBE],
     { encoding: 'utf8', timeout: 15000, windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
   if (result.error || result.status !== 0) return null;
   try {
@@ -252,7 +280,7 @@ function main(argv = process.argv.slice(2)) {
 
 module.exports = {
   LauncherError, cacheRoot, chooseEnvironment, environmentName, parseLock, pythonCandidates, readLocks,
-  removeStaleBuilds, requirements, sourceFiles, supported, venvPython,
+  removeStaleBuilds, requirements, resolveOnPath, sourceFiles, supported, venvPython,
 };
 
 if (require.main === module) {

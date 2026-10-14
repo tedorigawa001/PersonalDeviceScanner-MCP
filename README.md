@@ -207,7 +207,9 @@ the npm package holds a small launcher, this project's Python code and the lock 
 - With CPython 3.14 on Windows x64, macOS (Intel or Apple silicon) or Linux x86_64, packages are installed with the hashes
   in the bundled lock files (`pip --require-hashes`). Other Python versions and CPUs get the same versions without hash
   checks, and the launcher says so on stderr. Its own messages and pip's output go to stderr, never to the MCP channel.
-- It looks for `python3.14`, `python3.13` … `python3` (Windows: `py -3.14`, `py -3`, `python`). To choose one, set
+- It looks for `python3.14`, `python3.13` … `python3` (Windows: `py -3.14`, `py -3`, `python`) in the absolute folders on
+  `PATH` only. It never looks in the current folder (which Windows would otherwise search first) or in relative `PATH`
+  entries such as `.`, so a program named like Python in a downloads folder is not run. To choose one, set
   `PC_SCANNER_PYTHON` to its absolute path; `PC_SCANNER_CACHE_DIR` (absolute) moves the cache.
 - Keep the version pinned (`@0.1.1`) so that updating is your decision. Each version and Python gets its own environment;
   old ones in the cache folder can be deleted.
@@ -429,6 +431,9 @@ Inventory and Wazuh results come in pages of 500. A single page, and any page af
   reproduced on the emulators, and manufacturers may differ.
 - Returned: Android version, security patch, model, package names and versions, user IDs. Not returned: the serial,
   user names, accounts, phone numbers, or any app data.
+- adb trusts whatever answers on its server port (localhost:5037) on this computer. On a computer other people also
+  sign in to, someone who starts a fake ADB server first could feed false results. Use it on your own computer, or run
+  `adb kill-server` and then `adb start-server` yourself before the check.
 
 ### Privacy
 
