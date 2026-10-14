@@ -7,8 +7,9 @@
 An MCP server that lets AI agents inspect your own computer (Windows / macOS / Linux) and Android device **read-only**.
 It calls well-established open-source tools (osquery, ClamAV, Wazuh, adb) and returns the results as JSON that AI agents can work with.
 
-Formerly *Personal PC Scanner MCP*. The npm package moved from `personal-pc-scanner-mcp` (last version 0.1.2) to
-`personal-device-scanner-mcp`; links to the old repository name are redirected.
+Formerly *Personal PC Scanner MCP*. The npm package is now `personal-device-scanner-mcp`; the old package
+`personal-pc-scanner-mcp` was removed from npm on 2026-10-15, so update any configuration that uses it.
+Links to the old repository name are redirected.
 
 > [!IMPORTANT]
 > This tool **does not decide that a PC is safe**.

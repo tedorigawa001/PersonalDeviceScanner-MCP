@@ -134,8 +134,10 @@
     変えた。GitHub のリポジトリ名は `PersonalDeviceScanner-MCP`（旧 URL は転送される）、npm は `personal-device-scanner-mcp`
     （0.2.0 から）、MCP の表示名は `Personal Device Scanner`。内部の名前（`pc_scanner`・`PC_SCANNER_*`・`pc-scanner`・
     Python の配布名 `personal-pc-scanner`）は、既存の設定が動かなくならないよう残した。
-    残り: 新しいパッケージの最初の公開と信頼された公開元の設定、旧パッケージ `personal-pc-scanner-mcp` への案内（deprecate）。
-    どちらも所有者の npm アカウントで行う。
+    旧パッケージ `personal-pc-scanner-mcp` は、名前を変えられないため所有者が npm から削除した（2026-10-15 08:14 JST、
+    0.0.0-stage〜0.1.2 の全版）。旧名を使う設定は動かなくなる。npm の規則で、旧名は24時間は再公開できず、同じ版番号は
+    今後も使えない。
+    残り: 新しいパッケージ `personal-device-scanner-mcp` の最初の公開と、信頼された公開元の設定（所有者の npm アカウントで行う）。
 
 - [x] **Android 端末の点検に対応する（第1段階）**（2026-10-14 設計・実装）
   - 所有者自身の端末を USB でつなぎ、ADB の固定コマンドで読み取り専用に点検する。基本情報とパッチの日付、利用者が入れたアプリと

@@ -7,8 +7,9 @@
 自分の PC（Windows / macOS / Linux）と Android 端末の状態を、AIエージェントから**読み取り専用で**確認するための MCP サーバーです。
 定評のあるオープンソースの検査ツール（osquery・ClamAV・Wazuh・adb）を呼び出し、結果を AI が扱いやすい JSON で返します。
 
-旧名は *Personal PC Scanner MCP* です。npm パッケージは `personal-pc-scanner-mcp`（最後の版は 0.1.2）から
-`personal-device-scanner-mcp` に移りました。旧リポジトリ名へのリンクは新しい名前に転送されます。
+旧名は *Personal PC Scanner MCP* です。npm パッケージは `personal-device-scanner-mcp` になりました。旧パッケージ
+`personal-pc-scanner-mcp` は 2026-10-15 に npm から削除したため、使っている設定は書き換えてください。
+旧リポジトリ名へのリンクは新しい名前に転送されます。
 
 > [!IMPORTANT]
 > このツールは **「PCが安全である」と判定するものではありません**。
