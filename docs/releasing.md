@@ -1,6 +1,6 @@
 # リリース手順（npm）
 
-npm パッケージ `personal-pc-scanner-mcp` は、GitHub のリリースを公開すると
+npm パッケージ `personal-device-scanner-mcp`（0.1.2 までの旧名は `personal-pc-scanner-mcp`）は、GitHub のリリースを公開すると
 ワークフロー「Publish to npm」（`.github/workflows/publish-npm.yml`）がステージド公開として提出します。
 npmjs.com で所有者が 2FA で承認するまで、利用者には届きません。
 
@@ -16,7 +16,7 @@ npmjs.com でパッケージの設定を開き、次を行います。
 
 1. **Trusted publishing** に GitHub Actions を追加する
    - Organization or user：`tedorigawa001`
-   - Repository：`PersonalPCScanner-MCP`
+   - Repository：`PersonalDeviceScanner-MCP`
    - Workflow filename：`publish-npm.yml`
    - Environment name：空欄
    - 許可する操作：`npm stage publish` のみ（`npm publish` は許可しない）
@@ -50,11 +50,11 @@ npm は保存時に設定を検証しないため、誤りは最初の公開の�
 ## 公開後の確認
 
 ```sh
-npm view personal-pc-scanner-mcp@<バージョン> dist.integrity dist.attestations
+npm view personal-device-scanner-mcp@<バージョン> dist.integrity dist.attestations
 ```
 
 - `dist.attestations` があれば provenance が付いています。npmjs.com のパッケージのページにも表示されます。
-- 空のフォルダーで `npm install personal-pc-scanner-mcp@<バージョン>` してから `npm audit signatures` を実行し、
+- 空のフォルダーで `npm install personal-device-scanner-mcp@<バージョン>` してから `npm audit signatures` を実行し、
   「verified attestation」と表示されることを確かめます。
 - 公開物の `dist.integrity` が、リリースしたコミットで `npm pack --json` して得た `integrity` と一致することを確かめます。
-- リポジトリの外で `npx -y personal-pc-scanner-mcp@<バージョン> setup` を実行し、導入できることを確かめます。
+- リポジトリの外で `npx -y personal-device-scanner-mcp@<バージョン> setup` を実行し、導入できることを確かめます。

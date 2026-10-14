@@ -143,7 +143,7 @@ Windows / Linux / macOS（arm64）それぞれで次を行い、結果を成果�
 
 ## npm パッケージ
 
-`npx` で起動するための npm パッケージ（`personal-pc-scanner-mcp`）に入るのは、起動用スクリプト（`npm/launcher.js`）、
+`npx` で起動するための npm パッケージ（`personal-device-scanner-mcp`。0.1.2 までの旧名は `personal-pc-scanner-mcp`）に入るのは、起動用スクリプト（`npm/launcher.js`）、
 `pc_scanner/` の Python コード、ロックファイル（直下と `profiles/*/`）、`LICENSE`、README だけです。
 第三者のコードやバイナリは含みません。内容は `package.json` の `files` で限定し、テストで一覧を確認しています。
 

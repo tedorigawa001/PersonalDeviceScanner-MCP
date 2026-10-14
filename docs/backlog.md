@@ -127,6 +127,15 @@
     所有者が設定を直して公開のジョブだけを再実行した。公開物の sha512 はタグ v0.1.1 のコミット 2dba0a6 から作ったものと一致し、
     provenance（SLSA v1）にはリポジトリ・ワークフロー・タグ・コミットが記録され、`npm audit signatures` でも検証できた。
     レジストリから `npx` で導入し、ClamAV の検査まで動くことを確認した。
+  - 0.1.2（2026-10-14）: Android 対応と、npm の起動用スクリプトの Python の探し方の修正を含めて公開。ステージド公開は
+    一度で成功し、公開物の sha512 はコミット a572e83 から作ったものと一致、provenance と `npm audit signatures` で検証できた。
+    公開物でも、現在のフォルダーに置いた偽の Python が実行されないことを確認した。
+  - 名前の変更（2026-10-15、所有者が選択）: Android まで対象を広げたため、利用者向けの名前を「Personal Device Scanner MCP」に
+    変えた。GitHub のリポジトリ名は `PersonalDeviceScanner-MCP`（旧 URL は転送される）、npm は `personal-device-scanner-mcp`
+    （0.2.0 から）、MCP の表示名は `Personal Device Scanner`。内部の名前（`pc_scanner`・`PC_SCANNER_*`・`pc-scanner`・
+    Python の配布名 `personal-pc-scanner`）は、既存の設定が動かなくならないよう残した。
+    残り: 新しいパッケージの最初の公開と信頼された公開元の設定、旧パッケージ `personal-pc-scanner-mcp` への案内（deprecate）。
+    どちらも所有者の npm アカウントで行う。
 
 - [x] **Android 端末の点検に対応する（第1段階）**（2026-10-14 設計・実装）
   - 所有者自身の端末を USB でつなぎ、ADB の固定コマンドで読み取り専用に点検する。基本情報とパッチの日付、利用者が入れたアプリと

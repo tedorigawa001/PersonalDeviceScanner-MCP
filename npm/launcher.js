@@ -12,7 +12,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const PACKAGE_ROOT = path.resolve(__dirname, '..');
-const NAME = 'personal-pc-scanner-mcp';
+const NAME = 'personal-device-scanner-mcp';
 const MINIMUM_PYTHON = [3, 11];
 // Temporary build folders older than this were left by an interrupted setup.
 const STALE_BUILD_MS = 24 * 60 * 60 * 1000;

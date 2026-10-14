@@ -93,12 +93,12 @@ test('the environment folder changes with anything that goes into it', () => {
 
 test('the cache folder follows each OS, and an override must be absolute', () => {
   const home = path.join(path.sep, 'home', 'someone');
-  assert.equal(launcher.cacheRoot({}, 'darwin', home), path.join(home, 'Library', 'Caches', 'personal-pc-scanner-mcp'));
-  assert.equal(launcher.cacheRoot({}, 'linux', home), path.join(home, '.cache', 'personal-pc-scanner-mcp'));
+  assert.equal(launcher.cacheRoot({}, 'darwin', home), path.join(home, 'Library', 'Caches', 'personal-device-scanner-mcp'));
+  assert.equal(launcher.cacheRoot({}, 'linux', home), path.join(home, '.cache', 'personal-device-scanner-mcp'));
   assert.equal(launcher.cacheRoot({ XDG_CACHE_HOME: 'relative' }, 'linux', home),
-    path.join(home, '.cache', 'personal-pc-scanner-mcp'));
+    path.join(home, '.cache', 'personal-device-scanner-mcp'));
   assert.equal(launcher.cacheRoot({ LOCALAPPDATA: path.join(home, 'Local') }, 'win32', home),
-    path.join(home, 'Local', 'personal-pc-scanner-mcp'));
+    path.join(home, 'Local', 'personal-device-scanner-mcp'));
   assert.throws(() => launcher.cacheRoot({ PC_SCANNER_CACHE_DIR: 'cache' }, 'linux', home), launcher.LauncherError);
 });
 

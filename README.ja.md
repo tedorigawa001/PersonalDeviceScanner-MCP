@@ -1,11 +1,14 @@
-# Personal PC Scanner MCP
+# Personal Device Scanner MCP
 
-[![CI](https://github.com/tedorigawa001/PersonalPCScanner-MCP/actions/workflows/ci.yml/badge.svg)](https://github.com/tedorigawa001/PersonalPCScanner-MCP/actions/workflows/ci.yml)
+[![CI](https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/workflows/ci.yml/badge.svg)](https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/workflows/ci.yml)
 
 [English](README.md) | **日本語**
 
-個人PC（Windows / macOS / Linux）の状態を、AIエージェントから**読み取り専用で**確認するための MCP サーバーです。
-定評のあるオープンソースの検査ツール（osquery・ClamAV・Wazuh）を呼び出し、結果を AI が扱いやすい JSON で返します。
+自分の PC（Windows / macOS / Linux）と Android 端末の状態を、AIエージェントから**読み取り専用で**確認するための MCP サーバーです。
+定評のあるオープンソースの検査ツール（osquery・ClamAV・Wazuh・adb）を呼び出し、結果を AI が扱いやすい JSON で返します。
+
+旧名は *Personal PC Scanner MCP* です。npm パッケージは `personal-pc-scanner-mcp`（最後の版は 0.1.2）から
+`personal-device-scanner-mcp` に移りました。旧リポジトリ名へのリンクは新しい名前に転送されます。
 
 > [!IMPORTANT]
 > このツールは **「PCが安全である」と判定するものではありません**。
@@ -51,10 +54,11 @@
 AIクライアント（Claude Desktop など）
    │  MCP（stdio。ネットワークに待受ポートは開きません）
    ▼
-Personal PC Scanner（このプロジェクト）
+Personal Device Scanner（このプロジェクト）
    ├─ osqueryi ……………… OS・アプリ・待受ポートの一覧
    ├─ clamscan ……………… 許可したフォルダーのマルウェア検査
-   └─ Wazuh indexer ……… 登録済み端末の既存の脆弱性情報（HTTPS）
+   ├─ Wazuh indexer ……… 登録済み端末の既存の脆弱性情報（HTTPS）
+   └─ adb …………………… USB でつないだ登録済みの Android 端末
 ```
 
 AI が指定できるのは「どの固定クエリを使うか」「どの許可フォルダーを検査するか」だけです。
@@ -171,7 +175,7 @@ MCP（stdio）に対応したクライアントの設定に、次と同等の内
 ```json
 {
   "mcpServers": {
-    "personal-pc-scanner": {
+    "personal-device-scanner": {
       "command": "/absolute/path/to/project/.venv/bin/python",
       "args": ["-m", "pc_scanner.cli", "--config", "/absolute/path/to/project/scanner.toml", "serve"]
     }
@@ -191,18 +195,18 @@ npm パッケージに入っているのは、小さな起動用スクリプト�
 ```json
 {
   "mcpServers": {
-    "personal-pc-scanner": {
+    "personal-device-scanner": {
       "command": "npx",
-      "args": ["-y", "personal-pc-scanner-mcp@0.1.2", "--config", "/absolute/path/to/scanner.toml", "serve"]
+      "args": ["-y", "personal-device-scanner-mcp@0.2.0", "--config", "/absolute/path/to/scanner.toml", "serve"]
     }
   }
 }
 ```
 
 - 初回の起動時に、キャッシュフォルダーへ専用の仮想環境を作り、Python のパッケージを導入します
-  （macOS：`~/Library/Caches/personal-pc-scanner-mcp`、Linux：`~/.cache/personal-pc-scanner-mcp`、
-  Windows：`%LOCALAPPDATA%\personal-pc-scanner-mcp`）。クライアントがサーバーの起動を待つ時間より長くかかることがあるため、
-  先に一度 `npx -y personal-pc-scanner-mcp@0.1.2 setup` を実行してください。
+  （macOS：`~/Library/Caches/personal-device-scanner-mcp`、Linux：`~/.cache/personal-device-scanner-mcp`、
+  Windows：`%LOCALAPPDATA%\personal-device-scanner-mcp`）。クライアントがサーバーの起動を待つ時間より長くかかることがあるため、
+  先に一度 `npx -y personal-device-scanner-mcp@0.2.0 setup` を実行してください。
 - Windows x64・macOS（Intel / Apple シリコン）・Linux x86_64 の CPython 3.14 では、同梱のロックファイルのハッシュで
   検証して導入します（`pip --require-hashes`）。それ以外の Python や CPU では、同じバージョンをハッシュの検証なしで導入し、
   その旨を stderr に表示します。起動用スクリプトと pip の出力はすべて stderr に出し、MCP の通信路には混ぜません。
@@ -210,9 +214,9 @@ npm パッケージに入っているのは、小さな起動用スクリプト�
   絶対パスのフォルダーからだけ探します。現在のフォルダー（Windows は本来ここを最初に探します）や、`.` のような相対の `PATH` は
   見ないため、ダウンロードフォルダーなどに置かれた Python と同じ名前のプログラムは実行されません。
   指定する場合は `PC_SCANNER_PYTHON` に絶対パスを設定します。`PC_SCANNER_CACHE_DIR`（絶対パス）でキャッシュの場所を変えられます。
-- 更新を自分で判断できるよう、バージョンは固定（`@0.1.2`）してください。バージョンと Python ごとに別の環境を作るので、
+- 更新を自分で判断できるよう、バージョンは固定（`@0.2.0`）してください。バージョンと Python ごとに別の環境を作るので、
   キャッシュフォルダー内の古い環境は削除してかまいません。
-- CLI も同じように使えます。例：`npx -y personal-pc-scanner-mcp@0.1.2 --config scanner.toml status`
+- CLI も同じように使えます。例：`npx -y personal-device-scanner-mcp@0.2.0 --config scanner.toml status`
 - Windows のクライアントが `npx` を直接起動できない場合は、`"command": "cmd"`、`"args": ["/c", "npx", ...]` とします。
 
 ### Wazuh を使う場合

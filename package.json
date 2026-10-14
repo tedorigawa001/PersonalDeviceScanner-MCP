@@ -1,16 +1,16 @@
 {
-  "name": "personal-pc-scanner-mcp",
-  "version": "0.1.2",
-  "description": "MCP server that lets AI agents inspect a personal PC read-only with osquery, ClamAV and Wazuh (runs the Python server; needs Python 3.11+)",
+  "name": "personal-device-scanner-mcp",
+  "version": "0.2.0",
+  "description": "MCP server that lets AI agents inspect your own PC and Android device read-only with osquery, ClamAV, Wazuh and adb (runs the Python server; needs Python 3.11+)",
   "license": "MIT",
   "author": "tedorigawa001",
-  "homepage": "https://github.com/tedorigawa001/PersonalPCScanner-MCP#readme",
+  "homepage": "https://github.com/tedorigawa001/PersonalDeviceScanner-MCP#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tedorigawa001/PersonalPCScanner-MCP.git"
+    "url": "git+https://github.com/tedorigawa001/PersonalDeviceScanner-MCP.git"
   },
   "bugs": {
-    "url": "https://github.com/tedorigawa001/PersonalPCScanner-MCP/issues"
+    "url": "https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/issues"
   },
   "keywords": [
     "mcp",
@@ -18,10 +18,11 @@
     "security",
     "osquery",
     "clamav",
-    "wazuh"
+    "wazuh",
+    "android"
   ],
   "bin": {
-    "personal-pc-scanner-mcp": "npm/launcher.js"
+    "personal-device-scanner-mcp": "npm/launcher.js"
   },
   "files": [
     "npm/launcher.js",

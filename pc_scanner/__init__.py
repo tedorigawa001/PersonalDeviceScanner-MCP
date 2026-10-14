@@ -1,3 +1,3 @@
-"""Personal PC Scanner: independently installed OSS integrations."""
+"""Personal Device Scanner: independently installed OSS integrations."""
 
-__version__ = "0.1.2"
+__version__ = "0.2.0"

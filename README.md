@@ -1,11 +1,14 @@
-# Personal PC Scanner MCP
+# Personal Device Scanner MCP
 
-[![CI](https://github.com/tedorigawa001/PersonalPCScanner-MCP/actions/workflows/ci.yml/badge.svg)](https://github.com/tedorigawa001/PersonalPCScanner-MCP/actions/workflows/ci.yml)
+[![CI](https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/workflows/ci.yml/badge.svg)](https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/workflows/ci.yml)
 
 **English** | [日本語](README.ja.md)
 
-An MCP server that lets AI agents inspect a personal computer (Windows / macOS / Linux) **read-only**.
-It calls well-established open-source tools (osquery, ClamAV, Wazuh) and returns the results as JSON that AI agents can work with.
+An MCP server that lets AI agents inspect your own computer (Windows / macOS / Linux) and Android device **read-only**.
+It calls well-established open-source tools (osquery, ClamAV, Wazuh, adb) and returns the results as JSON that AI agents can work with.
+
+Formerly *Personal PC Scanner MCP*. The npm package moved from `personal-pc-scanner-mcp` (last version 0.1.2) to
+`personal-device-scanner-mcp`; links to the old repository name are redirected.
 
 > [!IMPORTANT]
 > This tool **does not decide that a PC is safe**.
@@ -52,10 +55,11 @@ Configure only the engines you want. For example, you can use osquery and ClamAV
 AI client (Claude Desktop, etc.)
    │  MCP over stdio (no network port is opened)
    ▼
-Personal PC Scanner (this project)
+Personal Device Scanner (this project)
    ├─ osqueryi ............ OS, applications, listening ports
    ├─ clamscan ............ malware scan of authorized folders
-   └─ Wazuh indexer ....... existing vulnerability data for a registered device (HTTPS)
+   ├─ Wazuh indexer ....... existing vulnerability data for a registered device (HTTPS)
+   └─ adb ................. a registered Android device connected over USB
 ```
 
 The AI can only choose which fixed query to run and which authorized folder to scan.
@@ -172,7 +176,7 @@ Add the equivalent of the following to your MCP (stdio) client's configuration. 
 ```json
 {
   "mcpServers": {
-    "personal-pc-scanner": {
+    "personal-device-scanner": {
       "command": "/absolute/path/to/project/.venv/bin/python",
       "args": ["-m", "pc_scanner.cli", "--config", "/absolute/path/to/project/scanner.toml", "serve"]
     }
@@ -192,18 +196,18 @@ the npm package holds a small launcher, this project's Python code and the lock 
 ```json
 {
   "mcpServers": {
-    "personal-pc-scanner": {
+    "personal-device-scanner": {
       "command": "npx",
-      "args": ["-y", "personal-pc-scanner-mcp@0.1.2", "--config", "/absolute/path/to/scanner.toml", "serve"]
+      "args": ["-y", "personal-device-scanner-mcp@0.2.0", "--config", "/absolute/path/to/scanner.toml", "serve"]
     }
   }
 }
 ```
 
 - On first use, the launcher creates its own virtual environment in your cache folder and installs the Python packages there
-  (macOS: `~/Library/Caches/personal-pc-scanner-mcp`, Linux: `~/.cache/personal-pc-scanner-mcp`,
-  Windows: `%LOCALAPPDATA%\personal-pc-scanner-mcp`). This can take longer than some clients wait for a server to start,
-  so run `npx -y personal-pc-scanner-mcp@0.1.2 setup` once beforehand.
+  (macOS: `~/Library/Caches/personal-device-scanner-mcp`, Linux: `~/.cache/personal-device-scanner-mcp`,
+  Windows: `%LOCALAPPDATA%\personal-device-scanner-mcp`). This can take longer than some clients wait for a server to start,
+  so run `npx -y personal-device-scanner-mcp@0.2.0 setup` once beforehand.
 - With CPython 3.14 on Windows x64, macOS (Intel or Apple silicon) or Linux x86_64, packages are installed with the hashes
   in the bundled lock files (`pip --require-hashes`). Other Python versions and CPUs get the same versions without hash
   checks, and the launcher says so on stderr. Its own messages and pip's output go to stderr, never to the MCP channel.
@@ -211,9 +215,9 @@ the npm package holds a small launcher, this project's Python code and the lock 
   `PATH` only. It never looks in the current folder (which Windows would otherwise search first) or in relative `PATH`
   entries such as `.`, so a program named like Python in a downloads folder is not run. To choose one, set
   `PC_SCANNER_PYTHON` to its absolute path; `PC_SCANNER_CACHE_DIR` (absolute) moves the cache.
-- Keep the version pinned (`@0.1.2`) so that updating is your decision. Each version and Python gets its own environment;
+- Keep the version pinned (`@0.2.0`) so that updating is your decision. Each version and Python gets its own environment;
   old ones in the cache folder can be deleted.
-- The CLI works the same way, for example `npx -y personal-pc-scanner-mcp@0.1.2 --config scanner.toml status`.
+- The CLI works the same way, for example `npx -y personal-device-scanner-mcp@0.2.0 --config scanner.toml status`.
 - If a Windows client cannot start `npx` directly, use `"command": "cmd"` with `"args": ["/c", "npx", ...]`.
 
 ### Using Wazuh

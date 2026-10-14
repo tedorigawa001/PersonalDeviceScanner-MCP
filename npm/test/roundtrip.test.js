@@ -66,7 +66,7 @@ function connect(launcherPath, args, env) {
 async function initialize(client) {
   const reply = await client.request('initialize', { protocolVersion: '2025-06-18', capabilities: {},
     clientInfo: { name: 'npm-roundtrip-test', version: '1' } });
-  assert.equal(reply.result.serverInfo.name, 'Personal PC Scanner');
+  assert.equal(reply.result.serverInfo.name, 'Personal Device Scanner');
   client.notify('notifications/initialized');
 }
 
@@ -80,7 +80,7 @@ test('the installed package sets itself up on first use and serves MCP on a clea
       const tarball = fs.readdirSync(work).find((name) => name.endsWith('.tgz'));
       const prefix = path.join(work, 'install');
       run('npm', ['install', '--prefix', prefix, '--ignore-scripts', '--no-audit', '--no-fund', path.join(work, tarball)]);
-      const launcherPath = path.join(prefix, 'node_modules', 'personal-pc-scanner-mcp', 'npm', 'launcher.js');
+      const launcherPath = path.join(prefix, 'node_modules', 'personal-device-scanner-mcp', 'npm', 'launcher.js');
       const folder = path.join(work, 'scan');
       fs.mkdirSync(folder);
       fs.writeFileSync(path.join(folder, 'notes.txt'), 'nothing to see\n');
@@ -120,7 +120,7 @@ test('the installed package sets itself up on first use and serves MCP on a clea
       const [built] = fs.readdirSync(env.PC_SCANNER_CACHE_DIR);
       const used = JSON.parse(fs.readFileSync(path.join(env.PC_SCANNER_CACHE_DIR, built, 'environment.json'), 'utf8'));
       if (used.hashed) {
-        const lock = path.join(prefix, 'node_modules', 'personal-pc-scanner-mcp', used.lock);
+        const lock = path.join(prefix, 'node_modules', 'personal-device-scanner-mcp', used.lock);
         const original = fs.readFileSync(lock, 'utf8');
         fs.writeFileSync(lock, original.replace(/^(mcp==\S+ --hash=sha256:)[0-9a-f]{64}$/m, `$1${'0'.repeat(64)}`));
         const tampered = childProcess.spawnSync(process.execPath, [launcherPath, 'setup'],
