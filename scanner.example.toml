@@ -25,3 +25,18 @@ ca_file = ""
 agent_name = ""
 # Credentials are read from PC_SCANNER_WAZUH_USER and PC_SCANNER_WAZUH_PASSWORD.
 # Grant this account read access only to the authorized agent's vulnerability data.
+
+[android]
+# Android SDK Platform-Tools adb (absolute path). Empty disables Android. Only USB-connected devices
+# are inspected; turn USB debugging off on the device when the check is done.
+adb_binary = ""
+# Monitoring-app indicators: Echap stalkerware-indicators, generated/stalkerware.stix2 (CC-BY 4.0).
+# Download and update them yourself; this tool never downloads them.
+indicators_file = ""
+# Indicators older than this, by the provider's generation time, make the check partial.
+max_indicator_age_days = 30
+# A security patch older than this is reported as outdated_patch.
+max_patch_age_days = 90
+
+# Explicitly allow devices: alias = adb serial (see `adb devices -l`). Your own devices only.
+[android_devices]

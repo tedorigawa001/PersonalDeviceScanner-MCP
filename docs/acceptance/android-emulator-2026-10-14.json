@@ -66,5 +66,22 @@
     "policy": "leave the shared server running; wait for the device through track-devices updates",
     "not_verified": "Windows: whether the Job Object stops the server when it closes"
   },
-  "cleanup": "emulators and the adb server were stopped; everything ran under a scratch HOME, and an empty ~/.android folder created by an early version check was removed"
+  "cleanup": "emulators and the adb server were stopped; everything ran under a scratch HOME, and an empty ~/.android folder created by an early version check was removed",
+  "implementation_run": {
+    "code": "pc_scanner/android.py (phase 1)",
+    "unmodified_check": "refused both emulators: 'The device is not connected over USB (connection: SOCKET)' in about 0.4 s",
+    "usb_check_bypassed_in_test_only": "the transport ID from adb was passed in place of the USB check; every other command ran for real",
+    "android_16": {
+      "device": "completed; outdated_patch (2025-07-05)",
+      "apps": "completed; users 0 (full) and 10 (managed profile, parent 0); 349 system apps hidden, no user apps",
+      "privileged_access": "completed; test notification listeners per user; accessibility of user 10 reported as shared with user 0",
+      "check": "completed; 349 packages checked; real indicator file: 645 app packages (613 stalkerware, 35 watchware), generated 2026-10-09, fresh"
+    },
+    "android_10": {
+      "users": "managed profile and its parent inferred from flags (no parentId on Android 10)",
+      "privileged_access": "short class '.OwnerService' expanded; inner class 'Work$Listener' kept; a real system notification listener read",
+      "check": "completed; 290 packages checked; outdated_patch (2019-09-05)"
+    },
+    "not_reproducible_on_emulator": "dumpsys device_policy with an enabled device admin (the AOSP image has no admin receivers)"
+  }
 }

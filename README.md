@@ -33,6 +33,8 @@ It calls well-established open-source tools (osquery, ClamAV, Wazuh) and returns
 - Lists the OS version, installed applications, and listening ports (osquery)
 - Scans only the folders the owner has authorized for malware (ClamAV)
 - Retrieves vulnerabilities (CVEs) already detected for a device registered in Wazuh (Wazuh indexer)
+- Checks your own Android device, connected over USB, for known monitoring apps (stalkerware) and apps with
+  strong permissions (ADB)
 - Runs all of the above as MCP tools for AI agents, or from the command line (CLI)
 
 **What it does not do**
@@ -67,6 +69,8 @@ It cannot supply arbitrary SQL, paths, executables, or connection targets.
 | `collect_inventory(query_id, offset=0)` | `inventory <query_id> [--offset N]` | osqueryi | Returns one of `os_version`, `applications`, `listening_ports` |
 | `scan_malware(root_alias, relative_path=".")` | `malware <root_alias> [relative_path]` | clamscan | Scans an authorized folder, or a path inside it |
 | `get_vulnerabilities(cursor="")` | `vulnerabilities [--cursor C]` | Wazuh indexer | Returns vulnerabilities for the one configured device, most severe first |
+| `collect_android(device_alias, query_id)` | `android <device_alias> <query_id>` | adb | Returns one of `device` (version, security patch), `apps` (installed apps and their recorded install source), `privileged_access` (accessibility, notification access, device admin) for a registered Android device |
+| `check_android_monitoring_apps(device_alias)` | `android-check <device_alias>` | adb | Matches every package against known monitoring apps and lists apps worth reviewing |
 | — | `serve` | — | Starts the MCP server |
 
 `listening_ports` also returns the listening address (`0.0.0.0` means exposed on all interfaces, `127.0.0.1` means this PC only) and the process name.
@@ -83,6 +87,8 @@ The valid `query_id` values and the authorized folder aliases are part of the to
     You also need a Wazuh server / indexer (for example on Linux), the PC's agent registered to it, and vulnerability detection enabled
 - **For MCP**: the MCP Python SDK v1 (installed with the `agent` extra below)
 - **To start it with `npx` instead**: Node.js 22 or later, in addition to Python (see [Using npx](#using-npx-npm))
+- **For Android**: [Android SDK Platform-Tools](https://developer.android.com/tools/releases/platform-tools) (adb; 37.0.1 or
+  later is known to work) and Android 10 or later (see [Using an Android device](#using-an-android-device))
 
 ## Setup
 
@@ -230,6 +236,43 @@ export PC_SCANNER_WAZUH_PASSWORD='...'
 For MCP, provide them through your client's secret management or the environment that launches it.
 Give the indexer account **read access only** to the target device's vulnerability index. Do not use an administrator account.
 
+### Using an Android device
+
+This inspects **your own** Android phone or tablet, connected to this computer with a USB cable. It only reads;
+it never installs, removes or changes anything on the device. The design is in [docs/android-design.md](docs/android-design.md).
+
+1. Install [Android SDK Platform-Tools](https://developer.android.com/tools/releases/platform-tools) from Google.
+2. On the device, turn on Developer options and **USB debugging**, connect the cable, and approve this computer on the device.
+3. Find the device's serial with `adb devices -l`.
+4. Download the monitoring-app indicators (Echap [stalkerware-indicators](https://github.com/AssoEchap/stalkerware-indicators),
+   CC-BY 4.0). Update them regularly, as you do with ClamAV signatures; this tool never downloads them itself.
+
+   ```sh
+   curl -fsSL -o /absolute/path/to/stalkerware.stix2 https://raw.githubusercontent.com/AssoEchap/stalkerware-indicators/master/generated/stalkerware.stix2
+   ```
+
+   On Windows, use `curl.exe` with the same arguments.
+5. Add the settings:
+
+   ```toml
+   [android]
+   adb_binary = '/absolute/path/to/platform-tools/adb'
+   indicators_file = '/absolute/path/to/stalkerware.stix2'
+
+   [android_devices]
+   # "alias = serial". The AI can only refer to devices by alias
+   my-phone = 'SERIAL'
+   ```
+
+6. Check: `.venv/bin/python -m pc_scanner.cli --config scanner.toml android-check my-phone`
+7. **When you are done, turn USB debugging off** and use "Revoke USB debugging authorizations" in Developer options.
+   USB debugging widens the device's attack surface.
+
+- Only USB connections are inspected. The connection type is read from adb (`adb track-devices --proto-text`), not guessed
+  from the serial, so wireless debugging and emulators are refused.
+- adb starts its server (localhost:5037) on first use and leaves it running; it is shared with tools such as Android Studio,
+  so this tool does not stop it. Stop it with `adb kill-server` if you want.
+
 ### Troubleshooting
 
 - **`cryptography` fails to build**: install prebuilt packages only. This happens on Intel Macs (x86_64),
@@ -262,6 +305,11 @@ Give the indexer account **read access only** to the target device's vulnerabili
 | `wazuh.ca_file` | Absolute path to the indexer's CA certificate (PEM). Empty uses the system certificates. A missing file is warned about at load; an unreadable or non-PEM file fails the Wazuh request before connecting | empty |
 | `wazuh.agent_name` | The agent name expected in Wazuh (exact, ignoring case). Empty compares with this PC's host name, ignoring the domain | empty |
 | Environment variables `PC_SCANNER_WAZUH_USER` / `PC_SCANNER_WAZUH_PASSWORD` | Wazuh credentials | — |
+| `android.adb_binary` | Absolute path to adb (Android SDK Platform-Tools). Empty disables Android | empty |
+| `android.indicators_file` | Absolute path to the monitoring-app indicators (STIX2). Empty: no matching, and the check is `partial` | empty |
+| `android.max_indicator_age_days` | Indicators older than this many days (1–365), by the provider's generation time, make the check `partial` | `30` |
+| `android.max_patch_age_days` | A security patch older than this many days (1–3650) is reported as `outdated_patch` | `90` |
+| `android_devices.<alias>` | An Android device allowed to be inspected: its adb serial. Aliases as for `scan_roots` | none |
 
 ## Reading the results
 
@@ -361,6 +409,27 @@ Inventory and Wazuh results come in pages of 500. A single page, and any page af
 - When the device has zero records, the result is `partial`, because a wrong device ID, an unregistered device, and a never-scanned device look the same.
   Check the device ID, name, registration, and collection time in Wazuh.
 
+### Android
+
+- Only USB-connected devices with Android 10 or later (tested on Android 10 and 16 emulators). Emulators and wireless
+  debugging are refused because they are not USB connections.
+- Matching covers only the monitoring apps in the indicator file, by package name; an app renamed or not yet listed is
+  not detected. Certificate matching and MVT-style forensic checks are not done.
+- `review` findings (an app from outside Google Play, or with an unknown install source, holding accessibility,
+  notification access or device admin) are prompts to check, not verdicts. Device management, assistive and work apps can
+  appear there. Watchware matches may be apps you or your family installed knowingly.
+- Install sources are what the device recorded: `unknown` does not mean sideloaded. "No launcher activity" does not mean an
+  app hides its icon.
+- Everything is read per user, including work profiles. A work profile shares accessibility with its parent user, so it is
+  matched with the parent's apps.
+- Anything that could not be read is listed in `data.unavailable` and makes the result `partial`; it is never treated as absent.
+  This includes output in an unexpected format, even when the command succeeded. If nothing at all can be read from the
+  device, the result is `error`. A malformed indicator file does not stop the device check; it makes it `partial`.
+- The format of `dumpsys device_policy` with an enabled device admin is taken from the AOSP source; it could not be
+  reproduced on the emulators, and manufacturers may differ.
+- Returned: Android version, security patch, model, package names and versions, user IDs. Not returned: the serial,
+  user names, accounts, phone numbers, or any app data.
+
 ### Privacy
 
 - Passing results to a cloud AI may send application names, process IDs, file names, host names, and similar data. The PC owner decides where results go and how much is shared.
@@ -391,6 +460,8 @@ Inventory and Wazuh results come in pages of 500. A single page, and any page af
 - **No credentials passed on**: engines receive only path-related environment variables (including Windows `USERPROFILE`, `PROGRAMDATA`, etc.).
 - **Restricted network access**: Wazuh is reached over HTTPS only, and certificate verification cannot be turned off. Proxies and redirects are not used.
 - **AI-facing text is untrusted**: the AI is instructed to treat file and application names in results as untrusted strings, never as instructions.
+- **Android, read-only and pinned**: only fixed adb commands run, on the transport confirmed to be USB (`adb -t`). Strings
+  read from the device are never put into a device command; only user and transport IDs checked to be numbers are.
 - **Responsive during long scans**: scans run in a worker thread, and engines run one at a time.
   Progress is reported every 10 seconds, so clients that extend their timeout on progress can wait for long scans.
 - **Stops on cancel**: when the AI client cancels a request, the running engine and the processes it started are stopped within about 0.1 seconds,
@@ -420,6 +491,9 @@ Windows (PowerShell):
   installing the `agent` extra so MCP tests are never skipped. It also builds the wheel and sdist and checks that
   the third-party notices and SBOM files are included. On Windows, real junctions and ACL-denied folders
   (including a junction like `Documents\My Music`) are created to verify how scans handle them.
+- Android tests (`tests/test_android.py`) use output recorded from Android 10 and 16 emulators (with synthetic names):
+  the USB check against a real streaming process, the parsers, indicator freshness, work profiles, and items that could
+  not be read. The same code was also run against the emulators ([record](docs/acceptance/android-emulator-2026-10-14.json)).
 - The npm launcher has its own tests (Node.js 22 or later): `node --test npm/test/launcher.test.js npm/test/roundtrip.test.js`.
   With `PC_SCANNER_NPM_E2E=1` (it installs packages from PyPI), the package is packed and installed as a user gets it,
   sets itself up on the first `serve` and answers MCP; the test also checks that stdout carries only MCP messages,

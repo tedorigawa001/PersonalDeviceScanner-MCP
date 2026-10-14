@@ -48,7 +48,8 @@ HIDDEN_CHARACTERS = re.compile("[\x00-\x1f\x7f-\x9f\u200b-\u200f\u202a-\u202e\u2
 NAME_CHARS, PATH_CHARS = 256, 1024
 # Sort values can be long package paths; cursors stay bounded for the AI's context.
 SORT_VALUE_CHARS, CURSOR_CHARS = 4096, 65536
-SOURCES = {"status": "bridge", "inventory": "osquery", "malware": "clamav", "vulnerabilities": "wazuh"}
+SOURCES = {"status": "bridge", "inventory": "osquery", "malware": "clamav", "vulnerabilities": "wazuh",
+           "android": "adb", "android_check": "adb"}
 
 # Metadata only: opening placeholder contents can download them from the provider.
 SF_DATALESS = 0x40000000
@@ -241,7 +242,9 @@ def excerpt(text: str) -> tuple[str, bool]:
 SETTINGS = {"local": {"osquery_binary", "clamav_binary", "timeout_seconds", "max_output_bytes",
                       "max_signature_age_days"},
             "scan_roots": None,
-            "wazuh": {"url", "agent_id", "ca_file", "agent_name"}}
+            "wazuh": {"url", "agent_id", "ca_file", "agent_name"},
+            "android": {"adb_binary", "indicators_file", "max_indicator_age_days", "max_patch_age_days"},
+            "android_devices": None}
 
 
 def unknown_settings(config: dict) -> list[str]:
@@ -488,6 +491,10 @@ class ProcessTree:
                     os.killpg(self.process.pid, signal.SIGKILL)
                 except ProcessLookupError:
                     pass
+                except PermissionError:
+                    # macOS answers EPERM when the group holds only the exited, not yet
+                    # reaped engine; the engine itself is handled below.
+                    pass
             if self.process.poll() is None:
                 self.process.kill()
 
@@ -547,18 +554,22 @@ def engine_argument(text: str) -> str:
     return text
 
 
-def run_bounded(argv: list[str], timeout: float, limit: int,
-                cancel: threading.Event | None = None) -> tuple[int, str, str]:
-    check_cancel(cancel)
+def engine_environment() -> dict:
     # Never inherit cloud/API credentials into third-party engines; only locations.
     allowed = {"PATH", "SYSTEMROOT", "WINDIR", "TEMP", "TMP", "TMPDIR", "HOME",
                "SYSTEMDRIVE", "USERPROFILE", "HOMEDRIVE", "HOMEPATH", "PROGRAMDATA",
                "PROGRAMFILES", "LOCALAPPDATA", "APPDATA", "TZ"}
     env = {k: v for k, v in os.environ.items() if k.upper() in allowed}
     env.update({"LC_ALL": "C", "LANG": "C"})
+    return env
+
+
+def run_bounded(argv: list[str], timeout: float, limit: int,
+                cancel: threading.Event | None = None) -> tuple[int, str, str]:
+    check_cancel(cancel)
     try:
         process = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE, shell=False, env=env,
+                                   stderr=subprocess.PIPE, shell=False, env=engine_environment(),
                                    start_new_session=os.name != "nt")
     except OSError:
         raise ScannerError("Configured engine could not be started") from None
@@ -623,7 +634,10 @@ class Scanner:
         self.local = config.get("local", {})
         self.roots = config.get("scan_roots", {})
         self.wazuh = config.get("wazuh", {})
-        if not all(isinstance(v, dict) for v in (self.local, self.roots, self.wazuh)):
+        self.android = config.get("android", {})
+        self.android_devices = config.get("android_devices", {})
+        if not all(isinstance(v, dict) for v in (self.local, self.roots, self.wazuh, self.android,
+                                                  self.android_devices)):
             raise ScannerError("Configuration sections must be tables")
         self.config_warnings = unknown_settings(config)
         self.timeout = self.local.get("timeout_seconds", 600)
@@ -648,6 +662,23 @@ class Scanner:
         for key in ("url", "agent_id", "ca_file", "agent_name"):
             if not isinstance(self.wazuh.get(key, ""), str):
                 raise ScannerError("Wazuh settings must be strings")
+        for key in ("adb_binary", "indicators_file"):
+            value = self.android.get(key, "")
+            if not isinstance(value, str) or (value and not Path(value).is_absolute()):
+                raise ScannerError("Android paths must be absolute strings")
+        self.max_indicator_age = self.android.get("max_indicator_age_days", 30)
+        if type(self.max_indicator_age) is not int or not 1 <= self.max_indicator_age <= 365:
+            raise ScannerError("max_indicator_age_days must be 1..365")
+        self.max_patch_age = self.android.get("max_patch_age_days", 90)
+        if type(self.max_patch_age) is not int or not 1 <= self.max_patch_age <= 3650:
+            raise ScannerError("max_patch_age_days must be 1..3650")
+        for alias, serial in self.android_devices.items():
+            if not re.fullmatch(r"[a-zA-Z0-9_-]{1,64}", alias):
+                raise ScannerError("Invalid Android device alias")
+            # Printable ASCII without spaces, as adb prints serials; the connection type is
+            # checked when the device is used, never inferred from the serial.
+            if not isinstance(serial, str) or not re.fullmatch(r"[\x21-\x7e]{1,128}", serial):
+                raise ScannerError("Android device serials must be printable text without spaces")
         ca_file = self.wazuh.get("ca_file", "")
         if ca_file and not Path(ca_file).is_absolute():
             raise ScannerError("Wazuh ca_file must be an absolute path")
@@ -680,8 +711,8 @@ class Scanner:
         except (OSError, ValueError):
             raise ScannerError("Cannot read valid TOML configuration") from None
 
-    def binary(self, key: str) -> str:
-        value = self.local.get(key, "")
+    def binary(self, key: str, section: dict | None = None) -> str:
+        value = (self.local if section is None else section).get(key, "")
         if not value or not Path(value).is_file():
             raise ScannerError(f"{key} is not configured or not installed")
         resolved = Path(value).resolve(strict=True)
@@ -695,7 +726,9 @@ class Scanner:
             "osquery_configured": bool(self.local.get("osquery_binary")),
             "clamav_configured": bool(self.local.get("clamav_binary")),
             "wazuh_configured": bool(self.wazuh.get("url")),
+            "android_configured": bool(self.android.get("adb_binary")),
             "scan_root_aliases": list(self.roots),
+            "android_device_aliases": list(self.android_devices),
             "note": "Configuration status only; engines, signatures, connectivity and PC safety are unverified"})
 
     def inventory(self, query_id: str, offset: int = 0, cancel: threading.Event | None = None) -> dict:
@@ -1017,9 +1050,18 @@ class Scanner:
             same = {short(name) for name in names} == {short(expected)}
         return ("matched" if same else "mismatch"), expected
 
+    def android_collect(self, device_alias: str, query_id: str, cancel: threading.Event | None = None) -> dict:
+        from . import android
+        return android.collect(self, device_alias, query_id, cancel)
+
+    def android_check(self, device_alias: str, cancel: threading.Event | None = None) -> dict:
+        from . import android
+        return android.check(self, device_alias, cancel)
+
     def invoke(self, operation: str, **kwargs) -> dict:
         operations = {"status": self.status, "inventory": self.inventory,
-                      "malware": self.malware, "vulnerabilities": self.vulnerabilities}
+                      "malware": self.malware, "vulnerabilities": self.vulnerabilities,
+                      "android": self.android_collect, "android_check": self.android_check}
         source = SOURCES.get(operation, "bridge")
         try:
             if operation not in operations:

@@ -128,7 +128,7 @@
     provenance（SLSA v1）にはリポジトリ・ワークフロー・タグ・コミットが記録され、`npm audit signatures` でも検証できた。
     レジストリから `npx` で導入し、ClamAV の検査まで動くことを確認した。
 
-- [ ] **Android 端末の点検に対応する（第1段階）**（2026-10-14 設計。未実装）
+- [x] **Android 端末の点検に対応する（第1段階）**（2026-10-14 設計・実装）
   - 所有者自身の端末を USB でつなぎ、ADB の固定コマンドで読み取り専用に点検する。基本情報とパッチの日付、利用者が入れたアプリと
     導入元、強い権限（ユーザー補助・通知へのアクセス・端末管理）を持つアプリ、既知の監視アプリ（Echap の指標の stalkerware・watchware、
     CC-BY 4.0）との照合。接続方式を確かめて USB の端末だけを点検し、仕事用プロファイルを含めユーザーごとに調べる。
@@ -138,7 +138,12 @@
     仕事用プロファイルと親で共有され、通知へのアクセスはユーザーごと。ADB サーバーは adb が自分で起動して残り、既存の
     `run_bounded` の検出には当たらない（起動直後は `device offline` になるため待つ）。設計に反映し、
     [記録](acceptance/android-emulator-2026-10-14.json)を残した。
+  - 実装（2026-10-14）: `pc_scanner/android.py`。MCP ツール `collect_android`・`check_android_monitoring_apps`、
+    CLI `android`・`android-check`。テスト31件（実際に出力し続けるプロセスでの USB の確認を含む）と、安全上の規則を
+    わざと壊した10通りの変更をすべて検出。Android 10 と 16 のエミュレーターでも通しで動かした（USB の確認だけはテスト内で
+    迂回。迂回しなければエミュレーターは `SOCKET` として正しく拒否された）。
   - 実機で確認すること: USB 接続で `connection_type: USB` になること、メーカーによる出力の違い、MDM の仕事用プロファイル、
+    端末管理アプリが有効なときの `dumpsys device_policy` の形式（エミュレーターでは再現できず、AOSP の形式に基づく）、
     Windows で Job Object が ADB サーバーを止めないか。
   - 第2段階の候補: 署名証明書による照合、MVT / AndroidQF による詳細検査、iOS。
 

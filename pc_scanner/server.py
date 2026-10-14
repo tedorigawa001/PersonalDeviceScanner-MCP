@@ -20,6 +20,7 @@ def create_server(scanner: Scanner):
     local = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
     remote = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=True)
     aliases = ", ".join(scanner.roots) or "none configured"
+    devices = ", ".join(scanner.android_devices) or "none configured"
     # Blocking work runs in worker threads so long scans do not stall pings, cancellation
     # or other requests. One local engine at a time: each clamscan loads its full database.
     engine_lock = anyio.Lock()
@@ -76,6 +77,22 @@ def create_server(scanner: Scanner):
         f"Authorized root aliases: {aliases}."))
     async def scan_malware(ctx: Context, root_alias: str, relative_path: str = ".") -> dict:
         return await run_engine(ctx, "malware", root_alias=root_alias, relative_path=relative_path)
+
+    @server.tool(annotations=local, description=(
+        "Read fixed facts from an owner-registered Android device over USB debugging (ADB): device (version and "
+        "security patch), apps (installed apps and recorded install source), or privileged_access (accessibility, "
+        "notification access, device admin). Read-only; only USB-connected devices are inspected. "
+        f"Registered device aliases: {devices}."))
+    async def collect_android(ctx: Context, device_alias: str,
+                              query_id: Literal["device", "apps", "privileged_access"]) -> dict:
+        return await run_engine(ctx, "android", device_alias=device_alias, query_id=query_id)
+
+    @server.tool(annotations=local, description=(
+        "Check an owner-registered Android device over USB debugging (ADB) for known monitoring apps (stalkerware "
+        "and watchware indicators) and list apps worth reviewing. Read-only; no finding does not prove safety. "
+        f"Registered device aliases: {devices}."))
+    async def check_android_monitoring_apps(ctx: Context, device_alias: str) -> dict:
+        return await run_engine(ctx, "android_check", device_alias=device_alias)
 
     @server.tool(annotations=remote)
     async def get_vulnerabilities(ctx: Context, cursor: str = "") -> dict:

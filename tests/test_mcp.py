@@ -13,6 +13,7 @@ class SlowScanner:
     """Stands in for engines that take a long time, recording overlap."""
 
     roots = {"test": ""}
+    android_devices = {}
 
     def __init__(self, delay):
         self.delay = delay
@@ -34,6 +35,7 @@ class CancellableScanner:
     """Stands in for an engine that runs until it is told to stop."""
 
     roots = {"test": ""}
+    android_devices = {}
 
     def __init__(self):
         self.started = threading.Event()
@@ -82,7 +84,10 @@ class MCPTests(unittest.TestCase):
                     await session.initialize()
                     tools = {t.name: t for t in (await session.list_tools()).tools}
                     self.assertEqual(set(tools), {
-                        "scanner_status", "collect_inventory", "scan_malware", "get_vulnerabilities"})
+                        "scanner_status", "collect_inventory", "scan_malware", "get_vulnerabilities",
+                        "collect_android", "check_android_monitoring_apps"})
+                    self.assertEqual(tools["collect_android"].inputSchema["properties"]["query_id"]["enum"],
+                                     ["device", "apps", "privileged_access"])
                     self.assertEqual(tools["collect_inventory"].inputSchema["properties"]["query_id"]["enum"],
                                      ["os_version", "applications", "listening_ports"])
                     self.assertIn("downloads", tools["scan_malware"].description)

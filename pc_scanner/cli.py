@@ -18,6 +18,12 @@ def main():
     malware.add_argument("relative_path", nargs="?", default=".")
     vulnerabilities = commands.add_parser("vulnerabilities")
     vulnerabilities.add_argument("--cursor", default="", help="continue from data.next_cursor")
+    android = commands.add_parser("android", help="read fixed facts from a registered Android device over USB")
+    android.add_argument("device_alias")
+    android.add_argument("query_id", choices=["device", "apps", "privileged_access"])
+    android_check = commands.add_parser("android-check", help="check a registered Android device for known "
+                                                              "monitoring apps")
+    android_check.add_argument("device_alias")
     commands.add_parser("serve", help="MCP over local stdio; requires agent extra")
     args = parser.parse_args()
     # File and app names may hold characters the terminal cannot encode; never crash on them.
@@ -30,7 +36,7 @@ def main():
             serve(scanner)
             return
         kwargs = {k: v for k, v in vars(args).items() if k not in {"config", "command"}}
-        report = scanner.invoke(args.command, **kwargs)
+        report = scanner.invoke(args.command.replace("-", "_"), **kwargs)
     except ScannerError as exc:
         report = result("bridge", "error", error=str(exc))
     except ImportError:

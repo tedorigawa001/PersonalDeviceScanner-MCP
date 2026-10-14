@@ -33,6 +33,7 @@
 - OS のバージョン、インストール済みアプリ、待受ポートの一覧を取得する（osquery）
 - 所有者が許可したフォルダーだけをマルウェア検査する（ClamAV）
 - Wazuh に登録済みの端末について、検出済みの脆弱性（CVE）を取得する（Wazuh indexer）
+- USB でつないだ自分の Android 端末を、既知の監視アプリ（ストーカーウェア）や強い権限を持つアプリの観点で点検する（ADB）
 - 上記を AI エージェントの MCP ツール、またはコマンドライン（CLI）から実行する
 
 **しないこと**
@@ -67,6 +68,8 @@ AI が指定できるのは「どの固定クエリを使うか」「どの許�
 | `collect_inventory(query_id, offset=0)` | `inventory <query_id> [--offset N]` | osqueryi | `os_version`・`applications`・`listening_ports` のいずれかを取得します |
 | `scan_malware(root_alias, relative_path=".")` | `malware <root_alias> [relative_path]` | clamscan | 許可フォルダー（またはその中のパス）を検査します |
 | `get_vulnerabilities(cursor="")` | `vulnerabilities [--cursor C]` | Wazuh indexer | 設定した1台の端末の脆弱性を、深刻度の高い順に取得します |
+| `collect_android(device_alias, query_id)` | `android <device_alias> <query_id>` | adb | 登録した Android 端末の `device`（バージョン・セキュリティパッチ）・`apps`（アプリと記録された導入元）・`privileged_access`（ユーザー補助・通知へのアクセス・端末管理）のいずれかを取得します |
+| `check_android_monitoring_apps(device_alias)` | `android-check <device_alias>` | adb | 全パッケージを既知の監視アプリと照合し、確認を勧めるアプリを挙げます |
 | — | `serve` | — | MCP サーバーとして起動します |
 
 `listening_ports` は、待受アドレス（`0.0.0.0` なら全インターフェースに公開、`127.0.0.1` なら自PCのみ）とプロセス名も返します。
@@ -83,6 +86,8 @@ AI クライアントには、`query_id` の選択肢と許可フォルダーの
     別途 Linux などで Wazuh server / indexer を用意し、PC のエージェントを登録して、脆弱性検出を有効にしておく必要があります
 - **MCP で使う場合**：Python 用 MCP SDK v1（下記の `agent` extra で入ります）
 - **代わりに `npx` で起動する場合**：Python に加えて Node.js 22 以上（[npx で使う場合](#npx-で使う場合npm)を参照）
+- **Android を点検する場合**：[Android SDK Platform-Tools](https://developer.android.com/tools/releases/platform-tools)（adb。
+  37.0.1 以上で動作を確認）と、Android 10 以上の端末（[Android 端末を使う場合](#android-端末を使う場合)を参照）
 
 ## セットアップ
 
@@ -230,6 +235,43 @@ export PC_SCANNER_WAZUH_PASSWORD='...'
 MCP で使う場合は、クライアントの秘密情報管理機能や起動元の環境から渡してください。
 indexer のアカウントには、対象端末の脆弱性インデックスへの**読み取り権限だけ**を付与し、管理者アカウントは使わないでください。
 
+### Android 端末を使う場合
+
+USB ケーブルでこの PC につないだ**自分の** Android スマートフォン・タブレットを点検します。読み取るだけで、
+端末にアプリを入れたり、消したり、設定を変えたりはしません。設計は [docs/android-design.md](docs/android-design.md) にあります。
+
+1. Google の [Android SDK Platform-Tools](https://developer.android.com/tools/releases/platform-tools) を導入します。
+2. 端末で開発者向けオプションと **USB デバッグ**を有効にし、ケーブルでつないで、端末に表示されるこの PC を承認します。
+3. `adb devices -l` で端末のシリアルを確認します。
+4. 監視アプリの指標（Echap の [stalkerware-indicators](https://github.com/AssoEchap/stalkerware-indicators)、CC-BY 4.0）を
+   ダウンロードします。ClamAV の定義ファイルと同じように定期的に更新してください。このツール自身はダウンロードしません。
+
+   ```sh
+   curl -fsSL -o /absolute/path/to/stalkerware.stix2 https://raw.githubusercontent.com/AssoEchap/stalkerware-indicators/master/generated/stalkerware.stix2
+   ```
+
+   Windows では `curl.exe` を同じ引数で使います。
+5. 設定を追加します。
+
+   ```toml
+   [android]
+   adb_binary = '/absolute/path/to/platform-tools/adb'
+   indicators_file = '/absolute/path/to/stalkerware.stix2'
+
+   [android_devices]
+   # 「エイリアス = シリアル」。AI はエイリアスでしか端末を指定できません
+   my-phone = 'SERIAL'
+   ```
+
+6. 点検します：`.venv/bin/python -m pc_scanner.cli --config scanner.toml android-check my-phone`
+7. **終わったら USB デバッグを無効にし**、開発者向けオプションの「USB デバッグの承認を取り消す」を行ってください。
+   USB デバッグは端末の攻撃面を広げます。
+
+- 点検するのは USB 接続の端末だけです。接続方式はシリアルから推測せず、adb の報告（`adb track-devices --proto-text`）で
+  確かめるため、ワイヤレスデバッグやエミュレーターは対象外になります。
+- adb は初回にサーバー（localhost:5037）を起動し、動かしたままにします。Android Studio などと共有されるため、このツールからは
+  止めません。止めたいときは `adb kill-server` を実行します。
+
 ### うまく導入できないとき
 
 - **`cryptography` のビルドに失敗する**：ビルド済みパッケージに限定して導入します。Intel Mac（x86_64）では、
@@ -262,6 +304,11 @@ indexer のアカウントには、対象端末の脆弱性インデックスへ
 | `wazuh.ca_file` | indexer の CA 証明書（PEM 形式）の絶対パス。空欄ならシステムの証明書を使います。ファイルがなければ読み込み時に警告し、読めない・PEM でない場合は接続前にエラーにします | 空欄 |
 | `wazuh.agent_name` | Wazuh 上で期待するエージェント名（大文字小文字を除き完全一致）。空欄ならこの PC のホスト名とドメイン部分を除いて照合します | 空欄 |
 | 環境変数 `PC_SCANNER_WAZUH_USER` / `PC_SCANNER_WAZUH_PASSWORD` | Wazuh の認証情報 | — |
+| `android.adb_binary` | adb（Android SDK Platform-Tools）の絶対パス。空欄なら Android は無効 | 空欄 |
+| `android.indicators_file` | 監視アプリの指標（STIX2）の絶対パス。空欄なら照合せず、点検は `partial` | 空欄 |
+| `android.max_indicator_age_days` | 指標が提供元の生成日時からこの日数（1〜365）より古いと、点検は `partial` | `30` |
+| `android.max_patch_age_days` | セキュリティパッチがこの日数（1〜3650）より古いと `outdated_patch` として報告 | `90` |
+| `android_devices.<エイリアス>` | 点検を許可する Android 端末の adb のシリアル。エイリアスの規則は `scan_roots` と同じ | なし |
 
 ## 結果の読み方
 
@@ -360,6 +407,27 @@ indexer のアカウントには、対象端末の脆弱性インデックスへ
 - 対象端末の記録が0件のときは、端末 ID の誤り・未登録・未検査と区別できないため `partial` を返します。
   端末の ID・名前・登録状況と収集時刻を、Wazuh 側で確認してください。
 
+### Android
+
+- 点検できるのは USB 接続の Android 10 以上の端末です（Android 10 と 16 のエミュレーターで確認）。エミュレーターと
+  ワイヤレスデバッグは USB 接続ではないため対象外です。
+- 照合できるのは指標ファイルにある監視アプリだけで、パッケージ名で照合します。名前を変えたものや未登録のものは検出できません。
+  署名証明書による照合や、MVT のような詳細な検査は行いません。
+- `review`（Google Play 以外から入った、または導入元が不明なアプリが、ユーザー補助・通知へのアクセス・端末管理を持つ）は
+  確認のきっかけであって、悪意の判定ではありません。端末管理・支援技術・業務用のアプリも該当します。watchware との一致は、
+  本人や家族が承知のうえで入れたアプリのこともあります。
+- 導入元は端末が記録した値です。`unknown` はサイドロードという意味ではなく、ランチャー活動がないこともアイコンを隠している
+  という意味ではありません。
+- 仕事用プロファイルを含め、ユーザーごとに調べます。仕事用プロファイルのユーザー補助は親ユーザーと共有されるため、
+  親ユーザーのアプリと突き合わせます。
+- 読み取れなかった項目は `data.unavailable` に並べて `partial` とし、「該当なし」としては扱いません。
+  コマンドが成功しても出力が想定した形でない場合も同じです。端末から何も読み取れなければ `error` になります。
+  指標ファイルが壊れていても端末の点検は止めず、`partial` を返します。
+- 端末管理アプリが有効なときの `dumpsys device_policy` の形式は AOSP のソースに基づくもので、エミュレーターでは再現できませんでした。
+  メーカーによって異なることがあります。
+- 返す情報：Android のバージョン、セキュリティパッチ、機種、パッケージ名とバージョン、ユーザー ID。返さない情報：シリアル、
+  ユーザー名、アカウント、電話番号、アプリのデータ。
+
 ### プライバシー
 
 - クラウドの AI に結果を渡すと、アプリ名・プロセス ID・ファイル名・ホスト名などが送信されることがあります。送信先と範囲は PC の所有者が決めてください。
@@ -390,6 +458,8 @@ indexer のアカウントには、対象端末の脆弱性インデックスへ
 - **認証情報を渡さない**：エンジンに渡す環境変数は、パスに関するもの（Windows の `USERPROFILE`・`PROGRAMDATA` など）だけです。
 - **通信を限定**：Wazuh への接続は HTTPS のみで、証明書の検証は無効にできません。プロキシとリダイレクトも使いません。
 - **AI の指示を信用しない**：結果に含まれるファイル名やアプリ名は信用できない文字列として扱うよう、AI に指示しています。
+- **Android は読み取り専用で接続を固定**：固定の adb コマンドだけを、USB と確認した接続（`adb -t`）に対して実行します。
+  端末から読み取った文字列は端末へのコマンドに入れず、入れるのは数字と確認したユーザー ID と転送 ID だけです。
 - **長時間の検査でも止まらない**：検査は別スレッドで実行し、エンジンは1つずつ順番に動かします。
   検査中は10秒ごとに進捗を通知するので、進捗でタイムアウトを延長するクライアントなら長い検査も待てます。
 - **キャンセルで止まる**：AI クライアントが要求をキャンセルすると、実行中のエンジンとその子プロセスを約0.1秒以内に停止します。
@@ -419,6 +489,9 @@ Windows（PowerShell）：
   `agent` extra を導入するので、MCP のテストもスキップされません。あわせて wheel と sdist をビルドし、
   第三者表示と SBOM が含まれていることを確認します。Windows では本物のジャンクションや、ACL で読み取りを拒否した
   フォルダー（`Documents\My Music` のようなジャンクションを含む）を作り、検査での扱いを確認します。
+- Android のテスト（`tests/test_android.py`）は、Android 10 と 16 のエミュレーターから得た出力（名前は合成）を使い、
+  実際に出力し続けるプロセスでの USB の確認、各出力の解析、指標の鮮度、仕事用プロファイル、読み取れなかった項目の扱いを
+  確かめます。同じコードをエミュレーターでも実行しました（[記録](docs/acceptance/android-emulator-2026-10-14.json)）。
 - npm の起動用スクリプトには別のテストがあります（Node.js 22 以上）：`node --test npm/test/launcher.test.js npm/test/roundtrip.test.js`。
   `PC_SCANNER_NPM_E2E=1` を設定すると（PyPI からパッケージを導入します）、利用者と同じようにパッケージを作って導入し、
   初回の `serve` で自動的に準備して MCP に応答することを確かめます。あわせて、stdout に MCP のメッセージ以外が出ないこと、
