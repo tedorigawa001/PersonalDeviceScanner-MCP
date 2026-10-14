@@ -194,7 +194,7 @@ the npm package holds a small launcher, this project's Python code and the lock 
   "mcpServers": {
     "personal-pc-scanner": {
       "command": "npx",
-      "args": ["-y", "personal-pc-scanner-mcp@0.1.1", "--config", "/absolute/path/to/scanner.toml", "serve"]
+      "args": ["-y", "personal-pc-scanner-mcp@0.1.2", "--config", "/absolute/path/to/scanner.toml", "serve"]
     }
   }
 }
@@ -203,7 +203,7 @@ the npm package holds a small launcher, this project's Python code and the lock 
 - On first use, the launcher creates its own virtual environment in your cache folder and installs the Python packages there
   (macOS: `~/Library/Caches/personal-pc-scanner-mcp`, Linux: `~/.cache/personal-pc-scanner-mcp`,
   Windows: `%LOCALAPPDATA%\personal-pc-scanner-mcp`). This can take longer than some clients wait for a server to start,
-  so run `npx -y personal-pc-scanner-mcp@0.1.1 setup` once beforehand.
+  so run `npx -y personal-pc-scanner-mcp@0.1.2 setup` once beforehand.
 - With CPython 3.14 on Windows x64, macOS (Intel or Apple silicon) or Linux x86_64, packages are installed with the hashes
   in the bundled lock files (`pip --require-hashes`). Other Python versions and CPUs get the same versions without hash
   checks, and the launcher says so on stderr. Its own messages and pip's output go to stderr, never to the MCP channel.
@@ -211,9 +211,9 @@ the npm package holds a small launcher, this project's Python code and the lock 
   `PATH` only. It never looks in the current folder (which Windows would otherwise search first) or in relative `PATH`
   entries such as `.`, so a program named like Python in a downloads folder is not run. To choose one, set
   `PC_SCANNER_PYTHON` to its absolute path; `PC_SCANNER_CACHE_DIR` (absolute) moves the cache.
-- Keep the version pinned (`@0.1.1`) so that updating is your decision. Each version and Python gets its own environment;
+- Keep the version pinned (`@0.1.2`) so that updating is your decision. Each version and Python gets its own environment;
   old ones in the cache folder can be deleted.
-- The CLI works the same way, for example `npx -y personal-pc-scanner-mcp@0.1.1 --config scanner.toml status`.
+- The CLI works the same way, for example `npx -y personal-pc-scanner-mcp@0.1.2 --config scanner.toml status`.
 - If a Windows client cannot start `npx` directly, use `"command": "cmd"` with `"args": ["/c", "npx", ...]`.
 
 ### Using Wazuh
