@@ -103,6 +103,7 @@ def create_server(scanner: Scanner):
     return server
 
 def serve(scanner: Scanner):
+    scanner.via = "mcp"
     # stdout carries the MCP protocol; stderr reaches the client's server log.
     for warning in scanner.config_warnings:
         print(f"pc-scanner: {warning}", file=sys.stderr)

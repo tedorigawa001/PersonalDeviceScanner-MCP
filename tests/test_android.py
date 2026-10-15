@@ -567,7 +567,8 @@ class SettingsTests(unittest.TestCase):
     def test_cli_runs_android_commands(self):
         with tempfile.TemporaryDirectory() as directory:
             config = Path(directory) / "scanner.toml"
-            config.write_text('[android_devices]\nphone = "R58TEST"\n')
+            config.write_text('[android_devices]\nphone = "R58TEST"\n'
+                              f'[history]\nfile = {json.dumps(str(Path(directory) / "history.jsonl"))}\n')
             for args in (["android", "phone", "apps"], ["android-check", "phone"]):
                 with self.subTest(args=args):
                     run = subprocess.run([sys.executable, "-m", "pc_scanner.cli", "--config", str(config), *args],

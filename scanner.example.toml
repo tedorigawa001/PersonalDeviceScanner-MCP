@@ -10,6 +10,14 @@ max_output_bytes = 1048576
 # ClamAV signatures older than this make scans partial; ClamAV itself warns after 7 days.
 max_signature_age_days = 7
 
+[history]
+# A summary of each scan (what ran and how it ended; no file, app or package names) kept on this PC.
+# Read it with `pc-scanner history`; the AI cannot read it. false stops recording.
+enabled = true
+# Absolute path; empty uses the per-user folder, e.g. ~/Library/Application Support/personal-device-scanner-mcp
+# on macOS, ~/.local/state/personal-device-scanner-mcp on Linux, %LOCALAPPDATA%\personal-device-scanner-mcp on Windows.
+file = ""
+
 # Explicitly grant scan access. Example: downloads = '/Users/you/Downloads'
 [scan_roots]
 

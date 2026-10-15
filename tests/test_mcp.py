@@ -101,7 +101,8 @@ class MCPTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             config = Path(directory) / "scanner.toml"
-            config.write_text(f"[local]\n[scan_roots]\ndownloads = {json.dumps(directory)}\n")
+            config.write_text(f"[local]\n[scan_roots]\ndownloads = {json.dumps(directory)}\n"
+                              f"[history]\nfile = {json.dumps(str(Path(directory) / 'history.jsonl'))}\n")
             asyncio.run(exercise(config))
 
     def test_long_scan_reports_progress(self):

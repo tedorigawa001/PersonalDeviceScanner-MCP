@@ -1412,7 +1412,8 @@ class ScannerTests(unittest.TestCase):
 
     def test_cli_rejects_huge_cursor_as_json_error(self):
         config = self.root / "config.toml"
-        config.write_text('[wazuh]\nurl = "https://127.0.0.1:9"\nagent_id = "001"\n')
+        config.write_text('[wazuh]\nurl = "https://127.0.0.1:9"\nagent_id = "001"\n'
+                          f'[history]\nfile = {json.dumps(str(self.root / "history.jsonl"))}\n')
         cursor = base64.urlsafe_b64encode(json.dumps([10 ** 400, "a", "b", "c", "d", "e", "f"]).encode()).decode()
         run = subprocess.run([sys.executable, "-m", "pc_scanner.cli", "--config", str(config),
                               "vulnerabilities", "--cursor", cursor], capture_output=True, text=True,
@@ -1423,7 +1424,7 @@ class ScannerTests(unittest.TestCase):
 
     def test_cli_json_and_failure_exit(self):
         config = self.root / "config.toml"
-        config.write_text("[local]\n")
+        config.write_text(f"[local]\n[history]\nfile = {json.dumps(str(self.root / 'history.jsonl'))}\n")
         command = [sys.executable, "-m", "pc_scanner.cli", "--config", str(config)]
         status = subprocess.run(command + ["status"], capture_output=True, text=True)
         self.assertEqual(status.returncode, 0)

@@ -76,6 +76,7 @@ It cannot supply arbitrary SQL, paths, executables, or connection targets.
 | `get_vulnerabilities(cursor="")` | `vulnerabilities [--cursor C]` | Wazuh indexer | Returns vulnerabilities for the one configured device, most severe first |
 | `collect_android(device_alias, query_id)` | `android <device_alias> <query_id>` | adb | Returns one of `device` (version, security patch), `apps` (installed apps and their recorded install source), `privileged_access` (accessibility, notification access, device admin) for a registered Android device |
 | `check_android_monitoring_apps(device_alias)` | `android-check <device_alias>` | adb | Matches every package against known monitoring apps and lists apps worth reviewing |
+| — | `history [--limit N] [--json]` | — | Shows the scan summaries recorded on this PC (see [Scan history](#scan-history)). The AI cannot read them |
 | — | `serve` | — | Starts the MCP server |
 
 `listening_ports` also returns the listening address (`0.0.0.0` means exposed on all interfaces, `127.0.0.1` means this PC only) and the process name.
@@ -317,6 +318,8 @@ it never installs, removes or changes anything on the device. The design is in [
 | `android.max_indicator_age_days` | Indicators older than this many days (1–365), by the provider's generation time, make the check `partial` | `30` |
 | `android.max_patch_age_days` | A security patch older than this many days (1–3650) is reported as `outdated_patch` | `90` |
 | `android_devices.<alias>` | An Android device allowed to be inspected: its adb serial. Aliases as for `scan_roots` | none |
+| `history.enabled` | Record a summary of each scan on this PC. `false` turns it off | `true` |
+| `history.file` | Absolute path to the history file. Empty uses the per-user folder (see [Scan history](#scan-history)) | empty |
 
 ## Reading the results
 
@@ -363,6 +366,41 @@ Inventory and Wazuh results come in pages of 500. A single page, and any page af
   Each page continues after the last record of the previous one, ordered by severity and then by the CVE and
   the fields Wazuh uses to identify a package, so no record is skipped or repeated at page boundaries.
   If Wazuh updates its data while you are paging, records may shift between pages.
+
+### Scan history
+
+Each scan run from the CLI, or by the AI over MCP, is recorded on this PC as one summary line. `status` and
+`history` are not recorded.
+
+```sh
+.venv/bin/python -m pc_scanner.cli --config scanner.toml history
+```
+
+```text
+TIME                 VIA  OPERATION      STATUS     FINDINGS    SECONDS  TARGET
+2026-10-15 09:12:04  mcp  malware        completed  0              41.8  downloads
+2026-10-15 09:13:30  cli  android_check  partial    1 (high 1)      6.2  phone
+2026-10-15 09:20:11  mcp  inventory      error      -               0.0  applications
+                     error: osquery_binary is not configured or not installed
+```
+
+- **What is kept**: the start time, `cli` or `mcp`, the operation and its target (folder alias and relative path,
+  `query_id`, device alias; for Wazuh only whether it was a later page), `status`, the number of findings per severity,
+  the number of warnings, how long it took, and the error message. **The findings themselves (file names, signature
+  names, app and package names, CVEs) are never kept.** A paged result is one line per page, with that page's findings.
+- **The AI cannot read it**: there is no MCP tool for it; only you read it with this command. `--limit N` (1–1000,
+  default 20) sets how many of the latest scans are shown, and `--json` prints JSON instead of a table.
+- **Where**: macOS `~/Library/Application Support/personal-device-scanner-mcp/history.jsonl`, Linux
+  `~/.local/state/personal-device-scanner-mcp/history.jsonl` (or under `$XDG_STATE_HOME`), Windows
+  `%LOCALAPPDATA%\personal-device-scanner-mcp\history.jsonl`. `history.file` changes it. On macOS / Linux both history
+  files, `.1` included, are kept readable only by you (0600, also when one already existed with wider permissions), and a
+  link in place of the file is refused.
+- **Size**: when the file reaches 1 MiB it becomes `history.jsonl.1`, replacing the previous one, so roughly the latest
+  several thousand scans are kept. Delete `history.jsonl` and `history.jsonl.1` to clear the history. The empty
+  `history.jsonl.lock` next to them makes a CLI and MCP servers running at the same time take turns, so none of them
+  rotates over another's history.
+- **Turning it off**: `history.enabled = false`. The `history` command still shows what was recorded before.
+- If the history cannot be written, the scan is unaffected and its result gets a warning.
 
 ## Limitations
 
@@ -476,6 +514,7 @@ Inventory and Wazuh results come in pages of 500. A single page, and any page af
   Progress is reported every 10 seconds, so clients that extend their timeout on progress can wait for long scans.
 - **Stops on cancel**: when the AI client cancels a request, the running engine and the processes it started are stopped within about 0.1 seconds,
   and a scan still waiting for its turn never starts.
+- **History stays on this PC, as summaries**: the scan history keeps no findings and has no MCP tool, so the AI never reads it.
 - **Character encoding**: on Windows, engine output that is not UTF-8 is decoded with the system's default code page (cp932 on Japanese Windows).
 
 ## Testing

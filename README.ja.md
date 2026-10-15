@@ -75,6 +75,7 @@ AI が指定できるのは「どの固定クエリを使うか」「どの許�
 | `get_vulnerabilities(cursor="")` | `vulnerabilities [--cursor C]` | Wazuh indexer | 設定した1台の端末の脆弱性を、深刻度の高い順に取得します |
 | `collect_android(device_alias, query_id)` | `android <device_alias> <query_id>` | adb | 登録した Android 端末の `device`（バージョン・セキュリティパッチ）・`apps`（アプリと記録された導入元）・`privileged_access`（ユーザー補助・通知へのアクセス・端末管理）のいずれかを取得します |
 | `check_android_monitoring_apps(device_alias)` | `android-check <device_alias>` | adb | 全パッケージを既知の監視アプリと照合し、確認を勧めるアプリを挙げます |
+| — | `history [--limit N] [--json]` | — | この PC に記録したスキャンの要約を表示します（[スキャン履歴](#スキャン履歴)を参照）。AI からは読めません |
 | — | `serve` | — | MCP サーバーとして起動します |
 
 `listening_ports` は、待受アドレス（`0.0.0.0` なら全インターフェースに公開、`127.0.0.1` なら自PCのみ）とプロセス名も返します。
@@ -316,6 +317,8 @@ USB ケーブルでこの PC につないだ**自分の** Android スマート�
 | `android.max_indicator_age_days` | 指標が提供元の生成日時からこの日数（1〜365）より古いと、点検は `partial` | `30` |
 | `android.max_patch_age_days` | セキュリティパッチがこの日数（1〜3650）より古いと `outdated_patch` として報告 | `90` |
 | `android_devices.<エイリアス>` | 点検を許可する Android 端末の adb のシリアル。エイリアスの規則は `scan_roots` と同じ | なし |
+| `history.enabled` | スキャンごとの要約をこの PC に記録します。`false` で記録しません | `true` |
+| `history.file` | 履歴ファイルの絶対パス。空欄ならユーザーごとのフォルダー（[スキャン履歴](#スキャン履歴)を参照） | 空欄 |
 
 ## 結果の読み方
 
@@ -361,6 +364,40 @@ USB ケーブルでこの PC につないだ**自分の** Android スマート�
   上限はなく、1万件を超える結果も取得できます。各ページは前のページの最後の記録の続きから始まり、深刻度、CVE、
   Wazuh がパッケージを識別する項目の順に並べるため、ページの境目で記録が抜けたり重複したりしません。
   取得の途中で Wazuh のデータが更新されると、ページ間で記録がずれることがあります。
+
+### スキャン履歴
+
+CLI から実行したスキャンと、AI が MCP で実行したスキャンを、1回につき1行の要約としてこの PC に記録します。
+`status` と `history` は記録しません。
+
+```sh
+.venv/bin/python -m pc_scanner.cli --config scanner.toml history
+```
+
+```text
+TIME                 VIA  OPERATION      STATUS     FINDINGS    SECONDS  TARGET
+2026-10-15 09:12:04  mcp  malware        completed  0              41.8  downloads
+2026-10-15 09:13:30  cli  android_check  partial    1 (high 1)      6.2  phone
+2026-10-15 09:20:11  mcp  inventory      error      -               0.0  applications
+                     error: osquery_binary is not configured or not installed
+```
+
+- **記録する内容**：開始時刻、`cli` か `mcp` か、操作と対象（フォルダーのエイリアスと相対パス、`query_id`、端末のエイリアス。
+  Wazuh は2ページ目以降かどうかだけ）、`status`、深刻度ごとの所見の件数、警告の件数、かかった時間、エラーの内容です。
+  **所見そのもの（ファイル名・シグネチャ名・アプリ名・パッケージ名・CVE）は記録しません。** ページに分かれる結果は1ページを1行とし、
+  そのページの所見を数えます。
+- **AI からは読めません**：履歴を読む MCP ツールはなく、所有者がこのコマンドで見るだけです。`--limit N`（1〜1000、既定は20）で
+  表示する最新の件数を、`--json` で表の代わりに JSON を出力します。
+- **保存場所**：macOS は `~/Library/Application Support/personal-device-scanner-mcp/history.jsonl`、Linux は
+  `~/.local/state/personal-device-scanner-mcp/history.jsonl`（`$XDG_STATE_HOME` があればその下）、Windows は
+  `%LOCALAPPDATA%\personal-device-scanner-mcp\history.jsonl` です。`history.file` で変えられます。macOS / Linux では
+  `.1` を含む履歴のファイルを本人だけが読める状態（0600）に保ち（既存のファイルの権限が広ければ直します）、
+  その場所にあるリンクには書き込みません。
+- **大きさ**：ファイルが1 MiB に達すると `history.jsonl.1` に名前を変え（前の `.1` は消えます）、最新の数千件ほどを残します。
+  履歴を消すには `history.jsonl` と `history.jsonl.1` を削除します。隣の空の `history.jsonl.lock` は、同時に動く CLI と
+  MCP サーバーが順番に書き込むためのもので、ほかのプロセスの履歴を回して上書きしないようにしています。
+- **記録をやめる**：`history.enabled = false` にします。それまでの記録は `history` で引き続き表示できます。
+- 履歴を書き込めなくてもスキャンには影響せず、結果に警告が付きます。
 
 ## 制限事項
 
@@ -474,6 +511,7 @@ USB ケーブルでこの PC につないだ**自分の** Android スマート�
   検査中は10秒ごとに進捗を通知するので、進捗でタイムアウトを延長するクライアントなら長い検査も待てます。
 - **キャンセルで止まる**：AI クライアントが要求をキャンセルすると、実行中のエンジンとその子プロセスを約0.1秒以内に停止します。
   順番待ちの検査は開始されません。
+- **履歴は要約だけをこの PC に**：スキャン履歴には所見を記録せず、読み出す MCP ツールもないため、AI は履歴を読めません。
 - **文字化け対策**：Windows でエンジンの出力が UTF-8 でない場合は、システムの既定の文字コード（日本語版では cp932）で読み直します。
 
 ## テスト

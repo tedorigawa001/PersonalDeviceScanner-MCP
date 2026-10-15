@@ -5,6 +5,30 @@ import sys
 from .core import Scanner, ScannerError, result, stop_engines_on_terminate
 
 
+def show_history(scanner: Scanner, limit: int) -> dict:
+    from . import history
+    if type(limit) is not int or not 1 <= limit <= history.MAX_LIMIT:
+        raise ScannerError(f"--limit must be 1..{history.MAX_LIMIT}")
+    path = scanner.history_path()
+    try:
+        entries, skipped = history.read(path, limit)
+    except OSError:
+        raise ScannerError("Cannot read the scan history file") from None
+    return result("bridge", "completed", data={"file": str(path), "recording": scanner.history_enabled,
+                                               "entries": entries, "skipped_lines": skipped},
+                  warnings=scanner.config_warnings
+                  + ([] if scanner.history_enabled else ["Recording is turned off (history.enabled = false)"])
+                  + ([f"{skipped} damaged lines in the history file were skipped"] if skipped else []))
+
+
+def print_history(report: dict) -> None:
+    from . import history
+    entries = report["data"]["entries"]
+    print(history.table(entries) if entries else f"No scans recorded yet in {report['data']['file']}")
+    for warning in report["warnings"]:
+        print(f"pc-scanner: {warning}", file=sys.stderr)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Restricted local OSS scanner bridge")
     parser.add_argument("--config", default="scanner.toml")
@@ -24,6 +48,10 @@ def main():
     android_check = commands.add_parser("android-check", help="check a registered Android device for known "
                                                               "monitoring apps")
     android_check.add_argument("device_alias")
+    history = commands.add_parser("history", help="show the scan summaries recorded on this PC; the AI cannot "
+                                                  "read them")
+    history.add_argument("--limit", type=int, default=20, help="number of latest scans to show (1..1000)")
+    history.add_argument("--json", action="store_true", help="print JSON instead of a table")
     commands.add_parser("serve", help="MCP over local stdio; requires agent extra")
     args = parser.parse_args()
     # File and app names may hold characters the terminal cannot encode; never crash on them.
@@ -35,8 +63,15 @@ def main():
             from .server import serve
             serve(scanner)
             return
-        kwargs = {k: v for k, v in vars(args).items() if k not in {"config", "command"}}
-        report = scanner.invoke(args.command.replace("-", "_"), **kwargs)
+        if args.command == "history":
+            report = show_history(scanner, args.limit)
+            if not args.json:
+                print_history(report)
+                return
+        else:
+            scanner.via = "cli"
+            kwargs = {k: v for k, v in vars(args).items() if k not in {"config", "command"}}
+            report = scanner.invoke(args.command.replace("-", "_"), **kwargs)
     except ScannerError as exc:
         report = result("bridge", "error", error=str(exc))
     except ImportError:

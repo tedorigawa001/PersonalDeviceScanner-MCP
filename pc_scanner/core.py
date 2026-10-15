@@ -244,7 +244,8 @@ SETTINGS = {"local": {"osquery_binary", "clamav_binary", "timeout_seconds", "max
             "scan_roots": None,
             "wazuh": {"url", "agent_id", "ca_file", "agent_name"},
             "android": {"adb_binary", "indicators_file", "max_indicator_age_days", "max_patch_age_days"},
-            "android_devices": None}
+            "android_devices": None,
+            "history": {"enabled", "file"}}
 
 
 def unknown_settings(config: dict) -> list[str]:
@@ -636,8 +637,9 @@ class Scanner:
         self.wazuh = config.get("wazuh", {})
         self.android = config.get("android", {})
         self.android_devices = config.get("android_devices", {})
+        self.history_settings = config.get("history", {})
         if not all(isinstance(v, dict) for v in (self.local, self.roots, self.wazuh, self.android,
-                                                  self.android_devices)):
+                                                  self.android_devices, self.history_settings)):
             raise ScannerError("Configuration sections must be tables")
         self.config_warnings = unknown_settings(config)
         self.timeout = self.local.get("timeout_seconds", 600)
@@ -679,6 +681,15 @@ class Scanner:
             # checked when the device is used, never inferred from the serial.
             if not isinstance(serial, str) or not re.fullmatch(r"[\x21-\x7e]{1,128}", serial):
                 raise ScannerError("Android device serials must be printable text without spaces")
+        self.history_enabled = self.history_settings.get("enabled", True)
+        if type(self.history_enabled) is not bool:
+            raise ScannerError("history.enabled must be true or false")
+        self.history_file = self.history_settings.get("file", "")
+        if not isinstance(self.history_file, str) or (self.history_file
+                                                      and not Path(self.history_file).is_absolute()):
+            raise ScannerError("History file must be an absolute path")
+        # Set by the CLI ("cli") or the MCP server ("mcp"); scans are recorded only then.
+        self.via = None
         ca_file = self.wazuh.get("ca_file", "")
         if ca_file and not Path(ca_file).is_absolute():
             raise ScannerError("Wazuh ca_file must be an absolute path")
@@ -710,6 +721,15 @@ class Scanner:
                 return cls(tomllib.load(f))
         except (OSError, ValueError):
             raise ScannerError("Cannot read valid TOML configuration") from None
+
+    def history_path(self) -> Path:
+        from . import history
+        if self.history_file:
+            return Path(self.history_file)
+        try:
+            return history.default_file()
+        except RuntimeError:
+            raise ScannerError("Cannot find the home folder; set history.file") from None
 
     def binary(self, key: str, section: dict | None = None) -> str:
         value = (self.local if section is None else section).get(key, "")
@@ -1063,6 +1083,7 @@ class Scanner:
                       "malware": self.malware, "vulnerabilities": self.vulnerabilities,
                       "android": self.android_collect, "android_check": self.android_check}
         source = SOURCES.get(operation, "bridge")
+        started, clock = datetime.now(timezone.utc), time.perf_counter()
         try:
             if operation not in operations:
                 raise ScannerError("Unknown operation")
@@ -1077,4 +1098,13 @@ class Scanner:
                             error=f"Unexpected internal error ({type(exc).__name__}); the operation was not completed")
         # Every result carries them, as a misspelt setting can change any operation.
         report["warnings"] = self.config_warnings + report["warnings"]
+        if self.via and self.history_enabled:
+            from . import history
+            if operation in history.OPERATIONS:
+                try:
+                    history.append(self.history_path(), history.entry(
+                        operation, kwargs, report, started, time.perf_counter() - clock, self.via))
+                except Exception:
+                    # Never at the cost of the result: the scan itself already finished.
+                    report["warnings"].append("Scan history could not be written; the scan itself is unaffected")
         return report
