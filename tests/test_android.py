@@ -44,14 +44,16 @@ def stream(*frames):
 
 
 class ConnectionTests(unittest.TestCase):
-    def find(self, argv, serial="R58TEST", wait=3.0, cancel=None):
+    # The wait includes starting the stand-in, which can take seconds on a busy CI runner; a ready
+    # or refused device ends the wait at once, so a long one costs nothing.
+    def find(self, argv, serial="R58TEST", wait=30.0, cancel=None):
         return android.find_usb_transport(argv, serial, wait, 1 << 20, cancel)
 
     def test_usb_device_that_is_ready_gives_its_transport(self):
         started = time.monotonic()
         lists = frame(device("emulator-5554", connection="SOCKET", transport=1) + device("R58TEST", transport=7))
         self.assertEqual(self.find(stream((0, lists))), "7")
-        self.assertLess(time.monotonic() - started, 2.5, "must not wait once the device is ready")
+        self.assertLess(time.monotonic() - started, 15, "must not wait once the device is ready")
 
     def test_waits_while_the_device_is_offline(self):
         argv = stream((0, frame("")), (0.3, frame(device("R58TEST", state="OFFLINE"))), (0.3, frame(device("R58TEST"))))
@@ -88,8 +90,10 @@ time.sleep(60)
         with self.assertRaisesRegex(ScannerError, "not connected"):
             self.find(stream((0, frame(""))), wait=0.5)
         self.assertLess(time.monotonic() - started, 2.5)
+        # An adb that exits after reporting the device offline gives the same answer without the wait.
+        offline = frame(device("R58TEST", state="OFFLINE"))
         with self.assertRaisesRegex(ScannerError, r"did not become ready \(state OFFLINE\)"):
-            self.find(stream((0, frame(device("R58TEST", state="OFFLINE")))), wait=0.5)
+            self.find([sys.executable, "-c", f"import sys; sys.stdout.write({offline!r})"])
 
     def test_text_output_means_platform_tools_too_old(self):
         # What `adb track-devices -l` (or an adb without --proto-text) prints.

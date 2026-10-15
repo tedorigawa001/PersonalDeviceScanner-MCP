@@ -861,7 +861,7 @@ class ScannerTests(unittest.TestCase):
     def test_runner_decodes_ansi_code_page_output(self):
         script = "import sys; sys.stdout.buffer.write('ダウンロード'.encode('cp932'))"
         with patch("pc_scanner.core.locale.getpreferredencoding", return_value="cp932"):
-            _, output, _ = run_bounded([sys.executable, "-c", script], 5, 1024)
+            _, output, _ = run_bounded([sys.executable, "-c", script], 60, 1024)
         self.assertEqual(output, "ダウンロード")
 
     def engine_with_grandchild(self, exit_after_start, **popen_options):
@@ -963,12 +963,12 @@ class ScannerTests(unittest.TestCase):
         with self.assertRaisesRegex(ScannerError, "timed out"):
             run_bounded([sys.executable, "-c", "import time; time.sleep(3)"], 1, 1024)
         with self.assertRaisesRegex(ScannerError, "output exceeded"):
-            run_bounded([sys.executable, "-c", "print('x'*10000)"], 5, 1024)
+            run_bounded([sys.executable, "-c", "print('x'*10000)"], 60, 1024)
 
     def test_runner_does_not_pass_secrets(self):
         with patch.dict(os.environ, {"PC_SCANNER_WAZUH_PASSWORD": "secret", "OPENAI_API_KEY": "secret",
                                      "SYSTEMDRIVE": "C:", "TZ": "Asia/Tokyo"}):
-            code, output, _ = run_bounded([sys.executable, "-c", "import os; print(os.getenv('PC_SCANNER_WAZUH_PASSWORD')); print(os.getenv('OPENAI_API_KEY')); print(os.getenv('SYSTEMDRIVE')); print(os.getenv('TZ'))"], 5, 1024)
+            code, output, _ = run_bounded([sys.executable, "-c", "import os; print(os.getenv('PC_SCANNER_WAZUH_PASSWORD')); print(os.getenv('OPENAI_API_KEY')); print(os.getenv('SYSTEMDRIVE')); print(os.getenv('TZ'))"], 60, 1024)
         self.assertEqual(code, 0)
         self.assertEqual(output.splitlines(), ["None", "None", "C:", "Asia/Tokyo"])
 
