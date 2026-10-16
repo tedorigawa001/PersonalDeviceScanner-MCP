@@ -50,7 +50,6 @@ LOCK_ATTEMPTS, LOCK_INTERVAL = 200, 0.01
 DETAILS_ID = re.compile(r"[0-9]{8}T[0-9]{6}\.[0-9]{6}Z-[0-9a-f]{8}")
 # Results are far smaller; a larger file was not written by this program.
 MAX_DETAILS_BYTES = 32 * 1024 * 1024
-BINARY = getattr(os, "O_BINARY", 0)
 # The MCP server runs a local engine and a Wazuh request at the same time.
 _lock = threading.Lock()
 
@@ -105,6 +104,15 @@ def locked(path: Path):
                 msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
     finally:
         os.close(fd)
+
+
+def opener(name, flags: int) -> int:
+    """For open(): no link is followed and no FIFO waited on, and a file it creates is private to the owner.
+
+    Through open(), Python owns the descriptor and closes it if anything fails, so no failed write
+    leaves a file that Windows cannot remove.
+    """
+    return os.open(name, flags | NO_FOLLOW | NO_WAIT, 0o600)
 
 
 def private(fd: int) -> None:
@@ -162,12 +170,13 @@ def save_details(path: Path, report: dict, max_bytes: int) -> str:
     name = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ") + "-" + secrets.token_hex(4)
     # ASCII only: a result is never refused for text it cannot encode.
     data = json.dumps(report, ensure_ascii=True).encode("ascii")
-    fd = os.open(folder / f"{name}.json", os.O_WRONLY | os.O_CREAT | os.O_EXCL | NO_FOLLOW | BINARY, 0o600)
+    target = folder / f"{name}.json"
+    f = open(target, "xb", opener=opener)  # if this fails, nothing of ours was created
     try:
-        with open(fd, "wb") as f:
+        with f:
             f.write(data)
     except BaseException:
-        (folder / f"{name}.json").unlink(missing_ok=True)
+        target.unlink(missing_ok=True)
         raise
     kept = []
     for child in folder.iterdir():
@@ -200,12 +209,12 @@ def load_details(path: Path, name: str | None) -> tuple[dict | None, str]:
     if not DETAILS_ID.fullmatch(name):
         return None, "unreadable"
     try:
-        fd = os.open(details_folder(path) / f"{name}.json", os.O_RDONLY | NO_FOLLOW | NO_WAIT | BINARY)
+        f = open(details_folder(path) / f"{name}.json", "rb", opener=opener)
     except FileNotFoundError:
         return None, "removed"
     except OSError:
         return None, "unreadable"
-    with open(fd, "rb") as f:
+    with f:
         info = os.fstat(f.fileno())
         if not stat.S_ISREG(info.st_mode) or info.st_size > MAX_DETAILS_BYTES:
             return None, "unreadable"
@@ -238,8 +247,7 @@ def append(path: Path, record: dict, details: dict | None = None, details_bytes:
             except OSError:
                 # Missing, or on Windows open in a reader that could not take the lock: rotate on a later scan.
                 pass
-            with open(path, "ab", buffering=0,
-                      opener=lambda name, flags: os.open(name, flags | NO_FOLLOW | NO_WAIT, 0o600)) as f:
+            with open(path, "ab", buffering=0, opener=opener) as f:
                 private(f.fileno())
                 f.write(line)
 

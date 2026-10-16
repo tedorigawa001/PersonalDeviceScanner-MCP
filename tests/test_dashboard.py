@@ -16,6 +16,31 @@ from pc_scanner.core import Scanner, ScannerError, encode_cursor, result
 
 HOSTILE = "<img src=x onerror=alert(1)>"
 SORT = [9.8, "CVE-2026-1000", "openssl", "3.0.2", "amd64", "deb", ""]
+REAL_OPEN = open
+
+
+def descriptors():
+    """How many files this process has open, where the system lists them."""
+    return len(os.listdir("/dev/fd")) if os.path.isdir("/dev/fd") else None
+
+
+class FullDisk:
+    """A file whose writes fail, as on a full disk; remembers the real files it wraps."""
+
+    opened = []
+
+    def __init__(self, *args, **kwargs):
+        self.file = REAL_OPEN(*args, **kwargs)
+        FullDisk.opened.append(self.file)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.file.close()
+
+    def write(self, data):
+        raise OSError("No space left on device")
 
 
 class DetailsTests(unittest.TestCase):
@@ -99,10 +124,19 @@ class DetailsTests(unittest.TestCase):
         self.assertEqual(list(elsewhere.iterdir()), [])
 
     def test_a_failed_write_leaves_no_partial_file(self):
-        with patch.object(history, "open", create=True, side_effect=OSError("disk full")):
+        FullDisk.opened = []
+        with patch.object(history, "open", create=True, side_effect=FullDisk):
+            report = self.scan(self.scanner(details=True), result("clamav", "completed"))
+        self.assertIn("Scan history could not be written; the scan itself is unaffected", report["warnings"])
+        # Closed before it is removed: Windows cannot remove a file that is still open.
+        self.assertEqual(self.kept(), [])
+        self.assertTrue(FullDisk.opened and all(f.closed for f in FullDisk.opened))
+        before = descriptors()
+        with patch.object(history, "open", create=True, side_effect=PermissionError("denied")):
             report = self.scan(self.scanner(details=True), result("clamav", "completed"))
         self.assertIn("Scan history could not be written; the scan itself is unaffected", report["warnings"])
         self.assertEqual(self.kept(), [])
+        self.assertEqual(descriptors(), before, "a descriptor was left open")
 
     def test_damaged_or_missing_details_are_reported_not_raised(self):
         self.folder.mkdir(parents=True)
@@ -344,6 +378,21 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("&quot;a&quot;: &quot;x\\ny&quot;", text)
         self.assertIn("Cut at 50,000 characters.", text)
         self.assertLess(len(text), 80000)
+
+    def test_a_failed_page_write_keeps_the_old_page_and_leaves_nothing(self):
+        self.run_scan("malware", "malware", result("clamav", "completed"), root_alias="downloads")
+        page, before = self.build()
+        FullDisk.opened = []
+        with patch.object(dashboard, "open", create=True, side_effect=FullDisk), self.assertRaises(OSError):
+            self.build()
+        self.assertEqual(page.read_text(encoding="utf-8"), before)
+        count = descriptors()
+        with patch.object(dashboard, "open", create=True, side_effect=PermissionError("denied")), \
+                self.assertRaises(OSError):
+            self.build()
+        self.assertEqual(descriptors(), count, "a descriptor was left open")
+        self.assertEqual([name.name for name in page.parent.iterdir() if name.name.endswith(".tmp")], [])
+        self.assertTrue(FullDisk.opened and all(f.closed for f in FullDisk.opened))
 
     def test_an_empty_history_still_gives_a_page(self):
         page, text = self.build()

@@ -266,9 +266,9 @@ safe, and <b>partial</b> or <b>error</b> means coverage was incomplete.</div>
 def write(page: Path, text: str) -> None:
     """Replaces the page in one step, private to the owner like the history it shows."""
     temp = page.with_name(f".{page.name}.{secrets.token_hex(4)}.tmp")
-    fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | history.NO_FOLLOW | history.BINARY, 0o600)
+    f = open(temp, "xb", opener=history.opener)  # if this fails, nothing of ours was created
     try:
-        with open(fd, "wb") as f:
+        with f:
             f.write(text.encode("utf-8", "backslashreplace"))
         os.replace(temp, page)
     except BaseException:
