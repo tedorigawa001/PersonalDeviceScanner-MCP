@@ -20,8 +20,9 @@ npmjs.com でパッケージの設定を開き、次を行います。
    - Workflow filename：`publish-npm.yml`
    - Environment name：空欄
    - 許可する操作：`npm stage publish` のみ（`npm publish` は許可しない）
-2. **Publishing access** で「Require two-factor authentication and disallow tokens」を選ぶ
-   （トークンによる公開を禁止します。信頼された公開元からのステージド公開は影響を受けません）
+2. **Publishing access** で「Require two-factor authentication and disallow bypass 2fa tokens (recommended)」を選ぶ
+   （2FA を迂回するトークンによる公開を禁止します。信頼された公開元からのステージド公開は影響を受けません。
+   以前の表示は「Require two-factor authentication and disallow tokens」）
 
 npm は保存時に設定を検証しないため、誤りは最初の公開のときに分かります。
 `package.json` の `repository.url` は、このリポジトリの URL と完全に一致している必要があります。
