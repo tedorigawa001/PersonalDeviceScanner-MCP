@@ -1,0 +1,287 @@
+"""The scan history as one HTML page on this PC, opened by the owner with `dashboard`.
+
+The page runs no scripts and loads nothing: every value is escaped, and its Content Security Policy
+allows only its own style sheet. The MCP server offers no tool for it, so the AI never sees it.
+"""
+from __future__ import annotations
+
+import base64
+import hashlib
+import html
+import json
+import os
+import secrets
+from datetime import datetime
+from pathlib import Path
+
+from . import history
+from .core import HIDDEN_CHARACTERS, clean_text
+
+# One large result (a long app list, a full engine report) must not swamp the page.
+DATA_CHARS = 50_000
+CELL_CHARS = 2_000
+STATUSES = {"completed", "partial", "error"}
+# Worst first when pages are combined; anything unexpected ranks above an error.
+STATUS_RANK = {"completed": 0, "partial": 1, "error": 2}
+PAGING = ("offset", "continued", "page")
+LEAD_COLUMNS = ("kind", "severity")
+REASONS = {"off": "Details were not kept for this scan (history.details was off).",
+           "removed": "Details were removed to stay within history.details_max_mb.",
+           "unreadable": "The details file could not be read; it may have been damaged or edited."}
+
+STYLE = """
+:root{color-scheme:light dark;--bg:#f7f7f5;--panel:#fff;--text:#1d1d1b;--muted:#5f5f5a;--line:#deddd8;
+--ok:#1f7a3d;--ok-bg:#e3f2e7;--warn:#8a5a00;--warn-bg:#fbefd5;--bad:#a8231c;--bad-bg:#fbe3e1;
+--info:#2f5e9e;--info-bg:#e3ecf8;--code:#f0efeb}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--panel:#1f1f1d;--text:#ecebe6;--muted:#a3a29b;--line:#383834;
+--ok:#7fd49a;--ok-bg:#1d3324;--warn:#f0c46a;--warn-bg:#3a2f16;--bad:#f2948d;--bad-bg:#3d1d1b;
+--info:#9cbdf0;--info-bg:#1c2a40;--code:#262624}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Noto Sans JP",sans-serif}
+main{max-width:1120px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:1.5rem;margin:0 0 4px}h2{font-size:1.15rem;margin:32px 0 12px}h3{font-size:1rem;margin:16px 0 8px}
+.meta{color:var(--muted);font-size:.875rem;margin:0;overflow-wrap:anywhere}
+.notice{background:var(--info-bg);color:var(--text);border-left:4px solid var(--info);padding:10px 14px;
+border-radius:6px;margin:16px 0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.875rem}
+.scroll>table{min-width:640px}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top;overflow-wrap:break-word}
+td.time,td.op{white-space:nowrap}
+th{color:var(--muted);font-weight:600;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+a{color:var(--info)}
+.badge{display:inline-block;padding:1px 8px;border-radius:999px;font-size:.78rem;font-weight:600;white-space:nowrap}
+.completed{background:var(--ok-bg);color:var(--ok)}.partial{background:var(--warn-bg);color:var(--warn)}
+.error,.critical,.high{background:var(--bad-bg);color:var(--bad)}.medium{background:var(--warn-bg);color:var(--warn)}
+.low,.unknown,.other{background:var(--code);color:var(--muted)}
+details.scan{margin:0 0 8px}
+details.scan>summary{cursor:pointer;padding:10px 14px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+details.scan[open]>summary{border-bottom:1px solid var(--line)}
+details.scan:target{outline:2px solid var(--info)}
+.time{font-variant-numeric:tabular-nums;color:var(--muted)}
+.op{font-weight:600}.target{overflow-wrap:anywhere}
+.body{padding:4px 14px 14px}
+.callout{background:var(--bad-bg);color:var(--bad);padding:8px 12px;border-radius:6px;margin:10px 0}
+.quiet{color:var(--muted)}
+ul{margin:6px 0;padding-left:20px}
+pre{background:var(--code);padding:10px 12px;border-radius:6px;overflow-x:auto;font-size:.8rem;margin:6px 0}
+@media (max-width:640px){main{padding:16px 16px 32px}details.scan>summary{gap:4px 10px}}
+"""
+
+
+def page_file(path: Path) -> Path:
+    page = path.with_suffix(".html")
+    return page if page != path else path.with_name(path.name + ".html")
+
+
+def esc(value) -> str:
+    return html.escape(clean_text(value, None), quote=True)
+
+
+def cell(value) -> str:
+    if value is None:
+        return '<span class="quiet">—</span>'
+    try:
+        text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
+    except (ValueError, TypeError, RecursionError):
+        text = "(cannot be shown)"
+    return esc(text if len(text) <= CELL_CHARS else text[:CELL_CHARS] + "…(truncated)")
+
+
+def badge(value: str, known) -> str:
+    # Only known names become classes; anything else is shown as text.
+    return f'<span class="badge {value if value in known else "other"}">{esc(value)}</span>'
+
+
+def local_time(item: dict) -> str:
+    return datetime.fromisoformat(item["started_at"]).astimezone().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def counts(item: dict) -> str:
+    findings = item["findings"]
+    if not sum(findings.values()):
+        return '<span class="quiet">' + ("not checked" if item["status"] == "error" else "no findings") + "</span>"
+    order = [*history.SEVERITIES, *sorted(set(findings) - set(history.SEVERITIES))]
+    return " ".join(f"{badge(name, history.SEVERITIES)} {findings[name]}" for name in order if findings.get(name))
+
+
+def data_block(data) -> str:
+    try:
+        text = json.dumps(data, ensure_ascii=False, indent=2)
+    except (ValueError, TypeError, RecursionError):
+        return '<p class="quiet">The data cannot be shown.</p>'
+    # JSON already escapes line breaks inside strings, so the only raw ones are the layout's own.
+    text = HIDDEN_CHARACTERS.sub(lambda m: m.group() if m.group() == "\n" else f"\\u{ord(m.group()):04x}", text)
+    note = ""
+    if len(text) > DATA_CHARS:
+        text, note = text[:DATA_CHARS], f'<p class="quiet">Cut at {DATA_CHARS:,} characters.</p>'
+    return f"<details><summary>Data</summary><pre>{html.escape(text)}</pre>{note}</details>"
+
+
+def findings_table(findings: list) -> str:
+    rows = [finding for finding in findings if isinstance(finding, dict)]
+    if not rows:
+        return '<p class="quiet">No findings in this result.</p>'
+    columns = [key for key in LEAD_COLUMNS if any(key in row for row in rows)]
+    for row in rows:
+        columns += [key for key in row if key not in columns]
+    head = "".join(f"<th>{esc(key)}</th>" for key in columns)
+    body = "".join("<tr>" + "".join(
+        f"<td>{badge(row[key], history.SEVERITIES) if key == 'severity' and isinstance(row.get(key), str) else cell(row.get(key))}</td>"
+        for key in columns) + "</tr>" for row in rows)
+    return f'<div class="scroll"><table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>'
+
+
+def scan_body(item: dict, report: dict | None, reason: str) -> str:
+    parts = [f'<div class="callout">Error: {esc(item["error"])}</div>'] if item["error"] else []
+    if report is None:
+        parts.append(f'<p class="quiet">{esc(REASONS[reason])}</p>')
+        return "".join(parts)
+    warnings = report.get("warnings")
+    if isinstance(warnings, list) and warnings:
+        parts.append("<h3>Warnings</h3><ul>" + "".join(f"<li>{cell(w)}</li>" for w in warnings) + "</ul>")
+    findings = report.get("findings")
+    parts.append("<h3>Findings</h3>" + findings_table(findings if isinstance(findings, list) else []))
+    if "data" in report:
+        parts.append(data_block(report["data"]))
+    return "".join(parts)
+
+
+def first_page(item: dict) -> bool:
+    if item["operation"] == "inventory":
+        return not item["target"].get("offset")
+    if item["operation"] == "vulnerabilities":
+        return not item["target"].get("continued")
+    return True
+
+
+def page_key(item: dict):
+    """Which page of a paged result this is, when the history says so."""
+    if item["operation"] == "inventory":
+        return item["target"].get("offset") or 0
+    if item["operation"] == "vulnerabilities":
+        return item["target"].get("page")
+    return None
+
+
+def run_label(item: dict) -> str:
+    if item["operation"] == "vulnerabilities":
+        return "configured agent"
+    target = {key: value for key, value in item["target"].items() if key not in PAGING}
+    return history.describe_target({**item, "target": target})
+
+
+def latest_runs(entries: list[dict]) -> list[list[tuple[int, dict]]]:
+    """The newest run of each target: a first page and the later pages fetched after it.
+
+    Pages count together, so findings on the first page still show once a later page is fetched.
+    """
+    latest = {}
+    for index, item in enumerate(entries):
+        target = {key: value for key, value in item["target"].items() if key not in PAGING}
+        key = (item["operation"], json.dumps(target, sort_keys=True))
+        run = latest.get(key)
+        if run is None or first_page(item):
+            latest[key] = [(index, item)]
+            continue
+        key = page_key(item)
+        if key is not None:
+            # The same page fetched again replaces the earlier attempt instead of counting twice.
+            run[:] = [(i, page) for i, page in run if page_key(page) != key]
+        elif len(run) > 1 and run[-1][1]["status"] == "error":
+            # A Wazuh history line from 0.3.0 has no page number. A failed page gives no cursor,
+            # so the page fetched next is that page again.
+            run.pop()
+        run.append((index, item))
+    return sorted(latest.values(), key=lambda run: (run[0][1]["operation"], run_label(run[0][1])))
+
+
+def combined(run: list[tuple[int, dict]]) -> dict:
+    findings = {}
+    for _, item in run:
+        for name, count in item["findings"].items():
+            findings[name] = findings.get(name, 0) + count
+    return {"findings": findings,
+            "status": max((item["status"] for _, item in run), key=lambda status: STATUS_RANK.get(status, 3))}
+
+
+def run_notes(run: list[tuple[int, dict]]) -> str:
+    notes = [f"{len(run)} pages"] if len(run) > 1 else []
+    if not first_page(run[0][1]):
+        notes.append("first page not in the shown history")
+    # The furthest page says whether more remain, even when an earlier one was fetched again after it.
+    if max(run, key=lambda pair: (page_key(pair[1]) or 0, pair[0]))[1]["more"]:
+        notes.append("more pages remain")
+    return "".join(f'<span class="quiet"> · {esc(note)}</span>' for note in notes)
+
+
+def latest_row(run: list[tuple[int, dict]]) -> str:
+    total, first, last = combined(run), run[0], run[-1][1]
+    return (f'<tr><td class="op">{esc(last["operation"])}</td>'
+            f'<td class="target"><a href="#scan-{first[0]}">{esc(run_label(first[1]))}</a>{run_notes(run)}</td>'
+            f'<td>{badge(total["status"], STATUSES)}</td><td>{counts(total)}</td>'
+            f'<td class="time">{esc(local_time(last))}</td></tr>')
+
+
+def render(entries: list[dict], loaded: list[tuple[dict | None, str]], meta: dict) -> str:
+    statuses = {status: sum(item["status"] == status for item in entries) for status in sorted(STATUSES)}
+    summary = ", ".join(f"{name} {count}" for name, count in statuses.items())
+    latest_rows = "".join(latest_row(run) for run in latest_runs(entries))
+    scans = "".join(
+        f'<details class="scan panel" id="scan-{index}"><summary>'
+        f'<span class="time">{esc(local_time(item))}</span>{badge(item["status"], STATUSES)}'
+        f'<span class="op">{esc(item["operation"])}</span><span class="target">{esc(history.describe_target(item))}</span>'
+        f'<span>{counts(item)}</span><span class="quiet">via {esc(item["via"])} · {item["seconds"]:.1f} s</span>'
+        f'</summary><div class="body">{scan_body(item, *loaded[index])}</div></details>'
+        for index, item in reversed(list(enumerate(entries))))
+    details_note = (f"kept, up to {meta['details_mb']} MiB" if meta["details"]
+                    else "not kept (turn on history.details to see findings here)")
+    skipped = (f'<p class="meta">{meta["skipped"]} damaged lines in the history file were skipped.</p>'
+               if meta["skipped"] else "")
+    style_hash = base64.b64encode(hashlib.sha256(STYLE.encode()).digest()).decode()
+    return f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'sha256-{style_hash}'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scan Dashboard</title><style>{STYLE}</style></head>
+<body><main>
+<h1>Personal Device Scanner</h1>
+<p class="meta">Generated {esc(meta["generated"])} · {len(entries)} latest scans · {esc(summary)}</p>
+<p class="meta">History: {esc(meta["file"])} · recording {"on" if meta["recording"] else "off"} · details {esc(details_note)}</p>
+{skipped}
+<div class="notice">This page holds results from this PC. Keep it to yourself. No finding does not prove a device is
+safe, and <b>partial</b> or <b>error</b> means coverage was incomplete.</div>
+<h2>Latest result for each target</h2>
+{f'<div class="panel scroll"><table><thead><tr><th>Operation</th><th>Target</th><th>Status</th><th>Findings</th><th>Last scan</th></tr></thead><tbody>{latest_rows}</tbody></table></div>' if entries else '<p class="quiet">No scans recorded yet.</p>'}
+<h2>Scans, newest first</h2>
+{scans or '<p class="quiet">No scans recorded yet.</p>'}
+</main></body></html>
+"""
+
+
+def write(page: Path, text: str) -> None:
+    """Replaces the page in one step, private to the owner like the history it shows."""
+    temp = page.with_name(f".{page.name}.{secrets.token_hex(4)}.tmp")
+    fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | history.NO_FOLLOW | history.BINARY, 0o600)
+    try:
+        with open(fd, "wb") as f:
+            f.write(text.encode("utf-8", "backslashreplace"))
+        os.replace(temp, page)
+    except BaseException:
+        temp.unlink(missing_ok=True)
+        raise
+
+
+def build(path: Path, limit: int, recording: bool, details: bool, details_mb: int) -> tuple[Path, int]:
+    entries, skipped = history.read(path, limit)
+    loaded = [history.load_details(path, item["details"]) for item in entries]
+    page = page_file(path)
+    page.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    write(page, render(entries, loaded, {
+        "generated": datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S"), "file": str(path),
+        "recording": recording, "details": details, "details_mb": details_mb, "skipped": skipped}))
+    return page, skipped

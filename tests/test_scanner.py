@@ -21,8 +21,8 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from pc_scanner import cli
-from pc_scanner.core import (NoRedirect, Scanner, ScannerError, clamav_signatures, engine_argument, is_link,
-                             run_bounded)
+from pc_scanner.core import (MAX_PAGES, NoRedirect, Scanner, ScannerError, clamav_signatures, decode_cursor,
+                             encode_cursor, engine_argument, is_link, run_bounded)
 
 
 def signatures(age=timedelta(hours=3)):
@@ -1108,8 +1108,15 @@ class ScannerTests(unittest.TestCase):
         self.assertEqual(self.last_body["search_after"], hits[499]["sort"])
         self.assertNotIn("from", self.last_body)
         self.assertIsNotNone(middle["data"]["next_cursor"])
+        # Each cursor names the page it leads to.
+        self.assertEqual(decode_cursor(cursor), (2, hits[499]["sort"]))
+        self.assertEqual(decode_cursor(middle["data"]["next_cursor"])[0], 3)
         last = self.wazuh_response({"hits": {"total": total, "hits": hits[:3]}}, cursor=middle["data"]["next_cursor"])
         self.assertIsNone(last["data"]["next_cursor"])
+        self.assertEqual(decode_cursor(""), (1, None))
+        self.assertIsNone(encode_cursor(MAX_PAGES + 1, hits[499]["sort"]))
+        with self.assertRaises(ValueError):
+            encode_cursor(2, {"sort": "not a list"})
         self.assertEqual(last["status"], "partial")  # a continued page alone is not the full result
 
     def test_wazuh_rejects_invalid_cursor(self):
@@ -1117,12 +1124,17 @@ class ScannerTests(unittest.TestCase):
             return base64.urlsafe_b64encode(json.dumps(value).encode()).decode()
 
         scanner = Scanner({"wazuh": {"url": "https://localhost:9200", "agent_id": "001"}})
-        for cursor in ("not a cursor!", encode({"a": 1}), encode([9.8, "CVE-1"]),
-                       encode([True, "a", "b", "c", "d", "e", "f"]), encode([9.8, "a", "b", "c", "d", "e", ["f"]]),
-                       encode([float("nan"), "a", "b", "c", "d", "e", "f"]),
-                       encode([10 ** 400, "a", "b", "c", "d", "e", "f"]),  # too large for a float
-                       encode([11, "a", "b", "c", "d", "e", "f"]), encode([-2, "a", "b", "c", "d", "e", "f"]),
-                       encode([9.8] + ["x" * 5000] * 6), "A" * 70000, 7):
+        rest = ["a", "b", "c", "d", "e", "f"]
+        for cursor in ("not a cursor!", encode({"a": 1}), encode([2, 9.8, "CVE-1"]),
+                       encode([2, True, *rest]), encode([2, 9.8, "a", "b", "c", "d", "e", ["f"]]),
+                       encode([2, float("nan"), *rest]),
+                       encode([2, 10 ** 400, *rest]),  # too large for a float
+                       encode([2, 11, *rest]), encode([2, -2, *rest]),
+                       encode([2, 9.8] + ["x" * 5000] * 6), "A" * 70000, 7,
+                       # The page number: 2 or later, a plain integer, bounded.
+                       encode([1, 9.8, *rest]), encode([0, 9.8, *rest]), encode([True, 9.8, *rest]),
+                       encode([2.0, 9.8, *rest]), encode(["2", 9.8, *rest]), encode([1000001, 9.8, *rest]),
+                       encode([9.8, *rest])):  # a cursor from 0.3.0, before page numbers
             with self.subTest(cursor=str(cursor)[:40]), patch.dict(os.environ, {
                     "PC_SCANNER_WAZUH_USER": "reader", "PC_SCANNER_WAZUH_PASSWORD": "secret"}), patch(
                     "pc_scanner.core.build_opener") as build:

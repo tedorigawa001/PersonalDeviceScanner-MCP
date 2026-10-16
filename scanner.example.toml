@@ -17,6 +17,11 @@ enabled = true
 # Absolute path; empty uses the per-user folder, e.g. ~/Library/Application Support/personal-device-scanner-mcp
 # on macOS, ~/.local/state/personal-device-scanner-mcp on Linux, %LOCALAPPDATA%\personal-device-scanner-mcp on Windows.
 file = ""
+# Also keep each scan's full result (findings, warnings, data) for `pc-scanner dashboard`. Off by default:
+# kept results hold file, app and package names, and anyone who can use this PC can read them.
+details = false
+# Size limit for kept results in MiB (1..1024); the oldest are removed first.
+details_max_mb = 50
 
 # Explicitly grant scan access. Example: downloads = '/Users/you/Downloads'
 [scan_roots]

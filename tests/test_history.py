@@ -13,7 +13,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from pc_scanner import history
-from pc_scanner.core import Scanner, ScannerError, result
+from pc_scanner.core import Scanner, ScannerError, encode_cursor, result
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -79,7 +79,7 @@ class HistoryTests(unittest.TestCase):
 
     def test_each_scan_records_what_identifies_its_target(self):
         scanner = self.scanner()
-        cursor = "Y3Vyc29yLXRoYXQtaXMtbG9uZw"
+        cursor = encode_cursor(3, [9.8, "CVE-2026-1000", "openssl", "3.0.2", "amd64", "deb", ""])
         calls = {"inventory": {"query_id": "applications", "offset": 500},
                  "vulnerabilities": {"cursor": cursor},
                  "android": {"device_alias": "phone", "query_id": "apps"},
@@ -90,12 +90,18 @@ class HistoryTests(unittest.TestCase):
             with patch.object(scanner, methods[operation], return_value=result("x", "completed")):
                 scanner.invoke(operation, **arguments, cancel=threading.Event())
         self.assertEqual([record["target"] for record in self.records()], [
-            {"query_id": "applications", "offset": 500}, {"continued": True},
+            {"query_id": "applications", "offset": 500}, {"continued": True, "page": 3},
             {"device_alias": "phone", "query_id": "apps"}, {"device_alias": "phone"}])
-        self.assertNotIn(cursor, self.file.read_text(encoding="utf-8"))
+        # Neither the cursor nor what it names is kept: only the page it leads to.
+        for kept in (cursor, "CVE-2026-1000", "openssl"):
+            self.assertNotIn(kept, self.file.read_text(encoding="utf-8"))
         with patch.object(scanner, "vulnerabilities", return_value=result("x", "completed")):
             scanner.invoke("vulnerabilities", cursor="")
-        self.assertEqual(self.records()[-1]["target"], {"continued": False})
+            scanner.invoke("vulnerabilities", cursor="not a cursor")
+        self.assertEqual([record["target"] for record in self.records()[-2:]],
+                         [{"continued": False, "page": 1}, {"continued": True}])
+        self.assertEqual([history.describe_target(entry) for entry in history.read(self.file, 10)[0]
+                          if entry["operation"] == "vulnerabilities"], ["page 3", "first page", "next page"])
 
     def test_failed_scans_are_kept_with_their_error(self):
         self.scanner().invoke("malware", root_alias="missing")

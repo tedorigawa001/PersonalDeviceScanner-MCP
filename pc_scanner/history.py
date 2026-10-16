@@ -1,7 +1,8 @@
 """Scan history kept on this PC: one summary line per scan, read by the owner with `history`.
 
-Only what was run and how it ended is kept, never findings (file, app or package names, CVEs),
-and the MCP server offers no tool to read it, so the AI never sees it.
+The summary holds only what was run and how it ended, never findings (file, app or package names,
+CVEs). Full results are kept beside it only when the owner turns on history.details. The MCP server
+offers no tool to read either, so the AI never sees them.
 """
 from __future__ import annotations
 
@@ -10,14 +11,16 @@ import json
 import math
 import os
 import platform
+import re
+import secrets
 import stat
 import threading
 import time
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
-from .core import NAME_CHARS, PATH_CHARS, clean_text
+from .core import NAME_CHARS, PATH_CHARS, ScannerError, clean_text, decode_cursor
 
 if os.name == "nt":
     import msvcrt
@@ -31,15 +34,23 @@ MAX_LIMIT = 1000
 ERROR_CHARS = 500
 OPERATIONS = {"inventory", "malware", "vulnerabilities", "android", "android_check"}
 SEVERITIES = ("critical", "high", "medium", "low", "unknown")
-# What identifies the target; the Wazuh cursor is long and opaque, so only whether one was passed.
+# What identifies the target. The Wazuh cursor names records, so only whether one was passed and the
+# page it leads to are kept.
 TARGETS = {"inventory": ("query_id", "offset"), "malware": ("root_alias", "relative_path"),
            "android": ("device_alias", "query_id"), "android_check": ("device_alias",)}
+# Where a paged result says that another page can be fetched.
+NEXT_PAGE = {"inventory": "next_offset", "vulnerabilities": "next_cursor"}
 # A link is refused, so a history file in a shared folder cannot be pointed at another file.
 NO_FOLLOW = getattr(os, "O_NOFOLLOW", 0)
 # Opening a FIFO put in its place fails or returns at once instead of holding up the scan; regular files ignore it.
 NO_WAIT = getattr(os, "O_NONBLOCK", 0)
 # The lock is held for one size check, rename and write; waiting longer means another process is stuck.
 LOCK_ATTEMPTS, LOCK_INTERVAL = 200, 0.01
+# Named by the time it was saved, so names sort oldest first.
+DETAILS_ID = re.compile(r"[0-9]{8}T[0-9]{6}\.[0-9]{6}Z-[0-9a-f]{8}")
+# Results are far smaller; a larger file was not written by this program.
+MAX_DETAILS_BYTES = 32 * 1024 * 1024
+BINARY = getattr(os, "O_BINARY", 0)
 # The MCP server runs a local engine and a Wazuh request at the same time.
 _lock = threading.Lock()
 
@@ -65,6 +76,10 @@ def older(path: Path) -> Path:
 
 def lock_file(path: Path) -> Path:
     return path.with_name(path.name + ".lock")
+
+
+def details_folder(path: Path) -> Path:
+    return path.with_name(path.name + ".details")
 
 
 @contextlib.contextmanager
@@ -114,10 +129,16 @@ def entry(operation: str, arguments: dict, report: dict, started: datetime, seco
     target = {}
     if operation == "vulnerabilities":
         target["continued"] = bool(arguments.get("cursor"))
+        try:
+            target["page"] = decode_cursor(arguments.get("cursor", ""))[0]
+        except ScannerError:
+            pass  # refused before anything was fetched
     for key in TARGETS.get(operation, ()):
         if key in arguments:
             value = arguments[key]
             target[key] = value if type(value) is int else clean_text(value, PATH_CHARS)
+    data, follows = report.get("data"), NEXT_PAGE.get(operation)
+    more = {"more": data[follows] is not None} if follows and isinstance(data, dict) and follows in data else {}
     findings = {}
     for finding in report["findings"]:
         severity = finding.get("severity") if isinstance(finding, dict) else None
@@ -125,15 +146,84 @@ def entry(operation: str, arguments: dict, report: dict, started: datetime, seco
         findings[severity] = findings.get(severity, 0) + 1
     return {"version": 1, "started_at": started.isoformat(timespec="seconds"), "seconds": round(seconds, 1),
             "via": via, "operation": operation, "target": target, "status": report["status"],
-            "findings": findings, "warnings": len(report["warnings"]),
+            "findings": findings, "warnings": len(report["warnings"]), **more,
             **({"error": clean_text(report["error"], ERROR_CHARS)} if report.get("error") else {})}
 
 
-def append(path: Path, record: dict) -> None:
-    line = (json.dumps(record, ensure_ascii=False) + "\n").encode("utf-8")
+def save_details(path: Path, report: dict, max_bytes: int) -> str:
+    """Keeps a full result, then removes the oldest ones until all fit in max_bytes; the newest always stays."""
+    folder = details_folder(path)
+    folder.mkdir(exist_ok=True, mode=0o700)
+    info = folder.lstat()
+    if not stat.S_ISDIR(info.st_mode):
+        raise OSError("The details folder is not a folder")
+    if os.name != "nt" and info.st_mode & 0o077:
+        os.chmod(folder, 0o700)
+    name = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ") + "-" + secrets.token_hex(4)
+    # ASCII only: a result is never refused for text it cannot encode.
+    data = json.dumps(report, ensure_ascii=True).encode("ascii")
+    fd = os.open(folder / f"{name}.json", os.O_WRONLY | os.O_CREAT | os.O_EXCL | NO_FOLLOW | BINARY, 0o600)
+    try:
+        with open(fd, "wb") as f:
+            f.write(data)
+    except BaseException:
+        (folder / f"{name}.json").unlink(missing_ok=True)
+        raise
+    kept = []
+    for child in folder.iterdir():
+        if child.suffix == ".json" and DETAILS_ID.fullmatch(child.stem):
+            try:
+                kept.append((child.name, child.lstat().st_size, child))
+            except FileNotFoundError:
+                continue
+    total = sum(size for _, size, _ in kept)
+    for _, size, child in sorted(kept):
+        if total <= max_bytes:
+            break
+        if child.stem == name:
+            continue
+        try:
+            child.unlink()
+        except FileNotFoundError:
+            pass
+        except OSError:
+            # On Windows, open in a reader that could not take the lock: removed by a later scan.
+            continue
+        total -= size
+    return name
+
+
+def load_details(path: Path, name: str | None) -> tuple[dict | None, str]:
+    """A kept result, or why there is none: "off", "removed" or "unreadable"."""
+    if name is None:
+        return None, "off"
+    if not DETAILS_ID.fullmatch(name):
+        return None, "unreadable"
+    try:
+        fd = os.open(details_folder(path) / f"{name}.json", os.O_RDONLY | NO_FOLLOW | NO_WAIT | BINARY)
+    except FileNotFoundError:
+        return None, "removed"
+    except OSError:
+        return None, "unreadable"
+    with open(fd, "rb") as f:
+        info = os.fstat(f.fileno())
+        if not stat.S_ISREG(info.st_mode) or info.st_size > MAX_DETAILS_BYTES:
+            return None, "unreadable"
+        data = f.read(MAX_DETAILS_BYTES + 1)
+    try:
+        report = json.loads(data)
+    except (ValueError, RecursionError):
+        return None, "unreadable"
+    return (report, "") if isinstance(report, dict) else (None, "unreadable")
+
+
+def append(path: Path, record: dict, details: dict | None = None, details_bytes: int = 0) -> None:
     with _lock:
         path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         with locked(path):
+            if details is not None:
+                record = {**record, "details": save_details(path, details, details_bytes)}
+            line = (json.dumps(record, ensure_ascii=False) + "\n").encode("utf-8")
             # The older file is never opened for writing, so it and the file about to become it are checked here.
             for name in (older(path), path):
                 try:
@@ -148,7 +238,8 @@ def append(path: Path, record: dict) -> None:
             except OSError:
                 # Missing, or on Windows open in a reader that could not take the lock: rotate on a later scan.
                 pass
-            with open(path, "ab", buffering=0, opener=lambda name, flags: os.open(name, flags | NO_FOLLOW | NO_WAIT, 0o600)) as f:
+            with open(path, "ab", buffering=0,
+                      opener=lambda name, flags: os.open(name, flags | NO_FOLLOW | NO_WAIT, 0o600)) as f:
                 private(f.fileno())
                 f.write(line)
 
@@ -171,13 +262,15 @@ def parse(line: str) -> dict | None:
                 or not isinstance(findings, dict) or not isinstance(target, dict)
                 or not all(type(count) is int and count >= 0 for count in findings.values())):
             return None
-        error = record.get("error")
+        error, details, more = record.get("error"), record.get("details"), record.get("more")
         return {"started_at": started.isoformat(), "seconds": seconds, "via": text(record["via"]),
                 "operation": text(record["operation"]), "status": text(record["status"]),
                 "target": {text(key): value if type(value) in (int, bool) else text(value, PATH_CHARS)
                            for key, value in target.items()},
                 "findings": {text(key): count for key, count in findings.items()}, "warnings": warnings,
-                "error": None if error is None else text(error, ERROR_CHARS)}
+                "error": None if error is None else text(error, ERROR_CHARS),
+                "more": more if isinstance(more, bool) else None,
+                "details": details if isinstance(details, str) and DETAILS_ID.fullmatch(details) else None}
     except (ValueError, TypeError, KeyError, AttributeError, RecursionError):
         return None
 
@@ -217,6 +310,9 @@ def describe_target(item: dict) -> str:
     if operation == "inventory" and "query_id" in target:
         return f"{target['query_id']}" + (f" offset {target['offset']}" if target.get("offset") else "")
     if operation == "vulnerabilities":
+        page = target.get("page")
+        if type(page) is int and page > 1:
+            return f"page {page}"
         return "next page" if target.get("continued") else "first page"
     return " ".join(str(value) for value in target.values()) or "-"
 

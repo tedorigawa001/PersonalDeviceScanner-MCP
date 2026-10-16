@@ -48,6 +48,8 @@ HIDDEN_CHARACTERS = re.compile("[\x00-\x1f\x7f-\x9f\u200b-\u200f\u202a-\u202e\u2
 NAME_CHARS, PATH_CHARS = 256, 1024
 # Sort values can be long package paths; cursors stay bounded for the AI's context.
 SORT_VALUE_CHARS, CURSOR_CHARS = 4096, 65536
+# Far beyond any agent's inventory (500 records a page); keeps the page number in cursors bounded.
+MAX_PAGES = 1000000
 SOURCES = {"status": "bridge", "inventory": "osquery", "malware": "clamav", "vulnerabilities": "wazuh",
            "android": "adb", "android_check": "adb"}
 
@@ -183,34 +185,41 @@ WAZUH_SORT = [{"vulnerability.score.base": {"order": "desc", "unmapped_type": "f
                   "package.type", "package.path")]
 
 
-def decode_cursor(cursor) -> list | None:
-    """Sort values of the last record already returned; the cursor comes from the AI, so check it."""
+def decode_cursor(cursor) -> tuple[int, list | None]:
+    """The page a cursor leads to and the sort values of the last record already returned.
+
+    The cursor comes from the AI, so check it. The page number lets the owner's history tell a
+    page fetched again from the next one, without keeping anything about the records.
+    """
     if cursor == "":
-        return None
+        return 1, None
     if not isinstance(cursor, str) or len(cursor) > CURSOR_CHARS:
         raise ScannerError("Invalid cursor; pass data.next_cursor unchanged")
     try:
         values = json.loads(base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4)))
     except ValueError:
         raise ScannerError("Invalid cursor; pass data.next_cursor unchanged") from None
-    if not (isinstance(values, list) and len(values) == len(WAZUH_SORT)
+    if not (isinstance(values, list) and len(values) == len(WAZUH_SORT) + 1
+            and type(values[0]) is int and 2 <= values[0] <= MAX_PAGES
             # CVSS base scores are 0..10 and -1 marks a missing score. Comparing, unlike
             # float conversion, cannot overflow on huge integers, and it rejects NaN and infinity.
-            and type(values[0]) in (int, float) and -1 <= values[0] <= 10
-            and all(isinstance(v, str) and len(v) <= SORT_VALUE_CHARS for v in values[1:])):
+            and type(values[1]) in (int, float) and -1 <= values[1] <= 10
+            and all(isinstance(v, str) and len(v) <= SORT_VALUE_CHARS for v in values[2:])):
         raise ScannerError("Invalid cursor; pass data.next_cursor unchanged")
-    return values
+    return values[0], values[1:]
 
 
-def encode_cursor(values: list) -> str | None:
-    """A cursor after the record with these sort values; None when they are too long to carry.
+def encode_cursor(page: int, values: list) -> str | None:
+    """A cursor to `page`, after the record with these sort values; None when it cannot be carried.
 
     UTF-8 rather than JSON escapes keeps non-ASCII package names compact. Values of the
     wrong shape raise ValueError, since they mean an unexpected index schema.
     """
-    if isinstance(values, list) and any(isinstance(v, str) and len(v) > SORT_VALUE_CHARS for v in values):
+    if not isinstance(values, list):
+        raise ValueError("unexpected sort values")
+    if page > MAX_PAGES or any(isinstance(v, str) and len(v) > SORT_VALUE_CHARS for v in values):
         return None
-    text = json.dumps(values, ensure_ascii=False, separators=(",", ":"))
+    text = json.dumps([page, *values], ensure_ascii=False, separators=(",", ":"))
     cursor = base64.urlsafe_b64encode(text.encode()).decode().rstrip("=")
     if len(cursor) > CURSOR_CHARS:
         return None
@@ -245,7 +254,7 @@ SETTINGS = {"local": {"osquery_binary", "clamav_binary", "timeout_seconds", "max
             "wazuh": {"url", "agent_id", "ca_file", "agent_name"},
             "android": {"adb_binary", "indicators_file", "max_indicator_age_days", "max_patch_age_days"},
             "android_devices": None,
-            "history": {"enabled", "file"}}
+            "history": {"enabled", "file", "details", "details_max_mb"}}
 
 
 def unknown_settings(config: dict) -> list[str]:
@@ -688,6 +697,14 @@ class Scanner:
         if not isinstance(self.history_file, str) or (self.history_file
                                                       and not Path(self.history_file).is_absolute()):
             raise ScannerError("History file must be an absolute path")
+        self.history_details = self.history_settings.get("details", False)
+        if type(self.history_details) is not bool:
+            raise ScannerError("history.details must be true or false")
+        self.history_details_mb = self.history_settings.get("details_max_mb", 50)
+        if type(self.history_details_mb) is not int or not 1 <= self.history_details_mb <= 1024:
+            raise ScannerError("history.details_max_mb must be 1..1024")
+        if self.history_details and not self.history_enabled:
+            self.config_warnings.append("history.details has no effect while history.enabled = false")
         # Set by the CLI ("cli") or the MCP server ("mcp"); scans are recorded only then.
         self.via = None
         ca_file = self.wazuh.get("ca_file", "")
@@ -946,7 +963,7 @@ class Scanner:
                       + (["Scan coverage incomplete or engine error; do not report this PC as safe"] if partial else []))
 
     def vulnerabilities(self, cursor: str = "", cancel: threading.Event | None = None) -> dict:
-        search_after = decode_cursor(cursor)
+        page, search_after = decode_cursor(cursor)
         origin = self.wazuh.get("url", "")
         if not origin:
             raise ScannerError("Wazuh indexer is not configured")
@@ -1021,7 +1038,7 @@ class Scanner:
                                  "package": {key: clean_text(package[key]) for key in ("name", "version") if key in package},
                                  "detected_at": clean_text(detected_at, 64) if isinstance(detected_at, str) else None})
             more = len(hits) > PAGE_SIZE
-            next_cursor = encode_cursor(hits[PAGE_SIZE - 1]["sort"]) if more else None
+            next_cursor = encode_cursor(page + 1, hits[PAGE_SIZE - 1]["sort"]) if more else None
             stuck = more and next_cursor is None
             incomplete = (relation != "eq" or search_after is not None or more or len(findings) != total_value
                           or payload.get("timed_out", False)
@@ -1103,7 +1120,8 @@ class Scanner:
             if operation in history.OPERATIONS:
                 try:
                     history.append(self.history_path(), history.entry(
-                        operation, kwargs, report, started, time.perf_counter() - clock, self.via))
+                        operation, kwargs, report, started, time.perf_counter() - clock, self.via),
+                        report if self.history_details else None, self.history_details_mb * 1024 * 1024)
                 except Exception:
                     # Never at the cost of the result: the scan itself already finished.
                     report["warnings"].append("Scan history could not be written; the scan itself is unaffected")

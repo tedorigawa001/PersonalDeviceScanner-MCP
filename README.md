@@ -77,6 +77,7 @@ It cannot supply arbitrary SQL, paths, executables, or connection targets.
 | `collect_android(device_alias, query_id)` | `android <device_alias> <query_id>` | adb | Returns one of `device` (version, security patch), `apps` (installed apps and their recorded install source), `privileged_access` (accessibility, notification access, device admin) for a registered Android device |
 | `check_android_monitoring_apps(device_alias)` | `android-check <device_alias>` | adb | Matches every package against known monitoring apps and lists apps worth reviewing |
 | — | `history [--limit N] [--json]` | — | Shows the scan summaries recorded on this PC (see [Scan history](#scan-history)). The AI cannot read them |
+| — | `dashboard [--limit N] [--no-open]` | — | Writes the scan history, with any kept details, to an HTML page on this PC and opens it (see [Dashboard](#dashboard)). The AI cannot read it |
 | — | `serve` | — | Starts the MCP server |
 
 `listening_ports` also returns the listening address (`0.0.0.0` means exposed on all interfaces, `127.0.0.1` means this PC only) and the process name.
@@ -320,6 +321,8 @@ it never installs, removes or changes anything on the device. The design is in [
 | `android_devices.<alias>` | An Android device allowed to be inspected: its adb serial. Aliases as for `scan_roots` | none |
 | `history.enabled` | Record a summary of each scan on this PC. `false` turns it off | `true` |
 | `history.file` | Absolute path to the history file. Empty uses the per-user folder (see [Scan history](#scan-history)) | empty |
+| `history.details` | Also keep the full result of each scan (findings, warnings, data) for the dashboard. Think first: see [Dashboard](#dashboard) | `false` |
+| `history.details_max_mb` | Size limit for kept results (1–1024 MiB); the oldest are removed first | `50` |
 
 ## Reading the results
 
@@ -365,7 +368,8 @@ Inventory and Wazuh results come in pages of 500. A single page, and any page af
   (`--cursor` in the CLI). There is no upper limit, so more than 10,000 results can be read.
   Each page continues after the last record of the previous one, ordered by severity and then by the CVE and
   the fields Wazuh uses to identify a package, so no record is skipped or repeated at page boundaries.
-  If Wazuh updates its data while you are paging, records may shift between pages.
+  If Wazuh updates its data while you are paging, records may shift between pages. Cursors now carry the page number,
+  so a cursor from 0.3.0 is refused; start again from the first page.
 
 ### Scan history
 
@@ -385,9 +389,10 @@ TIME                 VIA  OPERATION      STATUS     FINDINGS    SECONDS  TARGET
 ```
 
 - **What is kept**: the start time, `cli` or `mcp`, the operation and its target (folder alias and relative path,
-  `query_id`, device alias; for Wazuh only whether it was a later page), `status`, the number of findings per severity,
-  the number of warnings, how long it took, and the error message. **The findings themselves (file names, signature
-  names, app and package names, CVEs) are never kept.** A paged result is one line per page, with that page's findings.
+  `query_id`, device alias; for Wazuh only the page number, never the cursor), `status`, the number of findings per severity,
+  the number of warnings, how long it took, the error message, and for paged results whether another page follows. **The findings themselves (file names, signature
+  names, app and package names, CVEs) are not kept** unless you turn on `history.details` (see [Dashboard](#dashboard)).
+  A paged result is one line per page, with that page's findings.
 - **The AI cannot read it**: there is no MCP tool for it; only you read it with this command. `--limit N` (1–1000,
   default 20) sets how many of the latest scans are shown, and `--json` prints JSON instead of a table.
 - **Where**: macOS `~/Library/Application Support/personal-device-scanner-mcp/history.jsonl`, Linux
@@ -401,6 +406,38 @@ TIME                 VIA  OPERATION      STATUS     FINDINGS    SECONDS  TARGET
   rotates over another's history.
 - **Turning it off**: `history.enabled = false`. The `history` command still shows what was recorded before.
 - If the history cannot be written, the scan is unaffected and its result gets a warning.
+
+### Dashboard
+
+```sh
+.venv/bin/python -m pc_scanner.cli --config scanner.toml dashboard
+```
+
+This writes `history.html` next to the history file and opens it in your browser (`--no-open` only writes it;
+`--limit N`, 1–1000, default 100, sets how many of the latest scans it includes). The page lists the latest result for
+each target, then every scan, newest first. Open a scan to see its warnings, findings and data.
+
+- **Pages count together**: for inventory and Wazuh, the latest result of a target is its newest first page plus the
+  later pages fetched after it. It shows the findings of all those pages, the worst `status` among them, the number of
+  pages, and whether more pages remain (as the furthest page said). A page fetched again replaces the earlier fetch:
+  inventory pages are told apart by offset, Wazuh pages by the page number in the cursor. History lines from 0.3.0
+  have no Wazuh page number; for them, a page fetched right after a failed later page is taken as that page again,
+  since a failed page gives no cursor.
+
+- **Details are off by default.** Without them, the page shows the same summaries as `history`. To see findings, set
+  `history.details = true`. From then on, the full result of each scan (as the AI received it) is kept in
+  `history.jsonl.details/`, one file per scan.
+- **Think before turning details on.** They hold file names, app and package names, and CVEs. In particular, if you are
+  checking a phone for monitoring apps, a kept result that shows one can be seen by anyone who can use this PC,
+  including whoever installed it.
+- **Size**: when the kept results exceed `history.details_max_mb` (default 50 MiB), the oldest are removed first; the
+  newest is always kept. The page says when a scan's details were not kept or have been removed.
+- **Safe to open**: the page is one file that loads nothing and runs no scripts (its Content Security Policy allows only
+  its own style sheet), and every file, app and package name is shown as text. On macOS / Linux the page and the kept
+  results are readable only by you (0600, folder 0700), and links in their place are refused.
+- **Not live**: run `dashboard` again after new scans. To remove the details, delete `history.html` and
+  `history.jsonl.details/`.
+- The AI cannot read the page or the kept results: there is no MCP tool for them.
 
 ## Limitations
 
@@ -514,7 +551,8 @@ TIME                 VIA  OPERATION      STATUS     FINDINGS    SECONDS  TARGET
   Progress is reported every 10 seconds, so clients that extend their timeout on progress can wait for long scans.
 - **Stops on cancel**: when the AI client cancels a request, the running engine and the processes it started are stopped within about 0.1 seconds,
   and a scan still waiting for its turn never starts.
-- **History stays on this PC, as summaries**: the scan history keeps no findings and has no MCP tool, so the AI never reads it.
+- **History stays on this PC**: the scan history keeps no findings unless you turn on `history.details`, and neither it nor the
+  dashboard has an MCP tool, so the AI never reads them. The dashboard page runs no scripts and loads nothing.
 - **Character encoding**: on Windows, engine output that is not UTF-8 is decoded with the system's default code page (cp932 on Japanese Windows).
 
 ## Testing

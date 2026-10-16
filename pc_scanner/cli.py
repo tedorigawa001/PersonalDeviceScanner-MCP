@@ -1,14 +1,20 @@
 import argparse
 import json
 import sys
+import webbrowser
 
 from .core import Scanner, ScannerError, result, stop_engines_on_terminate
 
 
-def show_history(scanner: Scanner, limit: int) -> dict:
+def check_limit(limit: int) -> None:
     from . import history
     if type(limit) is not int or not 1 <= limit <= history.MAX_LIMIT:
         raise ScannerError(f"--limit must be 1..{history.MAX_LIMIT}")
+
+
+def show_history(scanner: Scanner, limit: int) -> dict:
+    from . import history
+    check_limit(limit)
     path = scanner.history_path()
     try:
         entries, skipped = history.read(path, limit)
@@ -27,6 +33,22 @@ def print_history(report: dict) -> None:
     print(history.table(entries) if entries else f"No scans recorded yet in {report['data']['file']}")
     for warning in report["warnings"]:
         print(f"pc-scanner: {warning}", file=sys.stderr)
+
+
+def write_dashboard(scanner: Scanner, limit: int, open_page: bool) -> None:
+    from . import dashboard
+    check_limit(limit)
+    try:
+        page, skipped = dashboard.build(scanner.history_path(), limit, scanner.history_enabled,
+                                        scanner.history_details, scanner.history_details_mb)
+    except OSError:
+        raise ScannerError("Cannot read the scan history or write the dashboard page") from None
+    print(f"Dashboard written to {page}")
+    for warning in scanner.config_warnings + ([f"{skipped} damaged lines in the history file were skipped"]
+                                              if skipped else []):
+        print(f"pc-scanner: {warning}", file=sys.stderr)
+    if open_page and not webbrowser.open(page.as_uri()):
+        print("pc-scanner: could not open a browser; open the file above yourself", file=sys.stderr)
 
 
 def main():
@@ -52,6 +74,10 @@ def main():
                                                   "read them")
     history.add_argument("--limit", type=int, default=20, help="number of latest scans to show (1..1000)")
     history.add_argument("--json", action="store_true", help="print JSON instead of a table")
+    dashboard = commands.add_parser("dashboard", help="write the scan history, with any kept details, to an HTML "
+                                                      "page on this PC and open it; the AI cannot read it")
+    dashboard.add_argument("--limit", type=int, default=100, help="number of latest scans to include (1..1000)")
+    dashboard.add_argument("--no-open", action="store_true", help="write the page without opening it")
     commands.add_parser("serve", help="MCP over local stdio; requires agent extra")
     args = parser.parse_args()
     # File and app names may hold characters the terminal cannot encode; never crash on them.
@@ -62,6 +88,9 @@ def main():
         if args.command == "serve":
             from .server import serve
             serve(scanner)
+            return
+        if args.command == "dashboard":
+            write_dashboard(scanner, args.limit, not args.no_open)
             return
         if args.command == "history":
             report = show_history(scanner, args.limit)
