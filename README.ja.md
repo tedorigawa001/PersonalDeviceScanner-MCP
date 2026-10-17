@@ -75,6 +75,8 @@ AI が指定できるのは「どの固定クエリを使うか」「どの許�
 | `get_vulnerabilities(cursor="")` | `vulnerabilities [--cursor C]` | Wazuh indexer | 設定した1台の端末の脆弱性を、深刻度の高い順に取得します |
 | `collect_android(device_alias, query_id)` | `android <device_alias> <query_id>` | adb | 登録した Android 端末の `device`（バージョン・セキュリティパッチ）・`apps`（アプリと記録された導入元）・`privileged_access`（ユーザー補助・通知へのアクセス・端末管理）のいずれかを取得します |
 | `check_android_monitoring_apps(device_alias)` | `android-check <device_alias>` | adb | 全パッケージを既知の監視アプリと照合し、確認を勧めるアプリを挙げます |
+| `check_router(router_alias)` | `router-check <router_alias>` | MyJVN API・KEV のファイル | 登録した家庭用ルーターを、ルーターにアクセスせずに点検します。機種とバージョンを公表された脆弱性と、確かめた設定を公的な推奨と照らし合わせます |
+| — | `router-products <maker> <keyword>` | MyJVN API | メーカーの機種と JVN の CPE 名を一覧にします（`jvn_cpes` を選ぶため） |
 | — | `history [--limit N] [--json]` | — | この PC に記録したスキャンの要約を表示します（[スキャン履歴](#スキャン履歴)を参照）。AI からは読めません |
 | — | `dashboard [--limit N] [--no-open]` | — | スキャン履歴（と、残した詳細）を HTML のページとしてこの PC に書き出し、ブラウザーで開きます（[ダッシュボード](#ダッシュボード)を参照）。AI からは読めません |
 | — | `serve` | — | MCP サーバーとして起動します |
@@ -281,6 +283,62 @@ USB ケーブルでこの PC につないだ**自分の** Android スマート�
 - adb は初回にサーバー（localhost:5037）を起動し、動かしたままにします。Android Studio などと共有されるため、このツールからは
   止めません。止めたいときは `adb kill-server` を実行します。
 
+### 家庭用ルーターを使う場合
+
+**自分の**家庭用 Wi-Fi ルーターを、**ルーターに一切アクセスせずに**点検します。ルーターへの通信・ログイン・スキャンは行いません。
+メーカー・機種・ファームウェアのバージョンと、管理画面で見た設定を書くと、公表された脆弱性と公的な推奨に照らし合わせます。
+設計は [docs/router-design.md](docs/router-design.md) にあります。
+
+1. 管理画面で機種とファームウェアのバージョンを確かめ、メーカーのサポートが続いているかを確かめます
+   （各メーカーのサポート終了一覧は [NOTICE](https://notice.go.jp/end_of_support) から辿れます）。
+2. 任意（**JVN iPedia** の脆弱性）：`router.jvn_lookup` を有効にします。点検のたびに、機種の CPE 名（それ以外は送りません）を
+   IPA の MyJVN API に HTTPS で送ります。結果には「出典：MyJVN API（IPA）」を表示します。機種の CPE 名を調べ
+   （バッファロー・NEC・アイ・オー・データ・エレコム）、当てはまるものを `jvn_cpes` に写します。
+
+   ```sh
+   .venv/bin/python -m pc_scanner.cli --config scanner.toml router-products buffalo WSR-3200
+   ```
+
+3. 任意（**悪用が確認された**脆弱性）：CISA KEV（CC0）を自分でダウンロードし、定期的に更新します。このツールはダウンロードしません。
+   載っているのは主に海外メーカー（D-Link・TP-Link・Zyxel・NETGEAR・ASUS など）です。
+
+   ```sh
+   curl -fsSL -o /absolute/path/to/kev.json https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json
+   ```
+
+4. 設定を書きます。自分で確かめたものだけを書き、確かめていない項目は書かずにおくと「未確認」と表示されます。
+
+   ```toml
+   [router]
+   jvn_lookup = true
+   kev_file = '/absolute/path/to/kev.json'
+
+   [routers.home]                  # 「home」は AI が使うエイリアス
+   maker = "buffalo"               # buffalo・nec・iodata・elecom、またはメーカー名
+   model = "WSR-3200AX4S"
+   firmware = "1.42"               # 管理画面の表示のまま
+   jvn_cpes = ["cpe:/h:buffalo_inc:wsr-3200ax4s"]
+   support = "supported"           # supported・ended・unknown
+   checked_on = 2026-10-17         # 下の設定を確かめた日
+
+   [routers.home.settings]
+   auto_update = true
+   admin_password_changed = true
+   remote_admin = false
+   vpn_server = false
+   ddns = false
+   upnp = false
+   wps = false
+   wifi_security = "wpa3"          # wpa3・wpa2-aes・wpa2-tkip・wep・open
+   unknown_vpn_accounts = false
+   ```
+
+5. 確認：`.venv/bin/python -m pc_scanner.cli --config scanner.toml router-check home`
+
+- ルーターのパスワードは書かないでください。パスワードらしいキーがあると、削除を促す警告を出します。
+- 結果が `completed` になるのは、JVN と KEV の両方を全件照合でき、設定がすべて回答済みで、確かめた日が新しい
+  （`router.max_check_age_days`、既定180日）ときだけです。
+
 ### うまく導入できないとき
 
 - **`cryptography` のビルドに失敗する**：ビルド済みパッケージに限定して導入します。Intel Mac（x86_64）では、
@@ -318,6 +376,11 @@ USB ケーブルでこの PC につないだ**自分の** Android スマート�
 | `android.max_indicator_age_days` | 指標が提供元の生成日時からこの日数（1〜365）より古いと、点検は `partial` | `30` |
 | `android.max_patch_age_days` | セキュリティパッチがこの日数（1〜3650）より古いと `outdated_patch` として報告 | `90` |
 | `android_devices.<エイリアス>` | 点検を許可する Android 端末の adb のシリアル。エイリアスの規則は `scan_roots` と同じ | なし |
+| `router.jvn_lookup` | 登録した機種を MyJVN API で JVN iPedia に照会します（CPE 名を IPA に送ります） | `false` |
+| `router.kev_file` | ダウンロードした CISA KEV（JSON）の絶対パス。空欄なら照合せず、点検は `partial` | 空欄 |
+| `router.max_kev_age_days` | KEV がリリース日時からこの日数（1〜365）より古いと、点検は `partial` | `30` |
+| `router.max_check_age_days` | 設定を確かめた日がこの日数（1〜3650）より前だと、点検は `partial` | `180` |
+| `routers.<エイリアス>` | 家庭用ルーター：`maker`・`model`・`firmware`・`jvn_cpes`・`support`・`checked_on` と、確かめた `settings`（[家庭用ルーターを使う場合](#家庭用ルーターを使う場合)を参照）。エイリアスの規則は `scan_roots` と同じ | なし |
 | `history.enabled` | スキャンごとの要約をこの PC に記録します。`false` で記録しません | `true` |
 | `history.file` | 履歴ファイルの絶対パス。空欄ならユーザーごとのフォルダー（[スキャン履歴](#スキャン履歴)を参照） | 空欄 |
 | `history.details` | ダッシュボード用に、スキャンごとの結果全体（所見・警告・データ）も残します。有効にする前に[ダッシュボード](#ダッシュボード)を読んでください | `false` |
@@ -509,6 +572,21 @@ TIME                 VIA  OPERATION      STATUS     FINDINGS    SECONDS  TARGET
   先に偽の ADB サーバーを起動されると、偽の結果を返されるおそれがあります。自分の PC で使うか、点検の前に自分で
   `adb kill-server` と `adb start-server` を実行してください。
 
+### 家庭用ルーター
+
+- ルーターにはアクセスしないため、結果はすべて書いた内容に基づきます。機種やバージョンが違えば結果も違い、設定は回答のとおりにしか分かりません。
+- 照合できるのは公表された脆弱性だけです。国内メーカーは JVN iPedia に多く載り、CISA KEV にはほとんど載っていません。
+  所見なしは安全の証明になりません。
+- 影響を受けるバージョンは自由記述です。比べるのは自分の機種（CPE で一致したもの）の記述だけで、「Ver.2.55より前」「2.30 およびそれ以前」の
+  ような決まった形のときだけです。バージョン番号として比べた結果と小数として比べた結果が食い違う場合（「2.6」と「2.55」など）や、
+  形が分からない場合、自分の機種の項目にバージョンの記述がない場合は、記述を添えて `unknown` にします。メーカーの告知で確かめてください。
+- KEV にはバージョンがないため、メーカー名と機種名での一致は確認を促すもの（`match: model`）です。機種名は製品名の中に単語として
+  そのまま現れる必要があります（「DIR-85」は「DIR-859」に一致しません）。同じメーカーのルーター全般の項目（「Multiple Routers」など）は
+  より弱い促し（`match: maker_only`）で、NAS・カメラなどほかの製品の項目は含めません。
+- JVN は全期間を検索します（MyJVN API は日付を指定しないと過去1週間だけを検索します）。1回の点検で200件まで、1秒に1回まで要求します。
+  取得できなかった分（上限・期限切れ・エラー・ページの食い違い）があれば、件数と理由を添えて `partial` にし、「該当しない」とは数えません。
+- JVN は 2027 年に新しい API（JSON・CPE 2.3・バージョンでの絞り込み）に移る予定で、そのときに移行します。
+
 ### プライバシー
 
 - クラウドの AI に結果を渡すと、アプリ名・プロセス ID・ファイル名・ホスト名などが送信されることがあります。送信先と範囲は PC の所有者が決めてください。
@@ -541,6 +619,8 @@ TIME                 VIA  OPERATION      STATUS     FINDINGS    SECONDS  TARGET
 - **AI の指示を信用しない**：結果に含まれるファイル名やアプリ名は信用できない文字列として扱うよう、AI に指示しています。
 - **Android は読み取り専用で接続を固定**：固定の adb コマンドだけを、USB と確認した接続（`adb -t`）に対して実行します。
   端末から読み取った文字列は端末へのコマンドに入れず、入れるのは数字と確認したユーザー ID と転送 ID だけです。
+- **ルーターにはアクセスしない**：スキャン・ログイン・パスワードの試行は行いません。通信は任意の MyJVN API（HTTPS・証明書を検証・
+  プロキシとリダイレクトを使わない）だけで、送るのは機種の CPE 名です。文書型宣言（DTD）を含む XML は解析する前に拒否します。
 - **長時間の検査でも止まらない**：検査は別スレッドで実行し、エンジンは1つずつ順番に動かします。
   検査中は10秒ごとに進捗を通知するので、進捗でタイムアウトを延長するクライアントなら長い検査も待てます。
 - **キャンセルで止まる**：AI クライアントが要求をキャンセルすると、実行中のエンジンとその子プロセスを約0.1秒以内に停止します。

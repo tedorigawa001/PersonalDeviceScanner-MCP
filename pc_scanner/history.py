@@ -32,12 +32,13 @@ FOLDER = "personal-device-scanner-mcp"
 FILE_BYTES = 1024 * 1024
 MAX_LIMIT = 1000
 ERROR_CHARS = 500
-OPERATIONS = {"inventory", "malware", "vulnerabilities", "android", "android_check"}
+OPERATIONS = {"inventory", "malware", "vulnerabilities", "android", "android_check", "router_check"}
 SEVERITIES = ("critical", "high", "medium", "low", "unknown")
 # What identifies the target. The Wazuh cursor names records, so only whether one was passed and the
 # page it leads to are kept.
 TARGETS = {"inventory": ("query_id", "offset"), "malware": ("root_alias", "relative_path"),
-           "android": ("device_alias", "query_id"), "android_check": ("device_alias",)}
+           "android": ("device_alias", "query_id"), "android_check": ("device_alias",),
+           "router_check": ("router_alias",)}
 # Where a paged result says that another page can be fetched.
 NEXT_PAGE = {"inventory": "next_offset", "vulnerabilities": "next_cursor"}
 # A link is refused, so a history file in a shared folder cannot be pointed at another file.

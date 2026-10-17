@@ -21,11 +21,17 @@ def create_server(scanner: Scanner):
     remote = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=True)
     aliases = ", ".join(scanner.roots) or "none configured"
     devices = ", ".join(scanner.android_devices) or "none configured"
+    routers = ", ".join(scanner.routers) or "none configured"
+    # The router check reaches the internet only when the owner turned on the JVN lookup.
+    router_access = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True,
+                                    openWorldHint=scanner.router_settings["jvn_lookup"])
     # Blocking work runs in worker threads so long scans do not stall pings, cancellation
     # or other requests. One local engine at a time: each clamscan loads its full database.
     engine_lock = anyio.Lock()
     # Wazuh requests are serialized too: each may buffer up to max_output_bytes.
     wazuh_lock = anyio.Lock()
+    # One router check at a time keeps MyJVN requests spaced out.
+    router_lock = anyio.Lock()
 
     async def heartbeat(ctx: Context, operation: str):
         # Clients that reset their timeout on progress keep waiting for long scans.
@@ -93,6 +99,14 @@ def create_server(scanner: Scanner):
         f"Registered device aliases: {devices}."))
     async def check_android_monitoring_apps(ctx: Context, device_alias: str) -> dict:
         return await run_engine(ctx, "android_check", device_alias=device_alias)
+
+    @server.tool(annotations=router_access, description=(
+        "Check an owner-registered home router WITHOUT contacting it: the maker, model and firmware version the "
+        "owner entered are matched against published vulnerabilities (JVN iPedia, CISA KEV), and the settings the "
+        "owner confirmed in the router's admin screen against public guidance. No finding does not prove safety. "
+        f"Registered router aliases: {routers}."))
+    async def check_router(ctx: Context, router_alias: str) -> dict:
+        return await run_engine(ctx, "router_check", lock=router_lock, router_alias=router_alias)
 
     @server.tool(annotations=remote)
     async def get_vulnerabilities(ctx: Context, cursor: str = "") -> dict:

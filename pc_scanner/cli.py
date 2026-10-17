@@ -70,6 +70,12 @@ def main():
     android_check = commands.add_parser("android-check", help="check a registered Android device for known "
                                                               "monitoring apps")
     android_check.add_argument("device_alias")
+    router_check = commands.add_parser("router-check", help="check a registered home router without contacting it")
+    router_check.add_argument("router_alias")
+    router_products = commands.add_parser("router-products", help="list a maker's models and CPE names in JVN, to "
+                                                                  "choose routers.<alias>.jvn_cpes")
+    router_products.add_argument("maker", choices=["buffalo", "nec", "iodata", "elecom"])
+    router_products.add_argument("keyword", help="part of the model name, e.g. WSR-3200")
     history = commands.add_parser("history", help="show the scan summaries recorded on this PC; the AI cannot "
                                                   "read them")
     history.add_argument("--limit", type=int, default=20, help="number of latest scans to show (1..1000)")

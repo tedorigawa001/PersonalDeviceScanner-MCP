@@ -53,3 +53,34 @@ max_patch_age_days = 90
 
 # Explicitly allow devices: alias = adb serial (see `adb devices -l`). Your own devices only.
 [android_devices]
+
+[router]
+# Home routers are checked WITHOUT contacting them: the model and firmware version you enter, and the settings you
+# confirmed in the admin screen. true sends each router's CPE names (nothing else) to IPA's MyJVN API over HTTPS.
+jvn_lookup = false
+# CISA KEV catalog (CC0) you download yourself; this tool never downloads it.
+kev_file = ""
+# A KEV catalog older than this, by its release time, makes the check partial.
+max_kev_age_days = 30
+# Settings checked longer ago than this make the check partial.
+max_check_age_days = 180
+
+# Register your own routers: "alias = table". Find jvn_cpes with `pc-scanner router-products <maker> <keyword>`.
+# Never write the router's password here. Leave out what you have not checked; it is reported as unchecked.
+# [routers.home]
+# maker = "buffalo"               # buffalo, nec, iodata, elecom, or the maker's name
+# model = "WSR-3200AX4S"
+# firmware = "1.42"
+# jvn_cpes = ["cpe:/h:buffalo_inc:wsr-3200ax4s"]
+# support = "supported"           # supported, ended or unknown (see the maker's end-of-support list)
+# checked_on = 2026-10-17
+# [routers.home.settings]
+# auto_update = true
+# admin_password_changed = true
+# remote_admin = false
+# vpn_server = false
+# ddns = false
+# upnp = false
+# wps = false
+# wifi_security = "wpa3"          # wpa3, wpa2-aes, wpa2-tkip, wep or open
+# unknown_vpn_accounts = false

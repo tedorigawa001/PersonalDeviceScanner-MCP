@@ -76,6 +76,8 @@ It cannot supply arbitrary SQL, paths, executables, or connection targets.
 | `get_vulnerabilities(cursor="")` | `vulnerabilities [--cursor C]` | Wazuh indexer | Returns vulnerabilities for the one configured device, most severe first |
 | `collect_android(device_alias, query_id)` | `android <device_alias> <query_id>` | adb | Returns one of `device` (version, security patch), `apps` (installed apps and their recorded install source), `privileged_access` (accessibility, notification access, device admin) for a registered Android device |
 | `check_android_monitoring_apps(device_alias)` | `android-check <device_alias>` | adb | Matches every package against known monitoring apps and lists apps worth reviewing |
+| `check_router(router_alias)` | `router-check <router_alias>` | MyJVN API, KEV file | Checks a registered home router without contacting it: the model and firmware version against published vulnerabilities, and the settings you confirmed against public guidance |
+| — | `router-products <maker> <keyword>` | MyJVN API | Lists a maker's models and CPE names in JVN, to choose `jvn_cpes` |
 | — | `history [--limit N] [--json]` | — | Shows the scan summaries recorded on this PC (see [Scan history](#scan-history)). The AI cannot read them |
 | — | `dashboard [--limit N] [--no-open]` | — | Writes the scan history, with any kept details, to an HTML page on this PC and opens it (see [Dashboard](#dashboard)). The AI cannot read it |
 | — | `serve` | — | Starts the MCP server |
@@ -282,6 +284,62 @@ it never installs, removes or changes anything on the device. The design is in [
 - adb starts its server (localhost:5037) on first use and leaves it running; it is shared with tools such as Android Studio,
   so this tool does not stop it. Stop it with `adb kill-server` if you want.
 
+### Using a home router
+
+This checks **your own** home Wi-Fi router **without contacting it**: nothing is sent to the router, no login, no scan.
+You enter the maker, model and firmware version and the settings you see in the router's admin screen; they are matched
+against published vulnerabilities and public guidance. The design is in [docs/router-design.md](docs/router-design.md).
+
+1. Look up the model and firmware version in the router's admin screen, and check whether the maker still supports the
+   model (each maker's end-of-support list is linked from [NOTICE](https://notice.go.jp/end_of_support)).
+2. Optional, for vulnerabilities in **JVN iPedia**: turn on `router.jvn_lookup`. Each check then sends the model's
+   CPE name (nothing else) to IPA's MyJVN API over HTTPS. Results show "Source: MyJVN API (IPA)". Find the CPE names for
+   your model (Buffalo, NEC, I-O DATA or ELECOM) and copy the right one into `jvn_cpes`:
+
+   ```sh
+   .venv/bin/python -m pc_scanner.cli --config scanner.toml router-products buffalo WSR-3200
+   ```
+
+3. Optional, for **actively exploited** vulnerabilities: download the CISA KEV catalog (CC0) yourself and update it
+   regularly; this tool never downloads it. It mostly lists overseas makers (D-Link, TP-Link, Zyxel, NETGEAR, ASUS, ...).
+
+   ```sh
+   curl -fsSL -o /absolute/path/to/kev.json https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json
+   ```
+
+4. Add the settings. Write only what you checked yourself; leave out what you have not, and it is reported as unchecked.
+
+   ```toml
+   [router]
+   jvn_lookup = true
+   kev_file = '/absolute/path/to/kev.json'
+
+   [routers.home]                  # "home" is the alias the AI uses
+   maker = "buffalo"               # buffalo, nec, iodata, elecom, or the maker's name
+   model = "WSR-3200AX4S"
+   firmware = "1.42"               # as the admin screen shows it
+   jvn_cpes = ["cpe:/h:buffalo_inc:wsr-3200ax4s"]
+   support = "supported"           # supported, ended or unknown
+   checked_on = 2026-10-17         # the day you checked the settings below
+
+   [routers.home.settings]
+   auto_update = true
+   admin_password_changed = true
+   remote_admin = false
+   vpn_server = false
+   ddns = false
+   upnp = false
+   wps = false
+   wifi_security = "wpa3"          # wpa3, wpa2-aes, wpa2-tkip, wep or open
+   unknown_vpn_accounts = false
+   ```
+
+5. Check: `.venv/bin/python -m pc_scanner.cli --config scanner.toml router-check home`
+
+- Never put the router's password in the file; a key that looks like one is reported so you can remove it.
+- The result is `completed` only when JVN and KEV were both matched in full, every setting was answered, and the
+  answers are recent (`router.max_check_age_days`, default 180).
+
 ### Troubleshooting
 
 - **`cryptography` fails to build**: install prebuilt packages only. This happens on Intel Macs (x86_64),
@@ -319,6 +377,11 @@ it never installs, removes or changes anything on the device. The design is in [
 | `android.max_indicator_age_days` | Indicators older than this many days (1–365), by the provider's generation time, make the check `partial` | `30` |
 | `android.max_patch_age_days` | A security patch older than this many days (1–3650) is reported as `outdated_patch` | `90` |
 | `android_devices.<alias>` | An Android device allowed to be inspected: its adb serial. Aliases as for `scan_roots` | none |
+| `router.jvn_lookup` | Look up the registered models in JVN iPedia through the MyJVN API (sends the CPE names to IPA) | `false` |
+| `router.kev_file` | Absolute path to the CISA KEV catalog (JSON) you downloaded. Empty: not matched, and the check is `partial` | empty |
+| `router.max_kev_age_days` | A KEV catalog older than this many days (1–365), by its release time, makes the check `partial` | `30` |
+| `router.max_check_age_days` | Settings checked longer ago than this many days (1–3650) make the check `partial` | `180` |
+| `routers.<alias>` | A home router: `maker`, `model`, `firmware`, `jvn_cpes`, `support`, `checked_on` and the `settings` you confirmed (see [Using a home router](#using-a-home-router)). Aliases as for `scan_roots` | none |
 | `history.enabled` | Record a summary of each scan on this PC. `false` turns it off | `true` |
 | `history.file` | Absolute path to the history file. Empty uses the per-user folder (see [Scan history](#scan-history)) | empty |
 | `history.details` | Also keep the full result of each scan (findings, warnings, data) for the dashboard. Think first: see [Dashboard](#dashboard) | `false` |
@@ -515,6 +578,24 @@ each target, then every scan, newest first. Open a scan to see its warnings, fin
   sign in to, someone who starts a fake ADB server first could feed false results. Use it on your own computer, or run
   `adb kill-server` and then `adb start-server` yourself before the check.
 
+### Home router
+
+- The router is never contacted, so everything rests on what you entered. A wrong model or firmware version gives a
+  wrong result, and the settings are only as accurate as your answers.
+- Only published vulnerabilities are matched. JVN iPedia covers the Japanese makers well; CISA KEV hardly lists them.
+  No finding does not prove the router is safe.
+- Affected versions are written in free text. A version is compared only for your model's entries (matched by CPE),
+  and only when the text has a known form such as "Ver.2.55より前" or "2.30 およびそれ以前". When version numbers and
+  decimals would disagree ("2.6" against "2.55"), or the form is unknown, or an entry for your model gives no range,
+  the finding is `unknown` with the text attached: check the maker's advisory.
+- KEV entries have no versions, so a match by maker and model is a prompt to check (`match: model`). The model must
+  appear as whole words in the product text ("DIR-85" does not match "DIR-859"). Entries for your maker's routers as a
+  group, such as "Multiple Routers", are a weaker prompt (`match: maker_only`); its NAS, cameras and other products are not.
+- JVN is searched over all dates (the MyJVN API otherwise looks at the past week only), up to 200 advisories per check,
+  one request a second. Anything not fetched (limit, deadline, error, inconsistent pages) makes the result `partial`
+  with the count and reason, and is never counted as not affected.
+- JVN plans a new API in 2027 (JSON, CPE 2.3, version filtering); the lookup will move to it then.
+
 ### Privacy
 
 - Passing results to a cloud AI may send application names, process IDs, file names, host names, and similar data. The PC owner decides where results go and how much is shared.
@@ -547,6 +628,9 @@ each target, then every scan, newest first. Open a scan to see its warnings, fin
 - **AI-facing text is untrusted**: the AI is instructed to treat file and application names in results as untrusted strings, never as instructions.
 - **Android, read-only and pinned**: only fixed adb commands run, on the transport confirmed to be USB (`adb -t`). Strings
   read from the device are never put into a device command; only user and transport IDs checked to be numbers are.
+- **Routers are never contacted**: no scan, login or password attempt. The only network access is the optional MyJVN API
+  (HTTPS, verified certificates, no proxy or redirect), which receives the model's CPE name. XML with a document type is
+  refused before it is parsed.
 - **Responsive during long scans**: scans run in a worker thread, and engines run one at a time.
   Progress is reported every 10 seconds, so clients that extend their timeout on progress can wait for long scans.
 - **Stops on cancel**: when the AI client cancels a request, the running engine and the processes it started are stopped within about 0.1 seconds,

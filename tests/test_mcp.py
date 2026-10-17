@@ -14,6 +14,8 @@ class SlowScanner:
 
     roots = {"test": ""}
     android_devices = {}
+    routers = {}
+    router_settings = {"jvn_lookup": False}
 
     def __init__(self, delay):
         self.delay = delay
@@ -36,6 +38,8 @@ class CancellableScanner:
 
     roots = {"test": ""}
     android_devices = {}
+    routers = {}
+    router_settings = {"jvn_lookup": False}
 
     def __init__(self):
         self.started = threading.Event()
@@ -85,7 +89,9 @@ class MCPTests(unittest.TestCase):
                     tools = {t.name: t for t in (await session.list_tools()).tools}
                     self.assertEqual(set(tools), {
                         "scanner_status", "collect_inventory", "scan_malware", "get_vulnerabilities",
-                        "collect_android", "check_android_monitoring_apps"})
+                        "collect_android", "check_android_monitoring_apps", "check_router"})
+                    # No JVN lookup configured, so the router check stays on this PC.
+                    self.assertFalse(tools["check_router"].annotations.openWorldHint)
                     self.assertEqual(tools["collect_android"].inputSchema["properties"]["query_id"]["enum"],
                                      ["device", "apps", "privileged_access"])
                     self.assertEqual(tools["collect_inventory"].inputSchema["properties"]["query_id"]["enum"],

@@ -51,7 +51,7 @@ SORT_VALUE_CHARS, CURSOR_CHARS = 4096, 65536
 # Far beyond any agent's inventory (500 records a page); keeps the page number in cursors bounded.
 MAX_PAGES = 1000000
 SOURCES = {"status": "bridge", "inventory": "osquery", "malware": "clamav", "vulnerabilities": "wazuh",
-           "android": "adb", "android_check": "adb"}
+           "android": "adb", "android_check": "adb", "router_check": "router", "router_products": "router"}
 
 # Metadata only: opening placeholder contents can download them from the provider.
 SF_DATALESS = 0x40000000
@@ -254,7 +254,9 @@ SETTINGS = {"local": {"osquery_binary", "clamav_binary", "timeout_seconds", "max
             "wazuh": {"url", "agent_id", "ca_file", "agent_name"},
             "android": {"adb_binary", "indicators_file", "max_indicator_age_days", "max_patch_age_days"},
             "android_devices": None,
-            "history": {"enabled", "file", "details", "details_max_mb"}}
+            "history": {"enabled", "file", "details", "details_max_mb"},
+            "router": {"jvn_lookup", "kev_file", "max_kev_age_days", "max_check_age_days"},
+            "routers": None}
 
 
 def unknown_settings(config: dict) -> list[str]:
@@ -293,8 +295,14 @@ def result(source: str, status: str, **fields) -> dict:
 
 
 class NoRedirect(HTTPRedirectHandler):
+    def __init__(self, service: str = "Wazuh"):
+        super().__init__()
+        self.service = service
+
     def redirect_request(self, req, fp, code, msg, headers, newurl):
-        raise ScannerError("Wazuh redirect rejected; configure the final HTTPS origin")
+        if self.service == "Wazuh":
+            raise ScannerError("Wazuh redirect rejected; configure the final HTTPS origin")
+        raise ScannerError(f"{self.service} redirect rejected")
 
 
 class TrackedHTTPSConnection(http.client.HTTPSConnection):
@@ -335,7 +343,7 @@ class TrackedHTTPSHandler(HTTPSHandler):
 
 
 def fetch_bounded(opener, handler: TrackedHTTPSHandler, request: Request, budget: int, limit: int,
-                  cancel: threading.Event | None = None) -> bytes:
+                  cancel: threading.Event | None = None, service: str = "Wazuh") -> bytes:
     """Read the whole answer within budget seconds, stopping promptly on cancel.
 
     A blocking read cannot be interrupted, and each byte that arrives restarts the socket
@@ -355,20 +363,20 @@ def fetch_bounded(opener, handler: TrackedHTTPSHandler, request: Request, budget
                 while not abandoned.is_set() and (chunk := response.read1(65536)):
                     raw += chunk
                     if len(raw) > limit:
-                        raise ScannerError("Wazuh response exceeded size limit")
+                        raise ScannerError(f"{service} response exceeded size limit")
             outcome["body"] = bytes(raw)
         except Exception as exc:  # handed over to the caller
             outcome["error"] = exc
         finally:
             done.set()
 
-    threading.Thread(target=fetch, name="wazuh-request", daemon=True).start()
+    threading.Thread(target=fetch, name=f"{service.lower()}-request", daemon=True).start()
     while not done.wait(max(0.0, min(CANCEL_POLL_SECONDS, deadline - time.monotonic()))):
         if (cancel is not None and cancel.is_set()) or time.monotonic() >= deadline:
             abandoned.set()
             handler.cut_off()
             check_cancel(cancel)
-            raise ScannerError(f"Wazuh did not finish answering within {budget} seconds; search was not completed")
+            raise ScannerError(f"{service} did not finish answering within {budget} seconds; search was not completed")
     if "error" in outcome:
         raise outcome["error"]
     return outcome["body"]
@@ -705,6 +713,9 @@ class Scanner:
             raise ScannerError("history.details_max_mb must be 1..1024")
         if self.history_details and not self.history_enabled:
             self.config_warnings.append("history.details has no effect while history.enabled = false")
+        from . import router
+        self.router_settings, self.routers, router_warnings = router.load(config)
+        self.config_warnings += router_warnings
         # Set by the CLI ("cli") or the MCP server ("mcp"); scans are recorded only then.
         self.via = None
         ca_file = self.wazuh.get("ca_file", "")
@@ -766,6 +777,9 @@ class Scanner:
             "android_configured": bool(self.android.get("adb_binary")),
             "scan_root_aliases": list(self.roots),
             "android_device_aliases": list(self.android_devices),
+            "router_aliases": list(self.routers),
+            "router_jvn_lookup": self.router_settings["jvn_lookup"],
+            "router_kev_configured": bool(self.router_settings["kev_file"]),
             "note": "Configuration status only; engines, signatures, connectivity and PC safety are unverified"})
 
     def inventory(self, query_id: str, offset: int = 0, cancel: threading.Event | None = None) -> dict:
@@ -1095,10 +1109,19 @@ class Scanner:
         from . import android
         return android.check(self, device_alias, cancel)
 
+    def router_check(self, router_alias: str, cancel: threading.Event | None = None) -> dict:
+        from . import router
+        return router.check(self, router_alias, cancel)
+
+    def router_products(self, maker: str, keyword: str, cancel: threading.Event | None = None) -> dict:
+        from . import router
+        return router.products(self, maker, keyword, cancel)
+
     def invoke(self, operation: str, **kwargs) -> dict:
         operations = {"status": self.status, "inventory": self.inventory,
                       "malware": self.malware, "vulnerabilities": self.vulnerabilities,
-                      "android": self.android_collect, "android_check": self.android_check}
+                      "android": self.android_collect, "android_check": self.android_check,
+                      "router_check": self.router_check, "router_products": self.router_products}
         source = SOURCES.get(operation, "bridge")
         started, clock = datetime.now(timezone.utc), time.perf_counter()
         try:
