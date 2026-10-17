@@ -55,7 +55,7 @@ class DeclaredDependencyTests(unittest.TestCase):
                     [*project.get("dependencies", []), *chain(*project.get("optional-dependencies", {}).values())]}
         imported = set()
         for source in (ROOT / "pc_scanner").glob("*.py"):
-            for node in ast.walk(ast.parse(source.read_text())):
+            for node in ast.walk(ast.parse(source.read_text(encoding="utf-8"))):
                 if isinstance(node, ast.Import):
                     imported.update(alias.name.split(".")[0] for alias in node.names)
                 elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:

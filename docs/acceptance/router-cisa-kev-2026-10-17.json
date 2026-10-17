@@ -1,0 +1,418 @@
+{
+  "performed_at": "2026-10-17T02:34:47.447390+00:00",
+  "router_contacted": false,
+  "source": {
+    "url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+    "sha256": "b6e27975f6635ecfc546fbd4fd6e444ba63a07ab2abc8876229d77fe083d357d",
+    "bytes": 1792713,
+    "catalog_version": "2026.10.16",
+    "date_released": "2026-10-16T17:15:48.8752Z",
+    "declared_count": 1748,
+    "actual_count": 1748
+  },
+  "inputs": "Public maker/model names and synthetic negative controls; no owner router information used",
+  "matching": [
+    {
+      "input": {
+        "maker": "D-Link",
+        "model": "DIR-859"
+      },
+      "findings": [
+        {
+          "kind": "known_exploited",
+          "severity": "high",
+          "cve": "CVE-2024-0769",
+          "vendor": "D-Link",
+          "product": "DIR-859 Router",
+          "name": " D-Link DIR-859 Router Path Traversal Vulnerability",
+          "match": "model",
+          "end_of_life_noted": true,
+          "required_action": "Apply mitigations per vendor instructions, follow applicable BOD 22-01 guidance for cloud services, or discontinue use of the product if mitigations are unavailable.",
+          "advice": "Listed in CISA KEV by maker and product name only; check the maker's advisory to see whether your firmware version is affected"
+        },
+        {
+          "kind": "known_exploited",
+          "severity": "high",
+          "cve": "CVE-2019-17621",
+          "vendor": "D-Link",
+          "product": "DIR-859 Router",
+          "name": "D-Link DIR-859 Router Command Execution Vulnerability",
+          "match": "model",
+          "end_of_life_noted": false,
+          "required_action": "Apply updates per vendor instructions or discontinue use of the product if updates are unavailable.",
+          "advice": "Listed in CISA KEV by maker and product name only; check the maker's advisory to see whether your firmware version is affected"
+        },
+        {
+          "kind": "known_exploited",
+          "severity": "medium",
+          "cve": "CVE-2018-6530",
+          "vendor": "D-Link",
+          "product": "Multiple Routers",
+          "name": "D-Link Multiple Routers OS Command Injection Vulnerability",
+          "match": "maker_only",
+          "end_of_life_noted": true,
+          "required_action": "The vendor D-Link published an advisory stating the fix under CVE-2018-20114 properly patches KEV entry CVE-2018-6530. If the device is still supported, apply updates per vendor instructions. If the affected device has since entered its end-of-life, it should be disconnected if still in use.",
+          "advice": "Listed in CISA KEV by maker and product name only; check the maker's advisory to see whether your firmware version is affected"
+        },
+        {
+          "kind": "known_exploited",
+          "severity": "medium",
+          "cve": "CVE-2021-45382",
+          "vendor": "D-Link",
+          "product": "Multiple Routers",
+          "name": "D-Link Multiple Routers Remote Code Execution Vulnerability",
+          "match": "maker_only",
+          "end_of_life_noted": true,
+          "required_action": "The impacted product is end-of-life and should be disconnected if still in use.",
+          "advice": "Listed in CISA KEV by maker and product name only; check the maker's advisory to see whether your firmware version is affected"
+        },
+        {
+          "kind": "known_exploited",
+          "severity": "medium",
+          "cve": "CVE-2019-16920",
+          "vendor": "D-Link",
+          "product": "Multiple Routers",
+          "name": "D-Link Multiple Routers Command Injection Vulnerability",
+          "match": "maker_only",
+          "end_of_life_noted": true,
+          "required_action": "The impacted product is end-of-life and should be disconnected if still in use.",
+          "advice": "Listed in CISA KEV by maker and product name only; check the maker's advisory to see whether your firmware version is affected"
+        }
+      ],
+      "metadata": {
+        "configured": true,
+        "loaded": true,
+        "catalog_version": "2026.10.16",
+        "released": "2026-10-16T17:15:48.875200+00:00",
+        "matches": 5,
+        "skipped_entries": 0
+      },
+      "warnings": []
+    },
+    {
+      "input": {
+        "maker": "d-link",
+        "model": "dir859"
+      },
+      "findings": [
+        {
+          "kind": "known_exploited",
+          "severity": "high",
+          "cve": "CVE-2024-0769",
+          "vendor": "D-Link",
+          "product": "DIR-859 Router",
+          "name": " D-Link DIR-859 Router Path Traversal Vulnerability",
+          "match": "model",
+          "end_of_life_noted": true,
+          "required_action": "Apply mitigations per vendor instructions, follow applicable BOD 22-01 guidance for cloud services, or discontinue use of the product if mitigations are unavailable.",
+          "advice": "Listed in CISA KEV by maker and product name only; check the maker's advisory to see whether your firmware version is affected"
+        },
+        {
+          "kind": "known_exploited",
+          "severity": "high",
+          "cve": "CVE-2019-17621",
+          "vendor": "D-Link",
+          "product": "DIR-859 Router",
+          "name": "D-Link DIR-859 Router Command Execution Vulnerability",
+          "match": "model",
+          "end_of_life_noted": false,
+          "required_action": "Apply updates per vendor instructions or discontinue use of the product if updates are unavailable.",
+          "advice": "Listed in CISA KEV by maker and product name only; check the maker's advisory to see whether your firmware version is affected"
+        },
+        {
+          "kind": "known_exploited",
+          "severity": "medium",
+          "cve": "CVE-2018-6530",
+          "vendor": "D-Link",
+          "product": "Multiple Routers",
+          "name": "D-Link Multiple Routers OS Command Injection Vulnerability",
+          "match": "maker_only",
+          "end_of_life_noted": true,
+          "required_action": "The vendor D-Link published an advisory stating the fix under CVE-2018-20114 properly patches KEV entry CVE-2018-6530. If the device is still supported, apply updates per vendor instructions. If the affected device has since entered its end-of-life, it should be disconnected if still in use.",
+          "advice": "Listed in CISA KEV by maker and product name only; check the maker's advisory to see whether your firmware version is affected"
+        },
+        {
+          "kind": "known_exploited",
+          "severity": "medium",
+          "cve": "CVE-2021-45382",
+          "vendor": "D-Link",
+          "product": "Multiple Routers",
+          "name": "D-Link Multiple Routers Remote Code Execution Vulnerability",
+          "match": "maker_only",
+          "end_of_life_noted": true,
+          "required_action": "The impacted product is end-of-life and should be disconnected if still in use.",
+          "advice": "Listed in CISA KEV by maker and product name only; check the maker's advisory to see whether your firmware version is affected"
+        },
+        {
+          "kind": "known_exploited",
+          "severity": "medium",
+          "cve": "CVE-2019-16920",
+          "vendor": "D-Link",
+          "product": "Multiple Routers",
+          "name": "D-Link Multiple Routers Command Injection Vulnerability",
+          "match": "maker_only",
+          "end_of_life_noted": true,
+          "required_action": "The impacted product is end-of-life and should be disconnected if still in use.",
+          "advice": "Listed in CISA KEV by maker and product name only; check the maker's advisory to see whether your firmware version is affected"
+        }
+      ],
+      "metadata": {
+        "configured": true,
+        "loaded": true,
+        "catalog_version": "2026.10.16",
+        "released": "2026-10-16T17:15:48.875200+00:00",
+        "matches": 5,
+        "skipped_entries": 0
+      },
+      "warnings": []
+    },
+    {
+      "input": {
+        "maker": "buffalo",
+        "model": "WSR-300HP"
+      },
+      "findings": [],
+      "metadata": {
+        "configured": true,
+        "loaded": true,
+        "catalog_version": "2026.10.16",
+        "released": "2026-10-16T17:15:48.875200+00:00",
+        "matches": 0,
+        "skipped_entries": 0
+      },
+      "warnings": []
+    },
+    {
+      "input": {
+        "maker": "D-Link",
+        "model": "NO-SUCH-MODEL-ACCEPTANCE"
+      },
+      "findings": [
+        {
+          "kind": "known_exploited",
+          "severity": "medium",
+          "cve": "CVE-2018-6530",
+          "vendor": "D-Link",
+          "product": "Multiple Routers",
+          "name": "D-Link Multiple Routers OS Command Injection Vulnerability",
+          "match": "maker_only",
+          "end_of_life_noted": true,
+          "required_action": "The vendor D-Link published an advisory stating the fix under CVE-2018-20114 properly patches KEV entry CVE-2018-6530. If the device is still supported, apply updates per vendor instructions. If the affected device has since entered its end-of-life, it should be disconnected if still in use.",
+          "advice": "Listed in CISA KEV by maker and product name only; check the maker's advisory to see whether your firmware version is affected"
+        },
+        {
+          "kind": "known_exploited",
+          "severity": "medium",
+          "cve": "CVE-2021-45382",
+          "vendor": "D-Link",
+          "product": "Multiple Routers",
+          "name": "D-Link Multiple Routers Remote Code Execution Vulnerability",
+          "match": "maker_only",
+          "end_of_life_noted": true,
+          "required_action": "The impacted product is end-of-life and should be disconnected if still in use.",
+          "advice": "Listed in CISA KEV by maker and product name only; check the maker's advisory to see whether your firmware version is affected"
+        },
+        {
+          "kind": "known_exploited",
+          "severity": "medium",
+          "cve": "CVE-2019-16920",
+          "vendor": "D-Link",
+          "product": "Multiple Routers",
+          "name": "D-Link Multiple Routers Command Injection Vulnerability",
+          "match": "maker_only",
+          "end_of_life_noted": true,
+          "required_action": "The impacted product is end-of-life and should be disconnected if still in use.",
+          "advice": "Listed in CISA KEV by maker and product name only; check the maker's advisory to see whether your firmware version is affected"
+        }
+      ],
+      "metadata": {
+        "configured": true,
+        "loaded": true,
+        "catalog_version": "2026.10.16",
+        "released": "2026-10-16T17:15:48.875200+00:00",
+        "matches": 3,
+        "skipped_entries": 0
+      },
+      "warnings": []
+    },
+    {
+      "input": {
+        "maker": "D-Link",
+        "model": "DIR-85"
+      },
+      "findings": [
+        {
+          "kind": "known_exploited",
+          "severity": "medium",
+          "cve": "CVE-2018-6530",
+          "vendor": "D-Link",
+          "product": "Multiple Routers",
+          "name": "D-Link Multiple Routers OS Command Injection Vulnerability",
+          "match": "maker_only",
+          "end_of_life_noted": true,
+          "required_action": "The vendor D-Link published an advisory stating the fix under CVE-2018-20114 properly patches KEV entry CVE-2018-6530. If the device is still supported, apply updates per vendor instructions. If the affected device has since entered its end-of-life, it should be disconnected if still in use.",
+          "advice": "Listed in CISA KEV by maker and product name only; check the maker's advisory to see whether your firmware version is affected"
+        },
+        {
+          "kind": "known_exploited",
+          "severity": "medium",
+          "cve": "CVE-2021-45382",
+          "vendor": "D-Link",
+          "product": "Multiple Routers",
+          "name": "D-Link Multiple Routers Remote Code Execution Vulnerability",
+          "match": "maker_only",
+          "end_of_life_noted": true,
+          "required_action": "The impacted product is end-of-life and should be disconnected if still in use.",
+          "advice": "Listed in CISA KEV by maker and product name only; check the maker's advisory to see whether your firmware version is affected"
+        },
+        {
+          "kind": "known_exploited",
+          "severity": "medium",
+          "cve": "CVE-2019-16920",
+          "vendor": "D-Link",
+          "product": "Multiple Routers",
+          "name": "D-Link Multiple Routers Command Injection Vulnerability",
+          "match": "maker_only",
+          "end_of_life_noted": true,
+          "required_action": "The impacted product is end-of-life and should be disconnected if still in use.",
+          "advice": "Listed in CISA KEV by maker and product name only; check the maker's advisory to see whether your firmware version is affected"
+        }
+      ],
+      "metadata": {
+        "configured": true,
+        "loaded": true,
+        "catalog_version": "2026.10.16",
+        "released": "2026-10-16T17:15:48.875200+00:00",
+        "matches": 3,
+        "skipped_entries": 0
+      },
+      "warnings": []
+    }
+  ],
+  "freshness": [
+    {
+      "case": "actual_now",
+      "comparison_time": "2026-10-17T02:34:47.447390+00:00",
+      "stale": false,
+      "expected_stale": false,
+      "passed": true,
+      "warnings": []
+    },
+    {
+      "case": "exactly_30_days",
+      "comparison_time": "2026-11-15T17:15:48.875200+00:00",
+      "stale": false,
+      "expected_stale": false,
+      "passed": true,
+      "warnings": []
+    },
+    {
+      "case": "30_days_plus_1_microsecond",
+      "comparison_time": "2026-11-15T17:15:48.875201+00:00",
+      "stale": true,
+      "expected_stale": true,
+      "passed": true,
+      "warnings": [
+        "The KEV catalog is 30.1 days old (limit 30 days); download it again"
+      ]
+    }
+  ],
+  "issues": [],
+  "limitations": [
+    "KEV names do not establish firmware applicability",
+    "Freshness boundary cases inject the comparison clock; the downloaded catalog is unchanged"
+  ],
+  "status": "passed",
+  "regression_assertions": {
+    "nas_excluded": true,
+    "dir85_not_dir859": true,
+    "nonexistent_model_no_model_matches": true,
+    "case_and_hyphen_variations_preserved": true
+  },
+  "previous_run": {
+    "performed_at": "2026-10-17T02:30:00.009440+00:00",
+    "source": {
+      "url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+      "sha256": "b6e27975f6635ecfc546fbd4fd6e444ba63a07ab2abc8876229d77fe083d357d",
+      "bytes": 1792713,
+      "catalog_version": "2026.10.16",
+      "date_released": "2026-10-16T17:15:48.8752Z",
+      "declared_count": 1748,
+      "actual_count": 1748
+    },
+    "status": "issues_found",
+    "issues": [
+      {
+        "kind": "unrelated_product_category",
+        "description": "DIR-859 router review includes Multiple NAS Devices on maker-only matching",
+        "cves": [
+          "CVE-2024-3273",
+          "CVE-2024-3272"
+        ]
+      },
+      {
+        "kind": "model_substring_collision",
+        "description": "Synthetic DIR-85 input is treated as a model match for DIR-859",
+        "cves": [
+          "CVE-2024-0769",
+          "CVE-2019-17621"
+        ]
+      }
+    ],
+    "matching_summary": [
+      {
+        "input": {
+          "maker": "D-Link",
+          "model": "DIR-859"
+        },
+        "count": 8
+      },
+      {
+        "input": {
+          "maker": "d-link",
+          "model": "dir859"
+        },
+        "count": 8
+      },
+      {
+        "input": {
+          "maker": "buffalo",
+          "model": "WSR-300HP"
+        },
+        "count": 0
+      },
+      {
+        "input": {
+          "maker": "D-Link",
+          "model": "NO-SUCH-MODEL-ACCEPTANCE"
+        },
+        "count": 6
+      },
+      {
+        "input": {
+          "maker": "D-Link",
+          "model": "DIR-85"
+        },
+        "count": 8
+      }
+    ]
+  },
+  "verification": {
+    "router_tests": {
+      "total": 31,
+      "passed": 31
+    },
+    "python_all": {
+      "total": 229,
+      "passed": 226,
+      "skipped": 3,
+      "skip_reason": "Windows-specific"
+    },
+    "npm_all": {
+      "total": 15,
+      "passed": 15,
+      "skipped": 0,
+      "includes": "first-use setup and MCP connection"
+    }
+  }
+}

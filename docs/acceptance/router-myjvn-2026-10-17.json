@@ -1,0 +1,277 @@
+{
+  "performed_at": "2026-10-17T02:28:11.775985+00:00",
+  "purpose": "Live MyJVN product discovery and firmware comparison acceptance test",
+  "router_contacted": false,
+  "inputs": "Public product and synthetic firmware values; no owner router configuration or credentials used",
+  "product_lookup": {
+    "schema_version": 1,
+    "source": "router",
+    "status": "completed",
+    "observed_at": "2026-10-17T02:27:50.682678+00:00",
+    "findings": [],
+    "warnings": [],
+    "data": {
+      "maker": "buffalo",
+      "keyword": "WSR-300HP",
+      "products": [
+        {
+          "name": "WSR-300HP",
+          "cpe": "cpe:/h:buffalo_inc:wsr-300hp",
+          "product_id": "29718"
+        }
+      ],
+      "attribution": "MyJVN API (IPA)"
+    }
+  },
+  "requests": [
+    {
+      "url": "https://jvndb.jvn.jp/myjvn?method=getVulnOverviewList&feed=hnd&cpeName=cpe%3A%2F%2A%3Abuffalo_inc%3Awsr-300hp&rangeDatePublic=n&rangeDatePublished=n&rangeDateFirstPublished=n&startItem=1&maxCountItem=50",
+      "bytes": 6017,
+      "sha256": "16bfe4f18561379fc7a95983b1ed38ec30c7a2caa73fb945f97eda0596d88ee1"
+    },
+    {
+      "url": "https://jvndb.jvn.jp/myjvn?method=getVulnDetailInfo&feed=hnd&vulnId=JVNDB-2026-035794%2BJVNDB-2017-000194",
+      "bytes": 10871,
+      "sha256": "1593ce4429bf33a4f080fb5405c19a151722eb2cbdbecf1b1d6e6adaca3b223c"
+    },
+    {
+      "url": "https://jvndb.jvn.jp/myjvn?method=getVulnOverviewList&feed=hnd&cpeName=cpe%3A%2F%2A%3Abuffalo_inc%3Awsr-300hp&rangeDatePublic=n&rangeDatePublished=n&rangeDateFirstPublished=n&startItem=1&maxCountItem=50",
+      "bytes": 6017,
+      "sha256": "a6f4ee12e7a9520307f48c575b9e8cd6228088406930eb5cdb70a4047bde1006"
+    },
+    {
+      "url": "https://jvndb.jvn.jp/myjvn?method=getVulnDetailInfo&feed=hnd&vulnId=JVNDB-2026-035794%2BJVNDB-2017-000194",
+      "bytes": 10871,
+      "sha256": "1593ce4429bf33a4f080fb5405c19a151722eb2cbdbecf1b1d6e6adaca3b223c"
+    },
+    {
+      "url": "https://jvndb.jvn.jp/myjvn?method=getVulnOverviewList&feed=hnd&cpeName=cpe%3A%2F%2A%3Abuffalo_inc%3Awsr-300hp&rangeDatePublic=n&rangeDatePublished=n&rangeDateFirstPublished=n&startItem=1&maxCountItem=50",
+      "bytes": 6017,
+      "sha256": "db580518ed6b03400508714d38610493d5db0454bb4e77c59dc7afa7d81419a9"
+    },
+    {
+      "url": "https://jvndb.jvn.jp/myjvn?method=getVulnDetailInfo&feed=hnd&vulnId=JVNDB-2026-035794%2BJVNDB-2017-000194",
+      "bytes": 10871,
+      "sha256": "1593ce4429bf33a4f080fb5405c19a151722eb2cbdbecf1b1d6e6adaca3b223c"
+    }
+  ],
+  "checks": [
+    {
+      "firmware": "2.54",
+      "report": {
+        "schema_version": 1,
+        "source": "router",
+        "status": "partial",
+        "observed_at": "2026-10-17T02:28:13.055230+00:00",
+        "findings": [
+          {
+            "kind": "known_vulnerability",
+            "severity": "high",
+            "id": "JVNDB-2026-035794",
+            "title": "バッファロー製Wi-Fi製品における複数の脆弱性",
+            "cves": [
+              "CVE-2026-86530",
+              "CVE-2026-95104"
+            ],
+            "link": "https://jvndb.jvn.jp/ja/contents/2026/JVNDB-2026-035794.html",
+            "comparison": "affected",
+            "matched_cpe": "cpe:/h:buffalo_inc:wsr-300hp",
+            "affected_versions": [
+              "ファームウェア Ver.2.55より前のバージョン"
+            ]
+          }
+        ],
+        "warnings": [
+          "Based on the maker, model and firmware version the owner entered; the router itself was not contacted",
+          "Only published vulnerabilities are matched; no finding does not prove the router is safe",
+          "When the settings were checked is not recorded (checked_on)",
+          "No KEV catalog is configured (router.kev_file); actively exploited vulnerabilities were not matched",
+          "Not confirmed by the owner: admin_password_changed, auto_update, remote_admin, vpn_server, ddns, unknown_vpn_accounts, upnp, wps, wifi_security, support"
+        ],
+        "data": {
+          "router_alias": "public_test",
+          "maker": "buffalo",
+          "model": "WSR-300HP",
+          "firmware": "2.54",
+          "support": "unknown",
+          "checked_on": null,
+          "unchecked": [
+            "admin_password_changed",
+            "auto_update",
+            "remote_admin",
+            "vpn_server",
+            "ddns",
+            "unknown_vpn_accounts",
+            "upnp",
+            "wps",
+            "wifi_security",
+            "support"
+          ],
+          "sources": {
+            "kev": {
+              "configured": false
+            },
+            "jvn": {
+              "queried": true,
+              "attribution": "MyJVN API (IPA)",
+              "date_range": "all",
+              "requests": 2,
+              "queries": [
+                {
+                  "cpe": "cpe:/*:buffalo_inc:wsr-300hp",
+                  "total": 2,
+                  "fetched": 2
+                }
+              ],
+              "advisories": 2,
+              "not_fetched": 0,
+              "not_fetched_reason": null,
+              "unqueried_cpes": 0,
+              "details_missing": 0,
+              "details_reason": null,
+              "not_affected": [
+                "JVNDB-2017-000194"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "firmware": "2.55",
+      "report": {
+        "schema_version": 1,
+        "source": "router",
+        "status": "partial",
+        "observed_at": "2026-10-17T02:28:14.300773+00:00",
+        "findings": [],
+        "warnings": [
+          "Based on the maker, model and firmware version the owner entered; the router itself was not contacted",
+          "Only published vulnerabilities are matched; no finding does not prove the router is safe",
+          "When the settings were checked is not recorded (checked_on)",
+          "No KEV catalog is configured (router.kev_file); actively exploited vulnerabilities were not matched",
+          "Not confirmed by the owner: admin_password_changed, auto_update, remote_admin, vpn_server, ddns, unknown_vpn_accounts, upnp, wps, wifi_security, support"
+        ],
+        "data": {
+          "router_alias": "public_test",
+          "maker": "buffalo",
+          "model": "WSR-300HP",
+          "firmware": "2.55",
+          "support": "unknown",
+          "checked_on": null,
+          "unchecked": [
+            "admin_password_changed",
+            "auto_update",
+            "remote_admin",
+            "vpn_server",
+            "ddns",
+            "unknown_vpn_accounts",
+            "upnp",
+            "wps",
+            "wifi_security",
+            "support"
+          ],
+          "sources": {
+            "kev": {
+              "configured": false
+            },
+            "jvn": {
+              "queried": true,
+              "attribution": "MyJVN API (IPA)",
+              "date_range": "all",
+              "requests": 2,
+              "queries": [
+                {
+                  "cpe": "cpe:/*:buffalo_inc:wsr-300hp",
+                  "total": 2,
+                  "fetched": 2
+                }
+              ],
+              "advisories": 2,
+              "not_fetched": 0,
+              "not_fetched_reason": null,
+              "unqueried_cpes": 0,
+              "details_missing": 0,
+              "details_reason": null,
+              "not_affected": [
+                "JVNDB-2026-035794",
+                "JVNDB-2017-000194"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "firmware": "2.56",
+      "report": {
+        "schema_version": 1,
+        "source": "router",
+        "status": "partial",
+        "observed_at": "2026-10-17T02:28:15.567732+00:00",
+        "findings": [],
+        "warnings": [
+          "Based on the maker, model and firmware version the owner entered; the router itself was not contacted",
+          "Only published vulnerabilities are matched; no finding does not prove the router is safe",
+          "When the settings were checked is not recorded (checked_on)",
+          "No KEV catalog is configured (router.kev_file); actively exploited vulnerabilities were not matched",
+          "Not confirmed by the owner: admin_password_changed, auto_update, remote_admin, vpn_server, ddns, unknown_vpn_accounts, upnp, wps, wifi_security, support"
+        ],
+        "data": {
+          "router_alias": "public_test",
+          "maker": "buffalo",
+          "model": "WSR-300HP",
+          "firmware": "2.56",
+          "support": "unknown",
+          "checked_on": null,
+          "unchecked": [
+            "admin_password_changed",
+            "auto_update",
+            "remote_admin",
+            "vpn_server",
+            "ddns",
+            "unknown_vpn_accounts",
+            "upnp",
+            "wps",
+            "wifi_security",
+            "support"
+          ],
+          "sources": {
+            "kev": {
+              "configured": false
+            },
+            "jvn": {
+              "queried": true,
+              "attribution": "MyJVN API (IPA)",
+              "date_range": "all",
+              "requests": 2,
+              "queries": [
+                {
+                  "cpe": "cpe:/*:buffalo_inc:wsr-300hp",
+                  "total": 2,
+                  "fetched": 2
+                }
+              ],
+              "advisories": 2,
+              "not_fetched": 0,
+              "not_fetched_reason": null,
+              "unqueried_cpes": 0,
+              "details_missing": 0,
+              "details_reason": null,
+              "not_affected": [
+                "JVNDB-2026-035794",
+                "JVNDB-2017-000194"
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "KEV was not configured; whole-check status is expected to be partial",
+    "Router settings and support status were not confirmed",
+    "Version decisions reflect MyJVN records, not a live router inspection"
+  ],
+  "assertions_passed": true
+}
