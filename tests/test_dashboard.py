@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -104,6 +105,26 @@ class DetailsTests(unittest.TestCase):
         (self.folder / "notes.txt").write_text("mine")
         history.append(self.file, {"n": 7}, {"data": "x" * 2000}, 700)
         self.assertTrue((self.folder / "notes.txt").exists())
+
+    def test_names_stay_in_order_when_the_clock_repeats_or_goes_back(self):
+        # Windows' clock gave two saves in a row the same time, and the newer file was removed instead of the older.
+        times = iter([datetime(2026, 10, 17, 4, 30, 36, 898909, tzinfo=timezone.utc)] * 3
+                     + [datetime(2026, 10, 17, 4, 0, tzinfo=timezone.utc)] * 2)
+
+        class Clock(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return next(times)
+
+        ids = []
+        with patch.object(history, "datetime", Clock):
+            for n in range(5):
+                history.append(self.file, {"n": n}, {"data": "x" * 200}, 700)
+                ids.append(json.loads(self.file.read_text().splitlines()[-1])["details"])
+        self.assertEqual(ids, sorted(ids))
+        self.assertEqual(len(set(ids)), 5)
+        names = [path.stem for path in self.kept()]
+        self.assertEqual(names, ids[-len(names):])
 
     def test_the_details_folder_is_private_and_a_link_is_refused(self):
         if os.name == "nt":

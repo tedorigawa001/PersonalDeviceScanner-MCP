@@ -17,7 +17,7 @@ import stat
 import threading
 import time
 from collections import deque
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from .core import NAME_CHARS, PATH_CHARS, ScannerError, clean_text, decode_cursor
@@ -49,6 +49,7 @@ NO_WAIT = getattr(os, "O_NONBLOCK", 0)
 LOCK_ATTEMPTS, LOCK_INTERVAL = 200, 0.01
 # Named by the time it was saved, so names sort oldest first.
 DETAILS_ID = re.compile(r"[0-9]{8}T[0-9]{6}\.[0-9]{6}Z-[0-9a-f]{8}")
+STAMP = "%Y%m%dT%H%M%S.%fZ"
 # Results are far smaller; a larger file was not written by this program.
 MAX_DETAILS_BYTES = 32 * 1024 * 1024
 # The MCP server runs a local engine and a Wazuh request at the same time.
@@ -168,7 +169,20 @@ def save_details(path: Path, report: dict, max_bytes: int) -> str:
         raise OSError("The details folder is not a folder")
     if os.name != "nt" and info.st_mode & 0o077:
         os.chmod(folder, 0o700)
-    name = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ") + "-" + secrets.token_hex(4)
+    kept = []
+    for child in folder.iterdir():
+        if child.suffix == ".json" and DETAILS_ID.fullmatch(child.stem):
+            try:
+                kept.append((child.name, child.lstat().st_size, child))
+            except FileNotFoundError:
+                continue
+    # Always after every name kept so far, which the lock makes true across processes: Windows' clock
+    # can give two saves in a row the same time, and a clock set back would put the newest first.
+    stamp = datetime.now(timezone.utc)
+    if kept:
+        latest = datetime.strptime(max(kept)[0][:23], STAMP).replace(tzinfo=timezone.utc)
+        stamp = max(stamp, latest + timedelta(microseconds=1))
+    name = stamp.strftime(STAMP) + "-" + secrets.token_hex(4)
     # ASCII only: a result is never refused for text it cannot encode.
     data = json.dumps(report, ensure_ascii=True).encode("ascii")
     target = folder / f"{name}.json"
@@ -179,13 +193,7 @@ def save_details(path: Path, report: dict, max_bytes: int) -> str:
     except BaseException:
         target.unlink(missing_ok=True)
         raise
-    kept = []
-    for child in folder.iterdir():
-        if child.suffix == ".json" and DETAILS_ID.fullmatch(child.stem):
-            try:
-                kept.append((child.name, child.lstat().st_size, child))
-            except FileNotFoundError:
-                continue
+    kept.append((target.name, len(data), target))
     total = sum(size for _, size, _ in kept)
     for _, size, child in sorted(kept):
         if total <= max_bytes:
