@@ -24,7 +24,7 @@ CELL_CHARS = 2_000
 STATUSES = {"completed", "partial", "error"}
 # Worst first when pages are combined; anything unexpected ranks above an error.
 STATUS_RANK = {"completed": 0, "partial": 1, "error": 2}
-PAGING = ("offset", "continued", "page")
+PAGING = ("offset", "continued", "page", "after")
 # Text wider than this gets a wider column, so it is not wrapped a character at a time; a single word
 # up to KEEP_CHARS (an ID, a CVE, a CPE) is kept on one line. Full-width characters count as two.
 WIDE_CHARS, KEEP_CHARS = 40, 32
@@ -194,13 +194,24 @@ def first_page(item: dict) -> bool:
     return True
 
 
-def page_key(item: dict):
-    """Which page of a paged result this is, when the history says so."""
+def page_number(item: dict) -> int | None:
     if item["operation"] == "inventory":
         return item["target"].get("offset") or 0
     if item["operation"] == "vulnerabilities":
         return item["target"].get("page")
     return None
+
+
+def page_key(item: dict):
+    """Which page of a paged result this is, when the history says so.
+
+    A Wazuh page is its number and where it starts, so a forged cursor that only claims a page's number
+    adds a page instead of replacing the one really fetched.
+    """
+    number = page_number(item)
+    if item["operation"] == "vulnerabilities" and number is not None:
+        return number, item["target"].get("after")
+    return number
 
 
 def run_label(item: dict) -> str:
@@ -248,8 +259,15 @@ def run_notes(run: list[tuple[int, dict]]) -> str:
     notes = [f"{len(run)} pages"] if len(run) > 1 else []
     if not first_page(run[0][1]):
         notes.append("first page not in the shown history")
-    # The furthest page says whether more remain, even when an earlier one was fetched again after it.
-    if max(run, key=lambda pair: (page_key(pair[1]) or 0, pair[0]))[1]["more"]:
+    # The furthest page says whether more remain, even when an earlier one was fetched again after it; when
+    # several pages claim to be the furthest, any one saying so is enough.
+    numbers = [page_number(item) for _, item in run]
+    if all(number is None for number in numbers):
+        more = run[-1][1]["more"]
+    else:
+        furthest = max(number or 0 for number in numbers)
+        more = any(item["more"] for (_, item), number in zip(run, numbers) if (number or 0) == furthest)
+    if more:
         notes.append("more pages remain")
     return "".join(f'<span class="quiet"> · {esc(note)}</span>' for note in notes)
 

@@ -326,6 +326,16 @@ class DashboardTests(unittest.TestCase):
         # Page 3 was the last one, even though page 2 was fetched after it.
         self.assertNotIn("more pages remain", self.build()[1])
 
+    def test_a_forged_cursor_adds_a_page_instead_of_replacing_one(self):
+        # The AI controls the cursor: one claiming page 2 from elsewhere must not hide the real page 2.
+        self.wazuh(1, findings=3, more=True)
+        self.wazuh(2, findings=5, more=True)
+        forged = encode_cursor(2, [0.0, "CVE-9999-9999", "zzz", "9", "x", "y", "z"])
+        self.wazuh(2, findings=0, cursor=forged)
+        self.assertEqual(self.latest(), [("configured agent", 3, {"findings": {"high": 8}, "status": "partial"})])
+        # One of the furthest pages says more remain, so the row does too.
+        self.assertIn("more pages remain", self.build()[1])
+
     def test_a_wazuh_page_retried_after_an_error_replaces_it(self):
         self.wazuh(1, findings=2, more=True)
         self.wazuh(2, status="error")

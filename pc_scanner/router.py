@@ -8,6 +8,7 @@ to the router, and the result never says a router is safe. Design: docs/router-d
 from __future__ import annotations
 
 import difflib
+import http.client
 import json
 import math
 import re
@@ -41,6 +42,9 @@ TEXT_CHARS = 500
 # other sources use for them.
 MAKERS = {"buffalo": ("86", {"buffalo", "buffaloinc"}), "nec": ("89", {"nec"}),
           "iodata": ("385", {"iodata", "iodatadevice"}), "elecom": ("18753", {"elecom"})}
+# The vendor part of each maker's CPE names in JVN (checked with the API on 2026-10-17).
+CPE_VENDORS = {"buffalo": "buffalo_inc", "nec": "nec", "iodata": "i-o_data_device", "elecom": "elecom"}
+LINK = re.compile(r"https://jvndb\.jvn\.jp/[A-Za-z0-9/._-]{1,180}")
 ROUTER_KEYS = {"jvn_lookup", "kev_file", "max_kev_age_days", "max_check_age_days"}
 ENTRY_KEYS = {"maker", "model", "firmware", "jvn_cpes", "support", "checked_on", "settings"}
 SUPPORT = {"supported", "ended", "unknown"}
@@ -147,6 +151,11 @@ def load(config: dict) -> tuple[dict, dict, list[str]]:
                 raise ScannerError(f"routers.{alias}.settings.wifi_security must be one of {', '.join(WIFI)}")
             elif key != "wifi_security" and type(value) is not bool:
                 raise ScannerError(f"routers.{alias}.settings.{key} must be true or false")
+        vendor = CPE_VENDORS.get(entry["maker"].strip().lower())
+        for cpe in cpes:
+            if vendor and cpe_key(cpe).split(":")[0] != vendor:
+                warnings.append(f"routers.{alias}.jvn_cpes: {cpe[:80]!r} is not a {vendor} CPE name; "
+                                "check it with router-products")
         loaded[alias] = {"maker": entry["maker"].strip(), "model": entry["model"].strip(),
                          "firmware": entry["firmware"].strip(), "cpes": list(dict.fromkeys(cpe_key(c) for c in cpes)),
                          "support": support, "checked_on": checked_on,
@@ -349,7 +358,7 @@ class MyJVN:
         except ScannerError:
             check_cancel(self.cancel)
             raise Stop("deadline" if time.monotonic() >= self.deadline else "error") from None
-        except (OSError, URLError, ValueError):
+        except (OSError, URLError, ValueError, http.client.HTTPException):
             raise Stop("error") from None
         root = parse_xml(body)
         status = next(iter(descendants(root, "Status")), None)
@@ -373,8 +382,7 @@ def overview_item(item) -> dict:
             severity, version = cvss.get("severity").lower(), number
     link = child_text(item, "link")
     return {"id": child_text(item, "identifier"), "title": clean_text(child_text(item, "title"), TEXT_CHARS),
-            "severity": severity,
-            "link": link if link.startswith("https://jvndb.jvn.jp/") and len(link) < 200 else None,
+            "severity": severity, "link": link if LINK.fullmatch(link) else None,
             "cves": sorted({clean_text(ref.get("id", ""), 32) for ref in descendants(item, "references")
                             if ref.get("source") == "CVE"})[:20]}
 
@@ -399,6 +407,9 @@ def fetch_advisories(client: MyJVN, cpes: list[str]) -> tuple[dict, dict]:
                     raise Stop("inconsistent")
                 query["total"] = total
                 if total == 0 and returned == 0:
+                    # No advisories, or a CPE name JVN does not know: only the product list tells them apart.
+                    _, products = client.get({"method": "getProductList", "feed": "hnd", "cpeName": query["cpe"]})
+                    query["registered"] = products["totalRes"] > 0
                     break
                 if counts["firstRes"] != start or returned != len(items) or not 0 < returned <= OVERVIEW_PAGE:
                     raise Stop("inconsistent")
@@ -419,8 +430,9 @@ def fetch_advisories(client: MyJVN, cpes: list[str]) -> tuple[dict, dict]:
             break
     not_fetched = sum(max(0, (q["total"] or 0) - q["fetched"]) for q in queries)
     unqueried = len(cpes) - len(queries) + sum(1 for q in queries if q["total"] is None)
+    unknown = [q["cpe"] for q in queries if q.get("registered") is False]
     return advisories, {"queries": queries, "not_fetched": not_fetched, "unqueried_cpes": unqueried,
-                        "reason": stop}
+                        "reason": stop, "unknown_cpes": unknown}
 
 
 def fetch_details(client: MyJVN, ids: list[str]) -> tuple[dict, str | None]:
@@ -541,11 +553,13 @@ def jvn_matches(entry: dict, client: MyJVN) -> tuple[list, dict, list]:
     missing = len(advisories) - len(details)
     info = {"queried": True, "attribution": ATTRIBUTION, "date_range": "all", "requests": client.requests,
             "queries": [{"cpe": q["cpe"], "total": q["total"], "fetched": q["fetched"]} for q in fetched["queries"]],
+            "unknown_cpes": fetched["unknown_cpes"],
             "advisories": len(advisories), "not_fetched": fetched["not_fetched"],
             "not_fetched_reason": fetched["reason"], "unqueried_cpes": fetched["unqueried_cpes"],
             "details_missing": missing, "details_reason": detail_stop if missing else None,
             "not_affected": not_affected}
-    warnings = []
+    warnings = [f"JVN does not list {cpe}; nothing was matched for it. Check jvn_cpes with router-products"
+                for cpe in fetched["unknown_cpes"]]
     if fetched["reason"]:
         warnings.append(f"JVN lookup stopped early ({fetched['reason']}): {fetched['not_fetched']} advisories and "
                         f"{fetched['unqueried_cpes']} CPE queries were not fetched and are not counted as not affected")

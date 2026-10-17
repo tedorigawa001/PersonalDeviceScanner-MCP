@@ -7,6 +7,7 @@ offers no tool to read either, so the AI never sees them.
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import json
 import math
 import os
@@ -88,6 +89,10 @@ def locked(path: Path):
     """Held across processes: a CLI and MCP servers that both find the file full must not rotate it twice."""
     fd = os.open(lock_file(path), os.O_RDWR | os.O_CREAT | NO_FOLLOW, 0o600)
     try:
+        info = os.fstat(fd)
+        # Another user's lock file could be held forever to stop the history being written.
+        if not stat.S_ISREG(info.st_mode) or (os.name != "nt" and info.st_uid != os.geteuid()):
+            raise OSError("The history lock file is not this user's regular file")
         for attempt in range(LOCK_ATTEMPTS):
             try:
                 if os.name == "nt":
@@ -118,13 +123,22 @@ def opener(name, flags: int) -> int:
 
 
 def private(fd: int) -> None:
-    """Also for a file that already existed, as the 0600 given to open applies only when it creates one."""
+    """Also for a file that already existed, as the 0600 given to open applies only when it creates one.
+
+    The file must be this user's, with no other name: in a folder other users can write to, a hard
+    link could otherwise point it at one of the owner's files (a shell profile, say) and have the
+    history appended there.
+    """
     info = os.fstat(fd)
     if not stat.S_ISREG(info.st_mode):
         raise OSError("The history file is not a regular file")
-    if os.name != "nt" and info.st_mode & 0o077:
-        # Fails, so nothing is written, when another user owns the file.
-        os.fchmod(fd, 0o600)
+    if os.name != "nt":
+        if info.st_uid != os.geteuid():
+            raise OSError("The history file belongs to another user")
+        if info.st_nlink != 1:
+            raise OSError("The history file has other names (hard links)")
+        if info.st_mode & 0o077:
+            os.fchmod(fd, 0o600)
 
 
 def make_private(name: Path) -> None:
@@ -135,12 +149,22 @@ def make_private(name: Path) -> None:
         os.close(fd)
 
 
+def cursor_fingerprint(values: list) -> str:
+    """A short one-way fingerprint of where a Wazuh page starts, never the cursor or what it names.
+
+    With the page number it tells a page fetched again from a forged cursor that claims the same number.
+    """
+    return hashlib.sha256(json.dumps(values, ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()[:12]
+
+
 def entry(operation: str, arguments: dict, report: dict, started: datetime, seconds: float, via: str) -> dict:
     target = {}
     if operation == "vulnerabilities":
         target["continued"] = bool(arguments.get("cursor"))
         try:
-            target["page"] = decode_cursor(arguments.get("cursor", ""))[0]
+            target["page"], values = decode_cursor(arguments.get("cursor", ""))
+            if values is not None:
+                target["after"] = cursor_fingerprint(values)
         except ScannerError:
             pass  # refused before anything was fetched
     for key in TARGETS.get(operation, ()):
@@ -165,8 +189,8 @@ def save_details(path: Path, report: dict, max_bytes: int) -> str:
     folder = details_folder(path)
     folder.mkdir(exist_ok=True, mode=0o700)
     info = folder.lstat()
-    if not stat.S_ISDIR(info.st_mode):
-        raise OSError("The details folder is not a folder")
+    if not stat.S_ISDIR(info.st_mode) or (os.name != "nt" and info.st_uid != os.geteuid()):
+        raise OSError("The details folder is not this user's folder")
     if os.name != "nt" and info.st_mode & 0o077:
         os.chmod(folder, 0o700)
     kept = []
@@ -272,6 +296,7 @@ def parse(line: str) -> dict | None:
     try:
         record = json.loads(line)
         started = datetime.fromisoformat(record["started_at"])
+        started.astimezone()  # a time that cannot be shown here is a damaged line
         seconds, warnings, findings, target = (record["seconds"], record["warnings"], record["findings"],
                                                record["target"])
         if (started.tzinfo is None or type(seconds) not in (int, float) or not math.isfinite(seconds)
@@ -288,7 +313,7 @@ def parse(line: str) -> dict | None:
                 "error": None if error is None else text(error, ERROR_CHARS),
                 "more": more if isinstance(more, bool) else None,
                 "details": details if isinstance(details, str) and DETAILS_ID.fullmatch(details) else None}
-    except (ValueError, TypeError, KeyError, AttributeError, RecursionError):
+    except (ValueError, TypeError, KeyError, AttributeError, RecursionError, OverflowError):
         return None
 
 
@@ -304,10 +329,13 @@ def read(path: Path, limit: int) -> tuple[list[dict], int]:
             pass
         for name in (older(path), path):
             try:
-                f = open(name, encoding="utf-8", errors="replace")
+                # Links are not followed and a FIFO in place of a file cannot hold the command up.
+                f = open(name, encoding="utf-8", errors="replace", opener=opener)
             except FileNotFoundError:
                 continue
             with f:
+                if not stat.S_ISREG(os.fstat(f.fileno()).st_mode):
+                    raise OSError("The history file is not a regular file")
                 for line in f:
                     if not line.strip():
                         continue

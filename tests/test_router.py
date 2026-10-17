@@ -44,8 +44,9 @@ class Advisory:
 class FakeMyJVN:
     """Answers like MyJVN: omitted dates default to the past week, at most 50 overviews and 10 details a call."""
 
-    def __init__(self, advisories, faults=None, products=()):
+    def __init__(self, advisories, faults=None, products=(), registered=("buffalo_inc:wsr-0000ax",)):
         self.advisories, self.faults, self.products = advisories, faults or {}, products
+        self.registered = set(registered) | {key for a in advisories for key in a.models()}
         self.calls = []
 
     def __call__(self, url, budget):
@@ -117,11 +118,15 @@ class FakeMyJVN:
                 f'{status("getVulnDetailInfo", len(found), len(found), 1)}</VULDEF-Document>')
 
     def product_list(self, params):
-        products = "".join(f'<Product pname="{escape(name)}" cpe="{cpe}" pid="{pid}"/>' for name, cpe, pid in self.products)
+        found = self.products
+        if "cpeName" in params:
+            key = router.cpe_key(params["cpeName"])
+            found = [("Model", f"cpe:/h:{key}", "1")] if key in self.registered else []
+        products = "".join(f'<Product pname="{escape(name)}" cpe="{cpe}" pid="{pid}"/>' for name, cpe, pid in found)
         return (f'<?xml version="1.0" encoding="UTF-8" ?><Result xmlns="http://jvndb.jvn.jp/myjvn/Results" '
                 f'xmlns:status="http://jvndb.jvn.jp/myjvn/Status"><VendorInfo><Vendor vname="Maker" '
-                f'cpe="cpe:/:buffalo_inc" vid="{params["vendorId"]}">{products}</Vendor></VendorInfo>'
-                f'{status("getProductList", len(self.products), len(self.products), 1)}</Result>')
+                f'cpe="cpe:/:buffalo_inc" vid="{params.get("vendorId", "86")}">{products}</Vendor></VendorInfo>'
+                f'{status("getProductList", len(found), len(found), 1)}</Result>')
 
 
 def settings(**changes):
@@ -259,6 +264,31 @@ class RouterTests(unittest.TestCase):
             self.check(self.scanner(), timed)
         self.assertEqual(len(times), 2 + 6)
         self.assertGreaterEqual(min(b - a for a, b in zip(times, times[1:])), 0.19)
+
+    def test_a_response_cut_short_is_an_error_not_a_crash(self):
+        import http.client
+        report = self.check(self.scanner(), FakeMyJVN([], {1: http.client.IncompleteRead(b"partial")}))
+        self.assertEqual(report["data"]["sources"]["jvn"]["not_fetched_reason"], "error")
+        self.assertEqual(report["status"], "partial")
+
+    def test_a_cpe_name_jvn_does_not_know_is_reported(self):
+        # Zero advisories and an unknown CPE name look the same; only the product list tells them apart.
+        fake = FakeMyJVN([], registered=())
+        report = self.check(self.scanner(jvn_cpes=["cpe:/h:buffalo_inc:wsr-0000ay"]), fake)
+        self.assertEqual(report["status"], "partial")
+        self.assertEqual(report["data"]["sources"]["jvn"]["unknown_cpes"], ["cpe:/*:buffalo_inc:wsr-0000ay"])
+        self.assertTrue(any("JVN does not list cpe:/*:buffalo_inc:wsr-0000ay" in w for w in report["warnings"]))
+        self.assertEqual([(c["method"], c.get("cpeName")) for c in fake.calls],
+                         [("getVulnOverviewList", "cpe:/*:buffalo_inc:wsr-0000ay"),
+                          ("getProductList", "cpe:/*:buffalo_inc:wsr-0000ay")])
+        # A listed model without advisories is complete.
+        self.assertEqual(self.check(self.scanner(), FakeMyJVN([]))["status"], "completed")
+
+    def test_a_cpe_of_another_vendor_is_warned_about(self):
+        warnings = self.scanner(jvn_cpes=["cpe:/h:buffalo:wsr-0000ax"]).config_warnings
+        self.assertTrue(any("'cpe:/h:buffalo:wsr-0000ax' is not a buffalo_inc CPE name" in w for w in warnings))
+        self.assertEqual(self.scanner().config_warnings, [])
+        self.assertEqual(self.scanner(maker="D-Link", jvn_cpes=["cpe:/h:d-link:dir-859"]).config_warnings, [])
 
     def test_cancelling_ends_the_check(self):
         cancel = threading.Event()
@@ -467,6 +497,19 @@ class RouterTests(unittest.TestCase):
         self.assertEqual(report["findings"], [])
         self.assertTrue(any("does not prove the router is safe" in w for w in report["warnings"]))
         self.assertEqual(report["data"]["sources"]["jvn"]["attribution"], "MyJVN API (IPA)")
+
+    def test_only_plain_jvn_links_are_kept(self):
+        def link(text):
+            item = router.ET.fromstring(f'<item xmlns:sec="http://jvn.jp/rss/mod_sec/3.0/"><link>{escape(text)}</link>'
+                                        '<sec:identifier>JVNDB-2026-000001</sec:identifier></item>')
+            return router.overview_item(item)["link"]
+
+        kept = "https://jvndb.jvn.jp/ja/contents/2026/JVNDB-2026-000001.html"
+        self.assertEqual(link(kept), kept)
+        for text in ("https://jvndb.jvn.jp/\u202eexe", "https://jvndb.jvn.jp/a\x85b", "https://jvndb.jvn.jp/a b",
+                     "https://jvndb.jvn.jp.example.com/", "http://jvndb.jvn.jp/x", "https://jvndb.jvn.jp/" + "a" * 300):
+            with self.subTest(text=text[:40]):
+                self.assertIsNone(link(text))
 
     def test_text_from_jvn_and_kev_is_cleaned(self):
         hostile = Advisory(1, [(MODEL, ["Ver.9.00より前のバージョン‮"])], title="T‮itle​")

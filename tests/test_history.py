@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -90,7 +91,9 @@ class HistoryTests(unittest.TestCase):
             with patch.object(scanner, methods[operation], return_value=result("x", "completed")):
                 scanner.invoke(operation, **arguments, cancel=threading.Event())
         self.assertEqual([record["target"] for record in self.records()], [
-            {"query_id": "applications", "offset": 500}, {"continued": True, "page": 3},
+            {"query_id": "applications", "offset": 500},
+            {"continued": True, "page": 3,
+             "after": history.cursor_fingerprint([9.8, "CVE-2026-1000", "openssl", "3.0.2", "amd64", "deb", ""])},
             {"device_alias": "phone", "query_id": "apps"}, {"device_alias": "phone"}])
         # Neither the cursor nor what it names is kept: only the page it leads to.
         for kept in (cursor, "CVE-2026-1000", "openssl"):
@@ -170,6 +173,66 @@ class HistoryTests(unittest.TestCase):
             self.assertEqual(received, b"")
         finally:
             os.close(reader)
+
+    def test_a_hard_link_or_another_users_file_is_never_written(self):
+        if os.name == "nt":
+            self.skipTest("POSIX links and owners")
+        # In a folder other users can write to, a hard link could aim the history at the owner's shell profile.
+        profile = self.root / "profile.sh"
+        profile.write_text("echo hi\n")
+        profile.chmod(0o644)
+        self.file.parent.mkdir()
+        os.link(profile, self.file)
+        report = self.scanner().invoke("malware", root_alias="$(id)")
+        self.assertIn("Scan history could not be written; the scan itself is unaffected", report["warnings"])
+        self.assertEqual((profile.read_text(), profile.stat().st_mode & 0o777), ("echo hi\n", 0o644))
+        self.file.unlink()
+        fd = os.open(profile, os.O_RDONLY)
+        try:
+            with self.assertRaisesRegex(OSError, "hard links"):
+                os.link(profile, self.root / "second-name")
+                history.private(fd)
+            with patch.object(history.os, "geteuid", return_value=os.geteuid() + 1), \
+                    self.assertRaisesRegex(OSError, "another user"):
+                os.unlink(self.root / "second-name")
+                history.private(fd)
+        finally:
+            os.close(fd)
+
+    def test_another_users_lock_file_or_details_folder_is_refused(self):
+        if os.name == "nt":
+            self.skipTest("POSIX owners")
+        self.file.parent.mkdir()
+        with patch.object(history.os, "geteuid", return_value=os.geteuid() + 1):
+            with self.assertRaisesRegex(OSError, "lock file"):
+                with history.locked(self.file):
+                    pass
+            history.details_folder(self.file).mkdir()
+            with self.assertRaisesRegex(OSError, "details folder"):
+                history.save_details(self.file, {"data": 1}, 1000)
+
+    def test_reading_follows_no_link_and_never_waits_on_a_fifo(self):
+        if os.name == "nt":
+            self.skipTest("POSIX links and FIFOs")
+        self.file.parent.mkdir()
+        elsewhere = self.root / "elsewhere.jsonl"
+        elsewhere.write_text("")
+        self.file.symlink_to(elsewhere)
+        with self.assertRaises(OSError):
+            history.read(self.file, 5)
+        self.file.unlink()
+        os.mkfifo(self.file)
+        started = time.monotonic()
+        with self.assertRaises(OSError):
+            history.read(self.file, 5)
+        self.assertLess(time.monotonic() - started, 5)
+
+    def test_a_time_that_cannot_be_shown_is_a_damaged_line(self):
+        self.file.parent.mkdir()
+        line = {"version": 1, "started_at": "0001-01-01T00:00:00+14:00", "seconds": 1, "via": "cli",
+                "operation": "malware", "target": {}, "status": "completed", "findings": {}, "warnings": 0}
+        self.file.write_text(json.dumps(line) + "\n")
+        self.assertEqual(history.read(self.file, 5), ([], 1))
 
     def test_rotated_and_older_files_are_made_private_too(self):
         if os.name == "nt":

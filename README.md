@@ -221,7 +221,8 @@ the npm package holds a small launcher, this project's Python code and the lock 
   entries such as `.`, so a program named like Python in a downloads folder is not run. To choose one, set
   `PC_SCANNER_PYTHON` to its absolute path; `PC_SCANNER_CACHE_DIR` (absolute) moves the cache.
 - Keep the version pinned (`@0.5.2`) so that updating is your decision. Each version and Python gets its own environment;
-  old ones in the cache folder can be deleted.
+  old ones in the cache folder (folders named like `0.5.2-…`) can be deleted. Do not delete the whole folder: on Windows it
+  also holds the scan history.
 - The CLI works the same way, for example `npx -y personal-device-scanner-mcp@0.5.2 --config scanner.toml status`.
 - If a Windows client cannot start `npx` directly, use `"command": "cmd"` with `"args": ["/c", "npx", ...]`.
 
@@ -452,7 +453,8 @@ TIME                 VIA  OPERATION      STATUS     FINDINGS    SECONDS  TARGET
 ```
 
 - **What is kept**: the start time, `cli` or `mcp`, the operation and its target (folder alias and relative path,
-  `query_id`, device alias; for Wazuh only the page number, never the cursor), `status`, the number of findings per severity,
+  `query_id`, device alias; for Wazuh only the page number and a short one-way fingerprint of where the page starts, never
+  the cursor), `status`, the number of findings per severity,
   the number of warnings, how long it took, the error message, and for paged results whether another page follows. **The findings themselves (file names, signature
   names, app and package names, CVEs) are not kept** unless you turn on `history.details` (see [Dashboard](#dashboard)).
   A paged result is one line per page, with that page's findings.
@@ -461,8 +463,10 @@ TIME                 VIA  OPERATION      STATUS     FINDINGS    SECONDS  TARGET
 - **Where**: macOS `~/Library/Application Support/personal-device-scanner-mcp/history.jsonl`, Linux
   `~/.local/state/personal-device-scanner-mcp/history.jsonl` (or under `$XDG_STATE_HOME`), Windows
   `%LOCALAPPDATA%\personal-device-scanner-mcp\history.jsonl`. `history.file` changes it. On macOS / Linux both history
-  files, `.1` included, are kept readable only by you (0600, also when one already existed with wider permissions), and a
-  link in place of the file is refused.
+  files, `.1` included, are kept readable only by you (0600, also when one already existed with wider permissions). A
+  history file must be a regular file of yours with no other name (hard link), and the lock file and details folder must be
+  yours; anything else, or a link in their place, is refused. Keep the history in a folder only you can write to, as the
+  default is: the protection is the file mode, and on macOS an ACL inherited from the folder is not removed.
 - **Size**: when the file reaches 1 MiB it becomes `history.jsonl.1`, replacing the previous one, so roughly the latest
   several thousand scans are kept. Delete `history.jsonl` and `history.jsonl.1` to clear the history. The empty
   `history.jsonl.lock` next to them makes a CLI and MCP servers running at the same time take turns, so none of them
@@ -594,6 +598,8 @@ each target, then every scan, newest first. Open a scan to see its warnings, fin
 - JVN is searched over all dates (the MyJVN API otherwise looks at the past week only), up to 200 advisories per check,
   one request a second. Anything not fetched (limit, deadline, error, inconsistent pages) makes the result `partial`
   with the count and reason, and is never counted as not affected.
+- A CPE name JVN does not list is reported, not taken as "no advisories" (checked against JVN's product list), and for
+  Buffalo, NEC, I-O DATA and ELECOM a CPE name of another vendor is warned about when the settings are read.
 - JVN plans a new API in 2027 (JSON, CPE 2.3, version filtering); the lookup will move to it then.
 
 ### Privacy
