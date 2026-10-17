@@ -1,0 +1,258 @@
+{
+  "checked_at": "2026-10-17T07:33:37.063943+00:00",
+  "recorded_at": "2026-10-17T07:35:47.515666+00:00",
+  "method": {
+    "service": "OSV",
+    "query_endpoint": "https://api.osv.dev/v1/querybatch",
+    "advisory_endpoint": "https://api.osv.dev/v1/vulns/{id}",
+    "ecosystem": "PyPI",
+    "scope": "Exact pinned package versions in four lockfiles; direct and transitive dependencies",
+    "unique_package_versions": 31,
+    "raw_response_sha256": "7a6440763db7c05c712fa0c1ac67e1c61b5d2a6906d0e89aabb9f23416e56e97"
+  },
+  "profiles": [
+    {
+      "profile": "requirements-agent.lock",
+      "package_count": 29,
+      "findings": [
+        {
+          "package": "cryptography",
+          "version": "48.0.1",
+          "vulns": [
+            {
+              "id": "GHSA-g6cj-pr64-35w5",
+              "modified": "2026-09-10T03:50:53.610446Z"
+            },
+            {
+              "id": "GHSA-jwv3-5hgf-82ww",
+              "modified": "2026-09-24T14:45:10.238420Z"
+            },
+            {
+              "id": "GHSA-m2h6-j472-rp4c",
+              "modified": "2026-09-24T15:00:04.719975Z"
+            },
+            {
+              "id": "PYSEC-2026-3552",
+              "modified": "2026-08-04T14:30:15.036332Z"
+            },
+            {
+              "id": "PYSEC-2026-3553",
+              "modified": "2026-08-04T14:30:26.222821Z"
+            },
+            {
+              "id": "PYSEC-2026-3554",
+              "modified": "2026-08-04T14:30:26.230323Z"
+            }
+          ]
+        }
+      ],
+      "lock_sha256": "ace493f365f4c902f11e70674fe52275bc56fa30ac53f8194d8fa94b4fcd1990",
+      "distinct_cve_count": 3
+    },
+    {
+      "profile": "profiles/darwin-arm64-cp314/requirements-agent.lock",
+      "package_count": 29,
+      "findings": [],
+      "lock_sha256": "7322a71a4bcd78039c500598bd82e4e662472fc25de9c87369320d1c9949877b",
+      "distinct_cve_count": 0
+    },
+    {
+      "profile": "profiles/linux-x86_64-cp314/requirements-agent.lock",
+      "package_count": 29,
+      "findings": [],
+      "lock_sha256": "b368adc1cf570cde88fa24d4924b36998a3bb72ff702f217aa8ada54ec15940e",
+      "distinct_cve_count": 0
+    },
+    {
+      "profile": "profiles/windows-amd64-cp314/requirements-agent.lock",
+      "package_count": 30,
+      "findings": [],
+      "lock_sha256": "8c0dea99683941d47ba207520c1ae5903e64b9ffc67d6e88746ab24d88ce942a",
+      "distinct_cve_count": 0
+    }
+  ],
+  "distinct_advisories": [
+    {
+      "id": "GHSA-g6cj-pr64-35w5",
+      "cves": [
+        "CVE-2026-69247"
+      ],
+      "aliases": [
+        "CVE-2026-69247",
+        "PYSEC-2026-3552"
+      ],
+      "summary": "cryptography: PKCS#7 EnvelopedData decryption exposes a Bleichenbacher oracle through distinguishable errors and timing",
+      "fixed_versions": [
+        "50.0.0"
+      ],
+      "severity": [
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:N/AC:H/AT:P/PR:N/UI:N/VC:H/VI:N/VA:N/SC:N/SI:N/SA:N"
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://github.com/pyca/cryptography/security/advisories/GHSA-g6cj-pr64-35w5"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/pyca/cryptography/pull/15369"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/pyca/cryptography/commit/53fccd93413a8d7f07d6d8999681f27b75cffa3f"
+        },
+        {
+          "type": "PACKAGE",
+          "url": "https://github.com/pyca/cryptography"
+        }
+      ]
+    },
+    {
+      "id": "GHSA-jwv3-5hgf-82ww",
+      "cves": [
+        "CVE-2026-69249"
+      ],
+      "aliases": [
+        "CVE-2026-69249",
+        "PYSEC-2026-3553"
+      ],
+      "summary": "python-cryptography: Duplicate self-signed intermediates can cause exponential path-building",
+      "fixed_versions": [
+        "49.0.0"
+      ],
+      "severity": [
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N"
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://github.com/pyca/cryptography/security/advisories/GHSA-jwv3-5hgf-82ww"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-69249"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/pyca/cryptography/pull/14960"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/pyca/cryptography/commit/3763aa79b"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/pyca/cryptography/commit/4a12cf49675a184e47f912b00b04f3a629283582"
+        },
+        {
+          "type": "PACKAGE",
+          "url": "https://github.com/pyca/cryptography"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/pypa/advisory-database/tree/main/vulns/cryptography/PYSEC-2026-3553.yaml"
+        }
+      ]
+    },
+    {
+      "id": "GHSA-m2h6-j472-rp4c",
+      "cves": [
+        "CVE-2026-69248"
+      ],
+      "aliases": [
+        "CVE-2026-69248",
+        "PYSEC-2026-3554"
+      ],
+      "summary": "python-cryptography verifier accepts wildcard DNS names allowing escape from permittedSubtrees",
+      "fixed_versions": [
+        "49.0.0"
+      ],
+      "severity": [
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:N/VC:L/VI:H/VA:N/SC:N/SI:N/SA:N/E:P"
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://github.com/pyca/cryptography/security/advisories/GHSA-m2h6-j472-rp4c"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-69248"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/pyca/cryptography/pull/14888"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/pyca/cryptography/commit/286c89128"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/pyca/cryptography/commit/4d035a4225965edeffd312079a510ef25fcfdcb2"
+        },
+        {
+          "type": "PACKAGE",
+          "url": "https://github.com/pyca/cryptography"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/pypa/advisory-database/tree/main/vulns/cryptography/PYSEC-2026-3554.yaml"
+        }
+      ]
+    }
+  ],
+  "result": {
+    "new_findings": 0,
+    "remaining_distinct_cves": 3,
+    "status": "known_exception_continues",
+    "deduplication": "GHSA and PYSEC aliases represent the same three CVEs"
+  },
+  "intel_mac_exception": {
+    "package": "cryptography",
+    "version": "48.0.1",
+    "dependency_path": [
+      "mcp 1.30.0",
+      "PyJWT[crypto] 2.15.1",
+      "cryptography 48.0.1"
+    ],
+    "decision": "Continue the owner-approved 2026-10-12 exception; vulnerabilities remain unfixed in this profile",
+    "current_code_assessment": "MCP runs over stdio. No use of PKCS#7 decryption or cryptography.x509.verification was found in current application code; this is scoped static evidence, not proof that every future dependency path is unreachable.",
+    "wheel_check": {
+      "source": "https://pypi.org/pypi/cryptography/json",
+      "latest_at_check": "50.0.2",
+      "versions_checked": [
+        "48.0.1",
+        "49.0.0",
+        "50.0.0",
+        "50.0.2"
+      ],
+      "intel_compatible_wheels": {
+        "48.0.1": "universal2 wheels available",
+        "49.0.0": [],
+        "50.0.0": [],
+        "50.0.2": []
+      },
+      "upgrade_requires": "A source build or another separately verified distribution for Intel Mac"
+    },
+    "reassess_when": [
+      "Intel Mac compatible fixed wheels become available",
+      "Transport or cryptographic feature use changes",
+      "New advisories or changed affected ranges are published"
+    ]
+  },
+  "limitations": [
+    "OSV results reflect the database at checked_at; zero findings is not proof of safety",
+    "Lockfile assessment does not inventory every environment installed by users",
+    "No dependency update or source build was performed"
+  ]
+}
