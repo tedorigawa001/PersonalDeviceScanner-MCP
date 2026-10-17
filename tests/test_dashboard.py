@@ -415,6 +415,46 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual([name.name for name in page.parent.iterdir() if name.name.endswith(".tmp")], [])
         self.assertTrue(FullDisk.opened and all(f.closed for f in FullDisk.opened))
 
+    def test_each_kind_of_finding_gets_its_own_table(self):
+        # Found preparing the 0.5 announcement: a router check mixed kinds in one wide table.
+        title = "Multiple vulnerabilities in an example router's settings page"
+        self.run_scan("android_check", "android_check", result("adb", "partial", findings=[
+            {"kind": "known_vulnerability", "severity": "high", "id": "JVNDB-2026-000001", "title": title,
+             "cves": ["CVE-2026-0001", "CVE-2026-0002" + HOSTILE], "comparison": "affected"},
+            {"kind": "known_vulnerability", "severity": "medium", "id": "JVNDB-2017-000194",
+             "title": "バッファロー製Wi-Fi製品における複数の脆弱性", "cves": ["CVE-2014-8361"], "comparison": "unknown"},
+            {"kind": "setting", "severity": "medium", "item": "auto_update", "value": False,
+             "advice": "Automatic firmware updates are off; turn them on, or check for updates regularly"},
+            {"kind": "setting", "severity": "low", "item": "upnp", "value": True, "advice": "UPnP is on"},
+            {"severity": "low", "note": "no kind"}]), device_alias="phone")
+        _, text = self.build()
+        body = text.split("<h3>Findings</h3>", 1)[1]
+        tables = {heading: section for heading, section in
+                  re.findall(r"<h4>([^<]+)</h4>(.*?</table>)", body)}
+        self.assertEqual(list(tables), ["known_vulnerability (2)", "setting (2)", "other (1)"])
+        headers = {name: re.findall(r"<th>([^<]+)</th>", section) for name, section in tables.items()}
+        self.assertEqual(headers["known_vulnerability (2)"], ["severity", "id", "title", "cves", "comparison"])
+        self.assertEqual(headers["setting (2)"], ["severity", "item", "value", "advice"])
+        self.assertEqual(headers["other (1)"], ["severity", "note"])
+        escaped_title = title.replace("'", "&#x27;")
+        self.assertIn(f'<td class="wide">{escaped_title}</td>', tables["known_vulnerability (2)"])
+        self.assertIn('<td class="wide">CVE-2026-0001<br>CVE-2026-0002&lt;img src=x onerror=alert(1)&gt;</td>',
+                      tables["known_vulnerability (2)"])
+        self.assertIn('<td class="keep">auto_update</td>', tables["setting (2)"])
+        vulnerabilities = tables["known_vulnerability (2)"]
+        # Full-width characters count as two, so a short Japanese title still gets a wide column.
+        self.assertIn('<td class="wide">バッファロー製Wi-Fi製品における複数の脆弱性</td>', vulnerabilities)
+        # IDs and single CVEs stay on one line instead of breaking at their hyphens.
+        self.assertIn('<td class="keep">JVNDB-2017-000194</td>', vulnerabilities)
+        self.assertIn('<td class="keep">CVE-2014-8361</td>', vulnerabilities)
+        self.assertIn("<td>Automatic firmware updates are off; turn them on, or check for updates regularly</td>".replace(
+            "<td>", '<td class="wide">'), tables["setting (2)"])
+        self.assertIn("<td>UPnP is on</td>", tables["setting (2)"])
+        self.assertNotIn("<img", text)
+        self.assertIn("· 1 latest scan ·", text)
+        self.run_scan("android_check", "android_check", result("adb", "completed"), device_alias="phone")
+        self.assertIn("· 2 latest scans ·", self.build()[1])
+
     def test_an_empty_history_still_gives_a_page(self):
         page, text = self.build()
         self.assertIn("No scans recorded yet.", text)

@@ -11,6 +11,7 @@ import html
 import json
 import os
 import secrets
+import unicodedata
 from datetime import datetime
 from pathlib import Path
 
@@ -24,7 +25,9 @@ STATUSES = {"completed", "partial", "error"}
 # Worst first when pages are combined; anything unexpected ranks above an error.
 STATUS_RANK = {"completed": 0, "partial": 1, "error": 2}
 PAGING = ("offset", "continued", "page")
-LEAD_COLUMNS = ("kind", "severity")
+# Text wider than this gets a wider column, so it is not wrapped a character at a time; a single word
+# up to KEEP_CHARS (an ID, a CVE, a CPE) is kept on one line. Full-width characters count as two.
+WIDE_CHARS, KEEP_CHARS = 40, 32
 REASONS = {"off": "Details were not kept for this scan (history.details was off).",
            "removed": "Details were removed to stay within history.details_max_mb.",
            "unreadable": "The details file could not be read; it may have been damaged or edited."}
@@ -57,6 +60,8 @@ a{color:var(--info)}
 .completed{background:var(--ok-bg);color:var(--ok)}.partial{background:var(--warn-bg);color:var(--warn)}
 .error,.critical,.high{background:var(--bad-bg);color:var(--bad)}.medium{background:var(--warn-bg);color:var(--warn)}
 .low,.unknown,.other{background:var(--code);color:var(--muted)}
+td.wide{min-width:16em}td.keep{white-space:nowrap}
+h4{font-size:.875rem;margin:14px 0 6px;color:var(--muted)}
 details.scan{margin:0 0 8px}
 details.scan>summary{cursor:pointer;padding:10px 14px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
 details.scan[open]>summary{border-bottom:1px solid var(--line)}
@@ -81,14 +86,36 @@ def esc(value) -> str:
     return html.escape(clean_text(value, None), quote=True)
 
 
+def shorten(text: str) -> str:
+    return text if len(text) <= CELL_CHARS else text[:CELL_CHARS] + "…(truncated)"
+
+
+def width(text: str) -> int:
+    return sum(2 if unicodedata.east_asian_width(ch) in "WF" else 1 for ch in text)
+
+
+def fitted(lines: list[str]) -> str:
+    """The class that keeps the cell readable: wide for long text, keep for short single words."""
+    if max(width(line) for line in lines) > WIDE_CHARS:
+        return ' class="wide"'
+    if all(" " not in line and width(line) <= KEEP_CHARS for line in lines):
+        return ' class="keep"'
+    return ""
+
+
 def cell(value) -> str:
+    """One table cell; a list of strings (CVEs, affected versions) is one per line."""
     if value is None:
-        return '<span class="quiet">—</span>'
+        return '<td><span class="quiet">—</span></td>'
+    if isinstance(value, list) and value and all(isinstance(v, str) for v in value):
+        lines = [shorten(v) for v in value[:50]]
+        return f"<td{fitted(lines)}>" + "<br>".join(esc(line) for line in lines) + "</td>"
     try:
         text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
     except (ValueError, TypeError, RecursionError):
         text = "(cannot be shown)"
-    return esc(text if len(text) <= CELL_CHARS else text[:CELL_CHARS] + "…(truncated)")
+    text = shorten(text)
+    return f"<td{fitted([text])}>{esc(text)}</td>"
 
 
 def badge(value: str, known) -> str:
@@ -122,17 +149,25 @@ def data_block(data) -> str:
 
 
 def findings_table(findings: list) -> str:
+    """One table per kind of finding, each with only its own columns."""
     rows = [finding for finding in findings if isinstance(finding, dict)]
     if not rows:
         return '<p class="quiet">No findings in this result.</p>'
-    columns = [key for key in LEAD_COLUMNS if any(key in row for row in rows)]
+    kinds = {}
     for row in rows:
-        columns += [key for key in row if key not in columns]
-    head = "".join(f"<th>{esc(key)}</th>" for key in columns)
-    body = "".join("<tr>" + "".join(
-        f"<td>{badge(row[key], history.SEVERITIES) if key == 'severity' and isinstance(row.get(key), str) else cell(row.get(key))}</td>"
-        for key in columns) + "</tr>" for row in rows)
-    return f'<div class="scroll"><table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>'
+        kinds.setdefault(row.get("kind") if isinstance(row.get("kind"), str) else "other", []).append(row)
+    tables = []
+    for kind, group in kinds.items():
+        columns = ["severity"] if any("severity" in row for row in group) else []
+        for row in group:
+            columns += [key for key in row if key not in columns and key != "kind"]
+        head = "".join(f"<th>{esc(key)}</th>" for key in columns)
+        body = "".join("<tr>" + "".join(
+            f"<td>{badge(row[key], history.SEVERITIES)}</td>" if key == "severity" and isinstance(row.get(key), str)
+            else cell(row.get(key)) for key in columns) + "</tr>" for row in group)
+        tables.append(f"<h4>{esc(kind)} ({len(group)})</h4>"
+                      f'<div class="scroll"><table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>')
+    return "".join(tables)
 
 
 def scan_body(item: dict, report: dict | None, reason: str) -> str:
@@ -142,7 +177,8 @@ def scan_body(item: dict, report: dict | None, reason: str) -> str:
         return "".join(parts)
     warnings = report.get("warnings")
     if isinstance(warnings, list) and warnings:
-        parts.append("<h3>Warnings</h3><ul>" + "".join(f"<li>{cell(w)}</li>" for w in warnings) + "</ul>")
+        parts.append("<h3>Warnings</h3><ul>" + "".join(f"<li>{esc(shorten(w if isinstance(w, str) else str(w)))}</li>"
+                                                     for w in warnings) + "</ul>")
     findings = report.get("findings")
     parts.append("<h3>Findings</h3>" + findings_table(findings if isinstance(findings, list) else []))
     if "data" in report:
@@ -250,7 +286,7 @@ def render(entries: list[dict], loaded: list[tuple[dict | None, str]], meta: dic
 <title>Scan Dashboard</title><style>{STYLE}</style></head>
 <body><main>
 <h1>Personal Device Scanner</h1>
-<p class="meta">Generated {esc(meta["generated"])} · {len(entries)} latest scans · {esc(summary)}</p>
+<p class="meta">Generated {esc(meta["generated"])} · {len(entries)} latest scan{"" if len(entries) == 1 else "s"} · {esc(summary)}</p>
 <p class="meta">History: {esc(meta["file"])} · recording {"on" if meta["recording"] else "off"} · details {esc(details_note)}</p>
 {skipped}
 <div class="notice">This page holds results from this PC. Keep it to yourself. No finding does not prove a device is
