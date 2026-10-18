@@ -9,8 +9,6 @@ import base64
 import hashlib
 import html
 import json
-import os
-import secrets
 import unicodedata
 from datetime import datetime
 from pathlib import Path
@@ -319,15 +317,7 @@ safe, and <b>partial</b> or <b>error</b> means coverage was incomplete.</div>
 
 def write(page: Path, text: str) -> None:
     """Replaces the page in one step, private to the owner like the history it shows."""
-    temp = page.with_name(f".{page.name}.{secrets.token_hex(4)}.tmp")
-    f = open(temp, "xb", opener=history.opener)  # if this fails, nothing of ours was created
-    try:
-        with f:
-            f.write(text.encode("utf-8", "backslashreplace"))
-        os.replace(temp, page)
-    except BaseException:
-        temp.unlink(missing_ok=True)
-        raise
+    history.replace_private(page, text.encode("utf-8", "backslashreplace"))
 
 
 def build(path: Path, limit: int, recording: bool, details: bool, details_mb: int) -> tuple[Path, int]:

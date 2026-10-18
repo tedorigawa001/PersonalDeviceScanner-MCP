@@ -22,6 +22,9 @@ def create_server(scanner: Scanner):
     aliases = ", ".join(scanner.roots) or "none configured"
     devices = ", ".join(scanner.android_devices) or "none configured"
     routers = ", ".join(scanner.routers) or "none configured"
+    # Scans with a local engine reach the internet only when the owner turned on the release lookup.
+    engine = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True,
+                             openWorldHint=scanner.update_lookup)
     # The router check reaches the internet only when the owner turned on the JVN lookup.
     router_access = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True,
                                     openWorldHint=scanner.router_settings["jvn_lookup"])
@@ -72,19 +75,19 @@ def create_server(scanner: Scanner):
         """Inspect configuration only. This does not check PC safety."""
         return scanner.invoke("status")
 
-    @server.tool(annotations=local)
+    @server.tool(annotations=engine)
     async def collect_inventory(ctx: Context, query_id: Literal["os_version", "applications", "listening_ports"],
                                 offset: int = 0) -> dict:
         """Read fixed osquery query. Results come in pages of 500; pass next_offset to continue."""
         return await run_engine(ctx, "inventory", query_id=query_id, offset=offset)
 
-    @server.tool(annotations=local, description=(
+    @server.tool(annotations=engine, description=(
         "Scan within an owner-authorized root with ClamAV. Never removes or quarantines. "
         f"Authorized root aliases: {aliases}."))
     async def scan_malware(ctx: Context, root_alias: str, relative_path: str = ".") -> dict:
         return await run_engine(ctx, "malware", root_alias=root_alias, relative_path=relative_path)
 
-    @server.tool(annotations=local, description=(
+    @server.tool(annotations=engine, description=(
         "Read fixed facts from an owner-registered Android device over USB debugging (ADB): device (version and "
         "security patch), apps (installed apps and recorded install source), or privileged_access (accessibility, "
         "notification access, device admin). Read-only; only USB-connected devices are inspected. "
@@ -93,7 +96,7 @@ def create_server(scanner: Scanner):
                               query_id: Literal["device", "apps", "privileged_access"]) -> dict:
         return await run_engine(ctx, "android", device_alias=device_alias, query_id=query_id)
 
-    @server.tool(annotations=local, description=(
+    @server.tool(annotations=engine, description=(
         "Check an owner-registered Android device over USB debugging (ADB) for known monitoring apps (stalkerware "
         "and watchware indicators) and list apps worth reviewing. Read-only; no finding does not prove safety. "
         f"Registered device aliases: {devices}."))

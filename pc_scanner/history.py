@@ -84,6 +84,12 @@ def details_folder(path: Path) -> Path:
     return path.with_name(path.name + ".details")
 
 
+def releases_file(path: Path) -> Path:
+    """The engine releases looked up (updates.lookup). Named after the history like the files above, so
+    whatever the history file is called, the two never share a name."""
+    return path.with_name(path.name + ".releases")
+
+
 @contextlib.contextmanager
 def locked(path: Path):
     """Held across processes: a CLI and MCP servers that both find the file full must not rotate it twice."""
@@ -147,6 +153,40 @@ def make_private(name: Path) -> None:
         private(fd)
     finally:
         os.close(fd)
+
+
+def replace_private(path: Path, data: bytes) -> None:
+    """Replaces the file in one step with a new one private to the owner.
+
+    The new file gets a fresh name, so a link put in the old one's place is replaced, never written through.
+    """
+    temp = path.with_name(f".{path.name}.{secrets.token_hex(4)}.tmp")
+    f = open(temp, "xb", opener=opener)  # if this fails, nothing of ours was created
+    try:
+        with f:
+            f.write(data)
+        os.replace(temp, path)
+    except BaseException:
+        temp.unlink(missing_ok=True)
+        raise
+
+
+def read_private(path: Path, max_bytes: int) -> bytes | None:
+    """The file's contents if it is the owner's own regular file of at most max_bytes, otherwise None.
+
+    Another user's file, or one with other names, could have been put there to be taken as ours.
+    """
+    try:
+        f = open(path, "rb", opener=opener)
+    except OSError:
+        return None
+    with f:
+        info = os.fstat(f.fileno())
+        if (not stat.S_ISREG(info.st_mode) or info.st_size > max_bytes
+                or (os.name != "nt" and (info.st_uid != os.geteuid() or info.st_nlink != 1))):
+            return None
+        data = f.read(max_bytes + 1)
+    return data if len(data) <= max_bytes else None
 
 
 def cursor_fingerprint(values: list) -> str:

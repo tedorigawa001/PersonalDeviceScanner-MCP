@@ -256,7 +256,8 @@ SETTINGS = {"local": {"osquery_binary", "clamav_binary", "timeout_seconds", "max
             "android_devices": None,
             "history": {"enabled", "file", "details", "details_max_mb"},
             "router": {"jvn_lookup", "kev_file", "max_kev_age_days", "max_check_age_days"},
-            "routers": None}
+            "routers": None,
+            "updates": {"lookup"}}
 
 
 def unknown_settings(config: dict) -> list[str]:
@@ -655,8 +656,10 @@ class Scanner:
         self.android = config.get("android", {})
         self.android_devices = config.get("android_devices", {})
         self.history_settings = config.get("history", {})
+        self.update_settings = config.get("updates", {})
         if not all(isinstance(v, dict) for v in (self.local, self.roots, self.wazuh, self.android,
-                                                  self.android_devices, self.history_settings)):
+                                                  self.android_devices, self.history_settings,
+                                                  self.update_settings)):
             raise ScannerError("Configuration sections must be tables")
         self.config_warnings = unknown_settings(config)
         self.timeout = self.local.get("timeout_seconds", 600)
@@ -713,6 +716,12 @@ class Scanner:
             raise ScannerError("history.details_max_mb must be 1..1024")
         if self.history_details and not self.history_enabled:
             self.config_warnings.append("history.details has no effect while history.enabled = false")
+        # Off unless the owner turns it on: the lookup reaches GitHub and Google.
+        self.update_lookup = self.update_settings.get("lookup", False)
+        if type(self.update_lookup) is not bool:
+            raise ScannerError("updates.lookup must be true or false")
+        # Latest releases this process looked up, for when they cannot be saved beside the history.
+        self.release_info: dict = {}
         from . import router
         self.router_settings, self.routers, router_warnings = router.load(config)
         self.config_warnings += router_warnings
@@ -780,6 +789,7 @@ class Scanner:
             "router_aliases": list(self.routers),
             "router_jvn_lookup": self.router_settings["jvn_lookup"],
             "router_kev_configured": bool(self.router_settings["kev_file"]),
+            "update_lookup": self.update_lookup,
             "note": "Configuration status only; engines, signatures, connectivity and PC safety are unverified"})
 
     def inventory(self, query_id: str, offset: int = 0, cancel: threading.Event | None = None) -> dict:
@@ -1136,6 +1146,15 @@ class Scanner:
             # Whatever slipped through still becomes a result, never a crash of the CLI or server.
             report = result(source, "error",
                             error=f"Unexpected internal error ({type(exc).__name__}); the operation was not completed")
+        if self.update_lookup and report["status"] != "error":
+            from . import updates
+            if operation in updates.ENGINES:
+                try:
+                    updates.check(self, operation, report, kwargs.get("cancel"))
+                except Exception:
+                    # Never at the cost of the result: the scan itself already finished.
+                    report["warnings"].append("The engine version could not be compared with the latest release; "
+                                              "the scan itself is unaffected")
         # Every result carries them, as a misspelt setting can change any operation.
         report["warnings"] = self.config_warnings + report["warnings"]
         if self.via and self.history_enabled:

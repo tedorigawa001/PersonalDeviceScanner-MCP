@@ -23,6 +23,12 @@ details = false
 # Size limit for kept results in MiB (1..1024); the oldest are removed first.
 details_max_mb = 50
 
+[updates]
+# On each scan, compare the osquery, ClamAV and adb versions with their latest official releases and warn
+# when one is older. Off by default: it contacts api.github.com and dl.google.com (nothing about this PC is
+# sent). It never updates anything; what was found is kept for a day beside the history.
+lookup = false
+
 # Explicitly grant scan access. Example: downloads = '/Users/you/Downloads'
 [scan_roots]
 

@@ -46,7 +46,8 @@ Links to the old repository name are redirected.
 - Change anything: no deleting, quarantining, or repairing files (everything is read-only)
 - Real-time protection, automatic isolation, or EDR functions
 - Its own matching of software names against CVEs
-- Bundle or update scan engines and signatures (install and update them from their official sources)
+- Bundle or update scan engines and signatures (install and update them from their official sources; it can tell you
+  when an engine is out of date, see [Checking for engine updates](#checking-for-engine-updates))
 
 Configure only the engines you want. For example, you can use osquery and ClamAV without Wazuh.
 
@@ -341,6 +342,37 @@ against published vulnerabilities and public guidance. The design is in [docs/ro
 - The result is `completed` only when JVN and KEV were both matched in full, every setting was answered, and the
   answers are recent (`router.max_check_age_days`, default 180).
 
+### Checking for engine updates
+
+The scanner never updates an engine itself, but it can tell you when one is out of date. Turn it on in the configuration file:
+
+```toml
+[updates]
+lookup = true    # compare engine versions with the latest official releases
+```
+
+Then every inventory, malware and Android scan reads its engine's version (`osqueryi --version`, `clamscan --version`,
+`adb version`) and compares it with the latest release:
+
+| Engine | Compared with | Update from |
+|---|---|---|
+| osquery | The latest release published on GitHub (pre-releases are skipped) | https://osquery.io/downloads/ |
+| ClamAV | The latest release of the same line (1.4, 1.5, ...) on GitHub | https://docs.clamav.net/manual/Installing.html |
+| adb | The stable Platform-Tools in Google's Android SDK repository | https://developer.android.com/tools/releases/platform-tools |
+
+- An older engine adds a warning with the latest version and where to update it; the result's `status` does not change.
+  The details are in `data.engine_update`: `installed`, `latest`, `status` (`current`, `outdated`, `newer` or `unknown`)
+  and `checked_at`.
+- ClamAV maintains several lines at once and patches them on the same day. A line left out of the latest such round, or
+  with no release among the latest ten, is reported as possibly no longer supported.
+- What was found is kept for a day beside the scan history, in a file named after it (`history.jsonl.releases` by
+  default), so most scans make no request. A failed lookup is retried an hour later; until then, information up to 30 days old is used, with its date.
+- Only `api.github.com` and `dl.google.com` are contacted, over HTTPS with verified certificates and no proxy or redirect.
+  The comparison is made on this PC and nothing about it is sent, but those services see your IP address. GitHub allows
+  60 requests an hour from one IP address without signing in.
+- With the lookup on, the scan tools are marked as reaching the internet (`openWorldHint`). Wazuh and the router check
+  have no engine on this PC to compare.
+
 ### Troubleshooting
 
 - **`cryptography` fails to build**: install prebuilt packages only. This happens on Intel Macs (x86_64),
@@ -387,6 +419,7 @@ against published vulnerabilities and public guidance. The design is in [docs/ro
 | `history.file` | Absolute path to the history file. Empty uses the per-user folder (see [Scan history](#scan-history)) | empty |
 | `history.details` | Also keep the full result of each scan (findings, warnings, data) for the dashboard. Think first: see [Dashboard](#dashboard) | `false` |
 | `history.details_max_mb` | Size limit for kept results (1–1024 MiB); the oldest are removed first | `50` |
+| `updates.lookup` | On each scan, compare the osquery, ClamAV and adb versions with their latest official releases (contacts GitHub and Google; see [Checking for engine updates](#checking-for-engine-updates)) | `false` |
 
 ## Reading the results
 
@@ -631,6 +664,7 @@ each target, then every scan, newest first. Open a scan to see its warnings, fin
   before the engine starts, because best-fit conversion could turn a character such as U+FF02 into a quote and add options.
 - **No credentials passed on**: engines receive only path-related environment variables (including Windows `USERPROFILE`, `PROGRAMDATA`, etc.).
 - **Restricted network access**: Wazuh is reached over HTTPS only, and certificate verification cannot be turned off. Proxies and redirects are not used.
+  The optional engine release lookup reaches only GitHub and Google, the same way, and sends nothing about this PC.
 - **AI-facing text is untrusted**: the AI is instructed to treat file and application names in results as untrusted strings, never as instructions.
 - **Android, read-only and pinned**: only fixed adb commands run, on the transport confirmed to be USB (`adb -t`). Strings
   read from the device are never put into a device command; only user and transport IDs checked to be numbers are.

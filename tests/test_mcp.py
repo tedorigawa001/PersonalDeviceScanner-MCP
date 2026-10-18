@@ -16,6 +16,7 @@ class SlowScanner:
     android_devices = {}
     routers = {}
     router_settings = {"jvn_lookup": False}
+    update_lookup = False
 
     def __init__(self, delay):
         self.delay = delay
@@ -40,6 +41,7 @@ class CancellableScanner:
     android_devices = {}
     routers = {}
     router_settings = {"jvn_lookup": False}
+    update_lookup = False
 
     def __init__(self):
         self.started = threading.Event()

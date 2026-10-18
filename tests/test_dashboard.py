@@ -44,6 +44,17 @@ class FullDisk:
         raise OSError("No space left on device")
 
 
+def denied(*args, **kwargs):
+    raise PermissionError("denied")
+
+
+def new_files(fake):
+    """Fakes only the opening of a new file, as the page is written; reading the history stays real."""
+    def opening(*args, **kwargs):
+        return (fake if (args[1:2] or [kwargs.get("mode")])[0] == "xb" else REAL_OPEN)(*args, **kwargs)
+    return opening
+
+
 class DetailsTests(unittest.TestCase):
     def setUp(self):
         directory = tempfile.TemporaryDirectory()
@@ -414,12 +425,12 @@ class DashboardTests(unittest.TestCase):
         self.run_scan("malware", "malware", result("clamav", "completed"), root_alias="downloads")
         page, before = self.build()
         FullDisk.opened = []
-        with patch.object(dashboard, "open", create=True, side_effect=FullDisk), self.assertRaises(OSError):
+        with patch.object(history, "open", create=True, side_effect=new_files(FullDisk)), \
+                self.assertRaises(OSError):
             self.build()
         self.assertEqual(page.read_text(encoding="utf-8"), before)
         count = descriptors()
-        with patch.object(dashboard, "open", create=True, side_effect=PermissionError("denied")), \
-                self.assertRaises(OSError):
+        with patch.object(history, "open", create=True, side_effect=new_files(denied)), self.assertRaises(OSError):
             self.build()
         self.assertEqual(descriptors(), count, "a descriptor was left open")
         self.assertEqual([name.name for name in page.parent.iterdir() if name.name.endswith(".tmp")], [])
