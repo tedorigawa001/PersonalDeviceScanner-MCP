@@ -1,0 +1,255 @@
+{
+  "performed_at": "2026-10-18T23:06:00+00:00",
+  "purpose": "Wazuh acceptance test: the scanner against a real Wazuh 4.14.9 indexer with real vulnerability data",
+  "environment": {
+    "host": "macOS 26.7.1 arm64 (Apple Silicon), standard user",
+    "python": "3.14.7 (the project's .venv)",
+    "docker": "Docker Desktop, server 28.0.1, linux/arm64 VM with 8 GiB",
+    "images": {
+      "wazuh/wazuh-indexer:4.14.9": "sha256:615465315b560d974100ea55bbe67efa72afc6490ef563d4d1bef127df0e98f6",
+      "wazuh/wazuh-manager:4.14.9": "sha256:dbb337727a6b6b17e24b1ccfe4c6e95fd983286ba0ccbf29d568144aa9527c6b",
+      "wazuh/wazuh-dashboard:4.14.9": "sha256:e8e2340265feb6f61711d2ba460d04d2dea875ee46de26cd1832da2a3558a341",
+      "wazuh/wazuh-agent:4.14.9": "sha256:db274c1e2c56106f108fa1469f7ee99995ad3cac41003e8ca7a975cda2af20d8",
+      "wazuh/wazuh-certs-generator:0.0.4": "sha256:369b4d58509aab074b188596870c81584f7120e653d9ef83c591f0f785dcf325"
+    }
+  },
+  "setup": [
+    "Adapted from wazuh-docker v4.14.9 single-node; nothing of it is kept in this repository",
+    "Only the indexer (127.0.0.1:9200) and the dashboard (127.0.0.1:443) were published, and only on this Mac",
+    "Random passwords replaced the published defaults; the demo accounts (kibanaro, logstash, readall, snapshotrestore) were removed, and the old admin password and readall were refused (401)",
+    "Certificates from Wazuh's own certificate tool; the indexer certificate was re-issued from the same key, CA and subject, adding localhost and 127.0.0.1 to its names",
+    "Two agents in containers (Amazon Linux 2023), test-agent-one = 001 and test-agent-two = 002; no agent on this Mac, which sent nothing to Wazuh",
+    "Scanner account pc-scanner: role allows only 'read' on wazuh-states-vulnerabilities-*, with document-level security {\"term\": {\"agent.id\": \"001\"}}"
+  ],
+  "account_limits": {
+    "search the vulnerability index": 200,
+    "read the package inventory index": 403,
+    "read alerts": 403,
+    "list all indices": 403,
+    "write a document into the vulnerability index": 403,
+    "delete the vulnerability index": 403,
+    "security API (list users)": 403,
+    "cluster settings": 403
+  },
+  "issue_found": {
+    "summary": "Every request failed on Python 3.13 and later with only 'Wazuh connection or TLS verification failed'",
+    "cause": "ssl.create_default_context() sets VERIFY_X509_STRICT from Python 3.13, and the root CA made by Wazuh's certificate tool has no key usage extension: 'CA cert does not include key usage extension'. Python 3.11 and curl accepted the same CA",
+    "owner_decision": "Relax the strict checks only for the CA the owner sets in wazuh.ca_file; the system certificates keep them. The chain, its dates and the host name are still verified",
+    "fix": "pc_scanner/core.py clears VERIFY_X509_STRICT only with wazuh.ca_file, and a failed verification names OpenSSL's reason. Reproduced first with a test server whose CA is made the same way"
+  },
+  "before_the_first_scan": {
+    "status": "partial",
+    "total": 0,
+    "warning": "No vulnerability records for this agent_id; it may be wrong, unregistered or never scanned"
+  },
+  "wazuh_timeline_utc": {
+    "manager_started": "22:41",
+    "database_decompressed": "22:44:51",
+    "feed_update": "22:51:11 to 23:05:01",
+    "records_indexed": "23:05 (23 for each agent)"
+  },
+  "cases": [
+    {
+      "case": "read-only account, agent 001, agent_name set",
+      "exit": 1,
+      "status": "completed",
+      "error": null,
+      "findings": 23,
+      "total": 23,
+      "identity": "matched",
+      "agent_names": [
+        "test-agent-one"
+      ],
+      "more": false,
+      "warnings": [
+        "Existing index inventory; the index records no scan time, so freshness cannot be verified",
+        "Zero findings can mean no inventory; this is not a safety verdict"
+      ]
+    },
+    {
+      "case": "findings most severe first",
+      "ok": true,
+      "severities": {
+        "high": 5,
+        "medium": 14,
+        "low": 4
+      },
+      "fields": [
+        "detected_at",
+        "id",
+        "kind",
+        "package",
+        "score",
+        "severity"
+      ]
+    },
+    {
+      "case": "all pages",
+      "pages": 1,
+      "distinct_findings": 23,
+      "total": 23
+    },
+    {
+      "case": "agent_name not set: compared with this PC's host name",
+      "exit": 2,
+      "status": "partial",
+      "error": null,
+      "findings": 23,
+      "total": 23,
+      "identity": "mismatch",
+      "agent_names": [
+        "test-agent-one"
+      ],
+      "more": false,
+      "warnings": [
+        "Existing index inventory; the index records no scan time, so freshness cannot be verified",
+        "Zero findings can mean no inventory; this is not a safety verdict",
+        "<identity mismatch warning>"
+      ]
+    },
+    {
+      "case": "agent_name in other case",
+      "exit": 1,
+      "status": "completed",
+      "error": null,
+      "findings": 23,
+      "total": 23,
+      "identity": "matched",
+      "agent_names": [
+        "test-agent-one"
+      ],
+      "more": false,
+      "warnings": [
+        "Existing index inventory; the index records no scan time, so freshness cannot be verified",
+        "Zero findings can mean no inventory; this is not a safety verdict"
+      ]
+    },
+    {
+      "case": "agent 002 with the account limited to agent 001",
+      "exit": 2,
+      "status": "partial",
+      "error": null,
+      "findings": 0,
+      "total": 0,
+      "identity": "unknown",
+      "agent_names": [],
+      "more": false,
+      "warnings": [
+        "Existing index inventory; the index records no scan time, so freshness cannot be verified",
+        "Zero findings can mean no inventory; this is not a safety verdict",
+        "No vulnerability records for this agent_id; it may be wrong, unregistered or never scanned"
+      ]
+    },
+    {
+      "case": "agent id given as 1",
+      "exit": 1,
+      "status": "completed",
+      "error": null,
+      "findings": 23,
+      "total": 23,
+      "identity": "matched",
+      "agent_names": [
+        "test-agent-one"
+      ],
+      "more": false,
+      "warnings": [
+        "Existing index inventory; the index records no scan time, so freshness cannot be verified",
+        "Zero findings can mean no inventory; this is not a safety verdict"
+      ]
+    },
+    {
+      "case": "IP address URL",
+      "exit": 1,
+      "status": "completed",
+      "error": null,
+      "findings": 23,
+      "total": 23,
+      "identity": "matched",
+      "agent_names": [
+        "test-agent-one"
+      ],
+      "more": false,
+      "warnings": [
+        "Existing index inventory; the index records no scan time, so freshness cannot be verified",
+        "Zero findings can mean no inventory; this is not a safety verdict"
+      ]
+    },
+    {
+      "case": "no ca_file (system certificates only)",
+      "exit": 2,
+      "status": "error",
+      "error": "Wazuh TLS certificate verification failed (unable to get local issuer certificate); check wazuh.ca_file and the host name in wazuh.url",
+      "findings": 0,
+      "total": null,
+      "identity": null,
+      "agent_names": null,
+      "more": false,
+      "warnings": []
+    },
+    {
+      "case": "wrong password",
+      "exit": 2,
+      "status": "error",
+      "error": "Wazuh HTTP error 401; access or index may be unavailable",
+      "findings": 0,
+      "total": null,
+      "identity": null,
+      "agent_names": null,
+      "more": false,
+      "warnings": []
+    },
+    {
+      "case": "nothing listening",
+      "exit": 2,
+      "status": "error",
+      "error": "Wazuh connection or TLS verification failed",
+      "findings": 0,
+      "total": null,
+      "identity": null,
+      "agent_names": null,
+      "more": false,
+      "warnings": []
+    }
+  ],
+  "cross_checks": {
+    "admin_sees_agent_002_records": 23,
+    "scanner_account_sees_agent_002_records": 0,
+    "findings_equal_a_direct_admin_query": true,
+    "findings_most_severe_first": true,
+    "scores_non_increasing_within_severity": true,
+    "fields_returned": [
+      "detected_at",
+      "id",
+      "kind",
+      "package.name",
+      "package.version",
+      "score",
+      "severity"
+    ]
+  },
+  "mcp_stdio": {
+    "tool": "get_vulnerabilities",
+    "readOnlyHint": true,
+    "openWorldHint": true,
+    "is_error": false,
+    "status": "completed",
+    "findings": 23,
+    "identity": "matched",
+    "same_as_cli": true
+  },
+  "history_and_dashboard": {
+    "recorded_scans": 14,
+    "via": {
+      "cli": 13,
+      "mcp": 1
+    },
+    "dashboard": "built; the Wazuh row is shown as 'configured agent'; no scripts"
+  },
+  "not_covered": [
+    "Paging over real data: 23 records fit on one page of 500 (paging is covered by unit tests)",
+    "An agent on this Mac, and so a match with this PC's host name (the agent_name setting was used)",
+    "Windows and Linux hosts running the scanner",
+    "Cancelling a real request in flight (covered by unit tests with a real TLS server)"
+  ],
+  "assertions_passed": true
+}

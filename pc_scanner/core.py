@@ -1015,6 +1015,11 @@ class Scanner:
             raise ScannerError("Wazuh ca_file is not a valid PEM CA certificate") from None
         except OSError:
             raise ScannerError("Wazuh ca_file cannot be read; check the path and permissions") from None
+        if ca_file:
+            # Python 3.13 made the strict RFC 5280 checks the default, and the CA that Wazuh's own certificate
+            # tool makes has no key usage extension. The owner chose this CA, so the chain, its dates and the
+            # host name are still verified, as before 3.13; the system certificates keep the strict checks.
+            context.verify_flags &= ~ssl.VERIFY_X509_STRICT
         handler = TrackedHTTPSHandler(context)
         opener = build_opener(ProxyHandler({}), handler, NoRedirect())
         check_cancel(cancel)
@@ -1022,7 +1027,13 @@ class Scanner:
             payload = json.loads(fetch_bounded(opener, handler, request, min(self.timeout, 30), self.limit, cancel))
         except HTTPError as exc:
             raise ScannerError(f"Wazuh HTTP error {exc.code}; access or index may be unavailable") from None
-        except (URLError, TimeoutError, OSError):
+        except (URLError, TimeoutError, OSError) as exc:
+            reason = exc.reason if isinstance(exc, URLError) else exc
+            if isinstance(reason, ssl.SSLCertVerificationError):
+                # OpenSSL's own words, such as "Hostname mismatch" or "unable to get local issuer certificate".
+                why = clean_text(reason.verify_message or reason.reason or "unknown reason", 200)
+                raise ScannerError(f"Wazuh TLS certificate verification failed ({why}); check wazuh.ca_file "
+                                   "and the host name in wazuh.url") from None
             raise ScannerError("Wazuh connection or TLS verification failed") from None
         except http.client.HTTPException:
             # Truncated bodies, malformed status or header lines: not OSError subclasses.

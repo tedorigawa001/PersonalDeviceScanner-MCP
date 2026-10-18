@@ -402,7 +402,7 @@ Then every inventory, malware and Android scan reads its engine's version (`osqu
 | `scan_roots.<alias>` | A folder allowed to be scanned (absolute path). Aliases use letters, digits, `_` and `-`, up to 64 characters | none |
 | `wazuh.url` | HTTPS address of the Wazuh indexer. Empty disables it | empty |
 | `wazuh.agent_id` | Numeric ID of the target device | empty |
-| `wazuh.ca_file` | Absolute path to the indexer's CA certificate (PEM). Empty uses the system certificates. A missing file is warned about at load; an unreadable or non-PEM file fails the Wazuh request before connecting | empty |
+| `wazuh.ca_file` | Absolute path to the indexer's CA certificate (PEM). Empty uses the system certificates. A missing file is warned about at load; an unreadable or non-PEM file fails the Wazuh request before connecting. For this CA only, the strict checks Python 3.13 added are relaxed, because the CA made by Wazuh's certificate tool has no key usage extension; the chain, its dates and the host name are still verified | empty |
 | `wazuh.agent_name` | The agent name expected in Wazuh (exact, ignoring case). Empty compares with this PC's host name, ignoring the domain | empty |
 | Environment variables `PC_SCANNER_WAZUH_USER` / `PC_SCANNER_WAZUH_PASSWORD` | Wazuh credentials | — |
 | `android.adb_binary` | Absolute path to adb (Android SDK Platform-Tools). Empty disables Android | empty |
@@ -664,6 +664,7 @@ each target, then every scan, newest first. Open a scan to see its warnings, fin
   before the engine starts, because best-fit conversion could turn a character such as U+FF02 into a quote and add options.
 - **No credentials passed on**: engines receive only path-related environment variables (including Windows `USERPROFILE`, `PROGRAMDATA`, etc.).
 - **Restricted network access**: Wazuh is reached over HTTPS only, and certificate verification cannot be turned off. Proxies and redirects are not used.
+  A failed verification names its reason (for example a host name mismatch or an unknown issuer).
   The optional engine release lookup reaches only GitHub and Google, the same way, and sends nothing about this PC.
 - **AI-facing text is untrusted**: the AI is instructed to treat file and application names in results as untrusted strings, never as instructions.
 - **Android, read-only and pinned**: only fixed adb commands run, on the transport confirmed to be USB (`adb -t`). Strings

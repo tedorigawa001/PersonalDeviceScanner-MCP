@@ -402,7 +402,7 @@ lookup = true    # エンジンのバージョンを公式の最新リリース�
 | `scan_roots.<エイリアス>` | 検査を許可するフォルダー（絶対パス）。エイリアスは英数字・`_`・`-` で64文字まで | なし |
 | `wazuh.url` | Wazuh indexer の HTTPS アドレス。空欄なら無効 | 空欄 |
 | `wazuh.agent_id` | 対象端末の数字の ID | 空欄 |
-| `wazuh.ca_file` | indexer の CA 証明書（PEM 形式）の絶対パス。空欄ならシステムの証明書を使います。ファイルがなければ読み込み時に警告し、読めない・PEM でない場合は接続前にエラーにします | 空欄 |
+| `wazuh.ca_file` | indexer の CA 証明書（PEM 形式）の絶対パス。空欄ならシステムの証明書を使います。ファイルがなければ読み込み時に警告し、読めない・PEM でない場合は接続前にエラーにします。Wazuh の証明書ツールが作る CA には鍵用途（key usage）の拡張がないため、この CA に限り Python 3.13 で加わった厳格な確認を緩めます。証明書の連鎖・有効期間・ホスト名は引き続き検証します | 空欄 |
 | `wazuh.agent_name` | Wazuh 上で期待するエージェント名（大文字小文字を除き完全一致）。空欄ならこの PC のホスト名とドメイン部分を除いて照合します | 空欄 |
 | 環境変数 `PC_SCANNER_WAZUH_USER` / `PC_SCANNER_WAZUH_PASSWORD` | Wazuh の認証情報 | — |
 | `android.adb_binary` | adb（Android SDK Platform-Tools）の絶対パス。空欄なら Android は無効 | 空欄 |
@@ -655,6 +655,7 @@ TIME                 VIA  OPERATION      STATUS     FINDINGS    SECONDS  TARGET
   近い文字への置き換え（best-fit）で U+FF02 などが引用符に変わり、オプションを追加されるおそれがあるためです。
 - **認証情報を渡さない**：エンジンに渡す環境変数は、パスに関するもの（Windows の `USERPROFILE`・`PROGRAMDATA` など）だけです。
 - **通信を限定**：Wazuh への接続は HTTPS のみで、証明書の検証は無効にできません。プロキシとリダイレクトも使いません。
+  検証に失敗したときは、理由（ホスト名の不一致や、発行元が分からないなど）を示します。
   任意のエンジンの最新リリースの確認も、同じ方法で GitHub と Google にだけ接続し、この PC の情報は送りません。
 - **AI の指示を信用しない**：結果に含まれるファイル名やアプリ名は信用できない文字列として扱うよう、AI に指示しています。
 - **Android は読み取り専用で接続を固定**：固定の adb コマンドだけを、USB と確認した接続（`adb -t`）に対して実行します。

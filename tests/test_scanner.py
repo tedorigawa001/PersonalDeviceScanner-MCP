@@ -19,6 +19,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
+from urllib.error import URLError
 
 from pc_scanner import cli
 from pc_scanner.core import (MAX_PAGES, NoRedirect, Scanner, ScannerError, clamav_signatures, decode_cursor,
@@ -146,9 +147,11 @@ class SlowWazuhServer:
     never, or with headers only.
 
     Its self-signed certificate is made at test time, so no private key is kept in the repository.
+    With wazuh_ca, it is signed by a CA made the way Wazuh's certificate tool makes one: without the
+    key usage extension that Python 3.13's strict checks require of a CA.
     """
 
-    def __init__(self, directory, drip_seconds=None, answer=None, headers_only=False):
+    def __init__(self, directory, drip_seconds=None, answer=None, headers_only=False, wazuh_ca=False):
         from cryptography import x509
         from cryptography.hazmat.primitives import hashes, serialization
         from cryptography.hazmat.primitives.asymmetric import ec
@@ -172,11 +175,39 @@ class SlowWazuhServer:
             .sign(key, hashes.SHA256()))
         self.ca_file = Path(directory) / "slow-server.pem"
         key_file = Path(directory) / "slow-server.key"
+        chain_file = self.ca_file
         self.ca_file.write_bytes(certificate.public_bytes(serialization.Encoding.PEM))
+        if wazuh_ca:
+            ca_key = ec.generate_private_key(ec.SECP256R1())
+            ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "pc-scanner test Wazuh root CA")])
+            ca = (x509.CertificateBuilder().subject_name(ca_name).issuer_name(ca_name).public_key(ca_key.public_key())
+                  .serial_number(x509.random_serial_number())
+                  .not_valid_before(now - timedelta(minutes=5)).not_valid_after(now + timedelta(days=1))
+                  .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
+                  .add_extension(x509.SubjectKeyIdentifier.from_public_key(ca_key.public_key()), critical=False)
+                  .add_extension(x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key.public_key()), critical=False)
+                  .sign(ca_key, hashes.SHA256()))
+            leaf = (x509.CertificateBuilder().subject_name(name).issuer_name(ca_name).public_key(key.public_key())
+                    .serial_number(x509.random_serial_number())
+                    .not_valid_before(now - timedelta(minutes=5)).not_valid_after(now + timedelta(days=1))
+                    .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=False)
+                    .add_extension(x509.KeyUsage(digital_signature=True, content_commitment=True, key_encipherment=True,
+                                                 data_encipherment=True, key_agreement=False, key_cert_sign=False,
+                                                 crl_sign=False, encipher_only=False, decipher_only=False),
+                                   critical=False)
+                    .add_extension(x509.SubjectKeyIdentifier.from_public_key(key.public_key()), critical=False)
+                    .add_extension(x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key.public_key()),
+                                   critical=False)
+                    .add_extension(x509.SubjectAlternativeName([x509.IPAddress(ipaddress.ip_address("127.0.0.1"))]),
+                                   critical=False)
+                    .sign(ca_key, hashes.SHA256()))
+            self.ca_file.write_bytes(ca.public_bytes(serialization.Encoding.PEM))
+            chain_file = Path(directory) / "slow-server-chain.pem"
+            chain_file.write_bytes(leaf.public_bytes(serialization.Encoding.PEM))
         key_file.write_bytes(key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
                                                serialization.NoEncryption()))
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        context.load_cert_chain(self.ca_file, key_file)
+        context.load_cert_chain(chain_file, key_file)
         self.listener = socket.create_server(("127.0.0.1", 0))
         self.url = f"https://127.0.0.1:{self.listener.getsockname()[1]}"
         self.stopped = threading.Event()
@@ -1379,6 +1410,56 @@ class ScannerTests(unittest.TestCase):
                 report = scanner.invoke("vulnerabilities")
         self.assertEqual(report["status"], "completed", report.get("error"))
         self.assertEqual(len(report["findings"]), 60)
+
+    @unittest.skipUnless(importlib.util.find_spec("cryptography"), "cryptography not installed")
+    def test_a_wazuh_made_ca_in_ca_file_is_accepted(self):
+        # Found testing against a real Wazuh 4.14.9: its certificate tool makes a CA without key usage, which
+        # Python 3.13's strict checks refuse, so every request failed with no reason given.
+        answer = json.dumps({"hits": {"total": {"value": 1, "relation": "eq"}, "hits": self.wazuh_hits(1)}}).encode()
+        with SlowWazuhServer(self.root, answer=answer, wazuh_ca=True) as server:
+            scanner = Scanner({"wazuh": {"url": server.url, "agent_id": "001", "ca_file": str(server.ca_file)}})
+            with patch.dict(os.environ, {"PC_SCANNER_WAZUH_USER": "reader", "PC_SCANNER_WAZUH_PASSWORD": "secret"}), \
+                    patch("pc_scanner.core.socket.gethostname", return_value="test-pc"):
+                report = scanner.invoke("vulnerabilities")
+        self.assertEqual(report["status"], "completed", report.get("error"))
+
+    @unittest.skipUnless(importlib.util.find_spec("cryptography"), "cryptography not installed")
+    def test_certificate_failures_say_why_and_the_host_name_is_still_checked(self):
+        environment = {"PC_SCANNER_WAZUH_USER": "reader", "PC_SCANNER_WAZUH_PASSWORD": "secret"}
+        for case in ("system certificates", "host name"):
+            with self.subTest(case=case), SlowWazuhServer(self.root, answer=b"{}", wazuh_ca=True) as server, \
+                    patch.dict(os.environ, environment):
+                wazuh = ({"url": server.url} if case == "system certificates" else
+                         {"url": server.url.replace("127.0.0.1", "localhost"), "ca_file": str(server.ca_file)})
+                report = Scanner({"wazuh": {"agent_id": "001", **wazuh}}).invoke("vulnerabilities")
+                self.assertEqual(report["status"], "error")
+                self.assertTrue(report["error"].startswith("Wazuh TLS certificate verification failed ("), report["error"])
+                self.assertIn("issuer" if case == "system certificates" else "Hostname mismatch", report["error"])
+
+    def test_strict_checks_are_relaxed_only_for_the_owners_ca_file(self):
+        ca_file = self.root / "root-ca.pem"
+        ca_file.write_text(TEST_CA_PEM)
+        contexts, real = [], ssl.create_default_context
+
+        def spy(*args, **kwargs):
+            contexts.append(real(*args, **kwargs))
+            return contexts[-1]
+
+        default = ssl.create_default_context().verify_flags & ssl.VERIFY_X509_STRICT
+        for chosen in (None, str(ca_file)):
+            scanner = Scanner({"wazuh": {"url": "https://localhost:9200", "agent_id": "001",
+                                         **({"ca_file": chosen} if chosen else {})}})
+            with patch.dict(os.environ, {"PC_SCANNER_WAZUH_USER": "reader", "PC_SCANNER_WAZUH_PASSWORD": "secret"}), \
+                    patch("pc_scanner.core.ssl.create_default_context", side_effect=spy), \
+                    patch("pc_scanner.core.build_opener") as build:
+                build.return_value.open.side_effect = URLError("not connected")
+                scanner.invoke("vulnerabilities")
+        system, owner = contexts
+        self.assertEqual(system.verify_flags & ssl.VERIFY_X509_STRICT, default)
+        self.assertFalse(owner.verify_flags & ssl.VERIFY_X509_STRICT)
+        for context in contexts:
+            self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+            self.assertTrue(context.check_hostname)
 
     def test_cancelled_wazuh_request_never_connects(self):
         cancel = threading.Event()
