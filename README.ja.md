@@ -704,6 +704,8 @@ Windows（PowerShell）：
 
 ## 関連ドキュメント・ライセンス
 
+脆弱性の報告は [SECURITY.md](SECURITY.md)（英語・日本語）を参照してください。公開の Issue には書かないでください。
+
 - [docs/backlog.md](docs/backlog.md)：未対応の課題と、実機で確認すべき項目
 - [docs/licensing.md](docs/licensing.md)：ライセンス方針と配布前チェック
 - [docs/compliance.md](docs/compliance.md)：SBOM・第三者表示の対象範囲と再生成手順

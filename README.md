@@ -714,6 +714,8 @@ Windows (PowerShell):
 
 ## Related documents and license
 
+To report a vulnerability, see [SECURITY.md](SECURITY.md) (in English and Japanese); please do not open a public issue.
+
 These documents are in Japanese.
 
 - [docs/backlog.md](docs/backlog.md): open issues and items to verify on real machines
