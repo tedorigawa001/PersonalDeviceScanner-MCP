@@ -204,7 +204,7 @@ the npm package holds a small launcher, this project's Python code and the lock 
   "mcpServers": {
     "personal-device-scanner": {
       "command": "npx",
-      "args": ["-y", "personal-device-scanner-mcp@0.5.3", "--config", "/absolute/path/to/scanner.toml", "serve"]
+      "args": ["-y", "personal-device-scanner-mcp@0.6.0", "--config", "/absolute/path/to/scanner.toml", "serve"]
     }
   }
 }
@@ -213,7 +213,7 @@ the npm package holds a small launcher, this project's Python code and the lock 
 - On first use, the launcher creates its own virtual environment in your cache folder and installs the Python packages there
   (macOS: `~/Library/Caches/personal-device-scanner-mcp`, Linux: `~/.cache/personal-device-scanner-mcp`,
   Windows: `%LOCALAPPDATA%\personal-device-scanner-mcp`). This can take longer than some clients wait for a server to start,
-  so run `npx -y personal-device-scanner-mcp@0.5.3 setup` once beforehand.
+  so run `npx -y personal-device-scanner-mcp@0.6.0 setup` once beforehand.
 - With CPython 3.14 on Windows x64, macOS (Intel or Apple silicon) or Linux x86_64, packages are installed with the hashes
   in the bundled lock files (`pip --require-hashes`). Other Python versions and CPUs get the same versions without hash
   checks, and the launcher says so on stderr. Its own messages and pip's output go to stderr, never to the MCP channel.
@@ -221,10 +221,10 @@ the npm package holds a small launcher, this project's Python code and the lock 
   `PATH` only. It never looks in the current folder (which Windows would otherwise search first) or in relative `PATH`
   entries such as `.`, so a program named like Python in a downloads folder is not run. To choose one, set
   `PC_SCANNER_PYTHON` to its absolute path; `PC_SCANNER_CACHE_DIR` (absolute) moves the cache.
-- Keep the version pinned (`@0.5.3`) so that updating is your decision. Each version and Python gets its own environment;
+- Keep the version pinned (`@0.6.0`) so that updating is your decision. Each version and Python gets its own environment;
   old ones in the cache folder (folders named like `<version>-<hash>`) can be deleted. Do not delete the whole folder: on Windows it
   also holds the scan history.
-- The CLI works the same way, for example `npx -y personal-device-scanner-mcp@0.5.3 --config scanner.toml status`.
+- The CLI works the same way, for example `npx -y personal-device-scanner-mcp@0.6.0 --config scanner.toml status`.
 - If a Windows client cannot start `npx` directly, use `"command": "cmd"` with `"args": ["/c", "npx", ...]`.
 
 ### Using Wazuh
