@@ -20,6 +20,8 @@ def show_history(scanner: Scanner, limit: int) -> dict:
         entries, skipped = history.read(path, limit)
     except OSError:
         raise ScannerError("Cannot read the scan history file") from None
+    # The source follows from the operation; it is added here rather than kept in the file.
+    entries = [{**entry, "source": history.source(entry["operation"])} for entry in entries]
     return result("bridge", "completed", data={"file": str(path), "recording": scanner.history_enabled,
                                                "entries": entries, "skipped_lines": skipped},
                   warnings=scanner.config_warnings

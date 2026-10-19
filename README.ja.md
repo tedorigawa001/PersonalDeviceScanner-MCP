@@ -477,13 +477,15 @@ CLI から実行したスキャンと、AI が MCP で実行したスキャン�
 ```
 
 ```text
-TIME                 VIA  OPERATION      STATUS     FINDINGS    SECONDS  TARGET
-2026-10-15 09:12:04  mcp  malware        completed  0              41.8  downloads
-2026-10-15 09:13:30  cli  android_check  partial    1 (high 1)      6.2  phone
-2026-10-15 09:20:11  mcp  inventory      error      -               0.0  applications
+TIME                 VIA  OPERATION      SOURCE         STATUS     FINDINGS    SECONDS  TARGET
+2026-10-15 09:12:04  mcp  malware        ClamAV         completed  0              41.8  downloads
+2026-10-15 09:13:30  cli  android_check  Android (adb)  partial    1 (high 1)      6.2  phone
+2026-10-15 09:20:11  mcp  inventory      osquery        error      -               0.0  applications
                      error: osquery_binary is not configured or not installed
 ```
 
+- **SOURCE** は、そのスキャンを行ったもの（Wazuh・ClamAV・Android（adb）・ルーターの点検（JVN・KEV・設定の回答）・osquery）です。
+  操作から決まるので履歴には保存せず、`--json` では各項目に `source` として加えます。
 - **記録する内容**：開始時刻、`cli` か `mcp` か、操作と対象（フォルダーのエイリアスと相対パス、`query_id`、端末のエイリアス。
   Wazuh はページ番号と、ページの開始位置の短い一方向の指紋だけで、カーソルは記録しません）、`status`、深刻度ごとの所見の件数、警告の件数、かかった時間、エラーの内容、
   ページに分かれる結果では次のページがあるかどうかです。
@@ -514,6 +516,10 @@ TIME                 VIA  OPERATION      STATUS     FINDINGS    SECONDS  TARGET
 含める最新の件数を指定します）。ページには対象ごとの最新の結果と、すべてのスキャンを新しい順に並べます。スキャンを開くと、
 警告・所見・データを確認できます。
 
+- **所見の概要**：ページの先頭に、対象ごとの最新の結果にある所見を深刻度（critical・high・medium・low・unknown）ごとに円グラフで
+  示し、件数と割合を添えます。あわせて、検出したスキャン（Wazuh・ClamAV・Android（adb）・ルーターの点検（JVN・KEV・設定の回答）・
+  osquery）ごとの件数と、そのうち `partial` や `error` の結果の数を表にします。履歴が常に残す件数を使うので、`history.details` を
+  有効にしなくても表示します。対象ごとの最新の結果の表にも、検出したスキャンを示します。
 - **ページはまとめて数えます**：インベントリと Wazuh では、対象ごとの最新の結果を、最新の先頭ページと、その後に取得した続きのページを
   合わせたものとします。それらのページの所見の合計、最も悪い `status`、ページ数、続きのページが残っているかを表示します。
   続きが残っているかは、最も先のページの結果で判断します。同じページを取り直した場合は、前の取得を置き換えます。インベントリは offset で、

@@ -436,6 +436,96 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual([name.name for name in page.parent.iterdir() if name.name.endswith(".tmp")], [])
         self.assertTrue(FullDisk.opened and all(f.closed for f in FullDisk.opened))
 
+    def section(self, text):
+        return text.split("<h2>Findings in the latest results</h2>", 1)[1].split("<h2>Latest result", 1)[0]
+
+    def three_sources(self):
+        # An older malware result with a critical finding, replaced by the latest one; two Wazuh pages; an Android check.
+        self.run_scan("malware", "malware", result("clamav", "completed", findings=[
+            {"kind": "malware", "severity": "critical"}]), root_alias="downloads")
+        self.run_scan("malware", "malware", result("clamav", "completed", findings=[
+            {"kind": "malware", "severity": "high"}, {"kind": "scan_limit", "severity": "medium"}]),
+            root_alias="downloads")
+        self.wazuh(1, findings=2, more=True)
+        self.wazuh(2, findings=1)
+        self.run_scan("android_check", "android_check", result("adb", "completed", findings=[
+            {"kind": "review", "severity": "medium"}]), device_alias="phone")
+
+    def test_the_severity_pie_counts_the_latest_result_of_each_target(self):
+        self.three_sources()
+        _, text = self.build()
+        section = self.section(text)
+        self.assertIn('aria-label="Findings by severity: high 4, medium 2"', section)
+        self.assertIn("<title>high: 4 (67%)</title>", section)
+        self.assertIn("<title>medium: 2 (33%)</title>", section)
+        self.assertNotIn("critical:", section)  # only in the older malware result
+        self.assertIn("6 findings in total", section)
+        self.assertIn("1 of 3 latest results are partial or error, so these counts may be incomplete.", section)
+        # Clockwise from the top: high takes two thirds (the long way round), then medium.
+        slices = re.findall(r'<path class="s-(\w+)" d="M100 100 L([\d. ]+) A98 98 0 (\d) 1 ([\d. ]+) Z">', section)
+        self.assertEqual([(name, large) for name, _, large, _ in slices], [("high", "1"), ("medium", "0")])
+        self.assertEqual(slices[0][1], "100.00 2.00")
+        self.assertEqual(slices[0][3], slices[1][1])
+        self.assertEqual(slices[1][3], "100.00 2.00")
+        self.assertIn('class="on-high"', section)
+        self.assertIn('<tspan x="', section)
+        legend = re.findall(r'<span class="swatch s-(\w+)"></span>\w+</td><td class="num">(\d+)</td>', section)
+        self.assertEqual(legend, [("high", "4"), ("medium", "2")])
+
+    def test_findings_by_source_in_a_fixed_order(self):
+        self.three_sources()
+        _, text = self.build()
+        rows = re.findall(r'<tr><td class="src">([^<]+)</td>(.*?)</tr>', self.section(text))
+        numbers = [(name, re.findall(r">(\d+)</td>", cells)) for name, cells in rows]
+        # Targets, partial or error, then critical, high, medium, low, unknown and the total.
+        self.assertEqual(numbers, [("Wazuh", ["1", "1", "0", "3", "0", "0", "0", "3"]),
+                                   ("ClamAV", ["1", "0", "0", "1", "1", "0", "0", "2"]),
+                                   ("Android (adb)", ["1", "0", "0", "0", "1", "0", "0", "1"])])
+        latest = text.split("<h2>Latest result for each target</h2>", 1)[1].split("<h2>Scans", 1)[0]
+        self.assertIn("<th>Operation</th><th>Source</th><th>Target</th>", latest)
+        self.assertIn('<td class="op">vulnerabilities</td><td>Wazuh</td>', latest)
+        self.assertIn('<td class="op">malware</td><td>ClamAV</td>', latest)
+        self.assertEqual(history.SOURCES["router_check"], "Router check (JVN, KEV, settings)")
+
+    def test_one_severity_fills_the_pie_and_small_slices_are_not_labelled(self):
+        self.run_scan("malware", "malware", result("clamav", "completed", findings=[
+            {"kind": "malware", "severity": "high"}]), root_alias="downloads")
+        section = self.section(self.build()[1])
+        self.assertIn('<circle class="s-high" cx="100" cy="100" r="98"><title>high: 1 (100%)</title></circle>', section)
+        self.assertIn('<text class="on-high" x="100.0" y="98.0">high<tspan x="100.0" dy="15">1</tspan></text>', section)
+        self.assertNotIn("<path", section)
+        # 1 in 10 is under the share that gets a label: the legend and the tooltip carry it.
+        self.run_scan("malware", "malware", result("clamav", "completed", findings=[
+            {"kind": "malware", "severity": "critical"}] + [{"kind": "malware", "severity": "medium"}] * 9),
+            root_alias="downloads")
+        section = self.section(self.build()[1])
+        self.assertIn("<title>critical: 1 (10%)</title>", section)
+        self.assertNotIn('class="on-critical"', section)
+        self.assertIn('class="on-medium"', section)
+        self.assertIn('<span class="swatch s-critical"></span>critical</td><td class="num">1</td>', section)
+
+    def test_without_findings_there_is_no_pie(self):
+        _, text = self.build()
+        self.assertNotIn("Findings in the latest results", text)
+        self.run_scan("android_check", "android_check", result("adb", "completed"), device_alias="phone")
+        section = self.section(self.build()[1])
+        self.assertIn("No findings in the latest results. This does not prove a device is safe.", section)
+        self.assertNotIn("<svg", section)
+        self.assertNotIn("partial or error, so", section)
+
+    def test_severity_names_the_history_does_not_know_count_as_unknown(self):
+        run = [(0, {"findings": {"catastrophic": 2, "high": 1}, "status": "completed"})]
+        self.assertEqual(dashboard.severity_totals([run]), {"critical": 0, "high": 1, "medium": 0, "low": 0, "unknown": 2})
+        self.assertEqual(dashboard.share_text(1, 1000), "<1%")
+        self.assertEqual(dashboard.share_text(1, 3), "33%")
+
+    def test_the_chart_needs_no_script_and_no_inline_style(self):
+        self.three_sources()
+        _, text = self.build()
+        self.assertNotIn("<script", text)
+        self.assertNotIn("style=", text.split("</style>", 1)[1])
+        self.assertIn('<svg class="pie" viewBox="0 0 200 200" role="img"', text)
+
     def test_each_kind_of_finding_gets_its_own_table(self):
         # Found preparing the 0.5 announcement: a router check mixed kinds in one wide table.
         title = "Multiple vulnerabilities in an example router's settings page"

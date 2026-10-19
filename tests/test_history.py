@@ -356,11 +356,12 @@ class HistoryTests(unittest.TestCase):
         shown = self.cli("history")
         self.assertEqual(shown.returncode, 0, shown.stderr)
         lines = shown.stdout.splitlines()
-        self.assertEqual(lines[0].split(), ["TIME", "VIA", "OPERATION", "STATUS", "FINDINGS", "SECONDS", "TARGET"])
-        self.assertEqual(lines[1].split()[2:5], ["cli", "malware", "error"])
+        self.assertEqual(lines[0].split(),
+                         ["TIME", "VIA", "OPERATION", "SOURCE", "STATUS", "FINDINGS", "SECONDS", "TARGET"])
+        self.assertEqual(lines[1].split()[2:6], ["cli", "malware", "ClamAV", "error"])
         self.assertTrue(lines[1].endswith("missing"))
         self.assertEqual(lines[2].strip(), "error: Scan root alias is not authorized")
-        self.assertEqual(lines[1].split()[5], "-")
+        self.assertEqual(lines[1].split()[6], "-")
         self.assertTrue(lines[3].endswith("downloads/sub"))
         latest = self.cli("history", "--limit", "1", "--json")
         self.assertEqual(latest.returncode, 0, latest.stderr)
@@ -368,12 +369,37 @@ class HistoryTests(unittest.TestCase):
         self.assertEqual(report["status"], "completed")
         self.assertEqual([entry["target"] for entry in report["data"]["entries"]],
                          [{"root_alias": "downloads", "relative_path": "sub"}])
+        self.assertEqual([entry["source"] for entry in report["data"]["entries"]], ["ClamAV"])
         self.assertEqual(report["data"]["file"], str(self.file))
         self.assertTrue(report["data"]["recording"])
         for limit in ("0", "1001"):
             refused = self.cli("history", "--limit", limit)
             self.assertEqual(refused.returncode, 2)
             self.assertIn("--limit must be 1..1000", json.loads(refused.stdout)["error"])
+
+    def test_each_operation_shows_the_scan_that_ran_and_the_columns_stay_aligned(self):
+        base = {"version": 1, "started_at": "2026-10-19T08:00:00+09:00", "seconds": 1.5, "via": "cli",
+                "status": "completed", "findings": {}, "warnings": 0, "error": None}
+        targets = {"inventory": {"query_id": "os_version", "offset": 0}, "malware": {"root_alias": "downloads"},
+                   "vulnerabilities": {"continued": False}, "android": {"device_alias": "phone", "query_id": "apps"},
+                   "android_check": {"device_alias": "phone"}, "router_check": {"router_alias": "home"}}
+        entries = [{**base, "operation": operation, "target": target} for operation, target in targets.items()]
+        lines = history.table(entries).splitlines()
+        start, end = lines[0].index("SOURCE"), lines[0].index("STATUS")
+        shown = {line.split()[3]: line[start:end].strip() for line in lines[1:]}
+        self.assertEqual(shown, {"inventory": "osquery", "malware": "ClamAV", "vulnerabilities": "Wazuh",
+                                 "android": "Android (adb)", "android_check": "Android (adb)",
+                                 "router_check": "Router check (JVN, KEV, settings)"})
+        # SECONDS is right-aligned under its heading, after a source with spaces in it.
+        seconds_end = lines[0].index("SECONDS") + len("SECONDS")
+        self.assertTrue(all(line[:seconds_end].endswith("1.5") for line in lines[1:]))
+        self.assertEqual(set(history.SOURCES), history.OPERATIONS)
+
+    def test_the_source_is_shown_but_never_recorded(self):
+        self.scanner().invoke("malware", root_alias="missing")
+        self.assertNotIn("source", self.file.read_text(encoding="utf-8"))
+        report = json.loads(self.cli("history", "--json").stdout)
+        self.assertEqual(report["data"]["entries"][0]["source"], "ClamAV")
 
     def test_the_history_command_still_reads_after_recording_is_turned_off(self):
         self.scanner().invoke("malware", root_alias="missing")

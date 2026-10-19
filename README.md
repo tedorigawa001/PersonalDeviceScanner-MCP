@@ -478,13 +478,15 @@ Each scan run from the CLI, or by the AI over MCP, is recorded on this PC as one
 ```
 
 ```text
-TIME                 VIA  OPERATION      STATUS     FINDINGS    SECONDS  TARGET
-2026-10-15 09:12:04  mcp  malware        completed  0              41.8  downloads
-2026-10-15 09:13:30  cli  android_check  partial    1 (high 1)      6.2  phone
-2026-10-15 09:20:11  mcp  inventory      error      -               0.0  applications
+TIME                 VIA  OPERATION      SOURCE         STATUS     FINDINGS    SECONDS  TARGET
+2026-10-15 09:12:04  mcp  malware        ClamAV         completed  0              41.8  downloads
+2026-10-15 09:13:30  cli  android_check  Android (adb)  partial    1 (high 1)      6.2  phone
+2026-10-15 09:20:11  mcp  inventory      osquery        error      -               0.0  applications
                      error: osquery_binary is not configured or not installed
 ```
 
+- **SOURCE** is the scan that ran: Wazuh, ClamAV, Android (adb), the router check (JVN, KEV and your settings answers) or
+  osquery. It follows from the operation, so it is not stored; `--json` adds it to each entry as `source`.
 - **What is kept**: the start time, `cli` or `mcp`, the operation and its target (folder alias and relative path,
   `query_id`, device alias; for Wazuh only the page number and a short one-way fingerprint of where the page starts, never
   the cursor), `status`, the number of findings per severity,
@@ -517,6 +519,11 @@ This writes `history.html` next to the history file and opens it in your browser
 `--limit N`, 1–1000, default 100, sets how many of the latest scans it includes). The page lists the latest result for
 each target, then every scan, newest first. Open a scan to see its warnings, findings and data.
 
+- **Findings at a glance**: at the top, a pie chart shows the findings in the latest result of each target by severity
+  (critical, high, medium, low, unknown) with the count and share of each, and a table counts them by source: Wazuh,
+  ClamAV, Android (adb), the router check (JVN, KEV and your settings answers) and osquery, with how many of those
+  results are `partial` or `error`. It uses the counts the history always keeps, so it works without `history.details`.
+  The latest-result table also names each result's source.
 - **Pages count together**: for inventory and Wazuh, the latest result of a target is its newest first page plus the
   later pages fetched after it. It shows the findings of all those pages, the worst `status` among them, the number of
   pages, and whether more pages remain (as the furthest page said). A page fetched again replaces the earlier fetch:

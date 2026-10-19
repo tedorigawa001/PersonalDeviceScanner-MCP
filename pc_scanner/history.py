@@ -42,6 +42,11 @@ TARGETS = {"inventory": ("query_id", "offset"), "malware": ("root_alias", "relat
            "router_check": ("router_alias",)}
 # Where a paged result says that another page can be fetched.
 NEXT_PAGE = {"inventory": "next_offset", "vulnerabilities": "next_cursor"}
+# Which scan found it, for the history command and the dashboard. The router check matches JVN iPedia and
+# CISA KEV and reviews the settings the owner answered. It follows from the operation, so it is not recorded.
+SOURCES = {"vulnerabilities": "Wazuh", "malware": "ClamAV", "android": "Android (adb)",
+           "android_check": "Android (adb)", "router_check": "Router check (JVN, KEV, settings)",
+           "inventory": "osquery"}
 # A link is refused, so a history file in a shared folder cannot be pointed at another file.
 NO_FOLLOW = getattr(os, "O_NOFOLLOW", 0)
 # Opening a FIFO put in its place fails or returns at once instead of holding up the scan; regular files ignore it.
@@ -387,6 +392,10 @@ def read(path: Path, limit: int) -> tuple[list[dict], int]:
     return list(entries), skipped
 
 
+def source(operation: str) -> str:
+    return SOURCES.get(operation, operation)
+
+
 def describe_target(item: dict) -> str:
     target, operation = item["target"], item["operation"]
     if operation == "malware" and "root_alias" in target:
@@ -413,18 +422,19 @@ def describe_findings(item: dict) -> str:
 
 
 def table(entries: list[dict]) -> str:
-    rows = [("TIME", "VIA", "OPERATION", "STATUS", "FINDINGS", "SECONDS", "TARGET")]
+    rows = [("TIME", "VIA", "OPERATION", "SOURCE", "STATUS", "FINDINGS", "SECONDS", "TARGET")]
     errors = [None]
     for item in entries:
         when = datetime.fromisoformat(item["started_at"]).astimezone().strftime("%Y-%m-%d %H:%M:%S")
-        rows.append((when, item["via"], item["operation"], item["status"], describe_findings(item),
+        rows.append((when, item["via"], item["operation"], source(item["operation"]), item["status"],
+                     describe_findings(item),
                      f"{item['seconds']:.1f}", describe_target(item)))
         errors.append(item["error"])
     # The target goes last: folder names can be wide characters that would break the alignment.
     widths = [max(len(row[column]) for row in rows) for column in range(len(rows[0]) - 1)]
     lines = []
     for row, error in zip(rows, errors):
-        cells = [cell.rjust(width) if column == 5 else cell.ljust(width)
+        cells = [cell.rjust(width) if column == 6 else cell.ljust(width)
                  for column, (cell, width) in enumerate(zip(row, widths))]
         lines.append("  ".join([*cells, row[-1]]).rstrip())
         if error:

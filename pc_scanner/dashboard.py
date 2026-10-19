@@ -9,6 +9,7 @@ import base64
 import hashlib
 import html
 import json
+import math
 import unicodedata
 from datetime import datetime
 from pathlib import Path
@@ -26,6 +27,8 @@ PAGING = ("offset", "continued", "page", "after")
 # Text wider than this gets a wider column, so it is not wrapped a character at a time; a single word
 # up to KEEP_CHARS (an ID, a CVE, a CPE) is kept on one line. Full-width characters count as two.
 WIDE_CHARS, KEEP_CHARS = 40, 32
+# A slice at least this share of the pie carries its severity and count: high and medium are close in colour.
+LABEL_SHARE = 0.15
 REASONS = {"off": "Details were not kept for this scan (history.details was off).",
            "removed": "Details were removed to stay within history.details_max_mb.",
            "unreadable": "The details file could not be read; it may have been damaged or edited."}
@@ -33,10 +36,13 @@ REASONS = {"off": "Details were not kept for this scan (history.details was off)
 STYLE = """
 :root{color-scheme:light dark;--bg:#f7f7f5;--panel:#fff;--text:#1d1d1b;--muted:#5f5f5a;--line:#deddd8;
 --ok:#1f7a3d;--ok-bg:#e3f2e7;--warn:#8a5a00;--warn-bg:#fbefd5;--bad:#a8231c;--bad-bg:#fbe3e1;
---info:#2f5e9e;--info-bg:#e3ecf8;--code:#f0efeb}
+--high:#9a3e0e;--high-bg:#fde8dc;--info:#2f5e9e;--info-bg:#e3ecf8;--code:#f0efeb;
+--sev-critical:#d03b3b;--sev-high:#ec835a;--sev-medium:#fab219;--sev-low:#898781;--sev-unknown:#c3c2b7;
+--sev-ink:#1d1d1b;--sev-unknown-ink:#1d1d1b}
 @media (prefers-color-scheme:dark){:root{--bg:#161615;--panel:#1f1f1d;--text:#ecebe6;--muted:#a3a29b;--line:#383834;
 --ok:#7fd49a;--ok-bg:#1d3324;--warn:#f0c46a;--warn-bg:#3a2f16;--bad:#f2948d;--bad-bg:#3d1d1b;
---info:#9cbdf0;--info-bg:#1c2a40;--code:#262624}}
+--high:#f5a77e;--high-bg:#3f2417;--info:#9cbdf0;--info-bg:#1c2a40;--code:#262624;
+--sev-unknown:#52514e;--sev-unknown-ink:#fff}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);
 font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Noto Sans JP",sans-serif}
@@ -56,7 +62,8 @@ tr:last-child td{border-bottom:0}
 a{color:var(--info)}
 .badge{display:inline-block;padding:1px 8px;border-radius:999px;font-size:.78rem;font-weight:600;white-space:nowrap}
 .completed{background:var(--ok-bg);color:var(--ok)}.partial{background:var(--warn-bg);color:var(--warn)}
-.error,.critical,.high{background:var(--bad-bg);color:var(--bad)}.medium{background:var(--warn-bg);color:var(--warn)}
+.error,.critical{background:var(--bad-bg);color:var(--bad)}.high{background:var(--high-bg);color:var(--high)}
+.medium{background:var(--warn-bg);color:var(--warn)}
 .low,.unknown,.other{background:var(--code);color:var(--muted)}
 td.wide{min-width:16em}td.keep{white-space:nowrap}
 h4{font-size:.875rem;margin:14px 0 6px;color:var(--muted)}
@@ -71,6 +78,18 @@ details.scan:target{outline:2px solid var(--info)}
 .quiet{color:var(--muted)}
 ul{margin:6px 0;padding-left:20px}
 pre{background:var(--code);padding:10px 12px;border-radius:6px;overflow-x:auto;font-size:.8rem;margin:6px 0}
+.chart{display:flex;flex-wrap:wrap;gap:16px 32px;align-items:center;padding:16px}
+svg.pie{width:200px;height:200px;flex:none}
+.pie path,.pie circle{stroke:var(--panel);stroke-width:2;stroke-linejoin:round}
+.pie path:hover,.pie circle:hover{opacity:.82}
+.pie text{font-size:12px;font-weight:600;text-anchor:middle;fill:var(--sev-ink);pointer-events:none}
+.pie text.on-critical{fill:#fff}.pie text.on-unknown{fill:var(--sev-unknown-ink)}
+.s-critical{fill:var(--sev-critical);background:var(--sev-critical)}.s-high{fill:var(--sev-high);background:var(--sev-high)}
+.s-medium{fill:var(--sev-medium);background:var(--sev-medium)}.s-low{fill:var(--sev-low);background:var(--sev-low)}
+.s-unknown{fill:var(--sev-unknown);background:var(--sev-unknown)}
+table.legend{width:auto;font-variant-numeric:tabular-nums}table.legend td{border:0;padding:3px 10px 3px 0}
+.swatch{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:8px}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}td.src{font-weight:600;min-width:9em}td.target{min-width:9em}
 @media (max-width:640px){main{padding:16px 16px 32px}details.scan>summary{gap:4px 10px}}
 """
 
@@ -270,9 +289,94 @@ def run_notes(run: list[tuple[int, dict]]) -> str:
     return "".join(f'<span class="quiet"> · {esc(note)}</span>' for note in notes)
 
 
+def severity_totals(runs: list[list[tuple[int, dict]]]) -> dict[str, int]:
+    """Findings by severity in the latest result of each target; a name the history does not know counts as unknown."""
+    totals = dict.fromkeys(history.SEVERITIES, 0)
+    for run in runs:
+        for name, count in combined(run)["findings"].items():
+            totals[name if name in totals else "unknown"] += count
+    return totals
+
+
+def share_text(count: int, total: int) -> str:
+    share = count / total
+    return "<1%" if share < 0.005 else f"{share:.0%}"
+
+
+def pie(totals: dict[str, int]) -> str:
+    """The severities as slices, clockwise from the top, most severe first; no script is needed to draw it."""
+    total = sum(totals.values())
+    center, radius = 100, 98
+    shapes, labels, start = [], [], 0.0
+    for name in history.SEVERITIES:
+        count = totals[name]
+        if not count:
+            continue
+        share = count / total
+        end = start + share * 2 * math.pi
+        tip = f"<title>{name}: {count} ({share_text(count, total)})</title>"
+        if share == 1:
+            shapes.append(f'<circle class="s-{name}" cx="{center}" cy="{center}" r="{radius}">{tip}</circle>')
+        else:
+            def point(angle):
+                return f"{center + radius * math.sin(angle):.2f} {center - radius * math.cos(angle):.2f}"
+            large = 1 if end - start > math.pi else 0
+            shapes.append(f'<path class="s-{name}" d="M{center} {center} L{point(start)} '
+                          f'A{radius} {radius} 0 {large} 1 {point(end)} Z">{tip}</path>')
+        if share >= LABEL_SHARE:
+            middle = (start + end) / 2 if share < 1 else 0.0
+            x = center + 0.6 * radius * math.sin(middle) if share < 1 else center
+            y = center - 0.6 * radius * math.cos(middle) if share < 1 else center
+            labels.append(f'<text class="on-{name}" x="{x:.1f}" y="{y - 2:.1f}">{name}'
+                          f'<tspan x="{x:.1f}" dy="15">{count}</tspan></text>')
+        start = end
+    described = ", ".join(f"{name} {totals[name]}" for name in history.SEVERITIES if totals[name])
+    return (f'<svg class="pie" viewBox="0 0 200 200" role="img" aria-label="Findings by severity: {esc(described)}">'
+            + "".join(shapes) + "".join(labels) + "</svg>")
+
+
+def severity_section(runs: list[list[tuple[int, dict]]]) -> str:
+    totals = severity_totals(runs)
+    total = sum(totals.values())
+    incomplete = sum(combined(run)["status"] != "completed" for run in runs)
+    caveat = (f'<p class="quiet">{incomplete} of {len(runs)} latest results are partial or error, so these counts may '
+              f'be incomplete.</p>' if incomplete else "")
+    if total:
+        legend = "".join(
+            f'<tr><td><span class="swatch s-{name}"></span>{name}</td><td class="num">{totals[name]}</td>'
+            f'<td class="num quiet">{share_text(totals[name], total)}</td></tr>'
+            for name in history.SEVERITIES if totals[name])
+        chart = (f'{pie(totals)}<div><table class="legend"><tbody>{legend}</tbody></table>'
+                 f'<p class="quiet">{total} finding{"" if total == 1 else "s"} in total</p></div>')
+    else:
+        chart = '<p class="quiet">No findings in the latest results. This does not prove a device is safe.</p>'
+    # Sources in a fixed order, so a source keeps its row from page to page; anything unexpected comes last.
+    groups: dict[str, list] = {name: [] for name in dict.fromkeys(history.SOURCES.values())}
+    for run in runs:
+        groups.setdefault(history.source(run[-1][1]["operation"]), []).append(combined(run))
+    groups = {name: results for name, results in groups.items() if results}
+    head = "".join(f'<th class="num">{name}</th>' for name in history.SEVERITIES)
+    rows = ""
+    for name, results in groups.items():
+        found = dict.fromkeys(history.SEVERITIES, 0)
+        for result in results:
+            for severity, count in result["findings"].items():
+                found[severity if severity in found else "unknown"] += count
+        cells = "".join(f'<td class="num{"" if found[s] else " quiet"}">{found[s]}</td>' for s in history.SEVERITIES)
+        unfinished = sum(result["status"] != "completed" for result in results)
+        rows += (f'<tr><td class="src">{esc(name)}</td><td class="num">{len(results)}</td>'
+                 f'<td class="num{"" if unfinished else " quiet"}">{unfinished}</td>{cells}'
+                 f'<td class="num">{sum(found.values())}</td></tr>')
+    table = (f'<div class="scroll"><table><thead><tr><th>Source</th><th class="num">Targets</th>'
+             f'<th class="num">Partial or error</th>{head}<th class="num">Total</th></tr></thead>'
+             f'<tbody>{rows}</tbody></table></div>')
+    return (f'<h2>Findings in the latest results</h2><div class="panel"><div class="chart">{chart}</div>'
+            f'<div class="body">{caveat}{table}</div></div>')
+
+
 def latest_row(run: list[tuple[int, dict]]) -> str:
     total, first, last = combined(run), run[0], run[-1][1]
-    return (f'<tr><td class="op">{esc(last["operation"])}</td>'
+    return (f'<tr><td class="op">{esc(last["operation"])}</td><td>{esc(history.source(last["operation"]))}</td>'
             f'<td class="target"><a href="#scan-{first[0]}">{esc(run_label(first[1]))}</a>{run_notes(run)}</td>'
             f'<td>{badge(total["status"], STATUSES)}</td><td>{counts(total)}</td>'
             f'<td class="time">{esc(local_time(last))}</td></tr>')
@@ -281,7 +385,8 @@ def latest_row(run: list[tuple[int, dict]]) -> str:
 def render(entries: list[dict], loaded: list[tuple[dict | None, str]], meta: dict) -> str:
     statuses = {status: sum(item["status"] == status for item in entries) for status in sorted(STATUSES)}
     summary = ", ".join(f"{name} {count}" for name, count in statuses.items())
-    latest_rows = "".join(latest_row(run) for run in latest_runs(entries))
+    runs = latest_runs(entries)
+    latest_rows = "".join(latest_row(run) for run in runs)
     scans = "".join(
         f'<details class="scan panel" id="scan-{index}"><summary>'
         f'<span class="time">{esc(local_time(item))}</span>{badge(item["status"], STATUSES)}'
@@ -307,8 +412,9 @@ def render(entries: list[dict], loaded: list[tuple[dict | None, str]], meta: dic
 {skipped}
 <div class="notice">This page holds results from this PC. Keep it to yourself. No finding does not prove a device is
 safe, and <b>partial</b> or <b>error</b> means coverage was incomplete.</div>
+{severity_section(runs) if entries else ""}
 <h2>Latest result for each target</h2>
-{f'<div class="panel scroll"><table><thead><tr><th>Operation</th><th>Target</th><th>Status</th><th>Findings</th><th>Last scan</th></tr></thead><tbody>{latest_rows}</tbody></table></div>' if entries else '<p class="quiet">No scans recorded yet.</p>'}
+{f'<div class="panel scroll"><table><thead><tr><th>Operation</th><th>Source</th><th>Target</th><th>Status</th><th>Findings</th><th>Last scan</th></tr></thead><tbody>{latest_rows}</tbody></table></div>' if entries else '<p class="quiet">No scans recorded yet.</p>'}
 <h2>Scans, newest first</h2>
 {scans or '<p class="quiet">No scans recorded yet.</p>'}
 </main></body></html>
