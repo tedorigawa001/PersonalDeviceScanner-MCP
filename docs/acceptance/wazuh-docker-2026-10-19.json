@@ -243,7 +243,18 @@
       "cli": 13,
       "mcp": 1
     },
-    "dashboard": "built; the Wazuh row is shown as 'configured agent'; no scripts"
+    "dashboard": "built; the Wazuh row is shown as 'configured agent'; no scripts",
+    "manual_browser_verification": {
+      "verified_on": "2026-10-19",
+      "evidence_source": "Owner's explicit manual confirmation in chat; not browser automation",
+      "artifact": "Existing Wazuh history/history.html dashboard",
+      "details_open_and_close": "passed",
+      "configured_agent_link_to_scan_history": "passed",
+      "observed_fragment": "#scan-14",
+      "cve_external_links": "not implemented; CVE identifiers are plain text, so external-link testing is not applicable",
+      "keyboard_navigation": "not confirmed",
+      "freshness_supplement_dashboard": "Different generated artifact; not covered by this manual confirmation"
+    }
   },
   "follow_up_verification": {
     "tested_on": "2026-10-19",

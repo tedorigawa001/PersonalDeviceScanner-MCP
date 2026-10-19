@@ -509,7 +509,7 @@
     "OS-only and connection-only authorization is not expressible with these native RBAC action grants; the same agent inventory and active configuration can also be read",
     "No restart, deletion, registration or write request was attempted; write restrictions were checked from the effective whitelist policy",
     "Manager HTTP response was deliberately held by the TCP relay; the real server was not made slow and an HTTP-body-only stall was not isolated",
-    "Browser interactions were not tested; dashboard HTML content and aggregation were checked",
+    "Browser interactions for this freshness acceptance artifact were not tested; HTML content and aggregation were checked. The owner separately confirmed opening/closing details and the configured-agent link on the existing Wazuh history dashboard; see wazuh-docker-2026-10-19.json, history_and_dashboard.manual_browser_verification",
     "Production page size is 500; multi-page acceptance used 5 only in the test process",
     "Windows/Linux acceptance of the new feature was not executed in this run",
     "Recent communication and OS record times do not certify completion of vulnerability evaluation; freshness remains unverified"
