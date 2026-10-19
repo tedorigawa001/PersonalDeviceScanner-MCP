@@ -201,12 +201,15 @@ def read_private(path: Path, max_bytes: int) -> bytes | None:
         f = open(path, "rb", opener=opener)
     except OSError:
         return None
-    with f:
-        info = os.fstat(f.fileno())
-        if (not stat.S_ISREG(info.st_mode) or info.st_size > max_bytes
-                or not owned(f.fileno(), info) or info.st_nlink != 1):
-            return None
-        data = f.read(max_bytes + 1)
+    try:
+        with f:
+            info = os.fstat(f.fileno())
+            if (not stat.S_ISREG(info.st_mode) or info.st_size > max_bytes
+                    or not owned(f.fileno(), info) or info.st_nlink != 1):
+                return None
+            data = f.read(max_bytes + 1)
+    except OSError:
+        return None
     return data if len(data) <= max_bytes else None
 
 

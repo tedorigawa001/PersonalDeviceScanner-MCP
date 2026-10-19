@@ -64,6 +64,12 @@ class OwnershipTests(unittest.TestCase):
                 history.opener(self.path, os.O_RDONLY)
         self.path.unlink()  # Windows refuses this if a failed open leaked its handle.
 
+    def test_cache_owner_api_failure_after_open_is_ignored(self):
+        from pc_scanner import windows_owner
+        with patch.object(history.os, "name", "nt"), \
+                patch.object(windows_owner, "owns_fd", side_effect=[True, OSError("owner unavailable")]):
+            self.assertIsNone(history.read_private(self.path, 100))
+
 
 @unittest.skipUnless(os.name == "nt", "Windows security APIs")
 class WindowsOwnershipTests(unittest.TestCase):
