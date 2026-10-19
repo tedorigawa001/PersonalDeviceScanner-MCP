@@ -1,0 +1,697 @@
+{
+  "performed_at": "2026-10-19T13:32:47.027418+00:00",
+  "environment": {
+    "os": "Linux-6.10.14-linuxkit-aarch64-with-glibc2.39",
+    "architecture": "aarch64",
+    "uid": 10001,
+    "euid": 10001,
+    "python": "3.12.3",
+    "mcp": "1.30.0",
+    "visibility": "Dedicated Linux container; not the Docker VM or Mac host",
+    "os_release": {
+      "NAME": "Ubuntu",
+      "ID": "ubuntu",
+      "PRETTY_NAME": "Ubuntu 24.04.5 LTS",
+      "VERSION_ID": "24.04",
+      "VERSION": "24.04.5 LTS (Noble Numbat)",
+      "VERSION_CODENAME": "noble",
+      "ID_LIKE": "debian",
+      "HOME_URL": "https://www.ubuntu.com/",
+      "SUPPORT_URL": "https://help.ubuntu.com/",
+      "BUG_REPORT_URL": "https://bugs.launchpad.net/ubuntu/",
+      "PRIVACY_POLICY_URL": "https://www.ubuntu.com/legal/terms-and-policies/privacy-policy",
+      "UBUNTU_CODENAME": "noble",
+      "LOGO": "ubuntu-logo"
+    }
+  },
+  "cases": {
+    "os_version": {
+      "status": "completed",
+      "error": null,
+      "seconds": 0.322,
+      "warnings": [
+        "Inventory only; this does not confirm vulnerabilities or malware"
+      ],
+      "findings": [],
+      "rows": 1,
+      "next_offset": null
+    },
+    "applications": {
+      "status": "completed",
+      "error": null,
+      "seconds": 0.306,
+      "warnings": [
+        "Inventory only; this does not confirm vulnerabilities or malware"
+      ],
+      "findings": [],
+      "rows": 151,
+      "next_offset": null
+    },
+    "listening_ports": {
+      "status": "completed",
+      "error": null,
+      "seconds": 0.279,
+      "warnings": [
+        "Inventory only; this does not confirm vulnerabilities or malware",
+        "Standard-user runs may omit sockets owned by other users or the system"
+      ],
+      "findings": [],
+      "rows": 2,
+      "next_offset": null
+    },
+    "clean": {
+      "status": "completed",
+      "error": null,
+      "seconds": 34.076,
+      "warnings": [
+        "Signature-based detection only; no detection does not prove safety",
+        "Symlinks excluded; file/archive limits apply"
+      ],
+      "findings": [],
+      "data": {
+        "root_alias": "test",
+        "relative_path": "clean",
+        "exit_code": 0,
+        "findings_total": 0,
+        "engine_counts": {
+          "scanned": 1,
+          "infected": 0,
+          "errors": 0
+        },
+        "unreadable_directories": [],
+        "cloud_excluded_count": 0,
+        "cloud_excluded_paths": [],
+        "line_break_names": [],
+        "engine_report": "\n----------- SCAN SUMMARY -----------\nKnown viruses: 3628169\nEngine version: 1.5.4\nScanned directories: 1\nScanned files: 1\nInfected files: 0\nData scanned: 46 B\nData read: 23 B (ratio 2.00:1)\nTime: 34.038 sec (0 m 34 s)\nStart Date: 2026:10:19 13:33:12\nEnd Date:   2026:10:19 13:33:46",
+        "diagnostic": "",
+        "engine_text_truncated": false,
+        "signatures": {
+          "engine": "1.5.4",
+          "version": 28157,
+          "built_at": "2026-10-18T06:24:14+00:00",
+          "age_days": 1.3,
+          "max_age_days": 7
+        }
+      }
+    },
+    "infected": {
+      "status": "completed",
+      "error": null,
+      "seconds": 27.332,
+      "warnings": [
+        "Signature-based detection only; no detection does not prove safety",
+        "Symlinks excluded; file/archive limits apply"
+      ],
+      "findings": [
+        {
+          "kind": "malware",
+          "severity": "high",
+          "path": "infected/検出試験.txt",
+          "signature": "Eicar-Test-Signature"
+        }
+      ],
+      "data": {
+        "root_alias": "test",
+        "relative_path": "infected",
+        "exit_code": 1,
+        "findings_total": 1,
+        "engine_counts": {
+          "scanned": 1,
+          "infected": 1,
+          "errors": 0
+        },
+        "unreadable_directories": [],
+        "cloud_excluded_count": 0,
+        "cloud_excluded_paths": [],
+        "line_break_names": [],
+        "engine_report": "\n----------- SCAN SUMMARY -----------\nKnown viruses: 3628169\nEngine version: 1.5.4\nScanned directories: 1\nScanned files: 1\nInfected files: 1\nData scanned: 68 B\nData read: 68 B (ratio 1.00:1)\nTime: 27.262 sec (0 m 27 s)\nStart Date: 2026:10:19 13:33:46\nEnd Date:   2026:10:19 13:34:13",
+        "diagnostic": "",
+        "engine_text_truncated": false,
+        "signatures": {
+          "engine": "1.5.4",
+          "version": 28157,
+          "built_at": "2026-10-18T06:24:14+00:00",
+          "age_days": 1.3,
+          "max_age_days": 7
+        }
+      }
+    },
+    "links": {
+      "status": "completed",
+      "error": null,
+      "seconds": 12.603,
+      "warnings": [
+        "Signature-based detection only; no detection does not prove safety",
+        "Symlinks excluded; file/archive limits apply"
+      ],
+      "findings": [],
+      "data": {
+        "root_alias": "test",
+        "relative_path": "links",
+        "exit_code": 0,
+        "findings_total": 0,
+        "engine_counts": {
+          "scanned": 1,
+          "infected": 0,
+          "errors": 0
+        },
+        "unreadable_directories": [],
+        "cloud_excluded_count": 0,
+        "cloud_excluded_paths": [],
+        "line_break_names": [],
+        "engine_report": "\n----------- SCAN SUMMARY -----------\nKnown viruses: 3628169\nEngine version: 1.5.4\nScanned directories: 1\nScanned files: 1\nInfected files: 0\nData scanned: 18 B\nData read: 9 B (ratio 2.00:1)\nTime: 12.486 sec (0 m 12 s)\nStart Date: 2026:10:19 13:34:13\nEnd Date:   2026:10:19 13:34:26",
+        "diagnostic": "",
+        "engine_text_truncated": false,
+        "signatures": {
+          "engine": "1.5.4",
+          "version": 28157,
+          "built_at": "2026-10-18T06:24:14+00:00",
+          "age_days": 1.3,
+          "max_age_days": 7
+        }
+      }
+    },
+    "depth-16": {
+      "status": "completed",
+      "error": null,
+      "seconds": 17.216,
+      "warnings": [
+        "Signature-based detection only; no detection does not prove safety",
+        "Symlinks excluded; file/archive limits apply"
+      ],
+      "findings": [
+        {
+          "kind": "malware",
+          "severity": "high",
+          "path": "depth-16/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/test.txt",
+          "signature": "Eicar-Test-Signature"
+        }
+      ],
+      "data": {
+        "root_alias": "test",
+        "relative_path": "depth-16",
+        "exit_code": 1,
+        "findings_total": 1,
+        "engine_counts": {
+          "scanned": 1,
+          "infected": 1,
+          "errors": 0
+        },
+        "unreadable_directories": [],
+        "cloud_excluded_count": 0,
+        "cloud_excluded_paths": [],
+        "line_break_names": [],
+        "engine_report": "\n----------- SCAN SUMMARY -----------\nKnown viruses: 3628169\nEngine version: 1.5.4\nScanned directories: 16\nScanned files: 1\nInfected files: 1\nData scanned: 68 B\nData read: 68 B (ratio 1.00:1)\nTime: 17.123 sec (0 m 17 s)\nStart Date: 2026:10:19 13:34:26\nEnd Date:   2026:10:19 13:34:43",
+        "diagnostic": "",
+        "engine_text_truncated": false,
+        "signatures": {
+          "engine": "1.5.4",
+          "version": 28157,
+          "built_at": "2026-10-18T06:24:14+00:00",
+          "age_days": 1.3,
+          "max_age_days": 7
+        }
+      }
+    },
+    "depth-17": {
+      "status": "partial",
+      "error": null,
+      "seconds": 8.081,
+      "warnings": [
+        "Signature-based detection only; no detection does not prove safety",
+        "Symlinks excluded; file/archive limits apply",
+        "Directory depth limit reached; deeper directories were not scanned",
+        "Scan coverage incomplete or engine error; do not report this PC as safe"
+      ],
+      "findings": [],
+      "data": {
+        "root_alias": "test",
+        "relative_path": "depth-17",
+        "exit_code": 0,
+        "findings_total": 0,
+        "engine_counts": {
+          "scanned": 0,
+          "infected": 0,
+          "errors": 0
+        },
+        "unreadable_directories": [],
+        "cloud_excluded_count": 0,
+        "cloud_excluded_paths": [],
+        "line_break_names": [],
+        "engine_report": "\n----------- SCAN SUMMARY -----------\nKnown viruses: 3628169\nEngine version: 1.5.4\nScanned directories: 16\nScanned files: 0\nInfected files: 0\nData scanned: 0 B\nData read: 0 B (ratio 0.00:1)\nTime: 8.032 sec (0 m 8 s)\nStart Date: 2026:10:19 13:34:43\nEnd Date:   2026:10:19 13:34:51",
+        "diagnostic": "",
+        "engine_text_truncated": false,
+        "signatures": {
+          "engine": "1.5.4",
+          "version": 28157,
+          "built_at": "2026-10-18T06:24:14+00:00",
+          "age_days": 1.3,
+          "max_age_days": 7
+        }
+      }
+    },
+    "large": {
+      "status": "partial",
+      "error": null,
+      "seconds": 9.901,
+      "warnings": [
+        "Signature-based detection only; no detection does not prove safety",
+        "Symlinks excluded; file/archive limits apply",
+        "The engine reported 1 errors; some files were not scanned",
+        "Scan coverage incomplete or engine error; do not report this PC as safe"
+      ],
+      "findings": [
+        {
+          "kind": "scan_limit",
+          "severity": "unknown",
+          "path": "large/over-limit.dat",
+          "signature": "Heuristics.Limits.Exceeded.MaxFileSize"
+        }
+      ],
+      "data": {
+        "root_alias": "test",
+        "relative_path": "large",
+        "exit_code": 2,
+        "findings_total": 1,
+        "engine_counts": {
+          "scanned": 0,
+          "infected": 0,
+          "errors": 1
+        },
+        "unreadable_directories": [],
+        "cloud_excluded_count": 0,
+        "cloud_excluded_paths": [],
+        "line_break_names": [],
+        "engine_report": "\n----------- SCAN SUMMARY -----------\nKnown viruses: 3628169\nEngine version: 1.5.4\nScanned directories: 1\nScanned files: 0\nInfected files: 0\nTotal errors: 1\nData scanned: 0 B\nData read: 101.00 MiB (ratio 0.00:1)\nTime: 9.874 sec (0 m 9 s)\nStart Date: 2026:10:19 13:34:51\nEnd Date:   2026:10:19 13:35:01",
+        "diagnostic": "",
+        "engine_text_truncated": false,
+        "signatures": {
+          "engine": "1.5.4",
+          "version": 28157,
+          "built_at": "2026-10-18T06:24:14+00:00",
+          "age_days": 1.3,
+          "max_age_days": 7
+        }
+      }
+    },
+    "permissions": {
+      "status": "partial",
+      "error": null,
+      "seconds": 5.87,
+      "warnings": [
+        "Signature-based detection only; no detection does not prove safety",
+        "Symlinks excluded; file/archive limits apply",
+        "1 directories could not be read and were not scanned",
+        "The engine reported 1 errors; some files were not scanned",
+        "Scan coverage incomplete or engine error; do not report this PC as safe"
+      ],
+      "findings": [],
+      "data": {
+        "root_alias": "test",
+        "relative_path": "permissions",
+        "exit_code": 2,
+        "findings_total": 0,
+        "engine_counts": {
+          "scanned": 1,
+          "infected": 0,
+          "errors": 1
+        },
+        "unreadable_directories": [
+          "permissions/blocked"
+        ],
+        "cloud_excluded_count": 0,
+        "cloud_excluded_paths": [],
+        "line_break_names": [],
+        "engine_report": "\n----------- SCAN SUMMARY -----------\nKnown viruses: 3628169\nEngine version: 1.5.4\nScanned directories: 1\nScanned files: 1\nInfected files: 0\nTotal errors: 1\nData scanned: 18 B\nData read: 9 B (ratio 2.00:1)\nTime: 5.827 sec (0 m 5 s)\nStart Date: 2026:10:19 13:35:01\nEnd Date:   2026:10:19 13:35:07",
+        "diagnostic": "",
+        "engine_text_truncated": false,
+        "signatures": {
+          "engine": "1.5.4",
+          "version": 28157,
+          "built_at": "2026-10-18T06:24:14+00:00",
+          "age_days": 1.3,
+          "max_age_days": 7
+        }
+      }
+    },
+    "newline": {
+      "status": "partial",
+      "error": null,
+      "seconds": 5.792,
+      "warnings": [
+        "Signature-based detection only; no detection does not prove safety",
+        "Symlinks excluded; file/archive limits apply",
+        "1 names contain line breaks, so detections cannot be matched to files; see data.line_break_names",
+        "Scan coverage incomplete or engine error; do not report this PC as safe"
+      ],
+      "findings": [
+        {
+          "kind": "malware",
+          "severity": "high",
+          "path": null,
+          "signature": "Eicar-Test-Signature"
+        }
+      ],
+      "data": {
+        "root_alias": "test",
+        "relative_path": "newline",
+        "exit_code": 1,
+        "findings_total": 1,
+        "engine_counts": {
+          "scanned": 1,
+          "infected": 1,
+          "errors": 0
+        },
+        "unreadable_directories": [],
+        "cloud_excluded_count": 0,
+        "cloud_excluded_paths": [],
+        "line_break_names": [
+          "newline/改行\\u000a試験.txt"
+        ],
+        "engine_report": "<test>/newline/改行\n\n----------- SCAN SUMMARY -----------\nKnown viruses: 3628169\nEngine version: 1.5.4\nScanned directories: 1\nScanned files: 1\nInfected files: 1\nData scanned: 68 B\nData read: 68 B (ratio 1.00:1)\nTime: 5.761 sec (0 m 5 s)\nStart Date: 2026:10:19 13:35:07\nEnd Date:   2026:10:19 13:35:13",
+        "diagnostic": "",
+        "engine_text_truncated": false,
+        "signatures": {
+          "engine": "1.5.4",
+          "version": 28157,
+          "built_at": "2026-10-18T06:24:14+00:00",
+          "age_days": 1.3,
+          "max_age_days": 7
+        }
+      }
+    },
+    "one_second_timeout": {
+      "status": "error",
+      "error": "Engine timed out; scan was not completed",
+      "seconds": 1.044,
+      "warnings": [],
+      "findings": [],
+      "data": {}
+    },
+    "cancel": {
+      "status": "error",
+      "error": "Scan cancelled; engine stopped before completing",
+      "seconds": 0.53,
+      "warnings": [],
+      "findings": [],
+      "data": {}
+    }
+  },
+  "checks": {
+    "os_version_rows": true,
+    "applications_rows": true,
+    "real_packages_found": true,
+    "listening_ports_rows": true,
+    "loopback_listener_port_pid_and_process": true,
+    "clean_completed_without_findings": true,
+    "japanese_eicar_detected": true,
+    "file_and_directory_symlinks_excluded": true,
+    "depth_16_detected": true,
+    "depth_17_partial_without_detection": true,
+    "file_size_limit_reported_partial": true,
+    "unreadable_directory_partial": true,
+    "newline_partial_without_false_path": true,
+    "real_engine_timeout": true,
+    "real_engine_cancel": true,
+    "no_engine_remains_after_timeout_cancel": true,
+    "mcp_os": true,
+    "mcp_clean": true,
+    "mcp_eicar": true,
+    "mcp_eicar_detection": true,
+    "mcp_ping_while_engine_active": true,
+    "mcp_cancel_stops_actual_engine": true
+  },
+  "mcp_stdio": {
+    "tools": [
+      "scanner_status",
+      "collect_inventory",
+      "scan_malware",
+      "collect_android",
+      "check_android_monitoring_apps",
+      "check_router",
+      "get_vulnerabilities"
+    ],
+    "os": {
+      "status": "completed",
+      "isError": false,
+      "findings": []
+    },
+    "clean": {
+      "status": "completed",
+      "isError": false,
+      "findings": []
+    },
+    "eicar": {
+      "status": "completed",
+      "isError": false,
+      "findings": [
+        {
+          "kind": "malware",
+          "severity": "high",
+          "path": "infected/検出試験.txt",
+          "signature": "Eicar-Test-Signature"
+        }
+      ]
+    },
+    "cancel_engine_started": true,
+    "cancellation_reply": {
+      "type": "McpError",
+      "code": 0
+    },
+    "cancellation_seconds": 0.106,
+    "engine_pids_remaining": [],
+    "progress_notifications": [],
+    "progress_limitation": "Cancellation was requested promptly; this case does not require the 10-second progress heartbeat",
+    "long_scan_progress_and_cancellation": {
+      "progress_notifications": [
+        {
+          "progress": 10.0,
+          "message": "malware running for 10s"
+        }
+      ],
+      "heartbeat_seconds_unchanged": 10,
+      "actual_recursive_scan_running_at_cancel": true,
+      "ping_while_running": "passed",
+      "cancellation_seconds": 0.055,
+      "recursive_engine_pids_remaining": [],
+      "synthetic_regular_files": 64,
+      "synthetic_data_bytes": 2097152384,
+      "assertions_passed": true
+    }
+  },
+  "versions": {
+    "osquery": "osqueryi version 5.23.1",
+    "clamav": "ClamAV 1.5.4/28157/Sun Oct 18 06:24:14 2026"
+  },
+  "assertions_passed": true,
+  "provenance_and_isolation": {
+    "container_id": "cad102bb6291ebc760421d01d6eb28b98d560f345d76eaee9a55325e94a0a4fd",
+    "image_id": "sha256:3e1c98126c919e08f2a14906645d63c849612d776f6425c46938c7c9602c5b6c",
+    "base_image": "ubuntu:24.04@sha256:68ee22004a9109b44973313b02ff7b1de250f1de0f5ecb628d73f579aaff33ac",
+    "mounts": [],
+    "network_mode": "none",
+    "port_bindings": {},
+    "privileged": false,
+    "memory_limit_bytes": 2147483648,
+    "cpu_limit": 2.0,
+    "capabilities_dropped": [
+      "ALL"
+    ],
+    "security_options": [
+      "no-new-privileges"
+    ],
+    "packages": "clamav 1.5.4+dfsg-0ubuntu0.24.04.1\nclamav-freshclam 1.5.4+dfsg-0ubuntu0.24.04.1\nosquery 5.23.1-1.linux\npython3 3.12.3-0ubuntu2.1",
+    "source_commit": "92ad894e229050e5f87691ab50ce07d25513fe1b",
+    "osquery_download": {
+      "url": "https://github.com/osquery/osquery/releases/download/5.23.1/osquery_5.23.1-1.linux_arm64.deb",
+      "sha256": "062df9b6432ca1b374e80b24b54f027e224f1300d8bf6338182ec40f41b7975d",
+      "verification": "Matched GitHub release asset digest during build"
+    },
+    "clamav_origin": "Ubuntu noble-updates APT packages verified through signed repository metadata",
+    "definitions": [
+      {
+        "name": "main.cvd",
+        "bytes": 89072577,
+        "sha256": "0b2182d229f46981ec8f535382222f7c9dfdd656b250ad47988b910a8d302365"
+      },
+      {
+        "name": "daily.cld",
+        "bytes": 86271488,
+        "sha256": "19c36affe415375b2e685599a50bab3c4c677207937416e5fafc2e9028b22e25"
+      },
+      {
+        "name": "bytecode.cvd",
+        "bytes": 281702,
+        "sha256": "6d4aa01f219e988060fc419f495d07f27e0cdf1a2cccc065971da922c76f7ffb"
+      }
+    ],
+    "definition_verification": {
+      "main.cvd": "Verification OK",
+      "daily.cld": "Verification OK",
+      "bytecode.cvd": "Verification OK"
+    },
+    "definition_source": "Copied public definition files from the existing Mac ClamAV installation; no host directories mounted; Linux freshclam updating was not exercised",
+    "definition_validation_scope": {
+      "cvd": "sigtool --info reported Verification OK and displayed MD5/digital-signature metadata for main.cvd and bytecode.cvd",
+      "cld": "sigtool --info reported Verification OK for daily.cld; it is a locally assembled updated database, and this run did not establish a separate publisher-signature verification for the CLD file"
+    }
+  },
+  "fixture_summary": {
+    "scope": "Only synthetic files inside the container; no personal folders copied or mounted",
+    "cases": [
+      "Ordinary UTF-8 Japanese filename",
+      "Standard EICAR in a Japanese filename",
+      "File and directory symlinks to EICAR outside scan root",
+      "EICAR at target-relative directory depths 16 and 17",
+      "Sparse file of 101 MiB above the 100M engine limit",
+      "Directory owned by the test user with mode 000",
+      "EICAR in a newline-containing filename",
+      "Ordinary generated binary files for long scan/cancel"
+    ],
+    "general_user_uid": 10001,
+    "root_or_administrator_scan": false
+  },
+  "stale_signatures_threshold": {
+    "case": "real definitions older than owner-configured one-day threshold",
+    "seconds": 5.665,
+    "report": {
+      "schema_version": 1,
+      "source": "clamav",
+      "status": "partial",
+      "observed_at": "2026-10-19T13:37:46.836142+00:00",
+      "findings": [],
+      "warnings": [
+        "Signature-based detection only; no detection does not prove safety",
+        "Symlinks excluded; file/archive limits apply",
+        "Signatures are 1.4 days old (limit 1 days); update them with freshclam",
+        "Scan coverage incomplete or engine error; do not report this PC as safe"
+      ],
+      "data": {
+        "root_alias": "test",
+        "relative_path": "clean",
+        "exit_code": 0,
+        "findings_total": 0,
+        "engine_counts": {
+          "scanned": 1,
+          "infected": 0,
+          "errors": 0
+        },
+        "unreadable_directories": [],
+        "cloud_excluded_count": 0,
+        "cloud_excluded_paths": [],
+        "line_break_names": [],
+        "engine_report": "\n----------- SCAN SUMMARY -----------\nKnown viruses: 3628169\nEngine version: 1.5.4\nScanned directories: 1\nScanned files: 1\nInfected files: 0\nData scanned: 46 B\nData read: 23 B (ratio 2.00:1)\nTime: 5.635 sec (0 m 5 s)\nStart Date: 2026:10:19 13:37:41\nEnd Date:   2026:10:19 13:37:46",
+        "diagnostic": "",
+        "engine_text_truncated": false,
+        "signatures": {
+          "engine": "1.5.4",
+          "version": 28157,
+          "built_at": "2026-10-18T06:24:14+00:00",
+          "age_days": 1.4,
+          "max_age_days": 1
+        }
+      }
+    },
+    "os_release": {
+      "NAME": "Ubuntu",
+      "ID": "ubuntu",
+      "PRETTY_NAME": "Ubuntu 24.04.5 LTS",
+      "VERSION_ID": "24.04",
+      "VERSION": "24.04.5 LTS (Noble Numbat)",
+      "VERSION_CODENAME": "noble",
+      "ID_LIKE": "debian",
+      "HOME_URL": "https://www.ubuntu.com/",
+      "SUPPORT_URL": "https://help.ubuntu.com/",
+      "BUG_REPORT_URL": "https://bugs.launchpad.net/ubuntu/",
+      "PRIVACY_POLICY_URL": "https://www.ubuntu.com/legal/terms-and-policies/privacy-policy",
+      "UBUNTU_CODENAME": "noble",
+      "LOGO": "ubuntu-logo"
+    }
+  },
+  "cli": {
+    "clean": {
+      "exit_code": 0,
+      "status": "completed",
+      "seconds": 6.274,
+      "findings": []
+    },
+    "infected": {
+      "exit_code": 1,
+      "status": "completed",
+      "seconds": 5.041,
+      "findings": [
+        {
+          "kind": "malware",
+          "severity": "high",
+          "path": "infected/検出試験.txt",
+          "signature": "Eicar-Test-Signature"
+        }
+      ]
+    }
+  },
+  "dependency_versions": [
+    "annotated-types==0.8.0",
+    "anyio==4.15.1",
+    "attrs==26.1.0",
+    "certifi==2026.10.18",
+    "cffi==2.1.1",
+    "click==8.5.0",
+    "cryptography==50.0.2",
+    "h11==0.16.0",
+    "httpcore==1.0.9",
+    "httpx==0.28.1",
+    "httpx-sse==0.4.3",
+    "idna==3.20",
+    "jsonschema==4.26.0",
+    "jsonschema-specifications==2025.9.1",
+    "mcp==1.30.0",
+    "personal-pc-scanner @ file:///opt/project",
+    "pycparser==3.11",
+    "pydantic==2.14.1",
+    "pydantic-settings==2.16.0",
+    "pydantic_core==2.50.1",
+    "PyJWT==2.15.1",
+    "python-dotenv==1.2.4",
+    "python-multipart==0.0.32",
+    "referencing==0.37.0",
+    "rpds-py==2026.9.1",
+    "sse-starlette==3.5.0",
+    "starlette==1.9.0",
+    "typing-inspection==0.4.4",
+    "typing_extensions==4.16.0",
+    "uvicorn==0.54.0"
+  ],
+  "procedure": [
+    "Built Ubuntu 24.04 arm64 image from the package source and public packages only; no mounts or Docker socket",
+    "Verified osquery release asset SHA256, installed Ubuntu APT ClamAV, installed project[agent] in a Python 3.12 venv and ran pip check",
+    "Copied only public definition files and verified all three with sigtool --info; test container used network none throughout",
+    "Ran Scanner.invoke engine cases as UID 10001; the invoke history label was cli, with separate real CLI exit-code checks",
+    "Ran actual MCP ClientSession over stdio to the installed pc-scanner serve process, with actual engines and unchanged 10-second heartbeat",
+    "Collected JSON results, then removed the dedicated container and its synthetic data; build image retained"
+  ],
+  "harness_sha256": {
+    "Dockerfile": "bd998e8db3723714945846565ddf78b368739e7e146442b31411e2772f108b14",
+    "acceptance.py": "94c0a43bc94644cfed1ff7d6929001d6711ae83a07a14ce2e01311e106d6abec",
+    "mcp-progress.py": "2f67b3b6b62611665aa28f87d78c3dd3ae59258d65984ca86d3be432f6b7fc97"
+  },
+  "cleanup": {
+    "test_container_removed": true,
+    "synthetic_data_removed_with_container": true,
+    "build_image_retained": true,
+    "other_containers_or_volumes_modified": false
+  },
+  "limitations": [
+    "Linux arm64 container acceptance, not a physical Linux host or all distributions/architectures",
+    "The kernel and process/network namespace are those exposed by Docker; Mac/Docker-host inventory and processes were not inspected",
+    "Standard-user loopback listener ownership was verified; root-vs-standard visibility across other users was not compared",
+    "Definitions were copied from an already updated Mac installation; sigtool reported Verification OK for each file, with no separate publisher-signature verification established for daily.cld; Linux freshclam update/download behavior was not exercised",
+    "osquery package hash was matched to GitHub release metadata over HTTPS; detached package-signature verification was not performed",
+    "MCP was the real Python SDK stdio client, not a commercial GUI client",
+    "Windows, bare-metal Linux, other Linux distributions and Linux-host Wazuh integration remain separate acceptance work",
+    "No attempt to estimate general malware detection accuracy; EICAR only verifies engine integration"
+  ],
+  "source_links": {
+    "osquery_release": "https://github.com/osquery/osquery/releases/tag/5.23.1",
+    "clamav_package": "https://packages.ubuntu.com/noble-updates/clamav"
+  }
+}

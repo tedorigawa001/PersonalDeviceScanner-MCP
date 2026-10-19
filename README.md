@@ -738,6 +738,10 @@ Windows (PowerShell):
   sets itself up on the first `serve` and answers MCP; the test also checks that stdout carries only MCP messages,
   that a wrong hash in the lock stops the setup, that modules planted in the current folder are not imported,
   and (macOS / Linux) that SIGTERM to the launcher stops the server. CI runs this on every OS with Python 3.11 and 3.14.
+- Linux arm64 container acceptance (2026-10-19): actual osquery 5.23.1 and ClamAV 1.5.4 on Ubuntu 24.04, as an unprivileged
+  user, with no host mounts or runtime network. Inventory, EICAR, Japanese names, links, depth/size/permission limits,
+  signature age, real CLI and MCP stdio progress/cancellation passed ([record](docs/acceptance/linux-arm64-container-2026-10-19.json)).
+  This covers the container, not a physical Linux host or other distributions; Linux freshclam updating was not exercised.
 - Detection accuracy with real engines and behavior on each OS are not guaranteed. Acceptance testing on real machines for each OS is required before distribution.
 
 ## Related documents and license
