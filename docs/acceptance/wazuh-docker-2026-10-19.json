@@ -245,11 +245,97 @@
     },
     "dashboard": "built; the Wazuh row is shown as 'configured agent'; no scripts"
   },
+  "follow_up_verification": {
+    "tested_on": "2026-10-19",
+    "purpose": "Independent verification of paging, dashboard aggregation, deadline and cancellation using the configured real indexer",
+    "scope": {
+      "scanner_host": "macOS",
+      "credentials": "Existing read-only scanner account; no credentials retained in this record",
+      "history": "Separate temporary history; the configured history was not changed",
+      "server_configuration_or_data_changed": false,
+      "freshness": "unverified; existing vulnerability index results, no new scan triggered"
+    },
+    "normal_request": {
+      "page_size": 500,
+      "status": "completed",
+      "elapsed_seconds": 0.0668,
+      "findings": 23,
+      "total": 23,
+      "identity": "matched",
+      "more": false,
+      "severities": {"high": 5, "medium": 14, "low": 4}
+    },
+    "paging_and_aggregation": {
+      "page_size_override": "PAGE_SIZE changed to 5 only inside the test process; production default remains 500",
+      "query": "The scanner's normal sort (including missing-value handling) and search_after against the real indexer",
+      "page_findings": [5, 5, 5, 5, 3],
+      "pages": 5,
+      "total": 23,
+      "same_finding_contents_and_multiplicities_as_normal_request": true,
+      "last_page_has_next_cursor": false,
+      "dashboard": {
+        "pages": 5,
+        "findings": {"high": 5, "medium": 14, "low": 4},
+        "total": 23,
+        "status": "partial",
+        "status_explanation": "Paged responses are partial individually; aggregation preserves the worst page status even after all pages are fetched"
+      },
+      "retry": {
+        "page": 2,
+        "same_cursor": true,
+        "pages_after_retry": 5,
+        "combined_findings_and_status_unchanged": true,
+        "counted_once": true
+      }
+    },
+    "fast_response_controls": {
+      "one_second_budget": {
+        "status": "completed",
+        "elapsed_seconds": 0.0114
+      },
+      "cancellation_timer_race": {
+        "timer_delay_seconds": 0.005,
+        "timer_fired": true,
+        "status": "completed",
+        "elapsed_seconds": 0.013,
+        "request_threads_remaining": 0,
+        "interpretation": "Response completed before the cancellation polling loop could interrupt it; not evidence of successful in-flight cancellation"
+      }
+    },
+    "delayed_real_response": {
+      "method": "A local TCP relay forwarded traffic to the real indexer without decrypting TLS; after the end-to-end TLS handshake, it deliberately held the indexer's response instead of delivering it to the scanner",
+      "deadline": {
+        "budget_seconds": 1,
+        "tls_handshake_completed": true,
+        "response_deliberately_held": true,
+        "status": "error",
+        "error": "Wazuh did not finish answering within 1 seconds; search was not completed",
+        "elapsed_seconds": 1.0056,
+        "request_threads_remaining": 0
+      },
+      "cancellation": {
+        "budget_seconds": 3,
+        "signal": "threading.Event set 0.1 seconds after the relay started holding the response",
+        "tls_handshake_completed": true,
+        "response_deliberately_held": true,
+        "status": "error",
+        "error": "Scan cancelled; scan was not completed",
+        "elapsed_seconds_from_invocation": 0.2079,
+        "request_threads_remaining": 0
+      },
+      "limitations": [
+        "The relay introduced the delay; the real indexer itself was not made slow",
+        "The real-indexer test did not isolate a stall after HTTP response headers; that case is covered separately by the controlled TLS-server regression tests",
+        "These elapsed times are observations on macOS, not guarantees for Windows or Linux"
+      ]
+    },
+    "assertions_passed": true
+  },
   "not_covered": [
-    "Paging over real data: 23 records fit on one page of 500 (paging is covered by unit tests)",
+    "Paging at the production size of 500: the real dataset had only 23 records; multi-page real-indexer behavior was verified with a test-process page size of 5",
     "An agent on this Mac, and so a match with this PC's host name (the agent_name setting was used)",
     "Windows and Linux hosts running the scanner",
-    "Cancelling a real request in flight (covered by unit tests with a real TLS server)"
+    "A naturally slow real indexer or a real-indexer HTTP body stall: deadline and in-flight cancellation were verified by delaying the real response in a TCP relay"
   ],
   "assertions_passed": true
 }
