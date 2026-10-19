@@ -1370,7 +1370,7 @@
     {
       "aggregate": "incomplete",
       "assemblies": [
-        "pkg:pypi/personal-pc-scanner@0.6.0"
+        "pkg:pypi/personal-pc-scanner@0.6.1"
       ]
     }
   ],
@@ -1476,7 +1476,7 @@
         "pkg:pypi/anyio@4.15.1",
         "pkg:pypi/mcp@1.30.0"
       ],
-      "ref": "pkg:pypi/personal-pc-scanner@0.6.0"
+      "ref": "pkg:pypi/personal-pc-scanner@0.6.1"
     },
     {
       "dependsOn": [],
@@ -1563,7 +1563,7 @@
   ],
   "metadata": {
     "component": {
-      "bom-ref": "pkg:pypi/personal-pc-scanner@0.6.0",
+      "bom-ref": "pkg:pypi/personal-pc-scanner@0.6.1",
       "licenses": [
         {
           "expression": "MIT"
@@ -1576,9 +1576,9 @@
           "value": "declared in pyproject.toml"
         }
       ],
-      "purl": "pkg:pypi/personal-pc-scanner@0.6.0",
+      "purl": "pkg:pypi/personal-pc-scanner@0.6.1",
       "type": "application",
-      "version": "0.6.0"
+      "version": "0.6.1"
     },
     "properties": [
       {
@@ -1599,7 +1599,7 @@
       }
     ]
   },
-  "serialNumber": "urn:uuid:b221aa39-35dd-5817-88cd-e151dce9cd35",
+  "serialNumber": "urn:uuid:d625a090-3151-5a35-8d77-fa83c60a894d",
   "specVersion": "1.6",
   "version": 1
 }
