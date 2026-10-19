@@ -195,6 +195,12 @@
     なしで理由つきのエラー（unable to get local issuer certificate）になることと、`history` の検出元の列、ダッシュボードの円グラフ
     （high 5・medium 14・low 4）を確かめた。最新の結果がエラーのときは円グラフの代わりに「所見なし（安全の証明ではない）」と
     「1 of 1 latest results are partial or error」の注意が出ることも確かめた。
+  - 0.6.2（2026-10-19）: 2026-10-19 の脆弱性チェックの指摘の修正と、Windows の履歴・キャッシュの所有者の確認。ワークフローからの
+    ステージド公開を所有者が 2FA で承認した（1回で公開された）。公開物は19ファイル（`pc_scanner/windows_owner.py` を含む）で、
+    sha1・sha512 はタグ `v0.6.2`（776ba44）から作ったものと一致し、provenance（SLSA v1）とレジストリの署名を検証できた。
+    公開前の `main`（ceac1a5）の CI で、実際の Windows のセキュリティ記述子による3つの試験（本人の所有・ハードリンク・他者の所有）が
+    Python 3.11 と 3.14 の両方で通った。`npx` で、実際の Wazuh への接続（23件・`completed`）と、`history.enabled = false` かつ
+    `updates.lookup = true` で何もファイルを書かず、CLI の実行ごとに調べ直すことを確かめた。
 
 - [x] **Android 端末の点検に対応する（第1段階）**（2026-10-14 設計・実装）
   - 所有者自身の端末を USB でつなぎ、ADB の固定コマンドで読み取り専用に点検する。基本情報とパッチの日付、利用者が入れたアプリと
