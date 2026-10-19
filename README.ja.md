@@ -406,6 +406,9 @@ lookup = true    # エンジンのバージョンを公式の最新リリース�
 | `wazuh.agent_id` | 対象端末の数字の ID | 空欄 |
 | `wazuh.ca_file` | indexer の CA 証明書（PEM 形式）の絶対パス。空欄ならシステムの証明書を使います。ファイルがなければ読み込み時に警告し、読めない・PEM でない場合は接続前にエラーにします。Wazuh の証明書ツールが作る CA には鍵用途（key usage）の拡張がないため、この CA に限り Python 3.13 で加わった厳格な確認を緩めます。証明書の連鎖・有効期間・ホスト名は引き続き検証します | 空欄 |
 | `wazuh.agent_name` | Wazuh 上で期待するエージェント名（大文字小文字を除き完全一致）。空欄ならこの PC のホスト名とドメイン部分を除いて照合します | 空欄 |
+| `wazuh.freshness.enabled` | Managerの接続状態・OSレコード日時を補足。脆弱性結果の鮮度は未検証のまま | `false` |
+| `wazuh.freshness.manager_url` / `ca_file` | ManagerのHTTPS originと任意のCA絶対パス。別のManager認証情報は環境変数だけで指定 | 空欄 |
+| `wazuh.freshness.max_keepalive_age_seconds` / `max_os_record_age_seconds` | 各観測値の経過時間の閾値（各1〜604800秒） | `300` / `7200` |
 | 環境変数 `PC_SCANNER_WAZUH_USER` / `PC_SCANNER_WAZUH_PASSWORD` | Wazuh の認証情報 | — |
 | `android.adb_binary` | adb（Android SDK Platform-Tools）の絶対パス。空欄なら Android は無効 | 空欄 |
 | `android.indicators_file` | 監視アプリの指標（STIX2）の絶対パス。空欄なら照合せず、点検は `partial` | 空欄 |
@@ -587,7 +590,17 @@ TIME                 VIA  OPERATION      SOURCE         STATUS     FINDINGS    S
 ### Wazuh
 
 - 取得するのは Wazuh に**すでに保存されている**情報です。インデックスに検査時刻が記録されないため鮮度は確認できず
-  （`data.freshness` は `unverified` のまま）、PC が今オンラインかどうかも分かりません。
+  （`data.freshness` は `unverified` のまま）、追加確認を無効にしていると接続状態も分かりません。
+- `[wazuh.freshness]` の `enabled = true` と `manager_url`（末尾の `/` がない HTTPS origin）、必要なら絶対パスの
+  `ca_file` を設定すると、最終通信日時とOSレコード日時を補足します。認証は別の環境変数
+  `PC_SCANNER_WAZUH_MANAGER_USER` / `PC_SCANNER_WAZUH_MANAGER_PASSWORD` を使い、対象エージェントの必要な読取だけを許可してください。
+  設定した `agent:id` だけに `agent:read`・`syscollector:read` を付与し、全端末向けのreadonlyロールは使いません。
+  WazuhのRBACでは同じ端末の他のインベントリ・有効設定も読めるため、OSだけに制限したアカウントではありません。
+  `max_keepalive_age_seconds` は既定300秒、`max_os_record_age_seconds` は7200秒（各1〜604800秒）。古い・欠落・取得失敗は
+  所見を保持したまま `partial` とします。最近の情報でも脆弱性照合の完了は証明できず、`freshness` は `unverified` のままです。
+  パッケージのレコード時刻の古さで収集停止を判定しません。追加通信は共通の全体期限内で合計最大5秒です。
+  詳細保存が無効でも、固定の状態と正規化した時刻だけを要約履歴に保存し、ダッシュボードはページ群の最も古い観測と最悪の状態を表示します。
+  [設計書](docs/wazuh-freshness-design.md)も参照してください。
 - Wazuh への要求は全体で約30秒までとし、1件ずつ実行します。キャンセルもできます。
   応答が少しずつ届く場合や途中で止まった場合も、期限やキャンセルから約0.1秒以内に打ち切ります。
 - 別の端末の結果を取り違えないよう、インデックス上のエージェント名をこの PC のホスト名（または `wazuh.agent_name`）と

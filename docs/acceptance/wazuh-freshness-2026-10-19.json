@@ -1,0 +1,521 @@
+{
+  "tested_at": "2026-10-19T13:06:06.345051+00:00",
+  "transport": "End-to-end TLS to the real Manager via a local TCP relay through docker exec; no port publishing or certificate changes",
+  "cases": [
+    {
+      "case": "dedicated read-only account",
+      "status": "completed",
+      "error": null,
+      "findings": 23,
+      "total": 23,
+      "elapsed_seconds": 0.5374,
+      "severities": {
+        "high": 5,
+        "medium": 14,
+        "low": 4
+      },
+      "freshness": "unverified",
+      "evidence": {
+        "source": "wazuh_manager_api",
+        "checked_at": "2026-10-19T13:06:07.065885+00:00",
+        "agent_connection": {
+          "state": "recent",
+          "last_keepalive_at": "2026-10-19T13:05:59.000000+00:00"
+        },
+        "os_record": {
+          "state": "recent",
+          "recorded_at": "2026-10-19T12:43:23.000000+00:00"
+        },
+        "assessment": "vulnerability_freshness_unverified",
+        "index_observed_at": "2026-10-19T13:06:06.591576+00:00"
+      },
+      "warnings": [
+        "Existing index inventory; the index records no scan time, so freshness cannot be verified",
+        "Zero findings can mean no inventory; this is not a safety verdict"
+      ]
+    },
+    {
+      "case": "feature disabled",
+      "status": "completed",
+      "error": null,
+      "findings": 23,
+      "total": 23,
+      "elapsed_seconds": 0.0149,
+      "severities": {
+        "high": 5,
+        "medium": 14,
+        "low": 4
+      },
+      "freshness": "unverified",
+      "evidence": null,
+      "warnings": [
+        "Existing index inventory; the index records no scan time, so freshness cannot be verified",
+        "Zero findings can mean no inventory; this is not a safety verdict"
+      ]
+    },
+    {
+      "case": "wrong Manager password; findings retained",
+      "status": "partial",
+      "error": null,
+      "findings": 23,
+      "total": 23,
+      "elapsed_seconds": 0.5646,
+      "severities": {
+        "high": 5,
+        "medium": 14,
+        "low": 4
+      },
+      "freshness": "unverified",
+      "evidence": {
+        "source": "wazuh_manager_api",
+        "checked_at": "2026-10-19T13:06:07.103706+00:00",
+        "agent_connection": {
+          "state": "unknown",
+          "last_keepalive_at": null
+        },
+        "os_record": {
+          "state": "unknown",
+          "recorded_at": null
+        },
+        "assessment": "vulnerability_freshness_unverified",
+        "index_observed_at": "2026-10-19T13:06:07.103678+00:00"
+      },
+      "warnings": [
+        "Existing index inventory; the index records no scan time, so freshness cannot be verified",
+        "Zero findings can mean no inventory; this is not a safety verdict",
+        "Wazuh freshness evidence unavailable (request or response failed)",
+        "Connection or OS record observations are old or unverified; vulnerability freshness remains unverified"
+      ]
+    },
+    {
+      "case": "system CA only; self-signed API certificate rejected",
+      "status": "partial",
+      "error": null,
+      "findings": 23,
+      "total": 23,
+      "elapsed_seconds": 0.1871,
+      "severities": {
+        "high": 5,
+        "medium": 14,
+        "low": 4
+      },
+      "freshness": "unverified",
+      "evidence": {
+        "source": "wazuh_manager_api",
+        "checked_at": "2026-10-19T13:06:07.698459+00:00",
+        "agent_connection": {
+          "state": "unknown",
+          "last_keepalive_at": null
+        },
+        "os_record": {
+          "state": "unknown",
+          "recorded_at": null
+        },
+        "assessment": "vulnerability_freshness_unverified",
+        "index_observed_at": "2026-10-19T13:06:07.698428+00:00"
+      },
+      "warnings": [
+        "Existing index inventory; the index records no scan time, so freshness cannot be verified",
+        "Zero findings can mean no inventory; this is not a safety verdict",
+        "Wazuh freshness evidence unavailable (request or response failed)",
+        "Connection or OS record observations are old or unverified; vulnerability freshness remains unverified"
+      ]
+    },
+    {
+      "case": "unauthorized agent 002",
+      "status": "partial",
+      "error": null,
+      "findings": 0,
+      "total": 0,
+      "elapsed_seconds": 0.2789,
+      "severities": {},
+      "freshness": "unverified",
+      "evidence": {
+        "source": "wazuh_manager_api",
+        "checked_at": "2026-10-19T13:06:07.851603+00:00",
+        "agent_connection": {
+          "state": "unknown",
+          "last_keepalive_at": null
+        },
+        "os_record": {
+          "state": "unknown",
+          "recorded_at": null
+        },
+        "assessment": "vulnerability_freshness_unverified",
+        "index_observed_at": "2026-10-19T13:06:07.851580+00:00"
+      },
+      "warnings": [
+        "Existing index inventory; the index records no scan time, so freshness cannot be verified",
+        "Zero findings can mean no inventory; this is not a safety verdict",
+        "No vulnerability records for this agent_id; it may be wrong, unregistered or never scanned",
+        "Wazuh freshness evidence unavailable (request or response failed)",
+        "Connection or OS record observations are old or unverified; vulnerability freshness remains unverified"
+      ]
+    },
+    {
+      "case": "old OS observation threshold; findings retained",
+      "status": "partial",
+      "error": null,
+      "findings": 23,
+      "total": 23,
+      "elapsed_seconds": 0.4191,
+      "severities": {
+        "high": 5,
+        "medium": 14,
+        "low": 4
+      },
+      "freshness": "unverified",
+      "evidence": {
+        "source": "wazuh_manager_api",
+        "checked_at": "2026-10-19T13:06:08.537742+00:00",
+        "agent_connection": {
+          "state": "recent",
+          "last_keepalive_at": "2026-10-19T13:05:59.000000+00:00"
+        },
+        "os_record": {
+          "state": "aged",
+          "recorded_at": "2026-10-19T12:43:23.000000+00:00"
+        },
+        "assessment": "vulnerability_freshness_unverified",
+        "index_observed_at": "2026-10-19T13:06:08.133185+00:00"
+      },
+      "warnings": [
+        "Existing index inventory; the index records no scan time, so freshness cannot be verified",
+        "Zero findings can mean no inventory; this is not a safety verdict",
+        "The OS record timestamp is old; this does not prove collection has stopped",
+        "Connection or OS record observations are old or unverified; vulnerability freshness remains unverified"
+      ]
+    },
+    {
+      "case": "cancellation while real Manager response held after TLS",
+      "status": "partial",
+      "error": null,
+      "findings": 23,
+      "total": 23,
+      "elapsed_seconds": 0.2251,
+      "severities": {
+        "high": 5,
+        "medium": 14,
+        "low": 4
+      },
+      "freshness": "unverified",
+      "evidence": {
+        "source": "wazuh_manager_api",
+        "checked_at": "2026-10-19T13:06:08.550890+00:00",
+        "agent_connection": {
+          "state": "unknown",
+          "last_keepalive_at": null
+        },
+        "os_record": {
+          "state": "unknown",
+          "recorded_at": null
+        },
+        "assessment": "vulnerability_freshness_unverified",
+        "index_observed_at": "2026-10-19T13:06:08.550866+00:00"
+      },
+      "warnings": [
+        "Existing index inventory; the index records no scan time, so freshness cannot be verified",
+        "Zero findings can mean no inventory; this is not a safety verdict",
+        "Wazuh freshness evidence unavailable (cancelled)",
+        "Connection or OS record observations are old or unverified; vulnerability freshness remains unverified"
+      ]
+    },
+    {
+      "case": "one-second overall deadline while real Manager response held",
+      "status": "partial",
+      "error": null,
+      "findings": 23,
+      "total": 23,
+      "elapsed_seconds": 1.0024,
+      "severities": {
+        "high": 5,
+        "medium": 14,
+        "low": 4
+      },
+      "freshness": "unverified",
+      "evidence": {
+        "source": "wazuh_manager_api",
+        "checked_at": "2026-10-19T13:06:08.777906+00:00",
+        "agent_connection": {
+          "state": "unknown",
+          "last_keepalive_at": null
+        },
+        "os_record": {
+          "state": "unknown",
+          "recorded_at": null
+        },
+        "assessment": "vulnerability_freshness_unverified",
+        "index_observed_at": "2026-10-19T13:06:08.777875+00:00"
+      },
+      "warnings": [
+        "Existing index inventory; the index records no scan time, so freshness cannot be verified",
+        "Zero findings can mean no inventory; this is not a safety verdict",
+        "Wazuh freshness evidence unavailable (request or response failed)",
+        "Connection or OS record observations are old or unverified; vulnerability freshness remains unverified"
+      ]
+    },
+    {
+      "case": "one-second overall budget with real Manager",
+      "status": "completed",
+      "error": null,
+      "findings": 23,
+      "total": 23,
+      "elapsed_seconds": 0.4027,
+      "severities": {
+        "high": 5,
+        "medium": 14,
+        "low": 4
+      },
+      "freshness": "unverified",
+      "evidence": {
+        "source": "wazuh_manager_api",
+        "checked_at": "2026-10-19T13:06:10.169667+00:00",
+        "agent_connection": {
+          "state": "recent",
+          "last_keepalive_at": "2026-10-19T13:06:09.000000+00:00"
+        },
+        "os_record": {
+          "state": "recent",
+          "recorded_at": "2026-10-19T12:43:23.000000+00:00"
+        },
+        "assessment": "vulnerability_freshness_unverified",
+        "index_observed_at": "2026-10-19T13:06:09.796277+00:00"
+      },
+      "warnings": [
+        "Existing index inventory; the index records no scan time, so freshness cannot be verified",
+        "Zero findings can mean no inventory; this is not a safety verdict"
+      ]
+    }
+  ],
+  "manager_certificate_sha256": "4e18433b6a82d3c1fcf1871fc382146502011f607cb5458d3d66c62d8aab9cb1",
+  "baseline_success": true,
+  "disabled_manager_requests": 0,
+  "manager_cancellation": {
+    "real_response_delayed_by_relay": true,
+    "tls_handshake_completed": true,
+    "signal_sent_after_hold_seconds": 0.1,
+    "findings_retained": true,
+    "request_threads_remaining": 0
+  },
+  "manager_deadline": {
+    "overall_budget_seconds": 1,
+    "elapsed_seconds": 1.0024,
+    "real_response_delayed_by_relay": true,
+    "tls_handshake_completed": true,
+    "response_held": true,
+    "findings_retained": true,
+    "request_threads_remaining": 0
+  },
+  "one_second_budget_observation": {
+    "elapsed_seconds": 0.4027,
+    "status": "completed",
+    "induced_delay": false
+  },
+  "paging": {
+    "test_page_size": 5,
+    "page_counts": [
+      5,
+      5,
+      5,
+      5,
+      3
+    ],
+    "total": 23,
+    "aggregate": {
+      "findings": {
+        "high": 5,
+        "medium": 14,
+        "low": 4
+      },
+      "status": "partial"
+    },
+    "same_findings_as_baseline": true,
+    "retry_counted_once": true,
+    "summary_metadata_retained_without_details": true,
+    "dashboard_html_metadata_verified": true,
+    "browser_interaction_tested": false
+  },
+  "assertions_passed": true,
+  "purpose": "Acceptance of optional Manager freshness observations using a dedicated read-only per-agent account",
+  "environment": {
+    "wazuh": "4.14.9",
+    "scanner_python": "3.14.7",
+    "scanner_host": "macOS arm64",
+    "agent_id": "001",
+    "agent_kind": "Amazon Linux 2023 test container, not this Mac"
+  },
+  "rbac": {
+    "account": {
+      "username": "pc-scanner-freshness-001",
+      "id": 100,
+      "allow_run_as": false,
+      "role_id": 100,
+      "policy_id": 100,
+      "policy": {
+        "actions": [
+          "agent:read",
+          "syscollector:read"
+        ],
+        "resources": [
+          "agent:id:001"
+        ],
+        "effect": "allow"
+      }
+    },
+    "checks": {
+      "effective_policy": {
+        "http_status": 200,
+        "api_error": 0,
+        "total": null,
+        "failed": null,
+        "detail": null,
+        "title": null
+      },
+      "authorized_agent": {
+        "http_status": 200,
+        "api_error": 0,
+        "total": 1,
+        "failed": 0,
+        "detail": null,
+        "title": null
+      },
+      "authorized_os": {
+        "http_status": 200,
+        "api_error": 0,
+        "total": 1,
+        "failed": 0,
+        "detail": null,
+        "title": null
+      },
+      "unauthorized_agent": {
+        "http_status": 403,
+        "api_error": 4000,
+        "total": null,
+        "failed": null,
+        "detail": "Permission denied: Resource type: agent:id",
+        "title": "Permission Denied"
+      },
+      "unauthorized_os": {
+        "http_status": 403,
+        "api_error": 4000,
+        "total": null,
+        "failed": null,
+        "detail": "Permission denied: Resource type: agent:id",
+        "title": "Permission Denied"
+      },
+      "visible_agent_ids": {
+        "http_status": 200,
+        "api_error": 0,
+        "total": 1,
+        "failed": 0,
+        "detail": null,
+        "title": null
+      },
+      "authorized_packages_scope": {
+        "http_status": 200,
+        "api_error": 0,
+        "total": 115,
+        "failed": 0,
+        "detail": null,
+        "title": null
+      },
+      "authorized_configuration_scope": {
+        "http_status": 200,
+        "api_error": 0,
+        "total": null,
+        "failed": null,
+        "detail": null,
+        "title": null
+      },
+      "security_users": {
+        "http_status": 200,
+        "api_error": 0,
+        "total": 0,
+        "failed": 0,
+        "detail": null,
+        "title": null
+      },
+      "other_security_user": {
+        "http_status": 403,
+        "api_error": 4000,
+        "total": null,
+        "failed": null,
+        "detail": "Permission denied: Resource type: user:id",
+        "title": "Permission Denied"
+      },
+      "other_agent_config": {
+        "http_status": 403,
+        "api_error": 4000,
+        "total": null,
+        "failed": null,
+        "detail": "Permission denied: Resource type: agent:id",
+        "title": "Permission Denied"
+      },
+      "manager_configuration": {
+        "http_status": 403,
+        "api_error": 4000,
+        "total": null,
+        "failed": null,
+        "detail": "Permission denied: Resource type: *:*",
+        "title": "Permission Denied"
+      }
+    },
+    "effective_policy": {
+      "agent:read": {
+        "agent:id:001": "allow"
+      },
+      "syscollector:read": {
+        "agent:id:001": "allow"
+      },
+      "rbac_mode": "white"
+    },
+    "visible_agent_ids": [
+      "001"
+    ],
+    "granularity_limit": {
+      "native_actions_not_endpoint_allowlist": true,
+      "extra_authorized_reads": [
+        "Agent 001 package inventory (HTTP 200)",
+        "Agent 001 active configuration (HTTP 200)"
+      ],
+      "write_operations_exercised": false,
+      "write_restriction_evidence": "Effective white-mode policy contains only agent:read and syscollector:read on agent:id:001; no create/update/delete/restart/run or security administration actions",
+      "user_list_semantics": "GET /security/users returned 200 with zero visible users; explicit user_ids=1 returned 403",
+      "os_only_read_access_enforced": false
+    },
+    "initial_authentication_observation": {
+      "observation": "Immediately after user/role assignment the initial protected requests returned 401; a later fresh authentication succeeded without changing permissions",
+      "root_cause": "not established; no automatic authentication retry was added"
+    }
+  },
+  "changes_made": {
+    "created": [
+      "Manager API user pc-scanner-freshness-001 (id 100)",
+      "Dedicated policy and role (ids 100); allow_run_as=false"
+    ],
+    "existing_users_modified": false,
+    "agent_or_manager_service_configuration_modified": false,
+    "scanner_test_toml_modified": false,
+    "public_ports_or_certificates_modified": false,
+    "temporary_tcp_relay_stopped_after_test": true,
+    "credentials_storage": {
+      "file_name": "manager-scanner.env",
+      "mode": "0600",
+      "location": "Existing local temporary acceptance folder; not committed",
+      "password_recorded": false
+    }
+  },
+  "limitations": [
+    "OS-only and connection-only authorization is not expressible with these native RBAC action grants; the same agent inventory and active configuration can also be read",
+    "No restart, deletion, registration or write request was attempted; write restrictions were checked from the effective whitelist policy",
+    "Manager HTTP response was deliberately held by the TCP relay; the real server was not made slow and an HTTP-body-only stall was not isolated",
+    "Browser interactions were not tested; dashboard HTML content and aggregation were checked",
+    "Production page size is 500; multi-page acceptance used 5 only in the test process",
+    "Windows/Linux acceptance of the new feature was not executed in this run",
+    "Recent communication and OS record times do not certify completion of vulnerability evaluation; freshness remains unverified"
+  ],
+  "related_records": [
+    "wazuh-manager-freshness-2026-10-19.json",
+    "wazuh-docker-2026-10-19.json"
+  ]
+}

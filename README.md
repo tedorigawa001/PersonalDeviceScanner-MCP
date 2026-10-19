@@ -406,6 +406,9 @@ Then every inventory, malware and Android scan reads its engine's version (`osqu
 | `wazuh.agent_id` | Numeric ID of the target device | empty |
 | `wazuh.ca_file` | Absolute path to the indexer's CA certificate (PEM). Empty uses the system certificates. A missing file is warned about at load; an unreadable or non-PEM file fails the Wazuh request before connecting. For this CA only, the strict checks Python 3.13 added are relaxed, because the CA made by Wazuh's certificate tool has no key usage extension; the chain, its dates and the host name are still verified | empty |
 | `wazuh.agent_name` | The agent name expected in Wazuh (exact, ignoring case). Empty compares with this PC's host name, ignoring the domain | empty |
+| `wazuh.freshness.enabled` | Add optional Manager connection and OS record observations; vulnerability freshness remains unverified | `false` |
+| `wazuh.freshness.manager_url` / `ca_file` | Manager HTTPS origin and optional absolute CA path; separate Manager credentials are environment-only | empty |
+| `wazuh.freshness.max_keepalive_age_seconds` / `max_os_record_age_seconds` | Observation age thresholds, each 1–604800 seconds | `300` / `7200` |
 | Environment variables `PC_SCANNER_WAZUH_USER` / `PC_SCANNER_WAZUH_PASSWORD` | Wazuh credentials | — |
 | `android.adb_binary` | Absolute path to adb (Android SDK Platform-Tools). Empty disables Android | empty |
 | `android.indicators_file` | Absolute path to the monitoring-app indicators (STIX2). Empty: no matching, and the check is `partial` | empty |
@@ -595,7 +598,18 @@ each target, then every scan, newest first. Open a scan to see its warnings, fin
 ### Wazuh
 
 - It reads data **already stored** in Wazuh. The index records no scan time, so freshness cannot be verified
-  (`data.freshness` stays `unverified`), and it does not tell whether the PC is currently online.
+  (`data.freshness` stays `unverified`). Without the optional Manager observations below, connection state is unknown.
+- Set `[wazuh.freshness] enabled = true` with `manager_url` (an HTTPS origin without a trailing slash) and optional
+  absolute `ca_file` to add the agent's last communication and OS record timestamp. Use separate environment variables
+  `PC_SCANNER_WAZUH_MANAGER_USER` / `PC_SCANNER_WAZUH_MANAGER_PASSWORD` and a read-only, per-agent Manager API account.
+  Grant only `agent:read` and `syscollector:read` for the configured `agent:id`; do not assign the global readonly role.
+  Native RBAC also permits that agent's other inventory and active configuration, so it is not an OS-only account.
+  `max_keepalive_age_seconds` defaults to 300 and `max_os_record_age_seconds` to 7200 (1–604800 seconds).
+  Old, missing or unavailable observations preserve findings but make the result `partial`. A recent observation does
+  not prove vulnerability evaluation finished: `freshness` remains `unverified`. Package record times are not used to
+  infer stopped collection. The optional requests share the total deadline and get at most 5 seconds combined.
+  Only fixed states and normalized timestamps are retained in summary history, even with details disabled; the dashboard
+  shows the oldest observations and worst state across the retained pages. See the [design](docs/wazuh-freshness-design.md).
 - A Wazuh request is limited to about 30 seconds in total, runs one at a time, and can be cancelled.
   An answer that trickles in or stalls is cut off within about 0.1 seconds of the limit or a cancel.
 - To catch results that belong to another device, the agent name in the index is compared with this PC's host name

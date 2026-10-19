@@ -1,0 +1,377 @@
+{
+  "tested_on": "2026-10-19",
+  "purpose": "Read-only Manager API investigation of scan.time semantics for the freshness design",
+  "environment": {
+    "wazuh_version": "4.14.9",
+    "agent_id": "001",
+    "agent": "Existing Amazon Linux 2023 test container; not this Mac",
+    "scanner_host": "macOS arm64",
+    "api_access": "Existing wazuh-wui account; no dedicated least-privilege account was created or verified"
+  },
+  "safety": {
+    "tls_certificate_and_hostname_verified": true,
+    "trust": "Existing API server.crt and localhost DNS SAN",
+    "proxy_used": false,
+    "secrets_in_record": false,
+    "configuration_changes": false,
+    "agent_restart": false,
+    "forced_scan": false,
+    "package_changes": false,
+    "authentication": "POST /security/user/authenticate?raw=true; token kept in memory only"
+  },
+  "api_requests": {
+    "agent": "GET /agents?agents_list=001&select=id,name,status,lastKeepAlive&limit=1",
+    "os": "GET /syscollector/001/os?select=scan.id,scan.time",
+    "packages_sample": "GET /syscollector/001/packages?select=scan.id,scan.time&limit=5&sort=-scan.time",
+    "distinct_package_times": "GET /syscollector/001/packages?select=scan.id,scan.time&distinct=true&limit=100&sort=-scan.time",
+    "package_fingerprint": "GET /syscollector/001/packages?select=name,version,architecture,format,location&limit=500; only count and SHA256 retained",
+    "configuration": "GET /agents/001/config/wmodules/wmodules; only syscollector settings retained"
+  },
+  "rejected_query": {
+    "select": "scan",
+    "endpoints": [
+      "/syscollector/001/os",
+      "/syscollector/001/packages"
+    ],
+    "http_status": 400,
+    "api_error": 1724,
+    "resolution": "Use explicit scan.id,scan.time fields"
+  },
+  "before": {
+    "observed_at": "2026-10-19T12:40:44.050594+00:00",
+    "agent": {
+      "status": "active",
+      "name": "test-agent-one",
+      "id": "001",
+      "lastKeepAlive": "2026-10-19T12:40:38+00:00"
+    },
+    "os_record": {
+      "scan": {
+        "id": 0,
+        "time": "2026-10-19T11:43:20+00:00"
+      },
+      "agent_id": "001"
+    },
+    "packages": {
+      "total": 115,
+      "distinct_scan_records": [
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:54+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:53+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:52+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:51+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:48+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:47+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:46+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:45+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:44+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:43+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:42+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:41+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:40+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:39+00:00"
+          },
+          "agent_id": "001"
+        }
+      ],
+      "distinct_total": 14,
+      "selected_content_fingerprint": {
+        "http_status": 200,
+        "count": 115,
+        "total": 115,
+        "sha256": "a91f8f25a6eb39573acc454b8895689ec0e8dab74d0215b470a3af9b93255f88"
+      }
+    },
+    "syscollector_config": {
+      "disabled": "no",
+      "scan-on-start": "yes",
+      "interval": 3600,
+      "network": "yes",
+      "os": "yes",
+      "hardware": "yes",
+      "packages": "yes",
+      "ports": "yes",
+      "ports_all": "yes",
+      "processes": "yes",
+      "groups": "yes",
+      "users": "yes",
+      "services": "yes",
+      "browser_extensions": "yes",
+      "sync_max_eps": 10
+    },
+    "api_http_statuses": {
+      "agent": 200,
+      "os": 200,
+      "packages": 200,
+      "package_scan_times": 200,
+      "package_fingerprint": 200,
+      "syscollector_config": 200
+    }
+  },
+  "after": {
+    "observed_at": "2026-10-19T12:43:33.944485+00:00",
+    "agent": {
+      "status": "active",
+      "name": "test-agent-one",
+      "id": "001",
+      "lastKeepAlive": "2026-10-19T12:43:28+00:00"
+    },
+    "os_record": {
+      "scan": {
+        "id": 0,
+        "time": "2026-10-19T12:43:23+00:00"
+      },
+      "agent_id": "001"
+    },
+    "packages": {
+      "total": 115,
+      "distinct_scan_records": [
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:54+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:53+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:52+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:51+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:48+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:47+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:46+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:45+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:44+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:43+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:42+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:41+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:40+00:00"
+          },
+          "agent_id": "001"
+        },
+        {
+          "scan": {
+            "id": 0,
+            "time": "2026-10-18T22:42:39+00:00"
+          },
+          "agent_id": "001"
+        }
+      ],
+      "distinct_total": 14,
+      "selected_content_fingerprint": {
+        "http_status": 200,
+        "count": 115,
+        "total": 115,
+        "sha256": "a91f8f25a6eb39573acc454b8895689ec0e8dab74d0215b470a3af9b93255f88"
+      }
+    },
+    "syscollector_config": {
+      "disabled": "no",
+      "scan-on-start": "yes",
+      "interval": 3600,
+      "network": "yes",
+      "os": "yes",
+      "hardware": "yes",
+      "packages": "yes",
+      "ports": "yes",
+      "ports_all": "yes",
+      "processes": "yes",
+      "groups": "yes",
+      "users": "yes",
+      "services": "yes",
+      "browser_extensions": "yes",
+      "sync_max_eps": 10
+    },
+    "api_http_statuses": {
+      "agent": 200,
+      "os": 200,
+      "packages": 200,
+      "package_scan_times": 200,
+      "package_fingerprint": 200,
+      "syscollector_config": 200
+    }
+  },
+  "agent_log_utc": {
+    "previous_evaluation": {
+      "started": "2026-10-19T11:43:20+00:00",
+      "finished": "2026-10-19T11:43:21+00:00"
+    },
+    "observed_natural_evaluation": {
+      "started": "2026-10-19T12:43:23+00:00",
+      "finished": "2026-10-19T12:43:24+00:00"
+    },
+    "meaning": "INFO Starting evaluation / Evaluation finished messages; not proof every collection task or vulnerability assessment succeeded"
+  },
+  "conclusions": {
+    "natural_periodic_evaluation_observed": true,
+    "os_scan_time_advanced_to_evaluation_start": true,
+    "os_scan_time_is_not_a_completion_timestamp": true,
+    "package_count": 115,
+    "selected_package_contents_unchanged": true,
+    "package_scan_times_unchanged_despite_natural_evaluation": true,
+    "package_scan_time_does_not_prove_last_full_scan": true,
+    "scan_id_observed_zero": "Both OS and package records; not used as a monotonic scan generation",
+    "vulnerability_freshness": "unverified"
+  },
+  "source_review": {
+    "url": "https://github.com/wazuh/wazuh/blob/v4.14.9/src/wazuh_modules/syscollector/src/syscollectorImp.cpp",
+    "scan_start": "scan(), lines 1020-1023, assigns m_scanTime at evaluation start",
+    "delta": "notifyChange(), lines 168-202, adds m_scanTime to change notifications",
+    "synchronization": "synchronization callback around lines 290-296 adds current timestamp to sent data"
+  },
+  "limitations": [
+    "No package installation/removal/update or restart was performed, so those update paths were inspected in source rather than exercised",
+    "OS time was observed to advance on this version and agent; no guarantee for all OSes or versions",
+    "No evidence of completion of vulnerability evaluation, feed freshness or index publication is available from these fields",
+    "Dedicated per-agent Manager API RBAC remains to be validated during implementation"
+  ],
+  "assertions_passed": true
+}

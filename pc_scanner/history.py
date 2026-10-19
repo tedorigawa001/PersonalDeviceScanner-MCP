@@ -221,6 +221,12 @@ def cursor_fingerprint(values: list) -> str:
     return hashlib.sha256(json.dumps(values, ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()[:12]
 
 
+def freshness_fields(data) -> dict:
+    from .freshness import project
+    value = project(data.get('freshness_evidence')) if isinstance(data, dict) else None
+    return {'freshness_evidence': value} if value is not None else {}
+
+
 def entry(operation: str, arguments: dict, report: dict, started: datetime, seconds: float, via: str) -> dict:
     target = {}
     if operation == "vulnerabilities":
@@ -245,7 +251,8 @@ def entry(operation: str, arguments: dict, report: dict, started: datetime, seco
     return {"version": 1, "started_at": started.isoformat(timespec="seconds"), "seconds": round(seconds, 1),
             "via": via, "operation": operation, "target": target, "status": report["status"],
             "findings": findings, "warnings": len(report["warnings"]), **more,
-            **({"error": clean_text(report["error"], ERROR_CHARS)} if report.get("error") else {})}
+            **({"error": clean_text(report["error"], ERROR_CHARS)} if report.get("error") else {}),
+            **(freshness_fields(data) if operation == 'vulnerabilities' else {})}
 
 
 def save_details(path: Path, report: dict, max_bytes: int) -> str:
@@ -382,7 +389,8 @@ def parse(line: str) -> dict | None:
                 "findings": {text(key): count for key, count in findings.items()}, "warnings": warnings,
                 "error": None if error is None else text(error, ERROR_CHARS),
                 "more": more if isinstance(more, bool) else None,
-                "details": details if isinstance(details, str) and DETAILS_ID.fullmatch(details) else None}
+                "details": details if isinstance(details, str) and DETAILS_ID.fullmatch(details) else None,
+                **(freshness_fields(record) if record.get('operation') == 'vulnerabilities' else {})}
     except (ValueError, TypeError, KeyError, AttributeError, RecursionError, OverflowError):
         return None
 

@@ -255,7 +255,7 @@ def excerpt(text: str) -> tuple[str, bool]:
 SETTINGS = {"local": {"osquery_binary", "clamav_binary", "timeout_seconds", "max_output_bytes",
                       "max_signature_age_days"},
             "scan_roots": None,
-            "wazuh": {"url", "agent_id", "ca_file", "agent_name"},
+            "wazuh": {"url", "agent_id", "ca_file", "agent_name", "freshness"},
             "android": {"adb_binary", "indicators_file", "max_indicator_age_days", "max_patch_age_days"},
             "android_devices": None,
             "history": {"enabled", "file", "details", "details_max_mb"},
@@ -666,6 +666,8 @@ class Scanner:
                                                   self.update_settings)):
             raise ScannerError("Configuration sections must be tables")
         self.config_warnings = unknown_settings(config)
+        from . import freshness
+        freshness.configure(self)
         self.timeout = self.local.get("timeout_seconds", 600)
         self.limit = self.local.get("max_output_bytes", 1048576)
         if type(self.timeout) is not int or not 1 <= self.timeout <= 3600:
@@ -991,6 +993,7 @@ class Scanner:
                       + (["Scan coverage incomplete or engine error; do not report this PC as safe"] if partial else []))
 
     def vulnerabilities(self, cursor: str = "", cancel: threading.Event | None = None) -> dict:
+        overall_deadline = time.monotonic() + min(self.timeout, 30)
         page, search_after = decode_cursor(cursor)
         origin = self.wazuh.get("url", "")
         if not origin:
@@ -1028,7 +1031,12 @@ class Scanner:
         opener = build_opener(ProxyHandler({}), handler, NoRedirect())
         check_cancel(cancel)
         try:
-            payload = json.loads(fetch_bounded(opener, handler, request, min(self.timeout, 30), self.limit, cancel))
+            budget = min(self.timeout, 30)
+            if self.freshness_settings.get('enabled', False):
+                budget = overall_deadline - time.monotonic()
+                if budget <= 0:
+                    raise ScannerError('Wazuh time budget exhausted before search')
+            payload = json.loads(fetch_bounded(opener, handler, request, budget, self.limit, cancel))
         except HTTPError as exc:
             raise ScannerError(f"Wazuh HTTP error {exc.code}; access or index may be unavailable") from None
         except (URLError, TimeoutError, OSError) as exc:
@@ -1094,7 +1102,7 @@ class Scanner:
              "the results may belong to another device"] if identity == "mismatch" else
             ["The agent name is missing from the index; device identity could not be verified"]
             if identity == "unknown" and names else [])
-        return result("wazuh", "partial" if incomplete or no_records or identity != "matched" else "completed",
+        report = result("wazuh", "partial" if incomplete or no_records or identity != "matched" else "completed",
                       findings=findings,
                       data={"agent_id": self.agent_id, "total": total_value, "continued": search_after is not None,
                             "next_cursor": next_cursor, "freshness": "unverified", "live_scan_triggered": False,
@@ -1109,6 +1117,9 @@ class Scanner:
                           "later pages cannot be requested"] if stuck else
                          ["More results exist; call again with cursor set to data.next_cursor"] if more else [])
                       + (["One page of results or index search incomplete"] if incomplete else []))
+        from . import freshness
+        freshness.add(self, report, overall_deadline, cancel)
+        return report
 
     def device_identity(self, names: set) -> tuple[str, str]:
         """Compare the agent names in the index with this PC: matched, mismatch or unknown.

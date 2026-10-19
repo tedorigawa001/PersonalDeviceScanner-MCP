@@ -374,10 +374,32 @@ def severity_section(runs: list[list[tuple[int, dict]]]) -> str:
             f'<div class="body">{caveat}{table}</div></div>')
 
 
+def freshness_notes(run: list[tuple[int, dict]]) -> str:
+    from .freshness import project
+    evidence = [project(item.get('freshness_evidence')) for _, item in run]
+    kept = [e for e in evidence if e is not None]
+    if not kept:
+        return ''
+    rank = {'recent': 0, 'aged': 1, 'unknown': 2}
+    notes = ['Vulnerability assessment completion: unverified',
+             'Evidence checked (oldest page): ' + min(e['checked_at'] for e in kept)]
+    observed = [e['index_observed_at'] for e in kept if 'index_observed_at' in e]
+    if observed:
+        notes.append('Index result retrieved (oldest page): ' + min(observed))
+    for key, field, label in [('agent_connection', 'last_keepalive_at', 'Last communication'),
+                               ('os_record', 'recorded_at', 'OS record')]:
+        state = max((e[key]['state'] for e in kept), key=rank.get)
+        dates = [e[key][field] for e in kept if e[key][field] is not None]
+        notes.append(label + ': ' + (min(dates) if dates else 'unknown') + ' (' + state + ')')
+    if len(kept) != len(evidence):
+        notes.append('Some pages have no freshness evidence')
+    return ''.join('<div class="quiet">' + esc(note) + '</div>' for note in notes)
+
+
 def latest_row(run: list[tuple[int, dict]]) -> str:
     total, first, last = combined(run), run[0], run[-1][1]
     return (f'<tr><td class="op">{esc(last["operation"])}</td><td>{esc(history.source(last["operation"]))}</td>'
-            f'<td class="target"><a href="#scan-{first[0]}">{esc(run_label(first[1]))}</a>{run_notes(run)}</td>'
+            f'<td class="target"><a href="#scan-{first[0]}">{esc(run_label(first[1]))}</a>{run_notes(run)}{freshness_notes(run)}</td>'
             f'<td>{badge(total["status"], STATUSES)}</td><td>{counts(total)}</td>'
             f'<td class="time">{esc(local_time(last))}</td></tr>')
 

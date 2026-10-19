@@ -45,6 +45,17 @@ agent_name = ""
 # Credentials are read from PC_SCANNER_WAZUH_USER and PC_SCANNER_WAZUH_PASSWORD.
 # Grant this account read access only to the authorized agent's vulnerability data.
 
+[wazuh.freshness]
+# Optional Manager API observations; never certify vulnerability results as fresh.
+enabled = false
+manager_url = ""
+ca_file = ""
+max_keepalive_age_seconds = 300
+max_os_record_age_seconds = 7200
+# Separate credentials: PC_SCANNER_WAZUH_MANAGER_USER / PC_SCANNER_WAZUH_MANAGER_PASSWORD.
+# Grant agent:read and syscollector:read only on this agent ID; native RBAC also permits
+# other inventory and active-configuration reads for that same agent, not only OS records.
+
 [android]
 # Android SDK Platform-Tools adb (absolute path). Empty disables Android. Only USB-connected devices
 # are inspected; turn USB debugging off on the device when the check is done.
