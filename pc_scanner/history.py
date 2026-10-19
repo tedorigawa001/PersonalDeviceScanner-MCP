@@ -32,6 +32,8 @@ FOLDER = "personal-device-scanner-mcp"
 # Each of the two files; when the current one is full it replaces the older one.
 FILE_BYTES = 1024 * 1024
 MAX_LIMIT = 1000
+# Far above any real count, offset or page number, and far below the 4,300 digits Python refuses to print.
+NUMBER_LIMIT = 10 ** 9
 ERROR_CHARS = 500
 OPERATIONS = {"inventory", "malware", "vulnerabilities", "android", "android_check", "router_check"}
 SEVERITIES = ("critical", "high", "medium", "low", "unknown")
@@ -95,6 +97,13 @@ def releases_file(path: Path) -> Path:
     return path.with_name(path.name + ".releases")
 
 
+def owned(fd: int, info=None) -> bool:
+    if os.name == "nt":
+        from .windows_owner import owns_fd
+        return owns_fd(fd)
+    return (info or os.fstat(fd)).st_uid == os.geteuid()
+
+
 @contextlib.contextmanager
 def locked(path: Path):
     """Held across processes: a CLI and MCP servers that both find the file full must not rotate it twice."""
@@ -102,7 +111,7 @@ def locked(path: Path):
     try:
         info = os.fstat(fd)
         # Another user's lock file could be held forever to stop the history being written.
-        if not stat.S_ISREG(info.st_mode) or (os.name != "nt" and info.st_uid != os.geteuid()):
+        if not stat.S_ISREG(info.st_mode) or not owned(fd, info) or info.st_nlink != 1:
             raise OSError("The history lock file is not this user's regular file")
         for attempt in range(LOCK_ATTEMPTS):
             try:
@@ -130,7 +139,14 @@ def opener(name, flags: int) -> int:
     Through open(), Python owns the descriptor and closes it if anything fails, so no failed write
     leaves a file that Windows cannot remove.
     """
-    return os.open(name, flags | NO_FOLLOW | NO_WAIT, 0o600)
+    fd = os.open(name, flags | NO_FOLLOW | NO_WAIT, 0o600)
+    if os.name == "nt":
+        try:
+            private(fd)
+        except BaseException:
+            os.close(fd)
+            raise
+    return fd
 
 
 def private(fd: int) -> None:
@@ -143,11 +159,11 @@ def private(fd: int) -> None:
     info = os.fstat(fd)
     if not stat.S_ISREG(info.st_mode):
         raise OSError("The history file is not a regular file")
+    if not owned(fd, info):
+        raise OSError("The history file belongs to another user")
+    if info.st_nlink != 1:
+        raise OSError("The history file has other names (hard links)")
     if os.name != "nt":
-        if info.st_uid != os.geteuid():
-            raise OSError("The history file belongs to another user")
-        if info.st_nlink != 1:
-            raise OSError("The history file has other names (hard links)")
         if info.st_mode & 0o077:
             os.fchmod(fd, 0o600)
 
@@ -188,7 +204,7 @@ def read_private(path: Path, max_bytes: int) -> bytes | None:
     with f:
         info = os.fstat(f.fileno())
         if (not stat.S_ISREG(info.st_mode) or info.st_size > max_bytes
-                or (os.name != "nt" and (info.st_uid != os.geteuid() or info.st_nlink != 1))):
+                or not owned(f.fileno(), info) or info.st_nlink != 1):
             return None
         data = f.read(max_bytes + 1)
     return data if len(data) <= max_bytes else None
@@ -234,7 +250,12 @@ def save_details(path: Path, report: dict, max_bytes: int) -> str:
     folder = details_folder(path)
     folder.mkdir(exist_ok=True, mode=0o700)
     info = folder.lstat()
-    if not stat.S_ISDIR(info.st_mode) or (os.name != "nt" and info.st_uid != os.geteuid()):
+    if os.name == "nt":
+        from .windows_owner import owns_directory
+        ours = owns_directory(folder)
+    else:
+        ours = info.st_uid == os.geteuid()
+    if not stat.S_ISDIR(info.st_mode) or not ours:
         raise OSError("The details folder is not this user's folder")
     if os.name != "nt" and info.st_mode & 0o077:
         os.chmod(folder, 0o700)
@@ -317,7 +338,7 @@ def append(path: Path, record: dict, details: dict | None = None, details_bytes:
                     info = name.lstat()
                 except FileNotFoundError:
                     continue
-                if os.name != "nt" and stat.S_ISREG(info.st_mode) and info.st_mode & 0o077:
+                if stat.S_ISREG(info.st_mode) and (os.name == "nt" or info.st_mode & 0o077):
                     make_private(name)
             try:
                 if path.lstat().st_size >= FILE_BYTES:
@@ -345,9 +366,10 @@ def parse(line: str) -> dict | None:
         seconds, warnings, findings, target = (record["seconds"], record["warnings"], record["findings"],
                                                record["target"])
         if (started.tzinfo is None or type(seconds) not in (int, float) or not math.isfinite(seconds)
-                or seconds < 0 or type(warnings) is not int or warnings < 0
+                or seconds < 0 or type(warnings) is not int or not 0 <= warnings <= NUMBER_LIMIT
                 or not isinstance(findings, dict) or not isinstance(target, dict)
-                or not all(type(count) is int and count >= 0 for count in findings.values())):
+                or not all(type(count) is int and 0 <= count <= NUMBER_LIMIT for count in findings.values())
+                or not all(type(value) is not int or abs(value) <= NUMBER_LIMIT for value in target.values())):
             return None
         error, details, more = record.get("error"), record.get("details"), record.get("more")
         return {"started_at": started.isoformat(), "seconds": seconds, "via": text(record["via"]),

@@ -53,6 +53,10 @@ MAX_PAGES = 1000000
 SOURCES = {"status": "bridge", "inventory": "osquery", "malware": "clamav", "vulnerabilities": "wazuh",
            "android": "adb", "android_check": "adb", "router_check": "router", "router_products": "router"}
 
+# OpenSSL's X509_V_ERR_HOSTNAME_MISMATCH and X509_V_ERR_IP_ADDRESS_MISMATCH.
+WRONG_HOST = {62: "Hostname mismatch: the certificate is not for the host in wazuh.url",
+              64: "IP address mismatch: the certificate is not for the address in wazuh.url"}
+
 # Metadata only: opening placeholder contents can download them from the provider.
 SF_DATALESS = 0x40000000
 WINDOWS_RECALL_ATTRIBUTES = 0x1000 | 0x40000 | 0x400000
@@ -1030,8 +1034,10 @@ class Scanner:
         except (URLError, TimeoutError, OSError) as exc:
             reason = exc.reason if isinstance(exc, URLError) else exc
             if isinstance(reason, ssl.SSLCertVerificationError):
-                # OpenSSL's own words, such as "Hostname mismatch" or "unable to get local issuer certificate".
-                why = clean_text(reason.verify_message or reason.reason or "unknown reason", 200)
+                # OpenSSL's own words, such as "unable to get local issuer certificate". A mismatch would quote the
+                # host from wazuh.url, which goes no further than the owner's configuration, so it gets fixed words.
+                why = WRONG_HOST.get(reason.verify_code) or clean_text(
+                    reason.verify_message or reason.reason or "unknown reason", 200)
                 raise ScannerError(f"Wazuh TLS certificate verification failed ({why}); check wazuh.ca_file "
                                    "and the host name in wazuh.url") from None
             raise ScannerError("Wazuh connection or TLS verification failed") from None

@@ -32,16 +32,20 @@ SOURCES = {"osquery": "GitHub releases of osquery/osquery", "clamav": "GitHub re
 UPDATE_FROM = {"osquery": "https://osquery.io/downloads/",
                "clamav": "https://docs.clamav.net/manual/Installing.html",
                "adb": "https://developer.android.com/tools/releases/platform-tools"}
-TAGS = {"osquery": re.compile(r"(\d{1,6})\.(\d{1,6})\.(\d{1,6})"),
-        "clamav": re.compile(r"clamav-(\d{1,6})\.(\d{1,6})\.(\d{1,6})")}
-# What each engine prints for its version; ClamAV marks test releases with -rc, -beta or -alpha.
-INSTALLED = {"osquery": re.compile(r"osquery[di]? version (\d{1,6})\.(\d{1,6})\.(\d{1,6})"),
-             "clamav": re.compile(r"ClamAV (\d{1,6})\.(\d{1,6})\.(\d{1,6})(-(?:rc|beta|alpha))?"),
-             "adb": re.compile(r"^Version (\d{1,6})\.(\d{1,6})\.(\d{1,6})", re.MULTILINE)}
-VERSION_TEXT = re.compile(r"(\d{1,6})\.(\d{1,6})\.(\d{1,6})")
-LINE_TEXT = re.compile(r"\d{1,6}\.\d{1,6}")
-DAY_TEXT = re.compile(r"\d{4}-\d{2}-\d{2}")
+# ASCII digits only: \d also matches the digits of other scripts.
+TAGS = {"osquery": re.compile(r"([0-9]{1,6})\.([0-9]{1,6})\.([0-9]{1,6})"),
+        "clamav": re.compile(r"clamav-([0-9]{1,6})\.([0-9]{1,6})\.([0-9]{1,6})")}
+# What each engine prints for its version. Anything after a ClamAV version number (-rc, -beta, -devel-<date>)
+# marks a build before that release.
+INSTALLED = {"osquery": re.compile(r"osquery[di]? version ([0-9]{1,6})\.([0-9]{1,6})\.([0-9]{1,6})"),
+             "clamav": re.compile(r"ClamAV ([0-9]{1,6})\.([0-9]{1,6})\.([0-9]{1,6})(-[0-9A-Za-z.+-]{1,40})?"),
+             "adb": re.compile(r"^Version ([0-9]{1,6})\.([0-9]{1,6})\.([0-9]{1,6})", re.MULTILINE)}
+VERSION_TEXT = re.compile(r"([0-9]{1,6})\.([0-9]{1,6})\.([0-9]{1,6})")
+LINE_TEXT = re.compile(r"[0-9]{1,6}\.[0-9]{1,6}")
+DAY_TEXT = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 MAX_CACHE_BYTES = 64 * 1024
+# Ten are asked for; a much longer list is not the answer of the API, and would only cost time to read.
+MAX_RELEASES = 100
 # The ClamAV list is about 0.4 MB for ten releases, Google's about 0.4 MB.
 MAX_RESPONSE_BYTES = 4 * 1024 * 1024
 FRESH = timedelta(days=1)
@@ -96,7 +100,7 @@ def github_releases(body: bytes, engine: str) -> list[tuple[tuple[int, ...], dat
         items = json.loads(body)
     except (ValueError, RecursionError):
         raise Unavailable("unexpected answer") from None
-    if not isinstance(items, list):
+    if not isinstance(items, list) or len(items) > MAX_RELEASES:
         raise Unavailable("unexpected answer")
     found = []
     for item in items:
@@ -108,11 +112,13 @@ def github_releases(body: bytes, engine: str) -> list[tuple[tuple[int, ...], dat
             continue
         try:
             when = datetime.fromisoformat(published)
-        except ValueError:
+            when = when.astimezone(timezone.utc) if when.tzinfo is not None else None
+        except (ValueError, OverflowError):
             continue
-        if when.tzinfo is None:
+        # A date far from now (year 1, say) cannot be moved by the two days of a release round.
+        if when is None or not 2000 <= when.year <= 9000:
             continue
-        found.append((tuple(int(part) for part in match.groups()), when.astimezone(timezone.utc)))
+        found.append((tuple(int(part) for part in match.groups()), when))
     if not found:
         raise Unavailable("no published release in the list")
     return found
@@ -233,7 +239,8 @@ def releases(scanner, engine: str, cancel: threading.Event | None, now: datetime
     """
     warnings: list[str] = []
     try:
-        path = cache_file(scanner)
+        # With the history turned off nothing is written: this process remembers what it looked up.
+        path = cache_file(scanner) if scanner.history_enabled else None
     except ScannerError:
         path = None
     with _lock:
@@ -253,7 +260,11 @@ def releases(scanner, engine: str, cancel: threading.Event | None, now: datetime
         reason = ""
         if not (recent("checked_at", FRESH) and usable(engine, entry)) and not recent("failed_at", RETRY):
             try:
-                entry = {"checked_at": now.isoformat(timespec="seconds"), **lookup(engine, cancel)}
+                fresh = {"checked_at": now.isoformat(timespec="seconds"), **lookup(engine, cancel)}
+                # Kept only in a form it can be read back in; anything else is a failure, retried an hour later.
+                if not usable(engine, fresh):
+                    raise Unavailable("unexpected answer")
+                entry = fresh
             except Unavailable as exc:
                 reason = str(exc)
                 kept = {key: value for key, value in entry.items() if key != "failed_at"} if entry else {}
@@ -335,7 +346,8 @@ def check(scanner, operation: str, report: dict, cancel: threading.Event | None)
     else:
         info["installed"] = shown(found[0]) + found[1]
         compared, notes = compare(engine, found[0], found[1], entry)
-        info.update(compared, checked_at=entry["checked_at"])
+        # Written out again: the saved text could be any string that still parses as a time.
+        info.update(compared, checked_at=stamp(entry, "checked_at").isoformat(timespec="seconds"))
         warnings += notes
     report.setdefault("data", {})["engine_update"] = info
     report["warnings"] += warnings

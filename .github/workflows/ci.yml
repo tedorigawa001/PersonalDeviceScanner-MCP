@@ -43,6 +43,9 @@ jobs:
           python -m pip check
       - name: Require the MCP SDK so MCP tests are not skipped
         run: python -c "import mcp"
+      - name: Verify ownership with real Windows security descriptors
+        if: runner.os == 'Windows'
+        run: python -m unittest discover -s tests -p test_windows_owner.py -v
       - name: Run tests
         run: python -m unittest discover -s tests -v
 

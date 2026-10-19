@@ -6,6 +6,7 @@ import os
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -370,6 +371,71 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual(report["status"], "completed")
         self.assertIn("The engine version could not be compared with the latest release; the scan itself is "
                       "unaffected", report["warnings"])
+
+    # --- Found in the vulnerability check of 2026-10-19 ------------------------------------
+
+    def test_a_release_list_far_longer_than_asked_for_is_refused_quickly(self):
+        # Finding the ClamAV release round took time growing with the square of the list's length.
+        listed = [release(f"clamav-1.{n}.0", "2026-01-01") for n in range(updates.MAX_RELEASES + 1)]
+        started = time.perf_counter()
+        with self.assertRaises(updates.Unavailable):
+            updates.github_releases(json.dumps(listed).encode(), "clamav")
+        self.assertLess(time.perf_counter() - started, 1)
+        self.assertEqual(len(updates.github_releases(json.dumps(listed[:updates.MAX_RELEASES]).encode(), "clamav")),
+                         updates.MAX_RELEASES)
+
+    def test_dates_far_from_now_are_skipped_and_the_failure_is_remembered(self):
+        # A year-1 date escaped as OverflowError, so no failure was saved and every scan asked again.
+        for published in ("0001-01-01T00:00:00+01:00", "0001-01-01T00:00:00+00:00", "9999-12-31T23:59:59-01:00"):
+            with self.subTest(published=published):
+                self.cache.unlink(missing_ok=True)
+                body = json.dumps([{**release("clamav-1.5.4", "2026-08-07"), "published_at": published}]).encode()
+                network = Network(bodies={"clamav": body})
+                for _ in range(3):
+                    report = self.check(self.scanner(), "malware", network=network)
+                self.assertEqual(len(network.urls), 1)
+                self.assertIn("(an earlier attempt failed; it is retried an hour later)", report["warnings"][0])
+
+    def test_an_answer_that_cannot_be_kept_is_a_failure(self):
+        # 21 ClamAV lines parse, but the saved form allows 20: it was saved anyway and asked for on every scan.
+        listed = [release(f"clamav-1.{n}.0", "2026-08-07") for n in range(21)]
+        network = Network(bodies={"clamav": json.dumps(listed).encode()})
+        reports = [self.check(self.scanner(), "malware", network=network) for _ in range(3)]
+        self.assertEqual(len(network.urls), 1)
+        self.assertIn("could not be checked (unexpected answer)", reports[0]["warnings"][0])
+        self.assertNotIn("checked_at", json.loads(self.cache.read_text())["clamav"])
+
+    def test_saved_times_and_versions_are_written_out_again_or_refused(self):
+        # A saved time is any text that still parses; it reached the AI as written, bidi controls included.
+        weird = "2026-10-19\u202e" + datetime.now(timezone.utc).strftime("%H:%M:%S") + "." + "9" * 5000 + "+00:00"
+        self.write_cache(osquery={"checked_at": weird, "latest": "5.23.1"})
+        network = Network()
+        info = self.check(self.scanner(), network=network)["data"]["engine_update"]
+        self.assertEqual(network.urls, [])
+        self.assertNotIn("\u202e", info["checked_at"])
+        self.assertEqual(len(info["checked_at"]), len("2026-10-19T00:00:00+00:00"))
+        # Digits of other scripts are not version numbers.
+        self.assertFalse(updates.usable("osquery", {"checked_at": self.ago(hours=1), "latest": "\u0665.\u0662.\u0661"}))
+        self.outputs["osquery"] = "osqueryi version \u0665.\u0662\u0663.\u0661"
+        self.assertIn("could not be read", self.check(self.scanner())["warnings"][0])
+
+    def test_a_clamav_development_build_comes_before_its_release(self):
+        self.outputs["clamav"] = "ClamAV 1.5.4-devel-20261001/28157/Sun Oct 18 15:24:14 2026\n"
+        report = self.check(self.scanner(), "malware")
+        info = report["data"]["engine_update"]
+        self.assertEqual((info["installed"], info["status"]), ("1.5.4-devel-20261001", "outdated"))
+        self.assertTrue(report["warnings"][0].startswith("ClamAV 1.5.4-devel-20261001 is older than 1.5.4"))
+        self.outputs["clamav"] = "ClamAV 1.6.0-devel-20261001/28157/x\n"
+        self.assertEqual(self.check(self.scanner(), "malware")["data"]["engine_update"]["status"], "newer")
+
+    def test_with_the_history_off_nothing_is_written(self):
+        scanner = self.scanner(history={"file": str(self.folder / "history.jsonl"), "enabled": False})
+        network = Network()
+        for _ in range(2):
+            report = self.check(scanner, network=network)
+        self.assertEqual(report["data"]["engine_update"]["status"], "outdated")
+        self.assertEqual(len(network.urls), 1)  # this process remembers
+        self.assertEqual(list(self.folder.iterdir()), [])
 
     # --- Kept for a day --------------------------------------------------------------------
 

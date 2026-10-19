@@ -377,6 +377,24 @@ class HistoryTests(unittest.TestCase):
             self.assertEqual(refused.returncode, 2)
             self.assertIn("--limit must be 1..1000", json.loads(refused.stdout)["error"])
 
+    def test_numbers_no_scan_could_produce_make_a_damaged_line(self):
+        # Found in the vulnerability check of 2026-10-19: counts of over 4,300 digits stopped the dashboard.
+        good = {"version": 1, "started_at": "2026-10-19T08:00:00+09:00", "seconds": 1.0, "via": "cli",
+                "operation": "malware", "target": {"root_alias": "downloads"}, "status": "completed",
+                "findings": {"high": history.NUMBER_LIMIT}, "warnings": 0}
+        huge = int("9" * 4300)
+        bad = [{**good, "findings": {"high": huge}}, {**good, "findings": {"high": history.NUMBER_LIMIT + 1}},
+               {**good, "warnings": huge}, {**good, "operation": "inventory", "target": {"query_id": "x", "offset": huge}}]
+        self.file.parent.mkdir()
+        other = {**good, "target": {"root_alias": "documents"}}  # another target, so the dashboard adds both up
+        self.file.write_text("\n".join(json.dumps(line) for line in [good, other, *bad]) + "\n", encoding="utf-8")
+        entries, skipped = history.read(self.file, 100)
+        self.assertEqual((len(entries), skipped), (2, len(bad)))
+        self.assertIn(f"{history.NUMBER_LIMIT} (high {history.NUMBER_LIMIT})", history.table(entries))
+        from pc_scanner import dashboard
+        page, _ = dashboard.build(self.file, 100, True, False, 50)
+        self.assertIn(f"high {2 * history.NUMBER_LIMIT}", page.read_text(encoding="utf-8"))
+
     def test_each_operation_shows_the_scan_that_ran_and_the_columns_stay_aligned(self):
         base = {"version": 1, "started_at": "2026-10-19T08:00:00+09:00", "seconds": 1.5, "via": "cli",
                 "status": "completed", "findings": {}, "warnings": 0, "error": None}

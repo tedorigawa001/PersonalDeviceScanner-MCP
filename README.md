@@ -364,9 +364,11 @@ Then every inventory, malware and Android scan reads its engine's version (`osqu
   The details are in `data.engine_update`: `installed`, `latest`, `status` (`current`, `outdated`, `newer` or `unknown`)
   and `checked_at`.
 - ClamAV maintains several lines at once and patches them on the same day. A line left out of the latest such round, or
-  with no release among the latest ten, is reported as possibly no longer supported.
+  with no release among the latest ten, is reported as possibly no longer supported. A test or development build
+  (`-rc`, `-devel-<date>` and the like) counts as older than the release of the same number.
 - What was found is kept for a day beside the scan history, in a file named after it (`history.jsonl.releases` by
-  default), so most scans make no request. A failed lookup is retried an hour later; until then, information up to 30 days old is used, with its date.
+  default), so most scans make no request. With `history.enabled = false` nothing is written: the MCP server remembers
+  it while it runs, and each CLI run looks it up again. A failed lookup is retried an hour later; until then, information up to 30 days old is used, with its date.
 - Only `api.github.com` and `dl.google.com` are contacted, over HTTPS with verified certificates and no proxy or redirect.
   The comparison is made on this PC and nothing about it is sent, but those services see your IP address. GitHub allows
   60 requests an hour from one IP address without signing in.
@@ -501,7 +503,11 @@ TIME                 VIA  OPERATION      SOURCE         STATUS     FINDINGS    S
   files, `.1` included, are kept readable only by you (0600, also when one already existed with wider permissions). A
   history file must be a regular file of yours with no other name (hard link), and the lock file and details folder must be
   yours; anything else, or a link in their place, is refused. Keep the history in a folder only you can write to, as the
-  default is: the protection is the file mode, and on macOS an ACL inherited from the folder is not removed.
+  default is: the protection is the file mode, and on macOS an ACL inherited from the folder is not removed. On Windows
+  opened files are checked against the effective token's user SID; Administrators ownership is accepted only when
+  elevated and it is the token's default owner. Foreign ownership, hard links and failed ownership checks are refused
+  for history, locks, kept details and engine release information. Keep them in a folder other users cannot write to
+  (`%LOCALAPPDATA%`, for example); owner checks do not replace folder ACLs.
 - **Size**: when the file reaches 1 MiB it becomes `history.jsonl.1`, replacing the previous one, so roughly the latest
   several thousand scans are kept. Delete `history.jsonl` and `history.jsonl.1` to clear the history. The empty
   `history.jsonl.lock` next to them makes a CLI and MCP servers running at the same time take turns, so none of them

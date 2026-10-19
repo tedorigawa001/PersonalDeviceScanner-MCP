@@ -1435,6 +1435,29 @@ class ScannerTests(unittest.TestCase):
                 self.assertEqual(report["status"], "error")
                 self.assertTrue(report["error"].startswith("Wazuh TLS certificate verification failed ("), report["error"])
                 self.assertIn("issuer" if case == "system certificates" else "Hostname mismatch", report["error"])
+                self.assertNotIn("localhost", report["error"])
+
+    def test_a_host_mismatch_does_not_repeat_the_configured_host(self):
+        # OpenSSL quotes the host from wazuh.url; the AI and the history get fixed words instead.
+        for code, host, words in ((62, "wazuh.internal.example", "Hostname mismatch"),
+                                  (64, "192.0.2.10", "IP address mismatch")):
+            failure = ssl.SSLCertVerificationError(1, "certificate verify failed")
+            failure.verify_code, failure.verify_message = code, f"{words}, certificate is not valid for '{host}'."
+            scanner = Scanner({"wazuh": {"url": f"https://{host}:9200", "agent_id": "001"}})
+            with self.subTest(code=code), patch.dict(os.environ, {"PC_SCANNER_WAZUH_USER": "reader",
+                                                                  "PC_SCANNER_WAZUH_PASSWORD": "secret"}), \
+                    patch("pc_scanner.core.build_opener") as build:
+                build.return_value.open.side_effect = URLError(failure)
+                report = scanner.invoke("vulnerabilities")
+            self.assertTrue(report["error"].startswith(f"Wazuh TLS certificate verification failed ({words}: "))
+            self.assertNotIn(host, report["error"])
+        failure = ssl.SSLCertVerificationError(1, "certificate verify failed")
+        failure.verify_code, failure.verify_message = 20, "unable to get local issuer certificate"
+        with patch.dict(os.environ, {"PC_SCANNER_WAZUH_USER": "reader", "PC_SCANNER_WAZUH_PASSWORD": "secret"}), \
+                patch("pc_scanner.core.build_opener") as build:
+            build.return_value.open.side_effect = URLError(failure)
+            report = Scanner({"wazuh": {"url": "https://localhost:9200", "agent_id": "001"}}).invoke("vulnerabilities")
+        self.assertIn("(unable to get local issuer certificate)", report["error"])
 
     def test_strict_checks_are_relaxed_only_for_the_owners_ca_file(self):
         ca_file = self.root / "root-ca.pem"
