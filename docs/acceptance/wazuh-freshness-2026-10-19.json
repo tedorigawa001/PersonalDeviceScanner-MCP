@@ -333,7 +333,29 @@
     "retry_counted_once": true,
     "summary_metadata_retained_without_details": true,
     "dashboard_html_metadata_verified": true,
-    "browser_interaction_tested": false
+    "browser_interaction_tested": true,
+    "manual_browser_verification": {
+      "verified_on": "2026-10-19",
+      "evidence_source": "Owner's explicit manual confirmation in chat and attached screenshot; not browser automation",
+      "artifact": "Freshness acceptance pages.html dashboard",
+      "freshness_observations_displayed": "passed",
+      "configured_agent_link_to_scan_history": "passed",
+      "observed_fragment": "#scan-0",
+      "details_open_and_close": "passed",
+      "screenshot_observations": {
+        "pages": 5,
+        "status": "partial",
+        "findings": {"high": 5, "medium": 14, "low": 4},
+        "vulnerability_assessment_completion": "unverified",
+        "oldest_evidence_checked_at": "2026-10-19T13:06:10.531225+00:00",
+        "oldest_index_result_observed_at": "2026-10-19T13:06:10.181318+00:00",
+        "last_communication_at": "2026-10-19T13:06:09.000000+00:00",
+        "connection_state": "recent",
+        "os_recorded_at": "2026-10-19T12:43:23.000000+00:00",
+        "os_record_state": "recent"
+      },
+      "keyboard_navigation": "not confirmed"
+    }
   },
   "assertions_passed": true,
   "purpose": "Acceptance of optional Manager freshness observations using a dedicated read-only per-agent account",
@@ -509,7 +531,7 @@
     "OS-only and connection-only authorization is not expressible with these native RBAC action grants; the same agent inventory and active configuration can also be read",
     "No restart, deletion, registration or write request was attempted; write restrictions were checked from the effective whitelist policy",
     "Manager HTTP response was deliberately held by the TCP relay; the real server was not made slow and an HTTP-body-only stall was not isolated",
-    "Browser interactions for this freshness acceptance artifact were not tested; HTML content and aggregation were checked. The owner separately confirmed opening/closing details and the configured-agent link on the existing Wazuh history dashboard; see wazuh-docker-2026-10-19.json, history_and_dashboard.manual_browser_verification",
+    "Keyboard navigation was not confirmed; the owner manually confirmed freshness display, the configured-agent link and opening/closing details on this artifact",
     "Production page size is 500; multi-page acceptance used 5 only in the test process",
     "Windows/Linux acceptance of the new feature was not executed in this run",
     "Recent communication and OS record times do not certify completion of vulnerability evaluation; freshness remains unverified"
