@@ -9,3 +9,7 @@ build/
 dist/
 *.egg-info/
 .DS_Store
+# The release SBOM environment (docs/compliance.md): downloaded wheels and schemas, not part of the project.
+.compliance-venv/
+.compliance-wheels/
+.compliance-schema/
