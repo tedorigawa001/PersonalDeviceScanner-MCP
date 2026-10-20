@@ -4,9 +4,11 @@ import json
 import os
 import re
 import ssl
+import stat
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, build_opener, ProxyHandler
 
@@ -14,6 +16,9 @@ from .core import ScannerError, NoRedirect, TrackedHTTPSHandler, fetch_bounded, 
 
 KEYS = {'enabled', 'manager_url', 'ca_file', 'max_keepalive_age_seconds', 'max_os_record_age_seconds'}
 STATES = {'recent', 'aged', 'unknown'}
+# A CA bundle is far smaller; the file is read whole before any request.
+CA_BYTES = 1024 * 1024
+CREDENTIAL_WORDS = ('user', 'password', 'passwd', 'token', 'secret', 'credential')
 
 
 def configure(scanner):
@@ -26,9 +31,11 @@ def configure(scanner):
         raise ScannerError('wazuh.freshness.enabled must be a boolean')
     for key in settings:
         if key not in KEYS:
-            scanner.config_warnings.append('Unknown setting wazuh.freshness.' + str(key)[:80] + ' is ignored' +
+            # repr, as for every other setting: a key name can hold control or bidi characters.
+            name = repr('wazuh.freshness.' + str(key)[:80])
+            scanner.config_warnings.append('Unknown setting ' + name + ' is ignored' +
                 ('; remove credentials from the file; use PC_SCANNER_WAZUH_MANAGER_USER and PC_SCANNER_WAZUH_MANAGER_PASSWORD'
-                 if key in {'user', 'username', 'password', 'token'} else ''))
+                 if any(word in str(key).lower() for word in CREDENTIAL_WORDS) else ''))
     for key, default in [('max_keepalive_age_seconds', 300), ('max_os_record_age_seconds', 7200)]:
         value = settings.get(key, default)
         if type(value) is not int or not 1 <= value <= 604800:
@@ -39,6 +46,10 @@ def configure(scanner):
         raise ScannerError('Manager URL and CA file must be strings')
     if ca and not Path(ca).is_absolute():
         raise ScannerError('Manager ca_file must be absolute')
+    if ca and enabled and not Path(ca).is_file():
+        # Only a warning, as for the indexer's: a missing file must not stop the other scans.
+        scanner.config_warnings.append('Wazuh Manager ca_file not found (' + Path(ca).name[:80] + '); '
+                                       'freshness evidence is unavailable until it exists')
     if origin or enabled:
         try:
             url = urlsplit(origin)
@@ -99,6 +110,47 @@ class Unavailable(Exception):
     pass
 
 
+def read_ca(path):
+    """The CA file's text, without waiting: a FIFO in its place would otherwise hold the call past every limit."""
+    try:
+        fd = os.open(path, os.O_RDONLY | getattr(os, 'O_NONBLOCK', 0))
+    except OSError:
+        raise Unavailable('Manager ca_file cannot be read') from None
+    try:
+        # Checked on the descriptor itself: a directory opens, but cannot become a file object.
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_size > CA_BYTES:
+            raise Unavailable('Manager ca_file is not a regular file of at most 1 MiB')
+        with os.fdopen(fd, 'rb') as f:
+            fd = None
+            data = f.read(CA_BYTES + 1)
+    finally:
+        if fd is not None:
+            os.close(fd)
+    try:
+        return data.decode('utf-8')
+    except UnicodeDecodeError:
+        raise Unavailable('Manager ca_file is not a valid PEM CA certificate') from None
+
+
+def failure(exc, cancel):
+    """Fixed words for a failure: an exception or an error body can quote URLs, passwords or tokens."""
+    if cancel is not None and cancel.is_set():
+        return 'cancelled'
+    if isinstance(exc, HTTPError):
+        return 'HTTP ' + str(exc.code) + (': authentication or permission refused' if exc.code in (401, 403) else '')
+    if isinstance(exc, ssl.SSLCertVerificationError) or (
+            isinstance(exc, URLError) and isinstance(exc.reason, ssl.SSLCertVerificationError)):
+        return 'TLS certificate verification failed'
+    if isinstance(exc, ScannerError):
+        text = str(exc)
+        return ('redirect refused' if 'redirect' in text else 'answer too large' if 'size limit' in text
+                else 'no complete answer in time' if 'did not finish' in text else 'request failed')
+    if isinstance(exc, (ValueError, KeyError, TypeError)):
+        return 'unexpected answer'
+    return 'request or response failed'
+
+
 def add(scanner, report, overall_deadline, cancel=None):
     """Retain indexed findings on every supplementary failure, including cancellation."""
     if not scanner.freshness_settings.get('enabled', False):
@@ -121,12 +173,18 @@ def add(scanner, report, overall_deadline, cancel=None):
         user, password = (os.environ.get('PC_SCANNER_WAZUH_MANAGER_' + key, '') for key in ('USER', 'PASSWORD'))
         if not user or not password or ':' in user:
             raise Unavailable('Manager credentials unavailable')
-        context = ssl.create_default_context(cafile=settings.get('ca_file') or None)
+        ca = settings.get('ca_file')
+        try:
+            context = ssl.create_default_context(cadata=read_ca(ca)) if ca else ssl.create_default_context()
+        except ssl.SSLError:
+            raise Unavailable('Manager ca_file is not a valid PEM CA certificate') from None
         handler = TrackedHTTPSHandler(context)
         opener = build_opener(ProxyHandler({}), handler, NoRedirect('Wazuh Manager'))
         origin = settings['manager_url']
 
         def request(path, *, auth, method='GET', limit=262144):
+            # fetch_bounded looks at the cancel only while it waits, so a quick answer would not see one.
+            check_cancel(cancel)
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise Unavailable('time budget exhausted')
@@ -165,6 +223,7 @@ def add(scanner, report, overall_deadline, cancel=None):
         os_record = item('/syscollector/' + scanner.agent_id + '/os?select=scan.id,scan.time')
         if os_record.get('agent_id') != scanner.agent_id:
             raise Unavailable('Manager target mismatch')
+        check_cancel(cancel)
         # Evaluate all observations against one time after receiving both responses.
         now = datetime.now(timezone.utc)
         evidence['checked_at'] = now.isoformat(timespec='microseconds')
@@ -191,8 +250,7 @@ def add(scanner, report, overall_deadline, cancel=None):
         close = getattr(exc, 'close', None)
         if close:
             close()
-        warnings.append('Wazuh freshness evidence unavailable (' +
-                        ('cancelled' if cancel is not None and cancel.is_set() else 'request or response failed') + ')')
+        warnings.append('Wazuh freshness evidence unavailable (' + failure(exc, cancel) + ')')
     report['data']['freshness_evidence'] = evidence
     if any(evidence[key]['state'] != 'recent' for key in ('agent_connection', 'os_record')):
         if report['status'] == 'completed':

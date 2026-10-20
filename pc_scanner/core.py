@@ -381,7 +381,9 @@ def fetch_bounded(opener, handler: TrackedHTTPSHandler, request: Request, budget
             abandoned.set()
             handler.cut_off()
             check_cancel(cancel)
-            raise ScannerError(f"{service} did not finish answering within {budget} seconds; search was not completed")
+            # Whole seconds: a budget left over from an earlier step is a float.
+            raise ScannerError(f"{service} did not finish answering within {math.ceil(budget)} seconds; "
+                               "search was not completed")
     if "error" in outcome:
         raise outcome["error"]
     return outcome["body"]

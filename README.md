@@ -495,7 +495,9 @@ TIME                 VIA  OPERATION      SOURCE         STATUS     FINDINGS    S
 - **What is kept**: the start time, `cli` or `mcp`, the operation and its target (folder alias and relative path,
   `query_id`, device alias; for Wazuh only the page number and a short one-way fingerprint of where the page starts, never
   the cursor), `status`, the number of findings per severity,
-  the number of warnings, how long it took, the error message, and for paged results whether another page follows. **The findings themselves (file names, signature
+  the number of warnings, how long it took, the error message, for paged results whether another page follows, and for
+  Wazuh with `wazuh.freshness` on, the fixed states and normalized times of `freshness_evidence` (never the Manager's
+  address, the credentials or its answers). **The findings themselves (file names, signature
   names, app and package names, CVEs) are not kept** unless you turn on `history.details` (see [Dashboard](#dashboard)).
   A paged result is one line per page, with that page's findings.
 - **The AI cannot read it**: there is no MCP tool for it; only you read it with this command. `--limit N` (1–1000,

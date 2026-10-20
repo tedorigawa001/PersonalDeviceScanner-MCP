@@ -172,6 +172,105 @@ class FreshnessTests(unittest.TestCase):
         self.assertEqual(len(budgets), 3)
         self.assertTrue(.0 < budgets[2] < budgets[1] < budgets[0] <= .3)
 
+    # Found in the vulnerability check of 2026-10-20.
+
+    def test_a_cancel_during_quick_answers_sends_no_further_request(self):
+        # fetch_bounded looks at the cancel only while it waits, so quick answers never saw it.
+        for cancelled_at in (1, 2):
+            cancel, bodies = threading.Event(), self.bodies()
+            def fetch(*args, **kwargs):
+                if fetch.calls == cancelled_at:
+                    cancel.set()
+                fetch.calls += 1
+                return bodies.pop(0)
+            fetch.calls = 0
+            scanner, report = self.scanner(), self.report()
+            with patch.dict(os.environ, ENV), patch.object(freshness, 'fetch_bounded', side_effect=fetch):
+                freshness.add(scanner, report, time.monotonic() + 30, cancel)
+            self.assertEqual(fetch.calls, min(cancelled_at + 1, 3))
+            self.assertEqual(report['status'], 'partial')
+            self.assertIn('Wazuh freshness evidence unavailable (cancelled)', report['warnings'])
+            self.assertEqual(report['data']['freshness_evidence']['os_record']['state'], 'unknown')
+            self.assertEqual(len(report['findings']), 1)
+
+    def test_a_ca_file_that_is_not_a_small_regular_file_is_refused_at_once(self):
+        folder = Path(tempfile.mkdtemp())
+        big, broken = folder / 'big.pem', folder / 'broken.pem'
+        big.write_bytes(b'x' * (freshness.CA_BYTES + 1))
+        broken.write_text('not a certificate')
+        cases = [(folder, 'not a regular file'), (big, 'not a regular file'), (broken, 'not a valid PEM'),
+                 (folder / 'missing.pem', 'cannot be read')]
+        if hasattr(os, 'mkfifo'):
+            os.mkfifo(folder / 'fifo.pem')
+            cases.append((folder / 'fifo.pem', 'not a regular file'))
+        for path, words in cases:
+            with self.subTest(path=path.name):
+                outcome = {}
+                worker = threading.Thread(target=lambda: outcome.update(zip(
+                    ('report', 'fetch'), self.add(scanner=self.scanner(ca_file=str(path))))), daemon=True)
+                worker.start()
+                worker.join(2)
+                if worker.is_alive():  # a blocked open of the FIFO: release it so the run ends
+                    os.close(os.open(path, os.O_WRONLY | os.O_NONBLOCK))
+                    worker.join(5)
+                    self.fail('reading the CA file waited for a writer')
+                report, fetch = outcome['report'], outcome['fetch']
+                fetch.assert_not_called()
+                self.assertIn(words, ' '.join(report['warnings']))
+                self.assertEqual(report['status'], 'partial')
+        warned = self.scanner(ca_file=str(folder / 'missing.pem')).config_warnings
+        self.assertIn('Wazuh Manager ca_file not found (missing.pem)', ' '.join(warned))
+
+    def test_failures_are_named_in_fixed_words(self):
+        import ssl
+        from urllib.error import URLError
+        verify = ssl.SSLCertVerificationError(1, 'certificate verify failed')
+        verify.verify_message = "Hostname mismatch, certificate is not valid for 'secret-host'."
+        cases = [(HTTPError('https://secret-host', 401, 'secret-manager', {}, None),
+                  'HTTP 401: authentication or permission refused'),
+                 (HTTPError('https://secret-host', 403, 'secret-manager', {}, None),
+                  'HTTP 403: authentication or permission refused'),
+                 (HTTPError('https://secret-host', 503, 'secret-manager', {}, None), 'HTTP 503'),
+                 (URLError(verify), 'TLS certificate verification failed'),
+                 (ScannerError('Wazuh Manager redirect rejected'), 'redirect refused'),
+                 (ScannerError('Wazuh Manager response exceeded size limit'), 'answer too large'),
+                 (ScannerError('Wazuh Manager did not finish answering within 5 seconds'), 'no complete answer in time'),
+                 (ValueError('secret-manager'), 'unexpected answer'),
+                 (OSError('header.payload.signature'), 'request or response failed')]
+        for error, words in cases:
+            with self.subTest(words=words):
+                report, _ = self.add(bodies=[error])
+                self.assertIn(f'Wazuh freshness evidence unavailable ({words})', report['warnings'])
+                self.assertNotIn('secret', json.dumps(report))
+
+    def test_unknown_keys_are_escaped_and_credential_like_keys_get_the_hint(self):
+        warnings = self.scanner(**{'\u202eevil\x1b[31m': 1, 'manager_password': 'x'}).config_warnings
+        text = ' '.join(warnings)
+        self.assertNotIn('\u202e', text)
+        self.assertNotIn('\x1b', text)
+        self.assertIn("'wazuh.freshness.\\u202eevil\\x1b[31m'", text)
+        self.assertIn("'wazuh.freshness.manager_password' is ignored; remove credentials from the file", text)
+
+    def test_a_time_out_names_whole_seconds(self):
+        from pc_scanner.core import fetch_bounded
+        from unittest.mock import MagicMock
+
+        class Stall:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def read1(self, size):
+                time.sleep(.02)
+                return b' '
+
+        opener = MagicMock()
+        opener.open.return_value = Stall()
+        with self.assertRaisesRegex(ScannerError, r'within 1 seconds; search'):
+            fetch_bounded(opener, MagicMock(), object(), .3, 10 ** 6, None, service='Wazuh')
+
     def test_configuration_and_unknown_keys(self):
         for settings in [{'enabled': 1}, {'max_keepalive_age_seconds': True}, {'max_os_record_age_seconds': 604801},
                          {'manager_url': 'http://manager'}, {'manager_url': 'https://user:pass@manager'},
