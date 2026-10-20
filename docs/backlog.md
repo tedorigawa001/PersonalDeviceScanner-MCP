@@ -227,6 +227,14 @@
     公開前の `main`（ceac1a5）の CI で、実際の Windows のセキュリティ記述子による3つの試験（本人の所有・ハードリンク・他者の所有）が
     Python 3.11 と 3.14 の両方で通った。`npx` で、実際の Wazuh への接続（23件・`completed`）と、`history.enabled = false` かつ
     `updates.lookup = true` で何もファイルを書かず、CLI の実行ごとに調べ直すことを確かめた。
+  - 0.7.0（2026-10-21）: Wazuh Manager の鮮度の補足情報（`[wazuh.freshness]`、既定で無効）と、2026-10-20 の脆弱性チェックの指摘の
+    修正。ワークフローからのステージド公開を所有者が 2FA で承認した（1回で公開された）。公開物は20ファイル
+    （`pc_scanner/freshness.py` を含み、`.compliance-*` は含まない）で、sha1・sha512 はタグ `v0.7.0`（f1be117）から作ったものと一致し、
+    provenance（SLSA v1）とレジストリの署名を検証できた。リリース用の SBOM 環境は macOS の /tmp の定期的な削除で中身が消えていたため、
+    リポジトリ内の無視するフォルダー（`.compliance-venv/`・`.compliance-wheels/`・`.compliance-schema/`）に作り直し、コミット済みの
+    SBOM の再現を確かめてから更新した。`npx` で、`[wazuh.freshness]` を含む設定の読み込み（資格情報らしいキーの警告）と、
+    実際の osquery の取得、`history` の検出元を確かめた。Docker Desktop が止まっていたため、公開物での実際の Wazuh への接続は
+    今回は確かめていない（鮮度の補足情報の実環境での確認は、公開前の受入記録による）。
 
 - [x] **Android 端末の点検に対応する（第1段階）**（2026-10-14 設計・実装）
   - 所有者自身の端末を USB でつなぎ、ADB の固定コマンドで読み取り専用に点検する。基本情報とパッチの日付、利用者が入れたアプリと
