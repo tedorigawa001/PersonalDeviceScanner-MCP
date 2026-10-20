@@ -198,8 +198,9 @@ class FreshnessTests(unittest.TestCase):
         big, broken = folder / 'big.pem', folder / 'broken.pem'
         big.write_bytes(b'x' * (freshness.CA_BYTES + 1))
         broken.write_text('not a certificate')
-        cases = [(folder, 'not a regular file'), (big, 'not a regular file'), (broken, 'not a valid PEM'),
-                 (folder / 'missing.pem', 'cannot be read')]
+        # Windows will not open a folder at all, so there it cannot be read; both refuse it before any request.
+        cases = [(folder, 'cannot be read' if os.name == 'nt' else 'not a regular file'), (big, 'not a regular file'),
+                 (broken, 'not a valid PEM'), (folder / 'missing.pem', 'cannot be read')]
         if hasattr(os, 'mkfifo'):
             os.mkfifo(folder / 'fifo.pem')
             cases.append((folder / 'fifo.pem', 'not a regular file'))
