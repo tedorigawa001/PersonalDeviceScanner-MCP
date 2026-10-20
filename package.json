@@ -1,6 +1,6 @@
 {
   "name": "personal-device-scanner-mcp",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "description": "MCP server that lets AI agents inspect your own PC and Android device read-only with osquery, ClamAV, Wazuh and adb (runs the Python server; needs Python 3.11+)",
   "license": "MIT",
   "author": "tedorigawa001",
