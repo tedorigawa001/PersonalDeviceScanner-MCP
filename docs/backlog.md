@@ -549,6 +549,21 @@
 
 ## 完了
 
+2026-10-22 の依存パッケージ修正：
+
+- [x] **certifi の侵害されたCAへの信頼を全4プロファイルから除く**
+  - GHSA-6q48-6c7w-9gw2 / PYSEC-2026-4320への対応として、2026.7.22から2026.10.19へ更新。
+    agent extraにも下限を追加し、ロック・SBOM・参照wheel一覧・第三者表示・原文とMETADATAを更新した。
+  - [検査記録](acceptance/dependency-osv-2026-10-22.json)：公開wheelのSHA256を照合し、問題のemSign ECC Root CA - G3が
+    旧bundleにあり修正版にないことを確認。OSVは旧版を検出し、修正版は検出なし。
+    Apple Silicon・Linux・Windowsのロックは既知の脆弱性0件。Intel Macのcryptography 48.0.1の既知3 CVEは例外のまま。
+  - macOS参照環境は生成ツールで再生成。他3プロファイルは同一の依存なしOS共通wheelに基づくcertifiだけの更新で、
+    各OSの環境情報・他パッケージの原文とハッシュ・既存の未確定事項を維持した。ネイティブOSでの生成再実行ではない。
+  - 回帰テスト2件は修正前に失敗・修正後に成功。Android・MCPを含むPython全329件は323成功・Windows専用6件スキップ、
+    npmの実MCP接続を含む15件は全成功。wheel/sdistの表示原文とSBOMを検証済み。
+  - Windowsのスキーマ・ハッシュ・グラフは整合しているが、既存のpywin32ライセンス未確定により全体の適合性検証は未合格。
+    今回はWindows CIを実行していない。日付の経過で失敗した既存の更新確認テストは、固定日付を現在のUTC日付にした。
+
 2026-10-12 のレビュー指摘への対応です。
 
 - [x] Wazuhの結果が0件のときは `partial` にし、agent_id を3桁ゼロ埋めに正規化

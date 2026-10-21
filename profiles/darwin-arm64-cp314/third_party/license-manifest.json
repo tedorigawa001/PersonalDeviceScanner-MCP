@@ -48,17 +48,17 @@
     {
       "license_evidence": "legacy License field (exact identifier)",
       "license_expression": "MPL-2.0",
-      "metadata_path": "third_party/metadata/certifi-2026.7.22.METADATA",
-      "metadata_sha256": "ef5af1638fbb23676ac3c5777dfcfc2cd9c348fe4172ed5ba3d277655b248090",
+      "metadata_path": "third_party/metadata/certifi-2026.10.19.METADATA",
+      "metadata_sha256": "a5c0be3a42daeef0edfaf58e6ea5b7550f3e4e8eb35420f72e902df9bcf00f5c",
       "name": "certifi",
       "notices": [
         {
-          "path": "third_party/licenses/certifi/2026.7.22/certifi-2026.7.22.dist-info/licenses/LICENSE",
+          "path": "third_party/licenses/certifi/2026.10.19/certifi-2026.10.19.dist-info/licenses/LICENSE",
           "sha256": "e93716da6b9c0d5a4a1df60fe695b370f0695603d21f6f83f053e42cfc10caf7",
-          "source_path": "certifi-2026.7.22.dist-info/licenses/LICENSE"
+          "source_path": "certifi-2026.10.19.dist-info/licenses/LICENSE"
         }
       ],
-      "version": "2026.7.22"
+      "version": "2026.10.19"
     },
     {
       "license_evidence": "License-Expression",

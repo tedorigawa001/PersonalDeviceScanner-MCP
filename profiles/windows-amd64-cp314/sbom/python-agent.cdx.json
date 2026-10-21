@@ -144,17 +144,17 @@
       "version": "26.1.0"
     },
     {
-      "bom-ref": "pkg:pypi/certifi@2026.7.22",
+      "bom-ref": "pkg:pypi/certifi@2026.10.19",
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://pypi.org/project/certifi/2026.7.22/"
+          "url": "https://pypi.org/project/certifi/2026.10.19/"
         }
       ],
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775"
+          "content": "42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b"
         }
       ],
       "licenses": [
@@ -170,11 +170,11 @@
         },
         {
           "name": "pc-scanner:installed-metadata-sha256",
-          "value": "ef5af1638fbb23676ac3c5777dfcfc2cd9c348fe4172ed5ba3d277655b248090"
+          "value": "a5c0be3a42daeef0edfaf58e6ea5b7550f3e4e8eb35420f72e902df9bcf00f5c"
         },
         {
           "name": "pc-scanner:reference-wheel",
-          "value": "certifi-2026.7.22-py3-none-any.whl"
+          "value": "certifi-2026.10.19-py3-none-any.whl"
         },
         {
           "name": "pc-scanner:artifact-provenance",
@@ -185,10 +185,10 @@
           "value": "original notices match reference wheel bytes"
         }
       ],
-      "purl": "pkg:pypi/certifi@2026.7.22",
+      "purl": "pkg:pypi/certifi@2026.10.19",
       "scope": "required",
       "type": "library",
-      "version": "2026.7.22"
+      "version": "2026.10.19"
     },
     {
       "bom-ref": "pkg:pypi/cffi@2.1.1",
@@ -1434,7 +1434,7 @@
     },
     {
       "dependsOn": [],
-      "ref": "pkg:pypi/certifi@2026.7.22"
+      "ref": "pkg:pypi/certifi@2026.10.19"
     },
     {
       "dependsOn": [
@@ -1458,7 +1458,7 @@
     },
     {
       "dependsOn": [
-        "pkg:pypi/certifi@2026.7.22",
+        "pkg:pypi/certifi@2026.10.19",
         "pkg:pypi/h11@0.16.0"
       ],
       "ref": "pkg:pypi/httpcore@1.0.9"
@@ -1466,7 +1466,7 @@
     {
       "dependsOn": [
         "pkg:pypi/anyio@4.15.1",
-        "pkg:pypi/certifi@2026.7.22",
+        "pkg:pypi/certifi@2026.10.19",
         "pkg:pypi/httpcore@1.0.9",
         "pkg:pypi/idna@3.20"
       ],
@@ -1517,6 +1517,7 @@
     {
       "dependsOn": [
         "pkg:pypi/anyio@4.15.1",
+        "pkg:pypi/certifi@2026.10.19",
         "pkg:pypi/cryptography@50.0.2",
         "pkg:pypi/mcp@1.30.0"
       ],
@@ -1647,7 +1648,7 @@
       }
     ]
   },
-  "serialNumber": "urn:uuid:7562774a-d95c-550c-8c1f-3ff8b14782cf",
+  "serialNumber": "urn:uuid:773c442a-ce59-591d-b4f7-2ec61576bcee",
   "specVersion": "1.6",
   "version": 1
 }

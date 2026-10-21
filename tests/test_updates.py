@@ -407,7 +407,7 @@ class UpdateTests(unittest.TestCase):
 
     def test_saved_times_and_versions_are_written_out_again_or_refused(self):
         # A saved time is any text that still parses; it reached the AI as written, bidi controls included.
-        weird = "2026-10-19\u202e" + datetime.now(timezone.utc).strftime("%H:%M:%S") + "." + "9" * 5000 + "+00:00"
+        weird = datetime.now(timezone.utc).strftime("%Y-%m-%d\u202e%H:%M:%S") + "." + "9" * 5000 + "+00:00"
         self.write_cache(osquery={"checked_at": weird, "latest": "5.23.1"})
         network = Network()
         info = self.check(self.scanner(), network=network)["data"]["engine_update"]

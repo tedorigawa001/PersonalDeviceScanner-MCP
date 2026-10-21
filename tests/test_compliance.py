@@ -71,6 +71,38 @@ class DeclaredDependencyTests(unittest.TestCase):
 
 
 class SecurityFloorTests(unittest.TestCase):
+    def test_certifi_floor_rejects_compromised_root_bundle(self):
+        project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
+        floors = [Requirement(text) for text in project["optional-dependencies"]["agent"]
+                  if Requirement(text).name == "certifi"]
+        self.assertEqual(len(floors), 1)
+        self.assertIsNone(floors[0].marker)
+        self.assertFalse(floors[0].specifier.contains("2026.7.22"))
+        self.assertFalse(floors[0].specifier.contains("2026.10.18"))
+        self.assertTrue(floors[0].specifier.contains("2026.10.19"))
+
+    def test_certifi_fixed_in_every_distribution_profile(self):
+        # GHSA-6q48-6c7w-9gw2 must not return through a bundled platform lock.
+        fixed = Requirement("certifi>=2026.10.19")
+        wheel_hashes = set()
+        roots = [ROOT, *sorted((ROOT / "profiles").glob("*/requirements-agent.lock"))]
+        self.assertEqual(len(roots), 4)
+        for profile in roots:
+            root = profile if profile.is_dir() else profile.parent
+            with self.subTest(profile=str(root.relative_to(ROOT))):
+                pins = [line.split() for line in (root / "requirements-agent.lock").read_text().splitlines()
+                        if line.startswith("certifi==")]
+                self.assertEqual(len(pins), 1)
+                version = pins[0][0].split("==", 1)[1]
+                self.assertTrue(fixed.specifier.contains(version))
+                bom = json.loads((root / "sbom/python-agent.cdx.json").read_text())
+                component = next(c for c in bom["components"] if c["name"] == "certifi")
+                self.assertEqual(component["version"], version)
+                digest = component["hashes"][0]["content"]
+                self.assertEqual(pins[0][1:], ["--hash=sha256:" + digest])
+                wheel_hashes.add(digest)
+        self.assertEqual(len(wheel_hashes), 1, "All profiles use the same universal certifi wheel")
+
     def test_cryptography_floor_applies_where_fixed_wheels_exist(self):
         # cryptography 50 fixes CVE-2026-69247/69248/69249 but ships no Intel macOS wheel.
         project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]

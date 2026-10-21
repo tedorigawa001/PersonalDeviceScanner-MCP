@@ -16,7 +16,8 @@ license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "third_party/licenses/**/*
 # anyio is imported directly by the MCP server; mcp itself requires anyio>=4.5.
 # cryptography arrives through mcp -> pyjwt[crypto]; 50 fixes CVE-2026-69247/69248/69249.
 # Intel Macs are exempt: no prebuilt wheel exists for them from 49 on (see docs/backlog.md).
-agent = ["mcp>=1.20,<2", "anyio>=4.5,<5",
+# certifi 2026.10.19 removes the compromised emSign trust chain (GHSA-6q48-6c7w-9gw2).
+agent = ["mcp>=1.20,<2", "anyio>=4.5,<5", "certifi>=2026.10.19",
          "cryptography>=50; sys_platform != 'darwin' or platform_machine != 'x86_64'"]
 
 [project.scripts]

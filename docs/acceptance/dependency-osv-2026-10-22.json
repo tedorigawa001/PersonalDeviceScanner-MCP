@@ -1,0 +1,193 @@
+{
+  "recorded_at": "2026-10-21T15:22:37.843476+00:00",
+  "client_date": "2026-10-22",
+  "issue": {
+    "id": "GHSA-6q48-6c7w-9gw2",
+    "alias": "PYSEC-2026-4320",
+    "package": "certifi",
+    "before": "2026.7.22",
+    "after": "2026.10.19",
+    "wheel": "certifi-2026.10.19-py3-none-any.whl",
+    "sha256": "42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b",
+    "pypi_source": "https://pypi.org/pypi/certifi/2026.10.19/json",
+    "source_distribution_download_and_hash_verified": true,
+    "affected_root_old_bundle_present": true,
+    "affected_root_fixed_bundle_absent": true,
+    "root_subject": "emSign ECC Root CA - G3"
+  },
+  "regeneration": {
+    "reference": "Installed macOS x86_64 CPython3.14.7 environment, scripts/generate_compliance.py --wheels-dir .compliance-wheels; --check identical",
+    "other_three_profiles": "Targeted snapshot refresh using the same verified universal dependency-free wheel. Not native-OS regeneration or fresh cross-platform dependency resolution.",
+    "non_certifi_package_bytes_preserved": true,
+    "all_environments_preserved": true,
+    "graph_change": "Only certifi PURL/version replacement and direct project-to-certifi edge for new unconditional security floor",
+    "all_sbom_serials_recomputed": true,
+    "stale_certifi_evidence_removed": true,
+    "old_other_dependencies_changed": false
+  },
+  "profile_validation": [
+    {
+      "profile": ".",
+      "schema": true,
+      "serial": true,
+      "non_certifi_bytes_unchanged": true,
+      "environment_unchanged": true,
+      "dependency_graph_preserved_except_security_floor": true,
+      "evidence_hashes": true,
+      "existing_unresolved": []
+    },
+    {
+      "profile": "profiles/darwin-arm64-cp314",
+      "schema": true,
+      "serial": true,
+      "non_certifi_bytes_unchanged": true,
+      "environment_unchanged": true,
+      "dependency_graph_preserved_except_security_floor": true,
+      "evidence_hashes": true,
+      "existing_unresolved": []
+    },
+    {
+      "profile": "profiles/linux-x86_64-cp314",
+      "schema": true,
+      "serial": true,
+      "non_certifi_bytes_unchanged": true,
+      "environment_unchanged": true,
+      "dependency_graph_preserved_except_security_floor": true,
+      "evidence_hashes": true,
+      "existing_unresolved": []
+    },
+    {
+      "profile": "profiles/windows-amd64-cp314",
+      "schema": true,
+      "serial": true,
+      "non_certifi_bytes_unchanged": true,
+      "environment_unchanged": true,
+      "dependency_graph_preserved_except_security_floor": true,
+      "evidence_hashes": true,
+      "existing_unresolved": [
+        "pywin32: license expression unknown"
+      ]
+    }
+  ],
+  "osv_after": {
+    "checked_at": "2026-10-21T15:20:42.856459+00:00",
+    "unique_package_versions": 31,
+    "profiles": {
+      "requirements-agent.lock": {
+        "count": 29,
+        "findings": [
+          {
+            "package": "cryptography",
+            "version": "48.0.1",
+            "vulns": [
+              {
+                "id": "GHSA-g6cj-pr64-35w5",
+                "modified": "2026-09-10T03:50:53.610446Z"
+              },
+              {
+                "id": "GHSA-jwv3-5hgf-82ww",
+                "modified": "2026-09-24T14:45:10.238420Z"
+              },
+              {
+                "id": "GHSA-m2h6-j472-rp4c",
+                "modified": "2026-09-24T15:00:04.719975Z"
+              },
+              {
+                "id": "PYSEC-2026-3552",
+                "modified": "2026-08-04T14:30:15.036332Z"
+              },
+              {
+                "id": "PYSEC-2026-3553",
+                "modified": "2026-08-04T14:30:26.222821Z"
+              },
+              {
+                "id": "PYSEC-2026-3554",
+                "modified": "2026-08-04T14:30:26.230323Z"
+              }
+            ]
+          }
+        ]
+      },
+      "profiles/darwin-arm64-cp314/requirements-agent.lock": {
+        "count": 29,
+        "findings": []
+      },
+      "profiles/linux-x86_64-cp314/requirements-agent.lock": {
+        "count": 29,
+        "findings": []
+      },
+      "profiles/windows-amd64-cp314/requirements-agent.lock": {
+        "count": 30,
+        "findings": []
+      }
+    },
+    "certifi_old_version_positive_control": {
+      "vulns": [
+        {
+          "id": "GHSA-6q48-6c7w-9gw2",
+          "modified": "2026-10-20T22:11:14.336568Z"
+        },
+        {
+          "id": "PYSEC-2026-4320",
+          "modified": "2026-10-20T22:00:02.600723Z"
+        }
+      ]
+    },
+    "certifi_fixed_version": {}
+  },
+  "tests": {
+    "python": {
+      "command": ".venv/bin/python -m unittest discover -s tests -v",
+      "total": 329,
+      "passed": 323,
+      "skipped": 6,
+      "failed": 0,
+      "seconds": 31.847,
+      "skip_reason": "Windows-only junction/ACL/security API tests on macOS",
+      "included_modules": {
+        "test_android": 36,
+        "test_mcp": 7,
+        "test_compliance": 13,
+        "test_updates": 41
+      },
+      "log_sha256": "696733f863ebc367f5532ac46afb7126b46e8f9e0c073024f1470845c7b0cce2"
+    },
+    "npm": {
+      "command": "PC_SCANNER_NPM_E2E=1 PC_SCANNER_PYTHON=<absolute .venv Python> npm test",
+      "total": 15,
+      "passed": 15,
+      "skipped": 0,
+      "failed": 0,
+      "includes": "Hash-checked first-use setup, packaged locks and real MCP stdio roundtrip"
+    },
+    "regressions": {
+      "new_tests": 2,
+      "red_before_patch": true,
+      "green_after_patch": true,
+      "covers": "All four locks and SBOMs reject old certifi, share verified universal-wheel hash; fresh agent installs reject both 2026.7.22 and 2026.10.18"
+    },
+    "existing_test_fixture_fix": "tests/test_updates.py had a fixed 2026-10-19 cache date, now uses current UTC date so normalization test does not expire. Test assertion and production behavior unchanged."
+  },
+  "distribution": {
+    "wheel_and_sdist_verified": true,
+    "notice_files_each": 35,
+    "wheel_metadata_certifi_floor_verified": true
+  },
+  "limitations": [
+    "No Windows/native other-OS CI was executed; GitHub CLI authentication was unavailable. No branch push or commit performed.",
+    "Windows overall compliance validator still fails only at existing unresolved pywin32 license assertion; it was not bypassed or cleared.",
+    "Intel Mac cryptography48.0.1 known three-CVE exception remains unchanged.",
+    "Initial sandbox test run could not bind local TLS ports; final run allowed local test servers and passed.",
+    "OSV checks exact lock versions, not every user-installed environment."
+  ],
+  "commands_verified": [
+    ".compliance-venv/bin/python scripts/generate_compliance.py --wheels-dir .compliance-wheels --check",
+    ".venv/bin/python scripts/validate_compliance.py --schema-dir .compliance-schema",
+    ".venv/bin/python scripts/validate_compliance.py --root profiles/darwin-arm64-cp314 --schema-dir .compliance-schema",
+    ".venv/bin/python scripts/validate_compliance.py --root profiles/linux-x86_64-cp314 --schema-dir .compliance-schema",
+    ".venv/bin/python -m unittest discover -s tests -p test_compliance.py -v",
+    ".venv/bin/python -m unittest discover -s tests -p test_updates.py -v",
+    ".venv/bin/python scripts/verify_distribution.py <temporary dist>",
+    ".venv/bin/python -m pip check"
+  ]
+}

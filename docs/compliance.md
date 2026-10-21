@@ -32,8 +32,8 @@ Wazuh/osquery/ClamAV、Python処理系、pip/setuptoolsなどのビルド・導�
 | PSF-2.0 | typing-extensionsの同梱LICENSE全文（歴史的な複数許諾を含む）を保持 |
 | MPL-2.0 | certifiの原文を保持し、対象ソースの取得方法を配布先へ案内。改変した対象ファイルはMPL条件に従って提供 |
 
-certifi 2026.7.22 の対象ソースは
-[PyPIの当該リリースのFiles](https://pypi.org/project/certifi/2026.7.22/#files) のSource Distributionから入手できます。
+certifi 2026.10.19 の対象ソースは
+[PyPIの当該リリースのFiles](https://pypi.org/project/certifi/2026.10.19/#files) のSource Distributionから入手できます。
 このURLを利用者向け案内にも保持し、実際の配布時にダウンロード可能なことを確認してください。
 certifiを改変して配布する場合は、上流ソースだけでは足りず、その改変版を提供します。
 
@@ -103,6 +103,15 @@ wheelに同梱する表示もこれです。ほかのOS向けは `profiles/<OS>-
 生成スクリプトは導入済み環境を読むため、各OSのプロファイルはそのOS上で作ります。
 pipで別OS向けに解決しても `sys_platform` などの条件は実行中のOSで判定され、
 Windowsだけの依存（pywin32など）を拾えないためです。
+
+2026-10-22 の certifi 2026.10.19 更新では、macOS x86_64 の参照プロファイルを導入済み環境から再生成しました。
+ほかの3プロファイルは、依存条件を持たない同一の `py3-none-any` wheelを根拠に、certifiの記録だけを更新しました。
+公開SHA-256は `42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b` です。
+更新対象はロック、SBOMのcertifiコンポーネントと参照、参照wheel一覧、METADATA、ライセンス原文、第三者表示とMPLソース案内です。
+agent extraにも修正版の下限を追加し、SBOMの直接依存とserialNumberを再計算しました。
+各OSの環境情報、他パッケージの版・原文・ハッシュ、既存の未確定ライセンスは維持し、変更前との比較で検証しました。
+これはOS共通の単一パッケージの更新であり、他OS上で依存解決・生成を再実行した結果ではありません。
+環境マーカーや新しい依存条件、ネイティブwheelを伴う更新には、従来どおり各OSでの再生成が必要です。
 
 GitHub Actionsの「Compliance profiles」ワークフロー（`.github/workflows/compliance-profiles.yml`、手動実行）が、
 Windows / Linux / macOS（arm64）それぞれで次を行い、結果を成果物（artifact）としてアップロードします。

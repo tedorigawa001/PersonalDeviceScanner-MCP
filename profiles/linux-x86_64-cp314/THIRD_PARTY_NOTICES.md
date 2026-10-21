@@ -12,7 +12,7 @@ Environment: python=3.14.8, implementation=CPython, os=Linux, architecture=x86_6
 | [annotated-types](https://pypi.org/project/annotated-types/0.8.0/) | 0.8.0 | MIT | [LICENSE](third_party/licenses/annotated-types/0.8.0/annotated_types-0.8.0.dist-info/licenses/LICENSE) |
 | [anyio](https://pypi.org/project/anyio/4.15.1/) | 4.15.1 | MIT | [LICENSE](third_party/licenses/anyio/4.15.1/anyio-4.15.1.dist-info/licenses/LICENSE) |
 | [attrs](https://pypi.org/project/attrs/26.1.0/) | 26.1.0 | MIT | [LICENSE](third_party/licenses/attrs/26.1.0/attrs-26.1.0.dist-info/licenses/LICENSE) |
-| [certifi](https://pypi.org/project/certifi/2026.7.22/) | 2026.7.22 | MPL-2.0 | [LICENSE](third_party/licenses/certifi/2026.7.22/certifi-2026.7.22.dist-info/licenses/LICENSE) |
+| [certifi](https://pypi.org/project/certifi/2026.10.19/) | 2026.10.19 | MPL-2.0 | [LICENSE](third_party/licenses/certifi/2026.10.19/certifi-2026.10.19.dist-info/licenses/LICENSE) |
 | [cffi](https://pypi.org/project/cffi/2.1.1/) | 2.1.1 | MIT-0 | [LICENSE](third_party/licenses/cffi/2.1.1/cffi-2.1.1.dist-info/licenses/LICENSE) |
 | [click](https://pypi.org/project/click/8.5.0/) | 8.5.0 | BSD-3-Clause | [LICENSE.txt](third_party/licenses/click/8.5.0/click-8.5.0.dist-info/licenses/LICENSE.txt) |
 | [cryptography](https://pypi.org/project/cryptography/50.0.2/) | 50.0.2 | Apache-2.0 OR BSD-3-Clause | [LICENSE](third_party/licenses/cryptography/50.0.2/cryptography-50.0.2.dist-info/licenses/LICENSE)<br>[LICENSE.APACHE](third_party/licenses/cryptography/50.0.2/cryptography-50.0.2.dist-info/licenses/LICENSE.APACHE)<br>[LICENSE.BSD](third_party/licenses/cryptography/50.0.2/cryptography-50.0.2.dist-info/licenses/LICENSE.BSD) |
@@ -41,6 +41,6 @@ Environment: python=3.14.8, implementation=CPython, os=Linux, architecture=x86_6
 
 ## MPL-2.0 source availability
 
-certifi 2026.7.22: corresponding upstream Source Distribution is available at [PyPI release files](https://pypi.org/project/certifi/2026.7.22/#files).
+certifi 2026.10.19: corresponding upstream Source Distribution is available at [PyPI release files](https://pypi.org/project/certifi/2026.10.19/#files).
 If distributing a modified copy, provide the corresponding modified MPL-covered source as well.
 Verify source availability at release time and retain this notice with the distribution.
