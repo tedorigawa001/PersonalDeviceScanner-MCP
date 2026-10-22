@@ -216,7 +216,7 @@ npm パッケージに入っているのは、小さな起動用スクリプト�
 - Windows x64・macOS（Intel / Apple シリコン）・Linux x86_64 の CPython 3.14 では、同梱のロックファイルのハッシュで
   検証して導入します（`pip --require-hashes`）。それ以外の Python や CPU では、同じバージョンをハッシュの検証なしで導入し、
   その旨を stderr に表示します。起動用スクリプトと pip の出力はすべて stderr に出し、MCP の通信路には混ぜません。
-- Python は `python3.14`、`python3.13` … `python3`（Windows は `py -3.14`、`py -3`、`python`）の順に、`PATH` の
+- Python は `python3.15`、`python3.14`、`python3.13` … `python3`（Windows は `py -3.15`、`py -3.14`、`py -3`、`python`）の順に、`PATH` の
   絶対パスのフォルダーからだけ探します。現在のフォルダー（Windows は本来ここを最初に探します）や、`.` のような相対の `PATH` は
   見ないため、ダウンロードフォルダーなどに置かれた Python と同じ名前のプログラムは実行されません。
   指定する場合は `PC_SCANNER_PYTHON` に絶対パスを設定します。`PC_SCANNER_CACHE_DIR`（絶対パス）でキャッシュの場所を変えられます。
@@ -695,6 +695,28 @@ TIME                 VIA  OPERATION      SOURCE         STATUS     FINDINGS    S
   読み出す MCP ツールはないため、AI は読めません。ダッシュボードのページはスクリプトを動かさず、何も読み込みません。
 - **文字化け対策**：Windows でエンジンの出力が UTF-8 でない場合は、システムの既定の文字コード（日本語版では cp932）で読み直します。
 
+## 開発用ランタイム
+
+開発基準は Python 3.15.1（`.python-version`）と Node.js 26.12.1（`.node-version`）です。
+Node.js 26はCurrent版で、CIではNode.js 24 LTSと最低対応の22も確認します。
+利用者向けの最低要件はPython 3.11以上・Node.js 22以上のままです。
+
+Python本体を更新しても既存の仮想環境の処理系は変わらないため、3.15の開発環境を別に作ります。
+
+```sh
+python3.15 -m venv .venv-dev
+.venv-dev/bin/python -m pip install --upgrade pip
+.venv-dev/bin/python -m pip install '.[agent]'
+.venv-dev/bin/python -m unittest discover -s tests -v
+PC_SCANNER_NPM_E2E=1 PC_SCANNER_PYTHON="$PWD/.venv-dev/bin/python" npm test
+```
+
+Windowsでは `py -3.15 -m venv .venv-dev` と `.venv-dev\Scripts\python.exe` を使います。
+同梱の適合性スナップショットは引き続きCPython 3.14用です。npm起動時はハッシュで検証できる処理系を優先し、
+3.15では同じ固定バージョンをwheelハッシュなしで導入してstderrに通知します。
+3.15用スナップショットはCompliance profilesワークフローの処理系選択から各OSで新規生成できます。
+既存プロファイルを維持するため、選択の既定値は3.14です。
+
 ## テスト
 
 [手順2](#2-このプロジェクトを導入する)で作った仮想環境の Python で実行します。
@@ -712,9 +734,9 @@ Windows（PowerShell）：
 ```
 
 - テストは、エンジンの出力と Wazuh の応答を模したデータで、境界値や失敗時の扱いを確認します。
-- MCP のテスト4件には `agent` extra が必要です。システムの `python3` など、未導入の Python で実行するとスキップされます。
+- MCP のテストには `agent` extra が必要です。システムの `python3` など、未導入の Python で実行するとスキップされます。
   実際にサーバーを起動して接続・ツール一覧・呼び出しを確認し、長時間の検査中の応答・順番待ち・進捗通知はメモリ内の接続で確認します。
-- GitHub Actions が、`main` への push とプルリクエストのたびに、Windows / macOS / Linux × Python 3.11 / 3.14 でテストを実行します。
+- GitHub Actionsは、`main`へのpushとプルリクエストのたびに、Windows / macOS / Linux × Python 3.11 / 3.14 / 3.15でテストを実行する設定です。
   `agent` extra を導入するので、MCP のテストもスキップされません。あわせて wheel と sdist をビルドし、
   第三者表示と SBOM が含まれていることを確認します。Windows では本物のジャンクションや、ACL で読み取りを拒否した
   フォルダー（`Documents\My Music` のようなジャンクションを含む）を作り、検査での扱いを確認します。
@@ -725,7 +747,9 @@ Windows（PowerShell）：
   `PC_SCANNER_NPM_E2E=1` を設定すると（PyPI からパッケージを導入します）、利用者と同じようにパッケージを作って導入し、
   初回の `serve` で自動的に準備して MCP に応答することを確かめます。あわせて、stdout に MCP のメッセージ以外が出ないこと、
   ロックのハッシュが1つでも違えば準備が止まること、現在のフォルダーに置かれたモジュールを読み込まないこと、
-  （macOS / Linux）起動用スクリプトへの SIGTERM でサーバーも止まることを確認します。CI では全 OS × Python 3.11 / 3.14 で実行します。
+  （macOS / Linux）起動用スクリプトへのSIGTERMでサーバーも止まることを確認します。
+  CIでは各OSでPython/Node.jsを3.11/22・3.14/24・3.15/26の組合せで確認します。
+  公開前の試験は3.14/24と3.15/26の両方で行い、公開処理自体はNode.js 24 LTSで実行します。
 - Linux arm64コンテナの受入試験（2026-10-19）：Ubuntu 24.04上で実osquery 5.23.1・ClamAV 1.5.4を一般ユーザーで実行。
   ホストのマウント・実行時ネットワークなしで、インベントリ、EICAR、日本語名、リンク、深度・サイズ・権限制限、定義の鮮度、
   実CLIとMCP stdioの進捗・キャンセルを確認しました（[記録](docs/acceptance/linux-arm64-container-2026-10-19.json)）。

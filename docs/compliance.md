@@ -15,6 +15,11 @@
 Windowsではpywin32等が追加されるため、このロックを全OS共通として使わないでください。
 同じPythonパッケージのメタデータと依存条件でも、プラットフォーム別wheelには違う内包物があります。
 
+開発用の処理系は2026-10-22からCPython 3.15.1ですが、既存の4プロファイルはCPython 3.14の参照記録として維持しています。
+開発用`.venv-dev`や、そのビルドツール一式をこのSBOMが記録したものとは扱いません。
+Compliance profilesワークフローではPython 3.15も選べますが、3.15用のロック・SBOMとして配布するには、
+そのOS上で生成した新しい成果物を検証して取り込む必要があります。
+
 SBOMはPythonパッケージ依存グラフの全体を対象にしています。
 Wazuh/osquery/ClamAV、Python処理系、pip/setuptoolsなどのビルド・導入用ツール、
 ネイティブwheelに内包されるOpenSSL/libffi/Rust crate等の個別コンポーネントはこのグラフに含めていません。

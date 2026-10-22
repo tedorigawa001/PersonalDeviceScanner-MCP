@@ -54,6 +54,9 @@ test('other Python versions and CPUs get the same versions without hash checks',
   assert.equal(arm.hashed, false);
   assert.match(launcher.requirements(arm), /^mcp==1\.30\.0$/m);
   assert.doesNotMatch(launcher.requirements(arm), /--hash/);
+  const latest = launcher.chooseEnvironment([interpreter('Darwin', 'x86_64', '3.15.1')], locks);
+  assert.equal(latest.lock.file, LOCK_FILES[0]);
+  assert.equal(latest.hashed, false); // Existing snapshots describe CPython 3.14 wheels.
   assert.match(launcher.requirements(launcher.chooseEnvironment([interpreter('Linux', 'x86_64', '3.14.8')], locks)),
     /^mcp==1\.30\.0 --hash=sha256:[0-9a-f]{64}$/m);
 });
@@ -61,6 +64,7 @@ test('other Python versions and CPUs get the same versions without hash checks',
 test('an interpreter that allows hash checks is preferred over an earlier one', () => {
   const locks = launcher.readLocks(ROOT);
   const choice = launcher.chooseEnvironment([interpreter('Linux', 'x86_64', '3.12.3'),
+    interpreter('Linux', 'x86_64', '3.15.1'),
     interpreter('Linux', 'x86_64', '3.14.8')], locks);
   assert.equal(choice.info.python, '3.14.8');
   assert.equal(choice.hashed, true);
@@ -103,8 +107,8 @@ test('the cache folder follows each OS, and an override must be absolute', () =>
 });
 
 test('Python is found by fixed names, or only at an absolute path the owner set', () => {
-  assert.deepEqual(launcher.pythonCandidates({}, 'win32')[0], ['py', '-3.14']);
-  assert.deepEqual(launcher.pythonCandidates({}, 'linux')[0], ['python3.14']);
+  assert.deepEqual(launcher.pythonCandidates({}, 'win32').slice(0, 2), [['py', '-3.15'], ['py', '-3.14']]);
+  assert.deepEqual(launcher.pythonCandidates({}, 'linux').slice(0, 2), [['python3.15'], ['python3.14']]);
   const absolute = path.resolve('opt', 'python3');
   assert.deepEqual(launcher.pythonCandidates({ PC_SCANNER_PYTHON: absolute }, 'linux'), [[absolute]]);
   assert.throws(() => launcher.pythonCandidates({ PC_SCANNER_PYTHON: 'python3' }, 'linux'), launcher.LauncherError);

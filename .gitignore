@@ -3,6 +3,7 @@ scanner.toml
 # Local drafts (blog posts and the like); not part of the project.
 drafts/
 .venv/
+.venv-dev/
 __pycache__/
 *.py[cod]
 build/

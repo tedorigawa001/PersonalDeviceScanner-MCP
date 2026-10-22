@@ -1,0 +1,146 @@
+{
+  "client_date": "2026-10-22",
+  "recorded_at": "2026-10-22T05:52:12.538620+00:00",
+  "development": {
+    "python": "3.15.1",
+    "python_executable": ".venv-dev/bin/python",
+    "python_installation": "~/.local/opt/pc-scanner-python/3.15.1",
+    "python_command": "~/.local/bin/python3.15",
+    "architecture": "x86_64",
+    "node": "26.12.1",
+    "npm": "11.20.0",
+    "node_selection": "Repository .node-version; existing nodenv installation, global selection outside repository unchanged",
+    "python_selection": "Separate .venv-dev; existing .venv remains CPython3.14.7",
+    "minimum_supported": {
+      "python": "3.11",
+      "node": "22"
+    }
+  },
+  "sources": {
+    "python_release": "https://www.python.org/downloads/release/python-3151/",
+    "python_tarball": "https://www.python.org/ftp/python/3.15.1/Python-3.15.1.tar.xz",
+    "python_source_sha256": "673ae7232d84c894729882c8257d300ef2d26523911bfd3917ec8ce7f526f99b",
+    "sha256_verified": true,
+    "node_release_index": "https://nodejs.org/dist/index.json",
+    "node_track": "26 Current; 24 LTS retained in CI/publication"
+  },
+  "build": {
+    "method": "Official CPython source, configure/make/altinstall into user prefix; no administrator installation",
+    "compiler": "Apple Clang21.0.0, explicit -arch x86_64",
+    "existing_libraries": "Homebrew openssl@3 and gettext, x86_64",
+    "configure_flags": [
+      "--build=x86_64-apple-darwin",
+      "--host=x86_64-apple-darwin",
+      "--with-openssl=/usr/local/opt/openssl@3",
+      "--with-ensurepip=upgrade"
+    ],
+    "import_checks": [
+      "ssl",
+      "sqlite3",
+      "ctypes",
+      "lzma",
+      "mcp",
+      "anyio"
+    ],
+    "initial_failure": "Compiler defaulted arm64 while Homebrew libraries were x86_64; rebuilt consistently as x86_64 with gettext link flags"
+  },
+  "dependencies": {
+    "agent_versions": "All29 installed runtime versions match requirements-agent.lock",
+    "new_environment_pip": "26.2.2",
+    "compliance_profiles": "Existing CPython3.14 snapshots unchanged; no CPython3.15 snapshot claimed",
+    "intel_mac_cryptography_exception": "48.0.1 unchanged"
+  },
+  "verification": {
+    "python_full_tests": {
+      "3.14.7": {
+        "total": 329,
+        "passed": 323,
+        "skipped": 6,
+        "failures": 0,
+        "seconds": 23.266,
+        "log_sha256": "c34ebdadf5a357713534a940022f1d267c9654316ea772d39af428051a922ee6"
+      },
+      "3.15.1": {
+        "total": 329,
+        "passed": 323,
+        "skipped": 6,
+        "failures": 0,
+        "seconds": 24.309,
+        "log_sha256": "55b70e24c51d156ce1383836c5f17a4c0341fd6da019068b21164f6e739d8742"
+      }
+    },
+    "windows_only_skips": 6,
+    "android_and_mcp_included": true,
+    "npm_e2e": {
+      "node": "26.12.1",
+      "python_versions": [
+        "3.14.7",
+        "3.15.1"
+      ],
+      "passed_each": 15,
+      "failed_each": 0,
+      "skipped_each": 0,
+      "includes": "Pack/install, initial setup, stdio MCP, hash failure, module isolation, process termination"
+    },
+    "actionlint": {
+      "version": "1.7.12",
+      "passed": true,
+      "shellcheck": "not installed; actionlint shellcheck integration disabled",
+      "archive_sha256": "5b44c3bc2255115c9b69e30efc0fecdf498fdb63c5d58e17084fd5f16324c644"
+    },
+    "pip_check": true,
+    "wheel_sdist_build_python315": true,
+    "distribution_notices_each": 35,
+    "distribution_verifier": true,
+    "git_diff_check": true
+  },
+  "ci_configuration": {
+    "python": [
+      "3.11",
+      "3.14",
+      "3.15"
+    ],
+    "operating_systems": [
+      "Windows",
+      "macOS",
+      "Linux"
+    ],
+    "npm_pairs": [
+      {
+        "python": "3.11",
+        "node": "22"
+      },
+      {
+        "python": "3.14",
+        "node": "24"
+      },
+      {
+        "python": "3.15",
+        "node": "26"
+      }
+    ],
+    "regular_jobs": 19,
+    "release_check_pairs": [
+      "3.14/24",
+      "3.15/26"
+    ],
+    "publisher_node": "24",
+    "compliance_python_selector": [
+      "3.15",
+      "3.14"
+    ],
+    "compliance_default": "3.14",
+    "remote_execution": "Not run for these changes; no commit or push"
+  },
+  "regressions": {
+    "launcher_discovers_python315": true,
+    "matching_cp314_lock_still_preferred": true,
+    "cp315_pins_without_wheel_hashes": true
+  },
+  "limitations": [
+    "Local tests ran on macOS x86_64 only; new Windows/Linux CI matrix not yet executed.",
+    "Existing Windows pywin32 license uncertainty and cryptography Intel Mac exception remain unchanged.",
+    "No new CPython3.15 lock or SBOM was generated; current npm fallback behavior remains explicit.",
+    "Existing system default python3 was not replaced; activate .venv-dev for the new development interpreter."
+  ]
+}

@@ -125,8 +125,8 @@ function pythonCandidates(env = process.env, platform = process.platform) {
     if (!path.isAbsolute(env.PC_SCANNER_PYTHON)) throw new LauncherError('PC_SCANNER_PYTHON must be an absolute path');
     return [[env.PC_SCANNER_PYTHON]];
   }
-  if (platform === 'win32') return [['py', '-3.14'], ['py', '-3'], ['python']];
-  return [['python3.14'], ['python3.13'], ['python3.12'], ['python3.11'], ['python3'], ['python']];
+  if (platform === 'win32') return [['py', '-3.15'], ['py', '-3.14'], ['py', '-3'], ['python']];
+  return [['python3.15'], ['python3.14'], ['python3.13'], ['python3.12'], ['python3.11'], ['python3'], ['python']];
 }
 
 /**

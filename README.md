@@ -217,7 +217,7 @@ the npm package holds a small launcher, this project's Python code and the lock 
 - With CPython 3.14 on Windows x64, macOS (Intel or Apple silicon) or Linux x86_64, packages are installed with the hashes
   in the bundled lock files (`pip --require-hashes`). Other Python versions and CPUs get the same versions without hash
   checks, and the launcher says so on stderr. Its own messages and pip's output go to stderr, never to the MCP channel.
-- It looks for `python3.14`, `python3.13` … `python3` (Windows: `py -3.14`, `py -3`, `python`) in the absolute folders on
+- It looks for `python3.15`, `python3.14`, `python3.13` … `python3` (Windows: `py -3.15`, `py -3.14`, `py -3`, `python`) in the absolute folders on
   `PATH` only. It never looks in the current folder (which Windows would otherwise search first) or in relative `PATH`
   entries such as `.`, so a program named like Python in a downloads folder is not run. To choose one, set
   `PC_SCANNER_PYTHON` to its absolute path; `PC_SCANNER_CACHE_DIR` (absolute) moves the cache.
@@ -709,6 +709,28 @@ each target, then every scan, newest first. Open a scan to see its warnings, fin
   dashboard has an MCP tool, so the AI never reads them. The dashboard page runs no scripts and loads nothing.
 - **Character encoding**: on Windows, engine output that is not UTF-8 is decoded with the system's default code page (cp932 on Japanese Windows).
 
+## Development runtimes
+
+The development baseline is Python 3.15.1 (`.python-version`) and Node.js 26.12.1 (`.node-version`).
+Node.js 26 is the Current release; CI also covers Node.js 24 LTS and the minimum supported Node.js 22.
+The user-facing requirements remain Python 3.11+ and Node.js 22+.
+
+Create a separate development environment with Python 3.15; existing environments do not change interpreter when Python is upgraded:
+
+```sh
+python3.15 -m venv .venv-dev
+.venv-dev/bin/python -m pip install --upgrade pip
+.venv-dev/bin/python -m pip install '.[agent]'
+.venv-dev/bin/python -m unittest discover -s tests -v
+PC_SCANNER_NPM_E2E=1 PC_SCANNER_PYTHON="$PWD/.venv-dev/bin/python" npm test
+```
+
+On Windows use `py -3.15 -m venv .venv-dev` and `.venv-dev\Scripts\python.exe`.
+The bundled compliance snapshots still describe CPython 3.14: the npm launcher prefers a hash-matching interpreter
+when available. Python 3.15 uses the same pinned versions without wheel hash checks and reports this on stderr.
+New CPython 3.15 snapshots can be generated on each OS with the Compliance profiles workflow's interpreter selector;
+the selector defaults to 3.14 to preserve the existing profiles.
+
 ## Testing
 
 Run the tests with the virtual environment's Python from [step 2](#2-install-this-project).
@@ -726,9 +748,9 @@ Windows (PowerShell):
 ```
 
 - Tests use simulated engine output and Wazuh responses to check boundaries and failure handling.
-- The 4 MCP tests need the `agent` extra. With a Python that does not have it, such as the system `python3`, they are skipped.
+- The MCP tests need the `agent` extra. With a Python that does not have it, such as the system `python3`, they are skipped.
   They start a real server to check connection, tool listing, and calls, and use an in-memory connection to check responsiveness during long scans, queuing, and progress notifications.
-- GitHub Actions runs the tests on Windows / macOS / Linux with Python 3.11 and 3.14 for every push to `main` and every pull request,
+- GitHub Actions is configured to run tests on Windows / macOS / Linux with Python 3.11, 3.14 and 3.15 for every push to `main` and every pull request,
   installing the `agent` extra so MCP tests are never skipped. It also builds the wheel and sdist and checks that
   the third-party notices and SBOM files are included. On Windows, real junctions and ACL-denied folders
   (including a junction like `Documents\My Music`) are created to verify how scans handle them.
@@ -739,7 +761,8 @@ Windows (PowerShell):
   With `PC_SCANNER_NPM_E2E=1` (it installs packages from PyPI), the package is packed and installed as a user gets it,
   sets itself up on the first `serve` and answers MCP; the test also checks that stdout carries only MCP messages,
   that a wrong hash in the lock stops the setup, that modules planted in the current folder are not imported,
-  and (macOS / Linux) that SIGTERM to the launcher stops the server. CI runs this on every OS with Python 3.11 and 3.14.
+  and (macOS / Linux) that SIGTERM to the launcher stops the server. On each OS, CI pairs Python/Node.js 3.11/22,
+  3.14/24 and 3.15/26. Release checks cover both 3.14/24 and 3.15/26 before publishing with Node.js 24 LTS.
 - Linux arm64 container acceptance (2026-10-19): actual osquery 5.23.1 and ClamAV 1.5.4 on Ubuntu 24.04, as an unprivileged
   user, with no host mounts or runtime network. Inventory, EICAR, Japanese names, links, depth/size/permission limits,
   signature age, real CLI and MCP stdio progress/cancellation passed ([record](docs/acceptance/linux-arm64-container-2026-10-19.json)).
