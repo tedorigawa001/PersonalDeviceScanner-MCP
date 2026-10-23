@@ -70,6 +70,45 @@ test('an interpreter that allows hash checks is preferred over an earlier one', 
   assert.equal(choice.hashed, true);
 });
 
+test('looking for Python never lets Windows install one', () => {
+  // Found in the vulnerability check of 2026-10-24: the Python install manager installs a missing
+  // runtime when none is installed yet, so probing `py -3.15` could install Python unasked.
+  const options = launcher.probeOptions({ PATH: '/usr/bin', PYTHON_MANAGER_AUTOMATIC_INSTALL: 'true' });
+  assert.equal(options.env.PYTHON_MANAGER_AUTOMATIC_INSTALL, 'false');
+  assert.equal(options.env.PATH, '/usr/bin');
+  assert.deepEqual(options.stdio, ['ignore', 'pipe', 'ignore']);
+  assert.equal(options.timeout, 15000);
+});
+
+test('each interpreter is probed with those options', (context) => {
+  const calls = [];
+  context.mock.method(childProcess, 'spawnSync', (command, args, options) => {
+    calls.push({ command, args, options });
+    return { status: 0, stdout: JSON.stringify({ python: '3.14.8', executable: path.resolve('/opt/python3') }) };
+  });
+  const probe = path.resolve('/opt/py');
+  const info = launcher.describe([probe, '-3.15']);
+  assert.equal(info.python, '3.14.8');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].command, probe);
+  assert.deepEqual(calls[0].args.slice(0, 3), ['-3.15', '-I', '-c']);
+  assert.equal(calls[0].options.env.PYTHON_MANAGER_AUTOMATIC_INSTALL, 'false');
+});
+
+test('the hint names a hash-checked CPython only where a lock exists', () => {
+  const locks = launcher.readLocks(ROOT);
+  const latest = launcher.chooseEnvironment([interpreter('Darwin', 'x86_64', '3.15.1')], locks);
+  assert.match(launcher.unhashedNote(latest, locks), /without hash checks \(use CPython 3\.14 for hash-checked installs\)$/);
+  // No lock for these CPUs, so no CPython would install with hash checks there.
+  for (const [system, architecture] of [['Linux', 'aarch64'], ['Windows', 'ARM64']]) {
+    const choice = launcher.chooseEnvironment([interpreter(system, architecture, '3.14.8')], locks);
+    assert.equal(choice.hashed, false);
+    const note = launcher.unhashedNote(choice, locks);
+    assert.match(note, /without hash checks$/);
+    assert.doesNotMatch(note, /use CPython/);
+  }
+});
+
 test('unsupported interpreters and systems are refused', () => {
   const locks = launcher.readLocks(ROOT);
   assert.equal(launcher.chooseEnvironment([interpreter('Linux', 'x86_64', '3.10.14')], locks), null);

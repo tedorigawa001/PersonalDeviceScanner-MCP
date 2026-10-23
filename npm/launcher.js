@@ -155,12 +155,18 @@ function resolveOnPath(name, env = process.env, platform = process.platform) {
   return null;
 }
 
+function probeOptions(env = process.env) {
+  // Looking for Python must never install one: Windows' Python install manager installs a missing
+  // runtime on its own when none is installed yet. Without Python the launcher stops and says so.
+  return { encoding: 'utf8', timeout: 15000, windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'],
+    env: { ...env, PYTHON_MANAGER_AUTOMATIC_INSTALL: 'false' } };
+}
+
 function describe(command) {
   const executable = resolveOnPath(command[0]);
   if (!executable) return null;
   // -I: ignore the current folder and PYTHON* variables, so nothing there can run.
-  const result = childProcess.spawnSync(executable, [...command.slice(1), '-I', '-c', DESCRIBE],
-    { encoding: 'utf8', timeout: 15000, windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
+  const result = childProcess.spawnSync(executable, [...command.slice(1), '-I', '-c', DESCRIBE], probeOptions());
   if (result.error || result.status !== 0) return null;
   try {
     const info = JSON.parse(result.stdout);
@@ -195,15 +201,23 @@ function removeStaleBuilds(root, now = Date.now()) {
 }
 
 /** Build the environment in a temporary folder and move it into place when it is complete. */
-function build(choice, sources, root, name) {
+function unhashedNote(choice, locks) {
+  // Only a system and CPU with a hash-pinned lock has a CPython that installs with hash checks.
+  const locked = locks.find((lock) => lock.environment.os === choice.info.os
+    && lock.environment.architecture === choice.info.architecture && lock.pins.every((pin) => pin.sha256));
+  return `no lock was generated for Python ${choice.info.python} on ${choice.info.os} ${choice.info.architecture}; `
+    + `installing the versions in ${choice.lock.file} without hash checks`
+    + (locked ? ` (use CPython ${minorVersion(locked.environment.python).join('.')} for hash-checked installs)` : '');
+}
+
+function build(choice, sources, root, name, locks = readLocks()) {
   fs.mkdirSync(root, { recursive: true, mode: 0o700 });
   removeStaleBuilds(root);
   const temporary = path.join(root, `${name}.build-${process.pid}-${crypto.randomBytes(4).toString('hex')}`);
   const venv = path.join(temporary, 'venv');
   log(choice.hashed
     ? `setting up Python ${choice.info.python} with hash-checked packages from ${choice.lock.file} (first run only)`
-    : `no lock was generated for Python ${choice.info.python} on ${choice.info.os} ${choice.info.architecture}; `
-      + `installing the versions in ${choice.lock.file} without hash checks (use CPython 3.14 for hash-checked installs)`);
+    : unhashedNote(choice, locks));
   try {
     fs.mkdirSync(temporary, { mode: 0o700 });
     check(choice.info.executable, ['-I', '-m', 'venv', venv], 'Creating the virtual environment');
@@ -253,7 +267,7 @@ function main(argv = process.argv.slice(2)) {
   const sources = sourceFiles();
   const root = cacheRoot();
   const name = environmentName(choice, sources, packageVersion());
-  if (!fs.existsSync(path.join(root, name, 'environment.json'))) build(choice, sources, root, name);
+  if (!fs.existsSync(path.join(root, name, 'environment.json'))) build(choice, sources, root, name, locks);
   const python = venvPython(path.join(root, name, 'venv'));
   if (argv[0] === 'setup') {
     log(`ready: ${path.join(root, name)}`);
@@ -279,8 +293,8 @@ function main(argv = process.argv.slice(2)) {
 }
 
 module.exports = {
-  LauncherError, cacheRoot, chooseEnvironment, environmentName, parseLock, pythonCandidates, readLocks,
-  removeStaleBuilds, requirements, resolveOnPath, sourceFiles, supported, venvPython,
+  LauncherError, cacheRoot, chooseEnvironment, describe, environmentName, parseLock, probeOptions, pythonCandidates,
+  readLocks, removeStaleBuilds, requirements, resolveOnPath, sourceFiles, supported, unhashedNote, venvPython,
 };
 
 if (require.main === module) {
