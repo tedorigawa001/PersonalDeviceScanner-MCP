@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "personal-pc-scanner"
-version = "0.7.1"
+version = "0.7.2"
 description = "Local, restricted OSS security scanner bridge for AI agents"
 requires-python = ">=3.11"
 readme = "README.md"
