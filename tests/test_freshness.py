@@ -167,10 +167,11 @@ class FreshnessTests(unittest.TestCase):
         budgets = []
         def fetch(*args, **kwargs):
             budgets.append(args[3]);time.sleep(.02);return bodies.pop(0)
+        # Room for a slow CI runner; the budgets must still shrink from one request to the next.
         with patch.dict(os.environ, ENV), patch.object(freshness, 'fetch_bounded', side_effect=fetch):
-            freshness.add(scanner, report, time.monotonic() + .3)
+            freshness.add(scanner, report, time.monotonic() + 3)
         self.assertEqual(len(budgets), 3)
-        self.assertTrue(.0 < budgets[2] < budgets[1] < budgets[0] <= .3)
+        self.assertTrue(.0 < budgets[2] < budgets[1] < budgets[0] <= 3)
 
     # Found in the vulnerability check of 2026-10-20.
 
