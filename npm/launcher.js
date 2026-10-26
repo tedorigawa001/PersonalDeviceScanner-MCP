@@ -162,11 +162,11 @@ function probeOptions(env = process.env) {
     env: { ...env, PYTHON_MANAGER_AUTOMATIC_INSTALL: 'false' } };
 }
 
-function describe(command) {
-  const executable = resolveOnPath(command[0]);
+function describe(command, env = process.env, platform = process.platform) {
+  const executable = resolveOnPath(command[0], env, platform);
   if (!executable) return null;
   // -I: ignore the current folder and PYTHON* variables, so nothing there can run.
-  const result = childProcess.spawnSync(executable, [...command.slice(1), '-I', '-c', DESCRIBE], probeOptions());
+  const result = childProcess.spawnSync(executable, [...command.slice(1), '-I', '-c', DESCRIBE], probeOptions(env));
   if (result.error || result.status !== 0) return null;
   try {
     const info = JSON.parse(result.stdout);
@@ -249,17 +249,21 @@ function build(choice, sources, root, name, locks = readLocks()) {
   }
 }
 
-function main(argv = process.argv.slice(2)) {
-  const locks = readLocks();
+function findEnvironment(locks, env = process.env, platform = process.platform) {
   const interpreters = [];
-  for (const command of pythonCandidates()) {
-    const info = describe(command);
+  for (const command of pythonCandidates(env, platform)) {
+    const info = describe(command, env, platform);
     if (!info) continue;
     interpreters.push(info);
     const alone = chooseEnvironment([info], locks);
     if (alone && alone.hashed) break; // no better interpreter to look for
   }
-  const choice = chooseEnvironment(interpreters, locks);
+  return chooseEnvironment(interpreters, locks);
+}
+
+function main(argv = process.argv.slice(2)) {
+  const locks = readLocks();
+  const choice = findEnvironment(locks);
   if (!choice) {
     throw new LauncherError('CPython 3.11 or later is required. Install it from https://www.python.org/downloads/ '
       + 'or set PC_SCANNER_PYTHON to its absolute path.');
@@ -293,7 +297,7 @@ function main(argv = process.argv.slice(2)) {
 }
 
 module.exports = {
-  LauncherError, cacheRoot, chooseEnvironment, describe, environmentName, parseLock, probeOptions, pythonCandidates,
+  LauncherError, cacheRoot, chooseEnvironment, describe, environmentName, findEnvironment, main, parseLock, probeOptions, pythonCandidates,
   readLocks, removeStaleBuilds, requirements, resolveOnPath, sourceFiles, supported, unhashedNote, venvPython,
 };
 

@@ -764,7 +764,10 @@ Windows (PowerShell):
   sets itself up on the first `serve` and answers MCP; the test also checks that stdout carries only MCP messages,
   that a wrong hash in the lock stops the setup, that modules planted in the current folder are not imported,
   and (macOS / Linux) that SIGTERM to the launcher stops the server. On each OS, CI pairs Python/Node.js 3.11/22,
-  3.14/24 and 3.15/26. Release checks cover both 3.14/24 and 3.15/26 before publishing with Node.js 24 LTS.
+  3.14/22, 3.14/24 and 3.15/26. Release checks cover both 3.14/24 and 3.15/26 before publishing with Node.js 24 LTS.
+  The 3.14 jobs set `PC_SCANNER_NPM_EXPECT_HASHED=1` so a versions-only install fails rather than skipping the
+  tampered-lock check. They also set `PC_SCANNER_NPM_AUTO_DISCOVER=1` to test the packed launcher's automatic
+  interpreter search without `PC_SCANNER_PYTHON`. Other jobs retain the explicit override to test their chosen Python.
 - Linux arm64 container acceptance (2026-10-19): actual osquery 5.23.1 and ClamAV 1.5.4 on Ubuntu 24.04, as an unprivileged
   user, with no host mounts or runtime network. Inventory, EICAR, Japanese names, links, depth/size/permission limits,
   signature age, real CLI and MCP stdio progress/cancellation passed ([record](docs/acceptance/linux-arm64-container-2026-10-19.json)).

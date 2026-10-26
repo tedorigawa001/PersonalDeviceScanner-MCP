@@ -70,6 +70,123 @@ test('an interpreter that allows hash checks is preferred over an earlier one', 
   assert.equal(choice.hashed, true);
 });
 
+function discoveryProbes(context, platform, answers, overrides = {}) {
+  const paths = platform === 'win32' ? path.win32 : path.posix;
+  const env = { PATH: platform === 'win32' ? 'C:\\test-python' : '/test-python', ...overrides };
+  const calls = [];
+  // Only the OS boundaries are simulated: candidate generation, PATH resolution,
+  // isolated probing, JSON parsing and interpreter/lock selection all run normally.
+  context.mock.method(fs, 'statSync', () => ({ isFile: () => true }));
+  context.mock.method(fs, 'accessSync', () => {});
+  context.mock.method(childProcess, 'spawnSync', (command, args, options) => {
+    calls.push({ command, args, options });
+    const key = paths.basename(command).toLowerCase() === 'py.exe' ? args[0] : paths.basename(command);
+    const answer = answers[key];
+    return answer === undefined ? { status: 1, stdout: '' }
+      : typeof answer === 'string' ? { status: 0, stdout: answer }
+        : { status: 0, stdout: JSON.stringify(answer) };
+  });
+  return { env, calls };
+}
+
+for (const [platform, system, cpu] of [['darwin', 'Darwin', 'x86_64'], ['linux', 'Linux', 'x86_64'],
+  ['win32', 'Windows', 'AMD64']]) {
+  test(`Python discovery on ${platform} probes past 3.15 and stops at hash-matching 3.14`, (context) => {
+    const locks = launcher.readLocks(ROOT);
+    const keys = platform === 'win32' ? ['-3.15', '-3.14'] : ['python3.15', 'python3.14'];
+    const { env, calls } = discoveryProbes(context, platform, {
+      [keys[0]]: interpreter(system, cpu, '3.15.1'), [keys[1]]: interpreter(system, cpu, '3.14.9'),
+    });
+    const choice = launcher.findEnvironment(locks, env, platform);
+    assert.equal(choice.info.python, '3.14.9');
+    assert.equal(choice.hashed, true);
+    assert.equal(choice.lock.environment.os, system);
+    assert.deepEqual(calls.map((call) => platform === 'win32' ? call.args[0] : path.basename(call.command)), keys);
+    for (const call of calls) {
+      assert.deepEqual(call.args.slice(platform === 'win32' ? 1 : 0, platform === 'win32' ? 3 : 2), ['-I', '-c']);
+      assert.equal(call.options.env.PYTHON_MANAGER_AUTOMATIC_INSTALL, 'false');
+    }
+  });
+}
+
+test('discovery retains 3.15 without hashes when no matching interpreter is installed', (context) => {
+  const locks = launcher.readLocks(ROOT);
+  const { env, calls } = discoveryProbes(context, 'linux', {
+    'python3.15': interpreter('Linux', 'x86_64', '3.15.1'),
+  });
+  const choice = launcher.findEnvironment(locks, env, 'linux');
+  assert.equal(choice.info.python, '3.15.1');
+  assert.equal(choice.hashed, false);
+  assert.equal(calls.length, launcher.pythonCandidates(env, 'linux').length);
+});
+
+test('discovery skips malformed and unsupported probes before selecting 3.14', (context) => {
+  const locks = launcher.readLocks(ROOT);
+  const { env, calls } = discoveryProbes(context, 'linux', {
+    'python3.15': 'not JSON', 'python3.14': interpreter('Linux', 'x86_64', '3.14.9', 'PyPy'),
+    'python3.13': interpreter('Linux', 'x86_64', '3.10.9'),
+    'python3.12': interpreter('Linux', 'x86_64', '3.14.9'),
+  });
+  const choice = launcher.findEnvironment(locks, env, 'linux');
+  assert.equal(choice.hashed, true);
+  assert.equal(choice.info.python, '3.14.9');
+  assert.equal(calls.length, 4);
+});
+
+test('an absolute Python override is the only interpreter discovered, even without matching hashes', (context) => {
+  const locks = launcher.readLocks(ROOT);
+  const python = path.resolve('chosen-python');
+  const { env, calls } = discoveryProbes(context, process.platform, {
+    [path.basename(python)]: interpreter('Darwin', 'x86_64', '3.15.1'),
+  }, { PC_SCANNER_PYTHON: python });
+  const choice = launcher.findEnvironment(locks, env);
+  assert.equal(choice.info.python, '3.15.1');
+  assert.equal(choice.hashed, false);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].command, python);
+});
+
+test('missing Windows Python stops discovery without allowing automatic installation', (context) => {
+  const locks = launcher.readLocks(ROOT);
+  const { env, calls } = discoveryProbes(context, 'win32', {}, { PYTHON_MANAGER_AUTOMATIC_INSTALL: 'true' });
+  assert.equal(launcher.findEnvironment(locks, env, 'win32'), null);
+  assert.equal(calls.length, launcher.pythonCandidates(env, 'win32').length);
+  assert.ok(calls.every((call) => call.options.env.PYTHON_MANAGER_AUTOMATIC_INSTALL === 'false'));
+});
+
+test('setup uses automatic discovery to reuse the 3.14 environment after probing 3.15', (context) => {
+  const locks = launcher.readLocks(ROOT);
+  const platform = process.platform;
+  const system = { darwin: 'Darwin', linux: 'Linux', win32: 'Windows' }[platform];
+  const cpu = platform === 'win32' ? 'AMD64' : 'x86_64';
+  const old = interpreter(system, cpu, '3.14.9');
+  const newer = interpreter(system, cpu, '3.15.1');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pc-scanner-discover-'));
+  const choice = launcher.chooseEnvironment([old], locks);
+  const name = launcher.environmentName(choice, launcher.sourceFiles(ROOT),
+    JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version);
+  fs.mkdirSync(path.join(root, name));
+  fs.writeFileSync(path.join(root, name, 'environment.json'), '{}');
+  const keys = platform === 'win32' ? ['-3.15', '-3.14'] : ['python3.15', 'python3.14'];
+  const { env, calls } = discoveryProbes(context, platform, { [keys[0]]: newer, [keys[1]]: old });
+  let diagnostic = '';
+  context.mock.method(process.stderr, 'write', (text) => { diagnostic += text; return true; });
+  const saved = new Map(['PATH', 'PC_SCANNER_PYTHON', 'PC_SCANNER_CACHE_DIR'].map((key) => [key, process.env[key]]));
+  try {
+    process.env.PATH = env.PATH;
+    delete process.env.PC_SCANNER_PYTHON;
+    process.env.PC_SCANNER_CACHE_DIR = root;
+    launcher.main(['setup']);
+    assert.equal(calls.length, 2, 'setup must reuse the matching environment without invoking pip');
+    assert.ok(diagnostic.includes(`ready: ${path.join(root, name)}`));
+  } finally {
+    for (const [key, value] of saved) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('looking for Python never lets Windows install one', () => {
   // Found in the vulnerability check of 2026-10-24: the Python install manager installs a missing
   // runtime when none is installed yet, so probing `py -3.15` could install Python unasked.

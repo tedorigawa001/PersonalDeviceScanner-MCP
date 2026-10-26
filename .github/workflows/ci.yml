@@ -60,6 +60,7 @@ jobs:
         # Minimum versions, hash-checked locks with LTS Node, and latest stable runtimes.
         runtime:
           - {python: "3.11", node: "22"}
+          - {python: "3.14", node: "22"}
           - {python: "3.14", node: "24"}
           - {python: "3.15", node: "26"}
     steps:
@@ -76,6 +77,8 @@ jobs:
       - name: Test the launcher, then pack, install and serve MCP from the package
         env:
           PC_SCANNER_NPM_E2E: "1"
+          PC_SCANNER_NPM_EXPECT_HASHED: ${{ matrix.runtime.python == '3.14' && '1' || '0' }}
+          PC_SCANNER_NPM_AUTO_DISCOVER: ${{ matrix.runtime.python == '3.14' && '1' || '0' }}
           PC_SCANNER_PYTHON: ${{ steps.python.outputs.python-path }}
         run: node --test npm/test/launcher.test.js npm/test/roundtrip.test.js
 

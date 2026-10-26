@@ -11,6 +11,9 @@ const test = require('node:test');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const OPT_IN = process.env.PC_SCANNER_NPM_E2E === '1';
+// CI's CPython 3.14 jobs must execute the hash check, including the tampered-lock test below.
+const EXPECT_HASHED = process.env.PC_SCANNER_NPM_EXPECT_HASHED === '1';
+const AUTO_DISCOVER = process.env.PC_SCANNER_NPM_AUTO_DISCOVER === '1';
 // Printed when an environment is built: with hash checks, or with the versions only.
 const SETUP_MESSAGE = /setting up Python|no lock was generated for Python/;
 
@@ -87,6 +90,9 @@ test('the installed package sets itself up on first use and serves MCP on a clea
       const config = path.join(work, 'scanner.toml');
       fs.writeFileSync(config, `[scan_roots]\ndemo = ${JSON.stringify(folder)}\n`);
       const env = { ...process.env, PC_SCANNER_CACHE_DIR: path.join(work, 'cache') };
+      // The hash-required CI jobs exercise the packed launcher's automatic search,
+      // not just the explicit interpreter override used by the other jobs.
+      if (AUTO_DISCOVER) delete env.PC_SCANNER_PYTHON;
 
       const client = connect(launcherPath, ['--config', config, 'serve'], env);
       await initialize(client);
@@ -119,6 +125,11 @@ test('the installed package sets itself up on first use and serves MCP on a clea
       // With a matching lock, pip enforces its hashes: one wrong hash stops the setup.
       const [built] = fs.readdirSync(env.PC_SCANNER_CACHE_DIR);
       const used = JSON.parse(fs.readFileSync(path.join(env.PC_SCANNER_CACHE_DIR, built, 'environment.json'), 'utf8'));
+      if (EXPECT_HASHED) {
+        assert.equal(used.hashed, true, 'CI requires a hash-checked installation; the tampered-lock test must not be skipped');
+        assert.match(used.python, /^3\.14\./, 'the hash-required job must use the bundled CPython 3.14 profile');
+        assert.match(client.stderr(), /with hash-checked packages/);
+      }
       if (used.hashed) {
         const lock = path.join(prefix, 'node_modules', 'personal-device-scanner-mcp', used.lock);
         const original = fs.readFileSync(lock, 'utf8');
