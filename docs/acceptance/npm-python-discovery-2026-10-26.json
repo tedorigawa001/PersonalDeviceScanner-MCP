@@ -115,7 +115,7 @@
   },
   "limitations": [
     "Native execution was on macOS only. Windows/Linux discovery cases use OS-boundary substitutes; new GitHub Actions jobs have not run.",
-    "Windows-specific6 Python tests are skipped locally; Android and MCP tests ran.",
+    "Windows-specific 6 Python tests are skipped locally; Android and MCP tests ran.",
     "No dependency or lock update; Intel Mac cryptography exception and Windows pywin32 license status unchanged.",
     "No commit or push performed."
   ]

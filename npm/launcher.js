@@ -200,7 +200,6 @@ function removeStaleBuilds(root, now = Date.now()) {
   }
 }
 
-/** Build the environment in a temporary folder and move it into place when it is complete. */
 function unhashedNote(choice, locks) {
   // Only a system and CPU with a hash-pinned lock has a CPython that installs with hash checks.
   const locked = locks.find((lock) => lock.environment.os === choice.info.os
@@ -210,6 +209,7 @@ function unhashedNote(choice, locks) {
     + (locked ? ` (use CPython ${minorVersion(locked.environment.python).join('.')} for hash-checked installs)` : '');
 }
 
+/** Build the environment in a temporary folder and move it into place when it is complete. */
 function build(choice, sources, root, name, locks = readLocks()) {
   fs.mkdirSync(root, { recursive: true, mode: 0o700 });
   removeStaleBuilds(root);
