@@ -1,0 +1,391 @@
+{
+  "date": "2026-10-27",
+  "revision": "dd0f610",
+  "scope": "Real native ClamAV CLI and MCP stdio progress, deadline, cancellation, durable checkpoint and resume acceptance on this Mac",
+  "result": "Passed within the synthetic local-data acceptance scope",
+  "environment": {
+    "os": "macOS 27.2",
+    "architecture": "arm64",
+    "python": "3.14.10",
+    "mcp_sdk": "1.30.0",
+    "clamav": "1.5.4",
+    "binary": "/usr/local/clamav/bin/clamscan"
+  },
+  "method": {
+    "cli": "Production cli.main in a subprocess; first SIGINT sent 0.5 seconds after the second real scan process starts",
+    "mcp": "Actual MCP SDK client/server stdio subprocess connection, progress callbacks, CancelledNotification and get_scan_progress by latest request and explicit ID",
+    "engine_adapter": "Only adds --database for previously updated temporary official definitions and observes native process IDs. No engine, signature result, clock, checkpoint or progress behavior is simulated",
+    "guards": "Every native recursive target must resolve inside the newly created local test-data root and must not be a cloud placeholder",
+    "cli_timeout_seconds": 8,
+    "mcp_cancel_timeout_seconds": 8,
+    "mcp_timeout_seconds": 12,
+    "resume_settings": "Same settings and root as the preceding batch within each scenario; CLI uses new processes and MCP resumes on the same server",
+    "test_files": 4,
+    "bytes_per_file": 126976,
+    "files_unchanged_after_all_trials": true,
+    "checkpoint_counts_compared_to_actual_json_records": true,
+    "remaining_native_scan_processes_after_every_successful_phase": 0,
+    "history_enabled": false,
+    "existing_scanner_configuration_changed": false
+  },
+  "definitions": {
+    "version": 28166,
+    "built_at": "2026-10-27T06:24:12+00:00",
+    "location": "/tmp/pc-scanner-home-acceptance-20261027/database",
+    "new_download_for_this_trial": false,
+    "default_version_after_trial": 28157,
+    "default_definitions_modified": false
+  },
+  "cli": {
+    "timeout": {
+      "initial": {
+        "progress": {
+          "stage": "timed_out",
+          "finished": 1,
+          "pending": 3,
+          "reused": 0,
+          "checkpoint": "saved",
+          "saved_parts": 1,
+          "elapsed_seconds": 8.028
+        },
+        "status": "partial",
+        "audit": {
+          "checkpoint_records": 1,
+          "reusable_records": 1,
+          "checkpoint_mode": "0600",
+          "remaining_scan_processes": 0
+        },
+        "progress_messages": 9,
+        "exit_code": 2
+      },
+      "resumes": [
+        {
+          "progress": {
+            "stage": "timed_out",
+            "finished": 2,
+            "pending": 2,
+            "reused": 1,
+            "checkpoint": "saved",
+            "saved_parts": 2,
+            "elapsed_seconds": 8.127
+          },
+          "status": "partial",
+          "audit": {
+            "checkpoint_records": 2,
+            "reusable_records": 2,
+            "checkpoint_mode": "0600",
+            "remaining_scan_processes": 0
+          },
+          "progress_messages": 10,
+          "exit_code": 2
+        },
+        {
+          "progress": {
+            "stage": "timed_out",
+            "finished": 3,
+            "pending": 1,
+            "reused": 2,
+            "checkpoint": "saved",
+            "saved_parts": 3,
+            "elapsed_seconds": 8.118
+          },
+          "status": "partial",
+          "audit": {
+            "checkpoint_records": 3,
+            "reusable_records": 3,
+            "checkpoint_mode": "0600",
+            "remaining_scan_processes": 0
+          },
+          "progress_messages": 10,
+          "exit_code": 2
+        },
+        {
+          "progress": {
+            "stage": "completed",
+            "finished": 4,
+            "pending": 0,
+            "reused": 3,
+            "checkpoint": "saved",
+            "saved_parts": 4,
+            "elapsed_seconds": 5.771
+          },
+          "status": "completed",
+          "audit": {
+            "checkpoint_records": 4,
+            "reusable_records": 4,
+            "checkpoint_mode": "0600",
+            "remaining_scan_processes": 0
+          },
+          "progress_messages": 7,
+          "exit_code": 0
+        }
+      ]
+    },
+    "cancel": {
+      "initial": {
+        "progress": {
+          "stage": "cancelled",
+          "finished": 1,
+          "pending": 3,
+          "reused": 0,
+          "checkpoint": "saved",
+          "saved_parts": 1,
+          "elapsed_seconds": 5.785
+        },
+        "status": "partial",
+        "audit": {
+          "checkpoint_records": 1,
+          "reusable_records": 1,
+          "checkpoint_mode": "0600",
+          "remaining_scan_processes": 0
+        },
+        "progress_messages": 7,
+        "exit_code": 2
+      },
+      "resumes": [
+        {
+          "progress": {
+            "stage": "timed_out",
+            "finished": 2,
+            "pending": 2,
+            "reused": 1,
+            "checkpoint": "saved",
+            "saved_parts": 2,
+            "elapsed_seconds": 8.087
+          },
+          "status": "partial",
+          "audit": {
+            "checkpoint_records": 2,
+            "reusable_records": 2,
+            "checkpoint_mode": "0600",
+            "remaining_scan_processes": 0
+          },
+          "progress_messages": 10,
+          "exit_code": 2
+        },
+        {
+          "progress": {
+            "stage": "timed_out",
+            "finished": 3,
+            "pending": 1,
+            "reused": 2,
+            "checkpoint": "saved",
+            "saved_parts": 3,
+            "elapsed_seconds": 8.114
+          },
+          "status": "partial",
+          "audit": {
+            "checkpoint_records": 3,
+            "reusable_records": 3,
+            "checkpoint_mode": "0600",
+            "remaining_scan_processes": 0
+          },
+          "progress_messages": 10,
+          "exit_code": 2
+        },
+        {
+          "progress": {
+            "stage": "completed",
+            "finished": 4,
+            "pending": 0,
+            "reused": 3,
+            "checkpoint": "saved",
+            "saved_parts": 4,
+            "elapsed_seconds": 5.73
+          },
+          "status": "completed",
+          "audit": {
+            "checkpoint_records": 4,
+            "reusable_records": 4,
+            "checkpoint_mode": "0600",
+            "remaining_scan_processes": 0
+          },
+          "progress_messages": 7,
+          "exit_code": 0
+        }
+      ]
+    }
+  },
+  "mcp": {
+    "timeout": {
+      "progress": {
+        "stage": "timed_out",
+        "finished": 1,
+        "pending": 3,
+        "reused": 0,
+        "checkpoint": "saved",
+        "saved_parts": 1,
+        "elapsed_seconds": 12.051
+      },
+      "audit": {
+        "checkpoint_records": 1,
+        "reusable_records": 1,
+        "checkpoint_mode": "0600",
+        "remaining_scan_processes": 0
+      },
+      "progress_messages": 4,
+      "final_notification_received": true,
+      "query_by_id_matches": true,
+      "resume": [
+        {
+          "progress": {
+            "stage": "timed_out",
+            "finished": 3,
+            "pending": 1,
+            "reused": 1,
+            "checkpoint": "saved",
+            "saved_parts": 3,
+            "elapsed_seconds": 12.091
+          },
+          "audit": {
+            "checkpoint_records": 3,
+            "reusable_records": 3,
+            "checkpoint_mode": "0600",
+            "remaining_scan_processes": 0
+          },
+          "status": "partial"
+        },
+        {
+          "progress": {
+            "stage": "completed",
+            "finished": 4,
+            "pending": 0,
+            "reused": 3,
+            "checkpoint": "saved",
+            "saved_parts": 4,
+            "elapsed_seconds": 5.181
+          },
+          "audit": {
+            "checkpoint_records": 4,
+            "reusable_records": 4,
+            "checkpoint_mode": "0600",
+            "remaining_scan_processes": 0
+          },
+          "status": "completed"
+        }
+      ]
+    },
+    "cancel": {
+      "progress": {
+        "stage": "cancelled",
+        "finished": 1,
+        "pending": 3,
+        "reused": 0,
+        "checkpoint": "saved",
+        "saved_parts": 1,
+        "elapsed_seconds": 6.165
+      },
+      "audit": {
+        "checkpoint_records": 1,
+        "reusable_records": 1,
+        "checkpoint_mode": "0600",
+        "remaining_scan_processes": 0
+      },
+      "progress_messages": 3,
+      "final_notification_received": false,
+      "query_by_id_matches": true,
+      "resume": [
+        {
+          "progress": {
+            "stage": "timed_out",
+            "finished": 2,
+            "pending": 2,
+            "reused": 1,
+            "checkpoint": "saved",
+            "saved_parts": 2,
+            "elapsed_seconds": 8.122
+          },
+          "audit": {
+            "checkpoint_records": 2,
+            "reusable_records": 2,
+            "checkpoint_mode": "0600",
+            "remaining_scan_processes": 0
+          },
+          "status": "partial"
+        },
+        {
+          "progress": {
+            "stage": "timed_out",
+            "finished": 3,
+            "pending": 1,
+            "reused": 2,
+            "checkpoint": "saved",
+            "saved_parts": 3,
+            "elapsed_seconds": 8.098
+          },
+          "audit": {
+            "checkpoint_records": 3,
+            "reusable_records": 3,
+            "checkpoint_mode": "0600",
+            "remaining_scan_processes": 0
+          },
+          "status": "partial"
+        },
+        {
+          "progress": {
+            "stage": "completed",
+            "finished": 4,
+            "pending": 0,
+            "reused": 3,
+            "checkpoint": "saved",
+            "saved_parts": 4,
+            "elapsed_seconds": 5.111
+          },
+          "audit": {
+            "checkpoint_records": 4,
+            "reusable_records": 4,
+            "checkpoint_mode": "0600",
+            "remaining_scan_processes": 0
+          },
+          "status": "completed"
+        }
+      ]
+    }
+  },
+  "observations": [
+    "CLI stdout parsed as exactly one JSON report; periodic and terminal progress stayed on stderr, with no test-root path in progress",
+    "Timeout and cancellation retained partial coverage with saved checkpoint counts matching disk; all observed checkpoint files were 0600",
+    "MCP numeric progress was monotonic elapsed seconds and total remained null; actual scanning-stage and saved-target counts were observed",
+    "Cancellation removed the MCP client progress callback before terminal notification; get_scan_progress returned eventual cancelled and saved state, and explicit scan ID matched the latest query",
+    "Resumes reuse unchanged completed parts and ultimately complete all four targets without treating pending work as completed"
+  ],
+  "preliminary_observations": [
+    "The initial harness incorrectly expected one 8-second resume to finish all remaining targets. The real engine instead correctly preserved another partial checkpoint; the harness was changed to repeat resume without extending the per-call budget",
+    "An initial 8-second MCP timeout expired before the first real scan finished: finished=0, pending=4, saved_parts=0, checkpoint=saved. The harness had incorrectly required a nonempty checkpoint. A separate 12-second trial below verifies preservation of completed work",
+    "Some preliminary CLI timeout and MCP cancellation runs overlapped; timings are observations under that load, not performance guarantees"
+  ],
+  "cloud_safety": {
+    "personal_or_cloud_folders_scanned": false,
+    "test_root_contains_cloud_placeholders": false,
+    "cloud_placeholder_contents_opened": false,
+    "cloud_download_requested": false,
+    "note": "The scan scope consists only of newly written local test files under /tmp; this is not a new iCloud/OneDrive placeholder-exclusion acceptance test"
+  },
+  "verification": {
+    "progress_regression_tests": {
+      "total": 13,
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 2.45
+    },
+    "full_suite_rerun_for_documentation_only_follow_up": false,
+    "implementation_and_full_suite_record": "scan-progress-2026-10-27.json",
+    "product_source_changed": false
+  },
+  "artifacts": {
+    "directory": "/tmp/pc-scanner-progress-real-20261027",
+    "harness_sha256": {
+      "bootstrap.py": "45ab2963e059bbf713974bb1123e5895373d2342baf7cd2723a0359012889c27",
+      "exercise.py": "bf4d9c93093ca788eb25a0ffbd384e09fc58f56532ddf98c4989b2762117d076"
+    },
+    "temporary_storage_may_be_removed_by_os": true
+  },
+  "limitations": [
+    "Home-wide scan completion was not attempted",
+    "Windows native Ctrl+C and Windows CI remain unverified by this Mac trial",
+    "No graphical or third-party AI MCP client UI was tested; actual SDK stdio protocol was tested",
+    "Brief stages between one-second samples are not guaranteed to appear in notifications; no engine-internal file percentage is available",
+    "Default installed definitions are still old; this trial used the separate fresh definition directory"
+  ]
+}

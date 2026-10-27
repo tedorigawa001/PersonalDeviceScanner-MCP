@@ -1,5 +1,7 @@
 {
   "date": "2026-10-27",
+  "real_engine_follow_up": "scan-progress-macos-arm64-2026-10-27.json",
+  "follow_up_note": "The linked follow-up verifies native ClamAV CLI and MCP stdio progress, timeout, cancellation, checkpoint contents and resume using local synthetic files. The original automated-test scope below is unchanged.",
   "base_revision": "9740026",
   "tested_changes": "Uncommitted long-running scan progress implementation and regression tests",
   "environment": {
