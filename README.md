@@ -387,7 +387,9 @@ Then every inventory, malware and Android scan reads its engine's version (`osqu
   ```
 
 - **You want pinned dependency versions**: `requirements-agent.lock` pins the dependencies with hashes.
-  It is **for macOS x86_64 / CPython 3.14.7 only** and does not work on other environments.
+  The one at the root is **for macOS arm64 (Apple silicon) / CPython 3.14 only**. On Intel Macs, Linux x86_64 and
+  Windows x64, use the lock for the same OS and CPU under [profiles/](profiles/)
+  (for an Intel Mac, `profiles/darwin-x86_64-cp314/requirements-agent.lock`).
 
   ```sh
   .venv/bin/python -m pip install --require-hashes --only-binary=:all: -r requirements-agent.lock
@@ -815,7 +817,7 @@ These documents are in Japanese.
 - [docs/licensing.md](docs/licensing.md): license policy and pre-distribution checks
 - [docs/compliance.md](docs/compliance.md): scope of the SBOM and third-party notices, and how to regenerate them
 - [docs/releasing.md](docs/releasing.md): how the npm package is released (staged publishing from GitHub Actions, in Japanese)
-- [profiles/](profiles/): the lock, SBOM and notices for Windows, Linux and macOS arm64 (the root holds the macOS x86_64 reference)
+- [profiles/](profiles/): the lock, SBOM and notices for Windows, Linux and Intel Macs (the root holds the macOS arm64 reference)
 - [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the [CycloneDX SBOM](sbom/python-agent.cdx.json): notices for the Python dependencies used for MCP
 
 This project's own code is licensed under the [MIT License](LICENSE) (Copyright (c) 2026 tedorigawa001);

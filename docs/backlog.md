@@ -600,6 +600,24 @@
   - 新機能自身が呼ぶAPIは接続情報とOS情報だけ。アカウント側でも制限する場合は、エンドポイントを許可リストにした
     認証付き中継など、追加の構成・秘密値管理を別途設計する。既定ロールで広い全端末権限を付ける方法は使わない。
 
+- [ ] **ClamAV定義の状態確認・明示的な更新をMCP機能として追加する**（2026-10-27）
+  - 対象はウイルス検知用の定義ファイル（main・daily・bytecode）。ClamAV本体や起動用バッチスクリプトの更新とは分ける。
+    既存の鮮度判定と「検査開始前に定義の鮮度と更新手順を案内する」を土台に、単独で呼べる状態確認を追加する。
+  - ツール案: 読み取り専用の `check_clamav_signatures` と、明示的に呼び出す `update_clamav_signatures`。
+    更新には公式の [freshclam](https://docs.clamav.net/manual/Usage/SignatureManagement.html) を使い、
+    更新前後の版・作成日時・鮮度、更新済み／変更なし／失敗を返す。検査の呼び出しだけで無断更新しない。
+  - 権限の方針: MCP内でsudoや管理者パスワードを扱わない。このMacの通常の定義保存先は `_clamav` 所有のため、
+    OS側のfreshclam自動更新＋MCPの状態確認を使う方式と、一般ユーザーが更新できる専用の定義保存先を使う方式を比較して決める。
+    後者はclamscanも同じ保存先を参照する。既存の保存先の所有者・権限を自動で変更しない。
+  - 更新用ツールは書き込みと外部通信を伴う機能として既定で無効にし、有効化は所有者の設定で行う。
+    `readOnlyHint=false`・`openWorldHint=true` を明示し、既存の読み取り専用機能の説明・README・SECURITY.mdを整合させる。
+    実行ファイル・設定・保存先は所有者が固定し、AIから任意のコマンド・引数・保存先を受け取らない。
+  - 検査・更新・別プロセスの更新を直列化し、時間上限・進捗・キャンセルに対応する。検証失敗・通信失敗・中断時も
+    使用中の正常な定義を壊さず保持する。更新後は実際に検査で参照する定義の鮮度を再確認し、古い定義で作った再開結果を誤って再利用しない。
+  - 完了条件: 状態確認、実際の更新、変更なし、権限不足、通信／検証失敗、時間切れ、キャンセル、同時実行、
+    更新後の検査・再開判定の回帰テストを追加。Android・MCPを含む全テストと、このMacの実freshclam・ClamAVで受入試験を行う。
+    個人ファイルは更新サービスへ送信せず、更新対象は公式の定義に限定する。
+
 - [ ] **clamdscan（常駐デーモン経由の検査）に対応するか**
   - 利点: 定義ファイルを毎回読み込まないため速く、メモリ使用も1プロセス分で済みます。
   - 欠点: ファイルサイズ上限やシンボリックリンクの扱いが `clamd.conf` 側の設定になり、この基盤では強制できません。また clamd は別ユーザーで動くことが多く、`--fdpass` などの権限設計が必要です。
@@ -633,6 +651,19 @@
     [検査記録](acceptance/npm-python-discovery-2026-10-26.json)に保存した。GitHub Actionsの追加ジョブ自体は未実行。
 
 ## 完了
+
+- [x] **SBOM・ロック・第三者表示の参照を Apple シリコン（macOS arm64）に切り替える**（2026-10-27）
+  - 開発機が Apple シリコン（macOS 27.2、Rosetta なし）になり、Intel 向けの Python・`.venv`・`.compliance-venv`・
+    Node.js 26 が動かなくなった。python.org の CPython 3.14.10（同日の OSV で既知の脆弱性0件）を導入し、
+    `.venv` と `.compliance-venv` を arm64 のハッシュ固定ロックから作り直した。Node.js 26.12.1 も arm64 版に入れ替えた。
+  - 直下を CPython 3.14.10 で再生成。CI 生成の `profiles/darwin-arm64-cp314/` との違いは Python の版表記と SBOM の
+    serialNumber だけだったため、重複するそのプロファイルは削除した。旧参照（macOS x86_64 / 3.14.7、cryptography 48.0.1）は
+    内容を変えずに `profiles/darwin-x86_64-cp314/` へ移し、Intel Mac のハッシュ確認付き導入を維持した。
+  - Intel 向けはローカルで再生成できないため、Compliance profiles ワークフローの macOS ジョブを `macos-26-intel` に変更。
+    agent extra の条件がそのOSを意図して外している依存（Intel Mac の cryptography）は、参照の版で固定せず解決し直す。
+    この判定を4つのOS条件で確かめた（Intel Mac だけ cryptography を外し、48.0.1 が最新の Intel 向けwheel）。
+  - `generate_compliance.py --check`、直下・3プロファイルの `validate_compliance.py`（Windows は pywin32 の既知の未確定表記を除く）、
+    Python・npm の全テストが成功。詳細は [docs/compliance.md](compliance.md)。ワークフローの Intel ジョブ自体は未実行。
 
 - [x] **開発用Python・Node.jsとCI構成を最新安定版に対応させる**（2026-10-22）
   - 開発基準をPython 3.15.1・Node.js 26.12.1として`.python-version`・`.node-version`に記録。

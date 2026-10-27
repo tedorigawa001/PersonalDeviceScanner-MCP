@@ -9,7 +9,7 @@ const test = require('node:test');
 const launcher = require('../launcher.js');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const LOCK_FILES = ['requirements-agent.lock', ...['darwin-arm64-cp314', 'linux-x86_64-cp314', 'windows-amd64-cp314']
+const LOCK_FILES = ['requirements-agent.lock', ...['darwin-x86_64-cp314', 'linux-x86_64-cp314', 'windows-amd64-cp314']
   .map((name) => path.join('profiles', name, 'requirements-agent.lock'))];
 
 function interpreter(os_, architecture, python, implementation = 'CPython') {
@@ -47,7 +47,7 @@ test('CPython of the same OS, CPU and minor version gets hash-checked packages',
 test('other Python versions and CPUs get the same versions without hash checks', () => {
   const locks = launcher.readLocks(ROOT);
   const older = launcher.chooseEnvironment([interpreter('Darwin', 'arm64', '3.12.9')], locks);
-  assert.equal(older.lock.file, LOCK_FILES[1]);
+  assert.equal(older.lock.file, LOCK_FILES[0]);
   assert.equal(older.hashed, false);
   const arm = launcher.chooseEnvironment([interpreter('Linux', 'aarch64', '3.14.0')], locks);
   assert.equal(arm.lock.file, LOCK_FILES[2]);
@@ -55,7 +55,7 @@ test('other Python versions and CPUs get the same versions without hash checks',
   assert.match(launcher.requirements(arm), /^mcp==1\.30\.0$/m);
   assert.doesNotMatch(launcher.requirements(arm), /--hash/);
   const latest = launcher.chooseEnvironment([interpreter('Darwin', 'x86_64', '3.15.1')], locks);
-  assert.equal(latest.lock.file, LOCK_FILES[0]);
+  assert.equal(latest.lock.file, LOCK_FILES[1]);
   assert.equal(latest.hashed, false); // Existing snapshots describe CPython 3.14 wheels.
   assert.match(launcher.requirements(launcher.chooseEnvironment([interpreter('Linux', 'x86_64', '3.14.8')], locks)),
     /^mcp==1\.30\.0 --hash=sha256:[0-9a-f]{64}$/m);

@@ -5,7 +5,7 @@ These declarations apply to third-party packages only, not to the project's own 
 Scope: Python dependencies for the agent extra on the recorded platform. Native vendored libraries require separate review.
 Wazuh, osquery, ClamAV, the Python interpreter and build/install tools are not bundled in this scope.
 
-Environment: python=3.14.7, implementation=CPython, os=Darwin, architecture=arm64, marker_environment=evaluated for this interpreter only
+Environment: python=3.14.7, implementation=CPython, os=Darwin, architecture=x86_64, marker_environment=evaluated for this interpreter only
 
 | Package | Version | Declared license | Original notices |
 |---|---|---|---|
@@ -15,7 +15,7 @@ Environment: python=3.14.7, implementation=CPython, os=Darwin, architecture=arm6
 | [certifi](https://pypi.org/project/certifi/2026.10.19/) | 2026.10.19 | MPL-2.0 | [LICENSE](third_party/licenses/certifi/2026.10.19/certifi-2026.10.19.dist-info/licenses/LICENSE) |
 | [cffi](https://pypi.org/project/cffi/2.1.1/) | 2.1.1 | MIT-0 | [LICENSE](third_party/licenses/cffi/2.1.1/cffi-2.1.1.dist-info/licenses/LICENSE) |
 | [click](https://pypi.org/project/click/8.5.0/) | 8.5.0 | BSD-3-Clause | [LICENSE.txt](third_party/licenses/click/8.5.0/click-8.5.0.dist-info/licenses/LICENSE.txt) |
-| [cryptography](https://pypi.org/project/cryptography/50.0.2/) | 50.0.2 | Apache-2.0 OR BSD-3-Clause | [LICENSE](third_party/licenses/cryptography/50.0.2/cryptography-50.0.2.dist-info/licenses/LICENSE)<br>[LICENSE.APACHE](third_party/licenses/cryptography/50.0.2/cryptography-50.0.2.dist-info/licenses/LICENSE.APACHE)<br>[LICENSE.BSD](third_party/licenses/cryptography/50.0.2/cryptography-50.0.2.dist-info/licenses/LICENSE.BSD) |
+| [cryptography](https://pypi.org/project/cryptography/48.0.1/) | 48.0.1 | Apache-2.0 OR BSD-3-Clause | [LICENSE](third_party/licenses/cryptography/48.0.1/cryptography-48.0.1.dist-info/licenses/LICENSE)<br>[LICENSE.APACHE](third_party/licenses/cryptography/48.0.1/cryptography-48.0.1.dist-info/licenses/LICENSE.APACHE)<br>[LICENSE.BSD](third_party/licenses/cryptography/48.0.1/cryptography-48.0.1.dist-info/licenses/LICENSE.BSD) |
 | [h11](https://pypi.org/project/h11/0.16.0/) | 0.16.0 | MIT | [LICENSE.txt](third_party/licenses/h11/0.16.0/h11-0.16.0.dist-info/licenses/LICENSE.txt) |
 | [httpcore](https://pypi.org/project/httpcore/1.0.9/) | 1.0.9 | BSD-3-Clause | [LICENSE.md](third_party/licenses/httpcore/1.0.9/httpcore-1.0.9.dist-info/licenses/LICENSE.md) |
 | [httpx](https://pypi.org/project/httpx/0.28.1/) | 0.28.1 | BSD-3-Clause | [LICENSE.md](third_party/licenses/httpx/0.28.1/httpx-0.28.1.dist-info/licenses/LICENSE.md) |

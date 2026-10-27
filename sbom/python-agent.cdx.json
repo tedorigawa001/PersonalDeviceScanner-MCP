@@ -201,7 +201,7 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "d28630f5854ab07ab1fd4aba756de52326c82e6be15d414b12793f1975048b54"
+          "content": "661c298b4821edebead0c91edd2b00374d67ad7c5a1f7a91d4442633b79d6a72"
         }
       ],
       "licenses": [
@@ -221,7 +221,7 @@
         },
         {
           "name": "pc-scanner:reference-wheel",
-          "value": "cffi-2.1.1-cp314-cp314-macosx_10_15_x86_64.whl"
+          "value": "cffi-2.1.1-cp314-cp314-macosx_11_0_arm64.whl"
         },
         {
           "name": "pc-scanner:artifact-provenance",
@@ -285,17 +285,17 @@
       "version": "8.5.0"
     },
     {
-      "bom-ref": "pkg:pypi/cryptography@48.0.1",
+      "bom-ref": "pkg:pypi/cryptography@50.0.2",
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://pypi.org/project/cryptography/48.0.1/"
+          "url": "https://pypi.org/project/cryptography/50.0.2/"
         }
       ],
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "3e4a1a3232eef2e6c732827d5722db29a0cc8b27af2a4d865b094cf954be9ca1"
+          "content": "fa8f5efb344d6908a1ce62f4a24e2e5780f825d6f53f5f50ec5ffacac72936cb"
         }
       ],
       "licenses": [
@@ -311,11 +311,11 @@
         },
         {
           "name": "pc-scanner:installed-metadata-sha256",
-          "value": "5b62dcfcaddf62e26f8c28f6055c0aba858eea2a3697a3fc8e7aced427bf8d94"
+          "value": "047cfc71226409de4318b360aef15c63a2adf609731e3dcf7fe932f14ea042ee"
         },
         {
           "name": "pc-scanner:reference-wheel",
-          "value": "cryptography-48.0.1-cp311-abi3-macosx_10_9_universal2.whl"
+          "value": "cryptography-50.0.2-cp311-abi3-macosx_11_0_arm64.whl"
         },
         {
           "name": "pc-scanner:artifact-provenance",
@@ -326,10 +326,10 @@
           "value": "original notices match reference wheel bytes"
         }
       ],
-      "purl": "pkg:pypi/cryptography@48.0.1",
+      "purl": "pkg:pypi/cryptography@50.0.2",
       "scope": "required",
       "type": "library",
-      "version": "48.0.1"
+      "version": "50.0.2"
     },
     {
       "bom-ref": "pkg:pypi/h11@0.16.0",
@@ -812,7 +812,7 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "1cf41f1ae3fa155cf167a72689ad044bcc1e3c97e064123677149bdfb5dafc4a"
+          "content": "4df197990c15b5a37c5a277d131d9f2c67de6133f2e5dafd80d9bba4b99f46f9"
         }
       ],
       "licenses": [
@@ -832,7 +832,7 @@
         },
         {
           "name": "pc-scanner:reference-wheel",
-          "value": "pydantic_core-2.50.1-cp314-cp314-macosx_10_12_x86_64.whl"
+          "value": "pydantic_core-2.50.1-cp314-cp314-macosx_11_0_arm64.whl"
         },
         {
           "name": "pc-scanner:artifact-provenance",
@@ -1094,7 +1094,7 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "c9d1aca01f49170fdcf5c92761b1fafe97f554b721ca4570c5949fff778f0d4b"
+          "content": "3f0e9ac28fc067d4d34b88ae43c48e9489455c97fee9633d851f7eeed5a05d35"
         }
       ],
       "licenses": [
@@ -1114,7 +1114,7 @@
         },
         {
           "name": "pc-scanner:reference-wheel",
-          "value": "rpds_py-2026.9.1-cp314-cp314-macosx_10_12_x86_64.whl"
+          "value": "rpds_py-2026.9.1-cp314-cp314-macosx_11_0_arm64.whl"
         },
         {
           "name": "pc-scanner:artifact-provenance",
@@ -1408,7 +1408,7 @@
       "dependsOn": [
         "pkg:pypi/cffi@2.1.1"
       ],
-      "ref": "pkg:pypi/cryptography@48.0.1"
+      "ref": "pkg:pypi/cryptography@50.0.2"
     },
     {
       "dependsOn": [],
@@ -1475,6 +1475,7 @@
       "dependsOn": [
         "pkg:pypi/anyio@4.15.1",
         "pkg:pypi/certifi@2026.10.19",
+        "pkg:pypi/cryptography@50.0.2",
         "pkg:pypi/mcp@1.30.0"
       ],
       "ref": "pkg:pypi/personal-pc-scanner@0.7.2"
@@ -1508,7 +1509,7 @@
     },
     {
       "dependsOn": [
-        "pkg:pypi/cryptography@48.0.1"
+        "pkg:pypi/cryptography@50.0.2"
       ],
       "ref": "pkg:pypi/pyjwt@2.15.1"
     },
@@ -1592,7 +1593,7 @@
       },
       {
         "name": "pc-scanner:environment",
-        "value": "{\"architecture\": \"x86_64\", \"implementation\": \"CPython\", \"marker_environment\": \"evaluated for this interpreter only\", \"os\": \"Darwin\", \"python\": \"3.14.7\"}"
+        "value": "{\"architecture\": \"arm64\", \"implementation\": \"CPython\", \"marker_environment\": \"evaluated for this interpreter only\", \"os\": \"Darwin\", \"python\": \"3.14.10\"}"
       },
       {
         "name": "pc-scanner:generator",
@@ -1600,7 +1601,7 @@
       }
     ]
   },
-  "serialNumber": "urn:uuid:ba4ff1ce-838b-532a-819d-f7f0df023e99",
+  "serialNumber": "urn:uuid:624d8229-de4f-5b02-bec4-71d760f76199",
   "specVersion": "1.6",
   "version": 1
 }

@@ -4,6 +4,8 @@ name: Compliance profiles
 # per platform (pywin32 on Windows, for example) and the generator reads the installed
 # environment, so each profile must be built on its own OS. Versions follow the
 # reference lock at the repository root. Download the artifacts into profiles/.
+# The root reference (macOS arm64) is generated on the owner's Apple silicon Mac, so the
+# macOS job here builds the Intel profile, which no local Mac can rebuild any more.
 on:
   workflow_dispatch:
     inputs:
@@ -28,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-26-intel]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -47,16 +49,22 @@ jobs:
           with open("agent-requirements.txt", "w") as f:
               f.write("\n".join(agent) + "\n")
           # Keep the reference lock's versions, except where the project's own requirements
-          # for this platform exclude them (a security floor such as cryptography>=50).
-          own = [r for r in map(Requirement, agent) if r.marker is None or r.marker.evaluate()]
+          # for this platform exclude them (a security floor such as cryptography>=50), or where
+          # a requirement's marker leaves this platform out on purpose (Intel Macs have no
+          # cryptography wheel from 49 on, so the reference's version cannot install there).
+          requirements = list(map(Requirement, agent))
+          own = [r for r in requirements if r.marker is None or r.marker.evaluate()]
+          exempt = {canonicalize_name(r.name) for r in requirements if r.marker is not None and not r.marker.evaluate()}
           with open("requirements-agent.lock") as lock, open("constraints.txt", "w") as f:
               for line in lock:
                   if not line.strip() or line.startswith("#"):
                       continue
                   pin = Requirement(line.split()[0])
                   version = next(iter(pin.specifier)).version
-                  if all(canonicalize_name(r.name) != canonicalize_name(pin.name) or r.specifier.contains(version)
-                         for r in own):
+                  if canonicalize_name(pin.name) in exempt:
+                      print(f"::notice::{pin} is exempted for this platform by the project's requirements; resolving it afresh")
+                  elif all(canonicalize_name(r.name) != canonicalize_name(pin.name) or r.specifier.contains(version)
+                           for r in own):
                       f.write(f"{pin}\n")
                   else:
                       print(f"::notice::{pin} conflicts with this project's requirements here; resolving it afresh")

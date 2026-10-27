@@ -11,7 +11,7 @@
 - `requirements-agent.lock`：対象環境の29依存物を固定。参照wheelがある場合はハッシュも固定。
 - `sbom/external-integrations.json`：別途導入されるWazuh/osquery/ClamAVの範囲・条件。未確認のバージョンは推測しません。
 
-このスナップショットは **macOS x86_64 / CPython 3.14.7 / agent extra** 向けです。
+このスナップショットは **macOS arm64（Apple シリコン）/ CPython 3.14.10 / agent extra** 向けです。
 Windowsではpywin32等が追加されるため、このロックを全OS共通として使わないでください。
 同じPythonパッケージのメタデータと依存条件でも、プラットフォーム別wheelには違う内包物があります。
 
@@ -101,7 +101,7 @@ wheelのSBOMは外部添付用の `sbom/python-agent.cdx.json` を一緒に提�
 
 ## OS別プロファイル
 
-リポジトリ直下のロック・SBOM・第三者表示は **macOS x86_64 / CPython 3.14.7** の参照プロファイルで、
+リポジトリ直下のロック・SBOM・第三者表示は **macOS arm64（Apple シリコン）/ CPython 3.14.10** の参照プロファイルで、
 wheelに同梱する表示もこれです。ほかのOS向けは `profiles/<OS>-<CPU>-cp<版>/` に、同じ構成一式
 （`requirements-agent.lock`、`sbom/`、`third_party/`、`THIRD_PARTY_NOTICES.md`）を置きます。
 
@@ -109,7 +109,7 @@ wheelに同梱する表示もこれです。ほかのOS向けは `profiles/<OS>-
 pipで別OS向けに解決しても `sys_platform` などの条件は実行中のOSで判定され、
 Windowsだけの依存（pywin32など）を拾えないためです。
 
-2026-10-22 の certifi 2026.10.19 更新では、macOS x86_64 の参照プロファイルを導入済み環境から再生成しました。
+2026-10-22 の certifi 2026.10.19 更新では、当時の参照だった macOS x86_64 のプロファイルを導入済み環境から再生成しました。
 ほかの3プロファイルは、依存条件を持たない同一の `py3-none-any` wheelを根拠に、certifiの記録だけを更新しました。
 公開SHA-256は `42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b` です。
 更新対象はロック、SBOMのcertifiコンポーネントと参照、参照wheel一覧、METADATA、ライセンス原文、第三者表示とMPLソース案内です。
@@ -119,10 +119,11 @@ agent extraにも修正版の下限を追加し、SBOMの直接依存とserialNu
 環境マーカーや新しい依存条件、ネイティブwheelを伴う更新には、従来どおり各OSでの再生成が必要です。
 
 GitHub Actionsの「Compliance profiles」ワークフロー（`.github/workflows/compliance-profiles.yml`、手動実行）が、
-Windows / Linux / macOS（arm64）それぞれで次を行い、結果を成果物（artifact）としてアップロードします。
+Windows / Linux / macOS（Intel、x86_64）それぞれで次を行い、結果を成果物（artifact）としてアップロードします。
 
 1. 参照ロックと同じバージョンを制約にして、agent extraの依存をビルド済みwheelだけで導入
-   （参照ロックの固定がそのOSでのagent extraの条件と矛盾する場合だけ、その固定を外して解決し直す。例：`cryptography>=50`）
+   （参照ロックの固定がそのOSでのagent extraの条件と矛盾する場合（例：`cryptography>=50`）と、
+   agent extraの条件がそのOSを意図して外している場合（例：Intel Mac の cryptography）だけ、その固定を外して解決し直す）
 2. 導入したバージョンの参照wheelを取得
 3. `generate_compliance.py --output profiles/<プロファイル名>` で生成（チェックアウトに残る古い原文はここで削除される）
 4. 固定したコミットのCycloneDX 1.6公式スキーマで `validate_compliance.py` を実行
@@ -132,20 +133,36 @@ Windows / Linux / macOS（arm64）それぞれで次を行い、結果を成果�
 確認した結果とあわせてコミットしてください。取り込むときは、既存の `profiles/<プロファイル名>/` に上書きせず、
 中身を成果物で置き換えます（上書きすると古い原文が残り、テストと検証が失敗します）。
 
-この手順は、ローカルのmacOS x86_64で実行すると、リポジトリ直下の参照プロファイルを1バイトも違わず再生成できることを確認しています。
+参照プロファイル（リポジトリ直下）は、所有者の Apple シリコン Mac でローカルに生成します（`.compliance-venv` と
+`.compliance-wheels`。上の更新・検証手順と同じ）。
 
-### 現在のプロファイル（2026-10-12 生成）
+### 参照プロファイルの切り替え（2026-10-27）
+
+所有者の開発機が Apple シリコンになり、Intel 向けの実行ファイルが動かなくなったため、参照を macOS arm64 に切り替えました。
+
+- 直下は、この Mac の CPython 3.14.10 で `.compliance-wheels` の参照wheel 29件から生成し直しました。
+  それまでCIで生成していた `profiles/darwin-arm64-cp314/` と比べ、違いは Python のバージョン表記（3.14.7 → 3.14.10）と、
+  そこから導かれる SBOM の `serialNumber` だけでした（ライセンス原文・METADATA・ハッシュはすべて同じ）。
+  直下と重複するため `profiles/darwin-arm64-cp314/` は削除しました。
+- それまでの直下（macOS x86_64 / CPython 3.14.7、2026-10-22 にローカル生成）は、内容を変えずに
+  `profiles/darwin-x86_64-cp314/` へ移しました。Intel Mac のハッシュ確認付き導入（cryptography 48.0.1）はそのまま使えます。
+- Intel 向けはローカルで再生成できないため、「Compliance profiles」ワークフローの macOS ジョブを Intel のランナー
+  （`macos-26-intel`）に変えました。
+- 切り替え後、`generate_compliance.py --check`（直下）と、直下・3プロファイルの `validate_compliance.py` を実行しました
+  （Windows は pywin32 の既知の未確定表記だけを除いて検証）。
+
+### 現在のプロファイル（2026-10-27 時点）
 
 | 置き場所 | 環境 | パッケージ | cryptography | 検証 |
 |---|---|---|---|---|
-| リポジトリ直下 | macOS x86_64 / CPython 3.14.7（ローカル生成、参照） | 29 | 48.0.1 | 合格 |
-| `profiles/darwin-arm64-cp314/` | macOS arm64 / CPython 3.14.7 | 29 | 50.0.2 | 合格 |
+| リポジトリ直下 | macOS arm64 / CPython 3.14.10（ローカル生成、参照） | 29 | 50.0.2 | 合格 |
+| `profiles/darwin-x86_64-cp314/` | macOS x86_64 / CPython 3.14.7（旧参照、ローカル生成） | 29 | 48.0.1 | 合格 |
 | `profiles/linux-x86_64-cp314/` | Linux x86_64 / CPython 3.14.8 | 29 | 50.0.2 | 合格 |
 | `profiles/windows-amd64-cp314/` | Windows AMD64 / CPython 3.14.7 | 30（pywin32 312 を含む） | 50.0.2 | **未合格**：pywin32 のライセンス表記が未確定 |
 
-- 4つとも同じバージョンです（cryptography と、Windows の pywin32 を除く）。macOS arm64 と Linux のライセンス原文は参照と完全に同じです
-  （cryptography 50.0.2 の原文も 48.0.1 とバイト単位で同じ）。
-- cryptography 49.0.0 以降には Intel Mac（x86_64）向けのビルド済みパッケージがないため、参照プロファイルだけ 48.0.1 のままです。
+- 4つとも同じバージョンです（cryptography と、Windows の pywin32 を除く）。macOS x86_64 と Linux のライセンス原文は参照と完全に同じです
+  （cryptography 48.0.1 の原文も 50.0.2 とバイト単位で同じ）。
+- cryptography 49.0.0 以降には Intel Mac（x86_64）向けのビルド済みパッケージがないため、`profiles/darwin-x86_64-cp314/` だけ 48.0.1 のままです。
   48.0.1 の既知の脆弱性（CVE-2026-69249・CVE-2026-69247・CVE-2026-69248）は、この基盤の使い方（stdio のみ、
   JWT・`x509.verification`・PKCS#7 を使わない）では到達しません。2026-10-12 の OSV 検査では、ほかの3つに既知の脆弱性はありません。
 - Windows の pydantic-core と rpds-py の LICENSE は、内容は同じで改行コードだけが CRLF です（Windows 向け wheel の中身どおり）。
@@ -169,7 +186,7 @@ Python のマイナーバージョン）と一致する場合はロックのハ�
 ## 配布に進む前の未確定事項
 
 1. （完了）独自コードのライセンス：2026-10-12 に MIT を適用（著作権者 tedorigawa001）。
-2. Windows 版プロファイルの pywin32 のライセンス表記の確定（Linux・macOS arm64 は生成・検証済み）。
+2. Windows 版プロファイルの pywin32 のライセンス表記の確定（Linux・macOS x86_64 は生成・検証済み）。
 3. 配布形態：npm パッケージ（起動用スクリプト・独自コード・ロック。依存は利用者の PC で PyPI から導入）を用意し、0.1.0 を公開した（2026-10-13）。
    wheel/sdist の PyPI 公開や、Python・依存 wheel を含む実行ファイル/インストーラー配布は未定。
 4. 同梱するネイティブ依存物のバージョン・ライセンス・対応ソース要件を実物で確認。

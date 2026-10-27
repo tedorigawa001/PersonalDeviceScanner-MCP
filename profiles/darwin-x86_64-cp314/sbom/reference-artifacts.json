@@ -29,9 +29,9 @@
       "version": "2026.10.19"
     },
     {
-      "filename": "cffi-2.1.1-cp314-cp314-macosx_11_0_arm64.whl",
+      "filename": "cffi-2.1.1-cp314-cp314-macosx_10_15_x86_64.whl",
       "name": "cffi",
-      "sha256": "661c298b4821edebead0c91edd2b00374d67ad7c5a1f7a91d4442633b79d6a72",
+      "sha256": "d28630f5854ab07ab1fd4aba756de52326c82e6be15d414b12793f1975048b54",
       "source": "https://pypi.org/project/cffi/2.1.1/",
       "version": "2.1.1"
     },
@@ -43,11 +43,11 @@
       "version": "8.5.0"
     },
     {
-      "filename": "cryptography-50.0.2-cp311-abi3-macosx_11_0_arm64.whl",
+      "filename": "cryptography-48.0.1-cp311-abi3-macosx_10_9_universal2.whl",
       "name": "cryptography",
-      "sha256": "fa8f5efb344d6908a1ce62f4a24e2e5780f825d6f53f5f50ec5ffacac72936cb",
-      "source": "https://pypi.org/project/cryptography/50.0.2/",
-      "version": "50.0.2"
+      "sha256": "3e4a1a3232eef2e6c732827d5722db29a0cc8b27af2a4d865b094cf954be9ca1",
+      "source": "https://pypi.org/project/cryptography/48.0.1/",
+      "version": "48.0.1"
     },
     {
       "filename": "h11-0.16.0-py3-none-any.whl",
@@ -120,9 +120,9 @@
       "version": "2.14.1"
     },
     {
-      "filename": "pydantic_core-2.50.1-cp314-cp314-macosx_11_0_arm64.whl",
+      "filename": "pydantic_core-2.50.1-cp314-cp314-macosx_10_12_x86_64.whl",
       "name": "pydantic-core",
-      "sha256": "4df197990c15b5a37c5a277d131d9f2c67de6133f2e5dafd80d9bba4b99f46f9",
+      "sha256": "1cf41f1ae3fa155cf167a72689ad044bcc1e3c97e064123677149bdfb5dafc4a",
       "source": "https://pypi.org/project/pydantic-core/2.50.1/",
       "version": "2.50.1"
     },
@@ -162,9 +162,9 @@
       "version": "0.37.0"
     },
     {
-      "filename": "rpds_py-2026.9.1-cp314-cp314-macosx_11_0_arm64.whl",
+      "filename": "rpds_py-2026.9.1-cp314-cp314-macosx_10_12_x86_64.whl",
       "name": "rpds-py",
-      "sha256": "3f0e9ac28fc067d4d34b88ae43c48e9489455c97fee9633d851f7eeed5a05d35",
+      "sha256": "c9d1aca01f49170fdcf5c92761b1fafe97f554b721ca4570c5949fff778f0d4b",
       "source": "https://pypi.org/project/rpds-py/2026.9.1/",
       "version": "2026.9.1"
     },
@@ -205,7 +205,7 @@
     }
   ],
   "environment": {
-    "architecture": "arm64",
+    "architecture": "x86_64",
     "implementation": "CPython",
     "marker_environment": "evaluated for this interpreter only",
     "os": "Darwin",

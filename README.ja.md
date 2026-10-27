@@ -387,7 +387,8 @@ lookup = true    # エンジンのバージョンを公式の最新リリース�
   ```
 
 - **依存パッケージのバージョンを固定したい**：`requirements-agent.lock` は、ハッシュ付きで依存を固定したロックファイルです。
-  ただし **macOS x86_64 / CPython 3.14.7 専用**で、他の環境では使えません。
+  直下のものは **macOS arm64（Apple シリコン）/ CPython 3.14 専用**です。Intel Mac・Linux x86_64・Windows x64 では、
+  [profiles/](profiles/) にある同じ OS・CPU のロックを指定します（例：Intel Mac は `profiles/darwin-x86_64-cp314/requirements-agent.lock`）。
 
   ```sh
   .venv/bin/python -m pip install --require-hashes --only-binary=:all: -r requirements-agent.lock
@@ -799,7 +800,7 @@ Windows（PowerShell）：
 - [docs/licensing.md](docs/licensing.md)：ライセンス方針と配布前チェック
 - [docs/compliance.md](docs/compliance.md)：SBOM・第三者表示の対象範囲と再生成手順
 - [docs/releasing.md](docs/releasing.md)：npm パッケージのリリース手順（GitHub Actions からのステージド公開）
-- [profiles/](profiles/)：Windows・Linux・macOS arm64 向けのロック・SBOM・第三者表示（直下は macOS x86_64 の参照版）
+- [profiles/](profiles/)：Windows・Linux・Intel Mac 向けのロック・SBOM・第三者表示（直下は macOS arm64 の参照版）
 - [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)・[CycloneDX SBOM](sbom/python-agent.cdx.json)：MCP 用 Python 依存パッケージの表示
 
 独自コードのライセンスは [MIT License](LICENSE)（Copyright (c) 2026 tedorigawa001）です。
