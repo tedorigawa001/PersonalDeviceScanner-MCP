@@ -620,8 +620,8 @@ MCP sends changes at most once a second, with the existing ten-second heartbeat 
 requests progress. Its numeric progress is elapsed seconds; `total` is omitted. Other operations show stage/time
 while unobserved part counts remain unknown. Rendering depends on the client.
 
-After cancellation a final saved-state notification is attempted, but a client may already have removed its callback.
-Use `get_scan_progress(scan_id="ID from a notification or result")` to read the eventual state; omit the ID for the
+After the client cancels, no further notification is sent, because MCP progress may only refer to requests still in
+progress. Use `get_scan_progress(scan_id="ID from a notification or result")` to read the eventual state; omit the ID for the
 latest scan request. This exposes progress metadata only, not history, file names or findings. Only the last 32
 requests are retained in server memory; an evicted ID or server restart makes that ID unavailable. Checkpoints
 remain independent of this ephemeral progress state.

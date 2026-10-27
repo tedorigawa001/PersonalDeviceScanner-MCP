@@ -182,15 +182,23 @@ cli.main()
                 process.communicate(timeout=5)
 
     @unittest.skipUnless(importlib.util.find_spec("mcp"), "agent extra not installed")
-    def test_mcp_cancel_attempts_final_saved_state_notification(self):
+    def test_mcp_cancel_keeps_the_saved_state_without_notifying_a_finished_request(self):
+        # Found in the review of 2026-10-27: a final notification was sent after the client had
+        # cancelled. MCP progress may only refer to requests in progress, and the TypeScript SDK
+        # reports a notification for a token it no longer tracks as an error.
         import anyio
         import mcp.types as types
+        from mcp.server.session import ServerSession
         from mcp.shared.exceptions import McpError
         from mcp.shared.memory import create_connected_server_and_client_session
         from pc_scanner.server import create_server
         from pc_scanner.core import ScannerError
         started = threading.Event()
-        messages = []
+        messages, sent = [], []
+        original_send = ServerSession.send_progress_notification
+        async def record_send(session, progress_token, progress, total=None, message=None, **kwargs):
+            sent.append(message)
+            return await original_send(session, progress_token, progress, total, message, **kwargs)
         def engine(argv, *a, **k):
             if Path(argv[-1]).name == "b.txt":
                 started.set()
@@ -224,9 +232,12 @@ cli.main()
                 self.assertEqual(state["checkpoint"], "saved")
                 self.assertEqual(state["pending"], 1)
                 self.assertNotIn(str(self.root), json.dumps(state))
-        with patch("pc_scanner.core.run_bounded", side_effect=engine):
+        with patch("pc_scanner.core.run_bounded", side_effect=engine), \
+                patch.object(ServerSession, "send_progress_notification", record_send):
             asyncio.run(exercise())
         self.assertTrue(any("scan_id=" in m for m in messages))
+        self.assertTrue(sent)
+        self.assertFalse([m for m in sent if "stage=cancelled" in m], sent)
 
     def test_warning_text_does_not_forge_a_timeout_stage(self):
         config = {**self.config, "local": {**self.config["local"], "timed out": True}}

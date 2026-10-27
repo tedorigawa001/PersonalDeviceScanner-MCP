@@ -86,6 +86,7 @@ def create_server(scanner: Scanner):
             group.start_soon(heartbeat, publish, progress)
             group.start_soon(stop_on_cancel, cancel, progress)
             # The lock is held until the engine has exited, even after a cancel.
+            cancelled = False
             try:
                 async with lock:
                     progress.update(stage="running")
@@ -93,14 +94,20 @@ def create_server(scanner: Scanner):
                         partial(scanner.invoke, operation, cancel=cancel, progress=progress, **kwargs))
                     progress.finish(report["status"])
             except BaseException as exc:
-                progress.finish("cancelled" if isinstance(exc, anyio.get_cancelled_exc_class()) else "error")
+                cancelled = isinstance(exc, anyio.get_cancelled_exc_class())
+                progress.finish("cancelled" if cancelled else "error")
                 raise
             finally:
+                # The worker usually returns a result even after a cancel, so no exception says so;
+                # stop_on_cancel sets the event only when the request itself was cancelled.
+                cancelled = cancelled or cancel.is_set()
                 group.cancel_scope.cancel()
-                # Even after cancellation, attempt one final saved-state notification. A disconnected
-                # client may not receive it; never hold up cancellation for an unresponsive transport.
-                with anyio.move_on_after(1, shield=True):
-                    await publish()
+                # One final state notification, unless the request was cancelled: it is then over for
+                # the client, and MCP progress may only refer to requests in progress (get_scan_progress
+                # keeps the final state). Never hold up the reply for an unresponsive transport.
+                if not cancelled:
+                    with anyio.move_on_after(1, shield=True):
+                        await publish()
         # Stopping the helper tasks can absorb a cancel that arrived during the shielded
         # wait; re-raise it so the SDK does not send a second response.
         await anyio.lowlevel.checkpoint()
