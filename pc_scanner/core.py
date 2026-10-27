@@ -118,7 +118,9 @@ def check_cancel(cancel: threading.Event | None) -> None:
 
 def inspect_directories(target: Path, deadline: float,
                         cancel: threading.Event | None = None,
-                        cloud_excluded: list[tuple[str, bool]] | None = None) -> tuple[bool, list[str], list[str]]:
+                        cloud_excluded: list[tuple[str, bool]] | None = None,
+                        max_levels: int = MAX_DIRECTORY_LEVELS,
+                        excluded_directory: Path | None = None) -> tuple[bool, list[str], list[str]]:
     """Find directories ClamAV silently skips or cannot read, and names with line breaks,
     without following links.
 
@@ -144,7 +146,8 @@ def inspect_directories(target: Path, deadline: float,
             raise ScannerError("Directory coverage check timed out; scan was not completed")
         line_breaks += [str(Path(directory) / name) for name in children + files if "\n" in name or "\r" in name]
         # os.walk only skips symlinks, so junctions must be pruned here.
-        children[:] = [name for name in children if not is_link(Path(directory) / name)]
+        children[:] = [name for name in children if not is_link(Path(directory) / name)
+                       and Path(directory) / name != excluded_directory]
         if cloud_excluded is not None:
             retained = []
             for name in children:
@@ -160,7 +163,7 @@ def inspect_directories(target: Path, deadline: float,
                 if not is_link(entry) and cloud_placeholder(entry):
                     cloud_excluded.append((str(entry), False))
         level = len(Path(directory).relative_to(target).parts) + 1
-        if level >= MAX_DIRECTORY_LEVELS:
+        if level >= max_levels:
             limit_reached = limit_reached or bool(children)
             children.clear()
     return limit_reached, unreadable, line_breaks
@@ -847,7 +850,23 @@ class Scanner:
                       + (["One page, engine warning, or no observable rows; coverage incomplete"] if partial else []))
 
     def malware(self, root_alias: str, relative_path: str = ".",
-                cancel: threading.Event | None = None) -> dict:
+                cancel: threading.Event | None = None, batch: bool = False, resume: bool = False) -> dict:
+        if type(batch) is not bool or type(resume) is not bool:
+            raise ScannerError("batch and resume must be true or false")
+        deadline = time.monotonic() + self.timeout
+        if batch or resume:
+            from .malware_batch import scan
+            return scan(self, root_alias, relative_path, resume, cancel, deadline)
+        report = self._malware(root_alias, relative_path, cancel, deadline=deadline)
+        if (report.get("data", {}).get("split_required")
+                and any("command-size limit" in warning for warning in report["warnings"])):
+            from .malware_batch import scan
+            return scan(self, root_alias, relative_path, False, cancel, deadline)
+        return report
+
+    def _malware(self, root_alias: str, relative_path: str = ".",
+                 cancel: threading.Event | None = None, *, deadline: float | None = None,
+                 max_levels: int = MAX_DIRECTORY_LEVELS, excluded_directory: Path | None = None) -> dict:
         if root_alias not in self.roots:
             raise ScannerError("Scan root alias is not authorized")
         if not isinstance(relative_path, str) or "\x00" in relative_path:
@@ -883,12 +902,17 @@ class Scanner:
         # A missing engine is a configuration error, reported before any folder is walked.
         binary = self.binary("clamav_binary")
         # Signature check, coverage check and engine share one time budget.
-        deadline = time.monotonic() + self.timeout
+        deadline = deadline if deadline is not None else time.monotonic() + self.timeout
         check_cancel(cancel)
         cloud_excluded: list[tuple[str, bool]] = []
-        directory_limit, unreadable, line_breaks = inspect_directories(target, deadline, cancel, cloud_excluded)
+        directory_limit, unreadable, line_breaks = inspect_directories(
+            target, deadline, cancel, cloud_excluded, max_levels, excluded_directory)
         exclusions = [("--exclude-dir=" if directory else "--exclude=") + exclusion_pattern(path, directory)
                       for path, directory in cloud_excluded]
+        if excluded_directory and excluded_directory.is_relative_to(target):
+            if len(os.fsencode(excluded_directory)) > CLAMAV_MATCH_BYTES:
+                raise ScannerError("Checkpoint directory path is too long for safe engine exclusion")
+            exclusions.append("--exclude-dir=" + exclusion_pattern(str(excluded_directory), True))
         unsafe_exclusions = False
         try:
             exclusions = [engine_argument(option) for option in exclusions]
@@ -904,6 +928,7 @@ class Scanner:
             return result("clamav", "partial", data={
                 "root_alias": root_alias, "relative_path": clean_text(relative_path, PATH_CHARS),
                 "exit_code": None, "scan_started": False,
+                "split_required": not target_excluded and (exclusion_overflow or unsafe_exclusions or bool(too_long)),
                 "cloud_excluded_count": len(cloud_excluded), "cloud_excluded_paths": cloud_paths},
                 warnings=cloud_warnings + (["Cloud exclusions cannot be passed safely to the engine; no scan was started. "
                                             "Select a smaller local folder"] if unsafe_exclusions else [])
@@ -931,7 +956,7 @@ class Scanner:
         code, output, diagnostic = run_bounded([
             binary, "--recursive=yes", "--infected",
             "--follow-dir-symlinks=0", "--follow-file-symlinks=0",
-            f"--max-dir-recursion={MAX_DIRECTORY_LEVELS}",
+            f"--max-dir-recursion={max_levels}",
             "--max-filesize=100M", "--max-scansize=200M", "--max-recursion=16",
             # The target stays last, so a mis-parsed quote cannot place options after it.
             "--alert-exceeds-max=yes", *exclusions, target_argument], remaining, self.limit, cancel=cancel)

@@ -559,6 +559,36 @@ each target, then every scan, newest first. Open a scan to see its warnings, fin
   `history.jsonl.details/`.
 - The AI cannot read the page or the kept results: there is no MCP tool for them.
 
+### Large malware scans and resuming
+
+For a home folder explicitly authorized by the owner as `scan_roots.home`:
+
+```sh
+pc-scanner --config scanner.toml malware home --batch
+pc-scanner --config scanner.toml malware home --resume
+```
+
+- MCP accepts `scan_malware(root_alias="home", batch=true)` and `resume=true` with the same root/path.
+  Ordinary scans also switch to batch mode when cloud exclusions exceed the command-size limit.
+- Work starts with immediate children. Subtrees exceeding 1,000 entries, or exclusions that cannot be passed safely,
+  are subdivided further. Cloud placeholders and links are excluded; the original target's 16-level depth limit remains.
+- Completed parts are checkpointed. One shared `local.timeout_seconds` budget covers the entire call, including
+  automatic subdivision. Resume rebuilds the plan and checks names, identity, size, modification/change times and cloud
+  attributes. Only unchanged parts whose engine finished under the same engine, definitions and settings are reused.
+  Coverage warnings (stale definitions, cloud exclusions, limits) and `partial` survive reuse. Changed/new parts and
+  failed/interrupted engine work are inspected again. Changed definitions/settings invalidate reuse. This is a metadata check,
+  not an atomic snapshot or a fresh read of every file's contents.
+- `data.batch` reports finished, pending and reused parts. Findings and engine counts are aggregated without counting
+  reused/deleted targets twice. Cloud exclusions, unreadable paths and other coverage limits keep the result `partial`.
+- **Checkpoints are separate from history.** Even with `history.enabled=false` or `history.details=false`, batch scans
+  save relative names and findings needed for resume in `malware-checkpoints/` beside the history file. These are not
+  added to ordinary history summaries. POSIX folders/files use 0700/0600; Windows ownership is checked too. Linked,
+  hard-linked or nonregular checkpoint files are refused for resume. Storage failures are reported. To remove this data,
+  stop scanning before deleting that folder.
+- Only one batch runs at a time across processes. Limits: 16 checkpoints, 16 MiB each, 10,000 parts per call.
+  Exhausting a limit/time budget leaves coverage incomplete. A single file/archive cannot resume halfway through;
+  an interrupted part is retried. Starting with `--batch` again resets that target's checkpoint.
+
 ## Limitations
 
 ### Coverage
@@ -582,7 +612,8 @@ each target, then every scan, newest first. Open a scan to see its warnings, fin
   but whether clamscan itself follows junctions must be verified on each environment.
 - Unmaterialized iCloud/OneDrive files and directories are identified from macOS dataless flags or Windows offline/recall attributes and excluded without opening their contents.
   Exclusions produce `partial` and a warning, with `data.cloud_excluded_count` and `data.cloud_excluded_paths` (up to 20 entries).
-  Downloaded files remain eligible. If exclusion arguments are too large or cannot be passed safely, no scan starts and the result is `partial`.
+  Downloaded files remain eligible. Oversized exclusion arguments trigger the batch mode above. Other unsafe
+  exclusions prevent an ordinary scan from starting and return `partial`.
   ClamAV compares exclusions with only the first 512 bytes (UTF-8) of a path, so a placeholder with a longer path
   also stops the scan before it starts (`partial`), rather than letting ClamAV read and download it.
   Detection reflects metadata at preflight time; concurrent sync-state changes and providers that do not expose these attributes are outside this guarantee.

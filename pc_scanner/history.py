@@ -105,7 +105,7 @@ def owned(fd: int, info=None) -> bool:
 
 
 @contextlib.contextmanager
-def locked(path: Path):
+def locked(path: Path, check_wait=None):
     """Held across processes: a CLI and MCP servers that both find the file full must not rotate it twice."""
     fd = os.open(lock_file(path), os.O_RDWR | os.O_CREAT | NO_FOLLOW, 0o600)
     try:
@@ -114,6 +114,8 @@ def locked(path: Path):
         if not stat.S_ISREG(info.st_mode) or not owned(fd, info) or info.st_nlink != 1:
             raise OSError("The history lock file is not this user's regular file")
         for attempt in range(LOCK_ATTEMPTS):
+            if check_wait is not None:
+                check_wait()
             try:
                 if os.name == "nt":
                     msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
@@ -125,6 +127,8 @@ def locked(path: Path):
                     raise
                 time.sleep(LOCK_INTERVAL)
         try:
+            if check_wait is not None:
+                check_wait()
             yield
         finally:
             if os.name == "nt":

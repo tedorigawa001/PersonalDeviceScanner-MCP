@@ -64,6 +64,8 @@ def main():
     malware = commands.add_parser("malware")
     malware.add_argument("root_alias")
     malware.add_argument("relative_path", nargs="?", default=".")
+    malware.add_argument("--batch", action="store_true", help="split into resumable parts; saves private checkpoints")
+    malware.add_argument("--resume", action="store_true", help="resume the same root/path; recheck changed parts")
     vulnerabilities = commands.add_parser("vulnerabilities")
     vulnerabilities.add_argument("--cursor", default="", help="continue from data.next_cursor")
     android = commands.add_parser("android", help="read fixed facts from a registered Android device over USB")

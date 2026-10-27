@@ -527,7 +527,8 @@ class ScannerTests(unittest.TestCase):
         cloud.write_text("test")
         with self.placeholder_metadata({cloud.name: (0x40000000, 0)}), patch(
                 "pc_scanner.core.MAX_EXCLUSION_CHARS", 1), patch("pc_scanner.core.run_bounded") as run:
-            report = self.scanner.invoke("malware", root_alias="test")
+            # The single-part safeguard refuses it; the public method now subdivides automatically.
+            report = self.scanner._malware(root_alias="test")
         self.assertEqual(report["status"], "partial")
         self.assertFalse(report["data"]["scan_started"])
         self.assertTrue(any("command-size" in warning for warning in report["warnings"]))

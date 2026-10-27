@@ -83,9 +83,13 @@ def create_server(scanner: Scanner):
 
     @server.tool(annotations=engine, description=(
         "Scan within an owner-authorized root with ClamAV. Never removes or quarantines. "
+        "Use batch=true for large trees; resume=true resumes the same root/path, rechecking changes. "
+        "Batch scans save private local checkpoints with file names and findings, even if history is disabled. "
         f"Authorized root aliases: {aliases}."))
-    async def scan_malware(ctx: Context, root_alias: str, relative_path: str = ".") -> dict:
-        return await run_engine(ctx, "malware", root_alias=root_alias, relative_path=relative_path)
+    async def scan_malware(ctx: Context, root_alias: str, relative_path: str = ".",
+                           batch: bool = False, resume: bool = False) -> dict:
+        return await run_engine(ctx, "malware", root_alias=root_alias, relative_path=relative_path,
+                                batch=batch, resume=resume)
 
     @server.tool(annotations=engine, description=(
         "Read fixed facts from an owner-registered Android device over USB debugging (ADB): device (version and "

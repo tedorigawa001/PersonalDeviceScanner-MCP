@@ -54,6 +54,34 @@ class CancellableScanner:
 
 @unittest.skipUnless(importlib.util.find_spec("mcp"), "agent extra not installed")
 class MCPTests(unittest.TestCase):
+    def test_batch_and_resume_over_mcp_reuse_unchanged_parts(self):
+        from unittest.mock import patch
+        from datetime import datetime, timezone
+        from mcp.shared.memory import create_connected_server_and_client_session
+        from pc_scanner.core import Scanner
+        from pc_scanner.server import create_server
+
+        async def exercise(root):
+            home = root / "home"
+            home.mkdir()
+            (home / "one.txt").write_text("test")
+            scanner = Scanner({"local": {"clamav_binary": sys.executable},
+                               "scan_roots": {"test": str(home)},
+                               "history": {"file": str(root / "state" / "history.jsonl")}})
+            async with create_connected_server_and_client_session(create_server(scanner)) as session:
+                for argument, reused in (("batch", 0), ("resume", 1)):
+                    reply = await session.call_tool("scan_malware", {"root_alias": "test", argument: True})
+                    self.assertFalse(reply.isError)
+                    report = json.loads(reply.content[0].text)
+                    self.assertEqual(report["status"], "completed")
+                    self.assertEqual(report["data"]["batch"]["reused"], reused)
+                    self.assertEqual(report["data"]["engine_counts"]["scanned"], 1)
+        with tempfile.TemporaryDirectory() as directory, patch("pc_scanner.core.clamav_signatures", return_value={
+                "engine": "test", "version": 42, "built_at": datetime.now(timezone.utc)}), patch(
+                "pc_scanner.core.run_bounded", return_value=(0, "Scanned files: 1\nInfected files: 0\n", "")) as engine:
+            asyncio.run(exercise(Path(directory)))
+            self.assertEqual(engine.call_count, 1)
+
     def test_cloud_placeholder_is_partial_over_mcp(self):
         from unittest.mock import patch
         from mcp.shared.memory import create_connected_server_and_client_session
