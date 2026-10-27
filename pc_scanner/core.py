@@ -866,7 +866,8 @@ class Scanner:
 
     def _malware(self, root_alias: str, relative_path: str = ".",
                  cancel: threading.Event | None = None, *, deadline: float | None = None,
-                 max_levels: int = MAX_DIRECTORY_LEVELS, excluded_directory: Path | None = None) -> dict:
+                 max_levels: int = MAX_DIRECTORY_LEVELS, excluded_directory: Path | None = None,
+                 expect_files: bool = True) -> dict:
         if root_alias not in self.roots:
             raise ScannerError("Scan root alias is not authorized")
         if not isinstance(relative_path, str) or "\x00" in relative_path:
@@ -988,7 +989,8 @@ class Scanner:
         partial = (bool(cloud_excluded) or directory_limit or bool(unreadable) or findings_capped or bool(signature_warnings)
                    or bool(line_breaks) or bool(unattributed) or miscounted or errors > 0
                    or code not in (0, 1) or bool(diagnostic.strip()) or "ERROR" in output
-                   or not scanned
+                   # A batch part seen to hold only empty files has nothing to count (ClamAV skips them).
+                   or scanned is None or (expect_files and not scanned)
                    or any(f["kind"] == "scan_limit" for f in findings)
                    or (code == 1 and not findings))
         return result("clamav", "partial" if partial else "completed", findings=findings[:PAGE_SIZE],

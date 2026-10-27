@@ -7,6 +7,7 @@ offers no tool to read either, so the AI never sees them.
 from __future__ import annotations
 
 import contextlib
+import errno
 import hashlib
 import json
 import math
@@ -104,6 +105,10 @@ def owned(fd: int, info=None) -> bool:
     return (info or os.fstat(fd)).st_uid == os.geteuid()
 
 
+class Busy(OSError):
+    """Another process held the lock for the whole wait."""
+
+
 @contextlib.contextmanager
 def locked(path: Path, check_wait=None):
     """Held across processes: a CLI and MCP servers that both find the file full must not rotate it twice."""
@@ -122,8 +127,11 @@ def locked(path: Path, check_wait=None):
                 else:
                     fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 break
-            except OSError:
+            except OSError as exc:
                 if attempt == LOCK_ATTEMPTS - 1:
+                    # flock reports a held lock as EWOULDBLOCK, msvcrt.locking as EACCES.
+                    if exc.errno in (errno.EWOULDBLOCK, errno.EAGAIN, errno.EACCES):
+                        raise Busy("The lock is held by another process") from exc
                     raise
                 time.sleep(LOCK_INTERVAL)
         try:
