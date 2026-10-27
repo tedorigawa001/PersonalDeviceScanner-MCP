@@ -1,0 +1,122 @@
+{
+  "date": "2026-10-27",
+  "tested_revision": "e716c3c",
+  "scope": "Repair this Mac's python.org CPython default CA stores and verify external HTTPS plus the full test suites",
+  "environment": {
+    "os": "macOS 27.2",
+    "architecture": "arm64",
+    "python_versions": ["3.14.10", "3.15.2"],
+    "node": "26.12.1"
+  },
+  "repair": {
+    "before_ca_count_each": 0,
+    "before_default_cafile_each": null,
+    "before_failure": "CERTIFICATE_VERIFY_FAILED: unable to get local issuer certificate",
+    "method": "Executed each python.org installer's bundled Install Certificates.command without changing its contents",
+    "official_documentation": "https://docs.python.org/3/using/mac.html",
+    "scripts": [
+      "/Applications/Python 3.14/Install Certificates.command",
+      "/Applications/Python 3.15/Install Certificates.command"
+    ],
+    "base_interpreter_certifi_after": "2026.10.23",
+    "default_ca_files": [
+      "/Library/Frameworks/Python.framework/Versions/3.14/etc/openssl/cert.pem",
+      "/Library/Frameworks/Python.framework/Versions/3.15/etc/openssl/cert.pem"
+    ],
+    "link_targets": [
+      "../../lib/python3.14/site-packages/certifi/cacert.pem",
+      "../../lib/python3.15/site-packages/certifi/cacert.pem"
+    ],
+    "after_ca_count_each": 118,
+    "existing_project_venv_certifi_each": "2026.10.19",
+    "existing_project_venv_dependencies_changed": false,
+    "locks_sboms_and_scanner_configuration_changed": false
+  },
+  "tls_checks_each_interpreter": {
+    "verify_mode": "CERT_REQUIRED",
+    "hostname_verification": true,
+    "explicit_cafile_override": false,
+    "ssl_cert_file_or_dir_environment_override": false,
+    "untrusted_local_certificate_rejected": true,
+    "negative_test": "A real local HTTPS server with an untrusted test certificate raised SSLCertVerificationError",
+    "certificate_verification_disabled": false,
+    "python_isolated_mode_used_for_connection_probes": true
+  },
+  "external_connections_each_interpreter": [
+    {
+      "service": "PyPI",
+      "url": "https://pypi.org/pypi/mcp/1.30.0/json",
+      "transport": "stdlib urllib with default CA settings",
+      "http_status": 200,
+      "expected_version_in_json": "1.30.0",
+      "result": "passed"
+    },
+    {
+      "service": "GitHub releases",
+      "url": "https://api.github.com/repos/Cisco-Talos/clamav/releases?per_page=10",
+      "transport": "pc_scanner.updates.https",
+      "json_list_parsed": true,
+      "response_bytes": 449755,
+      "result": "passed"
+    },
+    {
+      "service": "Google SDK repository",
+      "url": "https://dl.google.com/android/repository/repository2-3.xml",
+      "transport": "pc_scanner.updates.https",
+      "repository_response_observed": true,
+      "response_bytes": 426356,
+      "result": "passed"
+    },
+    {
+      "service": "MyJVN",
+      "endpoint": "https://jvndb.jvn.jp/myjvn",
+      "public_test_query": {"method": "getProductList", "feed": "hnd", "maker": "nec", "keyword": "WG1200"},
+      "production_entry": "Scanner.invoke(router_products)",
+      "production_result": "error: JVN product lookup failed (error)",
+      "separate_http_diagnosis": "Default-CA urllib received HTTPError 503 after verified TLS",
+      "tls_verification": "passed",
+      "http_status": 503,
+      "service_response_title": "サービス停止中",
+      "service_response_summary": "JVN iPedia / MyJVN services unavailable; restart time not announced in the response",
+      "normal_api_operation": "not verified because the provider service was unavailable",
+      "router_accessed": false,
+      "result": "TLS passed; application service unavailable"
+    }
+  ],
+  "tests": {
+    "python_3_14_10": {
+      "total": 358, "passed": 352, "failed": 0, "skipped": 6,
+      "skip_reason": "Windows-only tests", "android_and_mcp_executed": true,
+      "pip_check": "passed", "seconds": 25.412
+    },
+    "python_3_15_2": {
+      "total": 358, "passed": 352, "failed": 0, "skipped": 6,
+      "skip_reason": "Windows-only tests", "android_and_mcp_executed": true,
+      "pip_check": "passed", "seconds": 25.147
+    },
+    "npm_python_3_14": {
+      "total": 26, "passed": 26, "failed": 0, "skipped": 0,
+      "automatic_python_discovery": true, "hash_checked_install_required": true,
+      "tampered_lock_rejected": true, "real_stdio_mcp_round_trip": true
+    },
+    "npm_python_3_15": {
+      "total": 26, "passed": 26, "failed": 0, "skipped": 0,
+      "explicit_python_selection": true, "hash_checked_install": false,
+      "reason": "Bundled wheel-hash profiles target CPython 3.14",
+      "real_stdio_mcp_round_trip": true
+    }
+  },
+  "remaining": [
+    "After MyJVN resumes, repeat verified-TLS product lookup, vulnerability matching and firmware version evaluation with public test inputs",
+    "Do not treat MyJVN service unavailability as a remaining local CA repair failure",
+    "Windows-only tests and other machines' CA settings were not exercised by this Mac-specific repair"
+  ],
+  "local_evidence": {
+    "directory": "/tmp/pc-scanner-ca-repair-20261027",
+    "connection_results": ["probe-3.14.10.json", "probe-3.15.2.json"],
+    "test_logs": ["tests314.log", "tests315.log", "npm314.log", "npm315.log"],
+    "temporary_storage_may_be_removed_by_os": true
+  },
+  "automatic_monitoring_or_retry_schedule_created": false,
+  "product_code_changed": false
+}
