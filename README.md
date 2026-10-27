@@ -746,7 +746,7 @@ pc-scanner --config scanner.toml malware home --resume
 
 ## Development runtimes
 
-The development baseline is Python 3.15.1 (`.python-version`) and Node.js 26.12.1 (`.node-version`).
+The development baseline is Python 3.15.2 (`.python-version`) and Node.js 26.12.1 (`.node-version`).
 Node.js 26 is the Current release; CI also covers Node.js 24 LTS and the minimum supported Node.js 22.
 The user-facing requirements remain Python 3.11+ and Node.js 22+.
 

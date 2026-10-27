@@ -730,7 +730,7 @@ pc-scanner --config scanner.toml malware home --resume
 
 ## 開発用ランタイム
 
-開発基準は Python 3.15.1（`.python-version`）と Node.js 26.12.1（`.node-version`）です。
+開発基準は Python 3.15.2（`.python-version`）と Node.js 26.12.1（`.node-version`）です。
 Node.js 26はCurrent版で、CIではNode.js 24 LTSと最低対応の22も確認します。
 利用者向けの最低要件はPython 3.11以上・Node.js 22以上のままです。
 
