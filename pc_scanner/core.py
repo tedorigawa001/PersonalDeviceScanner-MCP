@@ -1057,7 +1057,10 @@ class Scanner:
                     f"({CLAMAV_MATCH_BYTES} bytes); no scan was started, so they are not downloaded. "
                     "Shorten the folder names or scan a folder without them"] if too_long else [])),
                 [coverage.issue(str(Path(path).relative_to(root)), "cloud_placeholder",
-                                "subtree_remainder" if directory else "file") for path, directory in cloud_excluded])
+                                "subtree_remainder" if directory else "file") for path, directory in cloud_excluded]
+                # No engine ran, so the rest of the scope stays unverified too, not just its cloud items.
+                + ([] if target_excluded else
+                   [coverage.issue(str(target.relative_to(root)), "not_reached", "subtree_remainder")]))
         if progress:
             progress.update(stage="definitions")
         signatures = clamav_signatures(binary, deadline, self.limit, cancel=cancel)

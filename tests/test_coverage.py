@@ -425,3 +425,44 @@ class CoverageTests(unittest.TestCase):
             report = Scanner(self.config).invoke("malware", root_alias="test", relative_path="a.txt")
         self.assertEqual(report["status"], "partial")
         self.assertEqual(report["data"]["coverage"]["by_reason"], {"file_size_limit": 1})
+
+    def cloud_folder(self):
+        folder = self.root / "d"
+        folder.mkdir()
+        for name in ("x.txt", "y.txt", "c.txt"):
+            (folder / name).write_text("ordinary")
+        return patch("pc_scanner.core.cloud_placeholder", side_effect=lambda path: Path(path).name == "c.txt")
+
+    def test_unstarted_scan_keeps_its_unscanned_remainder_as_a_gap(self):
+        # Found in the review of 2026-10-28: when the cloud exclusions could not be passed, only the
+        # cloud items were counted, although the rest of the folder was not scanned either.
+        with self.cloud_folder(), patch("pc_scanner.core.CLAMAV_MATCH_BYTES", 10), patch(
+                "pc_scanner.core.run_bounded", side_effect=AssertionError("must not scan")):
+            report = Scanner(self.config).invoke("malware", root_alias="test", relative_path="d")
+        info = report["data"]["coverage"]
+        self.assertEqual(report["status"], "partial")
+        self.assertEqual(info["by_reason"], {"cloud_placeholder": 1, "not_reached": 1})
+        self.assertEqual(info["unresolved"]["count"], 2)
+
+    def test_selected_retry_that_cannot_start_keeps_the_folder_unresolved(self):
+        # Found in the review of 2026-10-28: the selected folder was marked resolved although no engine ran.
+        from pc_scanner.core import ScannerError
+        def first(argv, *args, **kwargs):
+            if Path(argv[-1]).name == "d":
+                raise ScannerError("engine failed (test)")
+            return self.clean()
+        with self.cloud_folder():
+            scanner = Scanner(self.config)
+            with patch("pc_scanner.core.run_bounded", side_effect=first):
+                batch = scanner.invoke("malware", root_alias="test", batch=True)
+            self.assertEqual(batch["data"]["coverage"]["by_reason"], {"engine_error": 1})
+            ledger = malware_batch.read_coverage(scanner, "test", ".")
+            info = batch["data"]["coverage"]
+            with patch("pc_scanner.core.MAX_EXCLUSION_CHARS", 1), patch(
+                    "pc_scanner.core.run_bounded", side_effect=AssertionError("must not scan")):
+                retry = scanner.invoke("malware", root_alias="test", retry=info["scan_group_id"],
+                                       revision=info["revision"], target_ids=[ledger["nodes"]["d"]["id"]])
+            node = malware_batch.read_coverage(scanner, "test", ".")["nodes"]["d"]
+        self.assertEqual(retry["status"], "partial")
+        self.assertEqual((node["active"], node["reasons"]), (True, ["not_reached"]))
+        self.assertEqual(retry["data"]["coverage"]["by_reason"], {"cloud_placeholder": 1, "not_reached": 1})
