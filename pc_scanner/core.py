@@ -850,24 +850,31 @@ class Scanner:
                       + (["One page, engine warning, or no observable rows; coverage incomplete"] if partial else []))
 
     def malware(self, root_alias: str, relative_path: str = ".",
-                cancel: threading.Event | None = None, batch: bool = False, resume: bool = False) -> dict:
+                cancel: threading.Event | None = None, batch: bool = False, resume: bool = False,
+                progress=None) -> dict:
         if type(batch) is not bool or type(resume) is not bool:
             raise ScannerError("batch and resume must be true or false")
         deadline = time.monotonic() + self.timeout
+        if progress:
+            progress.set_deadline(deadline)
         if batch or resume:
             from .malware_batch import scan
-            return scan(self, root_alias, relative_path, resume, cancel, deadline)
-        report = self._malware(root_alias, relative_path, cancel, deadline=deadline)
+            return scan(self, root_alias, relative_path, resume, cancel, deadline, progress)
+        if progress:
+            progress.update(finished=0, pending=1, reused=0, checkpoint="not_applicable")
+        report = self._malware(root_alias, relative_path, cancel, deadline=deadline, progress=progress)
         if (report.get("data", {}).get("split_required")
                 and any("command-size limit" in warning for warning in report["warnings"])):
             from .malware_batch import scan
-            return scan(self, root_alias, relative_path, False, cancel, deadline)
+            return scan(self, root_alias, relative_path, False, cancel, deadline, progress)
+        if progress:
+            progress.update(finished=1, pending=0)
         return report
 
     def _malware(self, root_alias: str, relative_path: str = ".",
                  cancel: threading.Event | None = None, *, deadline: float | None = None,
                  max_levels: int = MAX_DIRECTORY_LEVELS, excluded_directory: Path | None = None,
-                 expect_files: bool = True) -> dict:
+                 expect_files: bool = True, progress=None) -> dict:
         if root_alias not in self.roots:
             raise ScannerError("Scan root alias is not authorized")
         if not isinstance(relative_path, str) or "\x00" in relative_path:
@@ -905,6 +912,8 @@ class Scanner:
         # Signature check, coverage check and engine share one time budget.
         deadline = deadline if deadline is not None else time.monotonic() + self.timeout
         check_cancel(cancel)
+        if progress:
+            progress.update(stage="preflight")
         cloud_excluded: list[tuple[str, bool]] = []
         directory_limit, unreadable, line_breaks = inspect_directories(
             target, deadline, cancel, cloud_excluded, max_levels, excluded_directory)
@@ -938,6 +947,8 @@ class Scanner:
                 + ([f"{too_long} cloud placeholders have paths longer than ClamAV can match for exclusion "
                     f"({CLAMAV_MATCH_BYTES} bytes); no scan was started, so they are not downloaded. "
                     "Shorten the folder names or scan a folder without them"] if too_long else []))
+        if progress:
+            progress.update(stage="definitions")
         signatures = clamav_signatures(binary, deadline, self.limit, cancel=cancel)
         age_seconds = age_days = None
         if signatures["built_at"]:
@@ -954,6 +965,8 @@ class Scanner:
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise ScannerError("Directory coverage check used the time budget; scan was not completed")
+        if progress:
+            progress.update(stage="scanning")
         code, output, diagnostic = run_bounded([
             binary, "--recursive=yes", "--infected",
             "--follow-dir-symlinks=0", "--follow-file-symlinks=0",
@@ -1184,13 +1197,19 @@ class Scanner:
         from . import router
         return router.products(self, maker, keyword, cancel)
 
-    def invoke(self, operation: str, **kwargs) -> dict:
+    def invoke(self, operation: str, progress=None, **kwargs) -> dict:
         operations = {"status": self.status, "inventory": self.inventory,
                       "malware": self.malware, "vulnerabilities": self.vulnerabilities,
                       "android": self.android_collect, "android_check": self.android_check,
                       "router_check": self.router_check, "router_products": self.router_products}
         source = SOURCES.get(operation, "bridge")
         started, clock = datetime.now(timezone.utc), time.perf_counter()
+        if progress:
+            progress.update(stage="preflight" if operation == "malware" else "running")
+            if operation == "malware":
+                kwargs["progress"] = progress
+            else:
+                progress.update(checkpoint="not_applicable")
         try:
             if operation not in operations:
                 raise ScannerError("Unknown operation")
@@ -1204,6 +1223,8 @@ class Scanner:
             report = result(source, "error",
                             error=f"Unexpected internal error ({type(exc).__name__}); the operation was not completed")
         if self.update_lookup and report["status"] != "error":
+            if progress:
+                progress.update(stage="updates")
             from . import updates
             if operation in updates.ENGINES:
                 try:
@@ -1224,4 +1245,7 @@ class Scanner:
                 except Exception:
                     # Never at the cost of the result: the scan itself already finished.
                     report["warnings"].append("Scan history could not be written; the scan itself is unaffected")
+        if progress:
+            progress.finish(report["status"], kwargs.get("cancel"))
+            report.setdefault("data", {})["progress"] = progress.snapshot()
         return report

@@ -1,12 +1,15 @@
 """MCP v1 SDK transport; no public listener or cloud API key required."""
 import sys
 import threading
+import secrets
 from functools import partial
 from typing import Literal
 
-from .core import Scanner
+from .core import Scanner, result
+from .progress import ScanProgress, message
 
 HEARTBEAT_SECONDS = 10
+MAX_PROGRESS_RECORDS = 32
 
 def create_server(scanner: Scanner):
     import anyio
@@ -35,36 +38,69 @@ def create_server(scanner: Scanner):
     wazuh_lock = anyio.Lock()
     # One router check at a time keeps MyJVN requests spaced out.
     router_lock = anyio.Lock()
+    recent_progress = {}
 
-    async def heartbeat(ctx: Context, operation: str):
+    async def heartbeat(publish, progress):
         # Clients that reset their timeout on progress keep waiting for long scans.
-        elapsed = 0
+        previous, sent = None, float("-inf")
         while True:
-            await anyio.sleep(HEARTBEAT_SECONDS)
-            elapsed += HEARTBEAT_SECONDS
-            try:
-                await ctx.report_progress(elapsed, message=f"{operation} running for {elapsed}s")
-            except Exception:
-                return
+            snapshot = progress.snapshot()
+            key = {k: v for k, v in snapshot.items() if k != "elapsed_seconds"}
+            now = anyio.current_time()
+            if key != previous or now - sent >= HEARTBEAT_SECONDS:
+                if not await publish():
+                    return
+                previous, sent = key, now
+            await anyio.sleep(min(1.0, HEARTBEAT_SECONDS))
 
-    async def stop_on_cancel(cancel: threading.Event):
+    async def stop_on_cancel(cancel: threading.Event, progress):
         # The worker-thread wait is shielded from cancellation, so this sibling task
         # receives it instead and tells the engine to stop.
         try:
             await anyio.sleep_forever()
         finally:
             cancel.set()
+            progress.update(stage="cancelling")
 
     async def run_engine(ctx: Context, operation: str, lock=engine_lock, **kwargs) -> dict:
         cancel = threading.Event()
+        progress = ScanProgress()
+        scan_id = secrets.token_hex(8)
+        progress.update(scan_id=scan_id)
+        if len(recent_progress) >= MAX_PROGRESS_RECORDS:
+            del recent_progress[next(iter(recent_progress))]
+        recent_progress[scan_id] = progress
+        send_lock = anyio.Lock()
+
+        async def publish():
+            # Take the snapshot inside the lock so elapsed values cannot arrive out of order.
+            async with send_lock:
+                state = progress.snapshot()
+                try:
+                    await ctx.report_progress(state["elapsed_seconds"], message=message(state))
+                except Exception:
+                    return False  # Progress delivery must not change the result or saved work.
+            return True
+
         async with anyio.create_task_group() as group:
-            group.start_soon(heartbeat, ctx, operation)
-            group.start_soon(stop_on_cancel, cancel)
+            group.start_soon(heartbeat, publish, progress)
+            group.start_soon(stop_on_cancel, cancel, progress)
             # The lock is held until the engine has exited, even after a cancel.
-            async with lock:
-                report = await anyio.to_thread.run_sync(
-                    partial(scanner.invoke, operation, cancel=cancel, **kwargs))
-            group.cancel_scope.cancel()
+            try:
+                async with lock:
+                    progress.update(stage="running")
+                    report = await anyio.to_thread.run_sync(
+                        partial(scanner.invoke, operation, cancel=cancel, progress=progress, **kwargs))
+                    progress.finish(report["status"])
+            except BaseException as exc:
+                progress.finish("cancelled" if isinstance(exc, anyio.get_cancelled_exc_class()) else "error")
+                raise
+            finally:
+                group.cancel_scope.cancel()
+                # Even after cancellation, attempt one final saved-state notification. A disconnected
+                # client may not receive it; never hold up cancellation for an unresponsive transport.
+                with anyio.move_on_after(1, shield=True):
+                    await publish()
         # Stopping the helper tasks can absorb a cancel that arrived during the shielded
         # wait; re-raise it so the SDK does not send a second response.
         await anyio.lowlevel.checkpoint()
@@ -74,6 +110,19 @@ def create_server(scanner: Scanner):
     def scanner_status() -> dict:
         """Inspect configuration only. This does not check PC safety."""
         return scanner.invoke("status")
+
+    @server.tool(annotations=local)
+    async def get_scan_progress(scan_id: str = "") -> dict:
+        """Read progress only (no names/findings), including after cancellation.
+        Use scan_id from a progress message/result, or omit for the latest request.
+        The last 32 requests are kept in server memory only; restarting the server clears them.
+        """
+        if not scan_id and recent_progress:
+            scan_id = next(reversed(recent_progress))
+        state = recent_progress.get(scan_id)
+        if state is None:
+            return result("bridge", "error", error="No retained progress for this request")
+        return result("bridge", "completed", data=state.snapshot())
 
     @server.tool(annotations=engine)
     async def collect_inventory(ctx: Context, query_id: Literal["os_version", "applications", "listening_ports"],

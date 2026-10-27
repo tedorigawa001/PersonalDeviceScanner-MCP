@@ -110,7 +110,12 @@ def main():
         else:
             scanner.via = "cli"
             kwargs = {k: v for k, v in vars(args).items() if k not in {"config", "command"}}
-            report = scanner.invoke(args.command.replace("-", "_"), **kwargs)
+            if args.command == "malware":
+                from .progress import CLIProgress
+                with CLIProgress() as display:
+                    report = scanner.invoke("malware", progress=display.progress, cancel=display.cancel, **kwargs)
+            else:
+                report = scanner.invoke(args.command.replace("-", "_"), **kwargs)
     except ScannerError as exc:
         report = result("bridge", "error", error=str(exc))
     except ImportError:

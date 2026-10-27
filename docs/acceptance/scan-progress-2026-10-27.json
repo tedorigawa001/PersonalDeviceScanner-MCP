@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-27",
+  "base_revision": "9740026",
+  "tested_changes": "Uncommitted long-running scan progress implementation and regression tests",
+  "environment": {
+    "os": "macOS 27.2", "architecture": "arm64",
+    "python_versions": ["3.14.10", "3.15.2"], "node": "26.12.1"
+  },
+  "implementation": {
+    "cli": "Malware scans report initial, one-second and final progress to stderr; stdout remains one JSON report",
+    "fields": ["stage", "elapsed_seconds", "finished", "pending", "reused", "checkpoint", "saved_parts"],
+    "counters": "Batch targets, not individual files or estimated percentages; unknown values remain null. Partial observations may also remain pending for retry",
+    "saved_parts": "Number of records in the last successfully replaced checkpoint, including prior records awaiting revalidation. A failed write retains the previous successful saved count",
+    "cancellation": "First CLI Ctrl+C requests graceful cancellation; the second interrupts. MCP cancellation requests worker shutdown and checkpoint preservation",
+    "mcp": "State changes are notified at most once per second, with ten-second heartbeats; numeric progress is elapsed seconds with no estimated total",
+    "post_cancel_query": "get_scan_progress reads eventual state by scan_id or the latest request. Final cancellation notification is best effort because SDK callbacks can be removed before worker completion",
+    "retention": "Latest 32 request states in server memory; lost on restart, independent of durable batch checkpoints",
+    "privacy": "Progress contains no file names, findings or history contents",
+    "classification": "Timeout and cancellation stages use the monotonic deadline and cancellation event, not warning text",
+    "dependencies_changed": false
+  },
+  "regression_tests": {
+    "new_tests": 13,
+    "coverage": [
+      "Cancellation after a completed part preserves one saved part and one pending part",
+      "CLI stderr progress leaves stdout as a single JSON report",
+      "MCP final and intermediate progress carries actual counts and monotonic elapsed time",
+      "Checkpoint write failure distinguishes observed results from successfully saved results",
+      "Resume reports two reused targets",
+      "Actual child-process timeout preserves checkpoint counts",
+      "Actual CLI SIGINT stops the engine child, returns partial, and reports saved counts",
+      "Actual MCP cancellation permits querying eventual saved state",
+      "Untrusted warning text cannot forge a timeout stage",
+      "Ordinary scans report one target and no applicable checkpoint",
+      "Progress retention is bounded and missing IDs return an error",
+      "Notification failure does not lose the scan or checkpoint"
+    ]
+  },
+  "tests": {
+    "python_3_14_10": {"total": 371, "passed": 365, "failed": 0, "skipped": 6, "seconds": 27.819},
+    "python_3_15_2": {"total": 371, "passed": 365, "failed": 0, "skipped": 6, "seconds": 27.505},
+    "skip_reason": "Windows-only tests on macOS",
+    "android_and_mcp_executed": true,
+    "npm_python_3_14": {"total": 26, "passed": 26, "failed": 0, "skipped": 0, "automatic_python_discovery": true, "hash_checked_install_required": true, "real_stdio_mcp_round_trip": true},
+    "npm_python_3_15": {"total": 26, "passed": 26, "failed": 0, "skipped": 0, "explicit_python_override": true, "real_stdio_mcp_round_trip": true},
+    "logs_directory": "/tmp/pc-scanner-progress-20261027"
+  },
+  "limitations": [
+    "Tests use synthetic data and controlled engine subprocesses; a home scan with actual ClamAV was not repeated",
+    "Native Windows Ctrl+C behavior and Windows CI were not executed here",
+    "MCP client UI rendering was not manually verified; SDK and npm stdio protocol behavior were tested"
+  ]
+}

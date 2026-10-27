@@ -71,6 +71,7 @@ AI が指定できるのは「どの固定クエリを使うか」「どの許�
 | MCPツール | CLIコマンド | 使うエンジン | 内容 |
 |---|---|---|---|
 | `scanner_status()` | `status` | なし | 設定の有無を表示します。エンジンの動作や安全性は確認しません |
+| `get_scan_progress(scan_id="")` | — | なし | MCPの直近の検査の進捗だけを確認します。キャンセル後も照会できます |
 | `collect_inventory(query_id, offset=0)` | `inventory <query_id> [--offset N]` | osqueryi | `os_version`・`applications`・`listening_ports` のいずれかを取得します |
 | `scan_malware(root_alias, relative_path=".")` | `malware <root_alias> [relative_path]` | clamscan | 許可フォルダー（またはその中のパス）を検査します |
 | `get_vulnerabilities(cursor="")` | `vulnerabilities [--cursor C]` | Wazuh indexer | 設定した1台の端末の脆弱性を、深刻度の高い順に取得します |
@@ -579,6 +580,38 @@ pc-scanner --config scanner.toml malware home --resume
 - 同時に動かす分割検査は1件。チェックポイントは最大16件、1件16 MiB、1回最大10,000対象に制限します。
   上限や時間切れで終わらなければ未完了を返します。大きな単一ファイル・アーカイブの途中からは再開できず、その対象は再検査します。
   `--batch` を指定して再実行すると、同じ対象のチェックポイントを最初から作り直します。
+
+### 長時間検査の進捗
+
+CLIの `malware` は、通常検査・`--batch`・`--resume` とも進捗をstderrに約1秒間隔で表示し、最後にも状態を表示します。
+stdoutは従来どおり結果のJSONだけです。Ctrl+Cを1回押すと中止を要求し、エンジンの停止後に保存状況を含む結果を返します。
+2回目のCtrl+Cは強制中断、SIGTERMは従来どおりプロセス終了です。
+
+```text
+pc-scanner progress: stage=scanning elapsed=12.0s finished=3 pending=7 reused=2 checkpoint=saved saved_parts=3
+```
+
+- `stage` は待機（`waiting` / `waiting_checkpoint`）、事前確認（`preflight`）、定義確認（`definitions`）、
+  再開時の確認（`resuming`）、検査（`scanning`）、保存（`saving`）、任意の更新情報照会（`updates`）などを示します。
+  最後は `completed`・`partial`・`cancelled`・`timed_out`・`error` です。MCPの取消処理中は `cancelling` になる場合があります。
+- `elapsed` は呼び出し開始からの経過秒数。`finished` は今回結果を得た対象数（再利用・一部確認の結果も含む）、
+  `pending` は現在把握できた未処理・再試行対象数、`reused` は今回再利用した対象数です。これらはファイル数ではありません。
+  分割・失敗で残りは増える場合があり、確定前は `unknown`（JSONでは `null`）。合計や割合を推測しません。
+- `checkpoint=saved` と `saved_parts` は、最後に成功したチェックポイントの置き換えと、そこに含まれる結果レコード数です。
+  これは今回の終了数とは別で、未確認の過去レコードを含む場合があります。`write_failed` は最新の保存失敗を示し、
+  `saved_parts` はその前の保存成功件数を保持します。`unavailable` は再開データを利用できない状態です。
+  `not_started` は今回まだ再開データの確認・保存をしておらず過去の保存有無は不明、`not_applicable` は通常検査など保存対象外です。
+- 結果の `data.progress` に同じ情報（経過時間は `elapsed_seconds`）を返します。通知にはファイル名・所見・エンジン出力を含めません。
+
+MCPは進捗通知に対応したクライアントへ、状態変化を最大毎秒1回、変化がなくても既定10秒ごとに通知します。
+通知値は経過秒数で、`total` は指定しません。Android・Wazuhなどは段階・経過時間を示し、取得していない対象数は不明のままです。
+表示方法はクライアントによります。
+
+キャンセル時は最後の保存状況の通知を試みますが、クライアントが通知先を先に破棄した場合は届きません。
+その場合は `get_scan_progress(scan_id="通知または結果のID")` で確認してください。IDを省くと直近の検査要求の状態を返します。
+待機中・中止処理中なら、終了状態になるまで照会できます。この照会は保存済みの検査結果やファイル名を読みません。
+保持するのはサーバーのメモリー内の直近32要求だけで、古いIDや再起動後のIDはエラーになります。
+進捗の記憶が消えても、再開用チェックポイントは別に残ります。
 
 ## 制限事項
 

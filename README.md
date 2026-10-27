@@ -72,6 +72,7 @@ It cannot supply arbitrary SQL, paths, executables, or connection targets.
 | MCP tool | CLI command | Engine | What it does |
 |---|---|---|---|
 | `scanner_status()` | `status` | none | Shows what is configured. Does not check engines or PC safety |
+| `get_scan_progress(scan_id="")` | — | none | Reads recent MCP request progress only, including after cancellation |
 | `collect_inventory(query_id, offset=0)` | `inventory <query_id> [--offset N]` | osqueryi | Returns one of `os_version`, `applications`, `listening_ports` |
 | `scan_malware(root_alias, relative_path=".")` | `malware <root_alias> [relative_path]` | clamscan | Scans an authorized folder, or a path inside it |
 | `get_vulnerabilities(cursor="")` | `vulnerabilities [--cursor C]` | Wazuh indexer | Returns vulnerabilities for the one configured device, most severe first |
@@ -590,6 +591,40 @@ pc-scanner --config scanner.toml malware home --resume
 - Only one batch runs at a time across processes. Limits: 16 checkpoints, 16 MiB each, 10,000 parts per call.
   Exhausting a limit/time budget leaves coverage incomplete. A single file/archive cannot resume halfway through;
   an interrupted part is retried. Starting with `--batch` again resets that target's checkpoint.
+
+### Long-scan progress
+
+CLI `malware` displays progress on stderr about once a second, plus a final snapshot, for ordinary,
+batch and resumed scans. Stdout remains one JSON result. One Ctrl+C requests cancellation and allows the
+engine to stop before reporting saved work. A second Ctrl+C interrupts immediately; SIGTERM still terminates.
+
+```text
+pc-scanner progress: stage=scanning elapsed=12.0s finished=3 pending=7 reused=2 checkpoint=saved saved_parts=3
+```
+
+- Stages include `waiting`, `waiting_checkpoint`, `preflight`, `definitions`, `resuming`, `scanning`,
+  `saving` and optional `updates`. Final stages are `completed`, `partial`, `cancelled`, `timed_out`, `error`.
+  MCP may show `cancelling` while its worker stops.
+- Elapsed time starts at the request. Finished counts include reused/partial observations; pending counts
+  include currently known unprocessed/retry work. These are parts, not files, and are not a fixed partition:
+  subdivision and failures may increase pending work. Unknown counts are `unknown` (JSON `null`); no percentage is invented.
+- `checkpoint=saved` / `saved_parts` describe the last successful atomic checkpoint replacement and its result-record
+  count, separately from work observed in memory. Older, not-yet-revalidated records may be included. A new
+  `write_failed` keeps the preceding saved count. `unavailable` means resume data could not be used.
+  `not_started` means this call has not checked/saved checkpoint data yet, not that older data is absent;
+  `not_applicable` means no checkpoint is used, as with an ordinary scan.
+- Final results include `data.progress` (time named `elapsed_seconds`). Notifications contain no file names,
+  findings or engine output.
+
+MCP sends changes at most once a second, with the existing ten-second heartbeat while unchanged, when the client
+requests progress. Its numeric progress is elapsed seconds; `total` is omitted. Other operations show stage/time
+while unobserved part counts remain unknown. Rendering depends on the client.
+
+After cancellation a final saved-state notification is attempted, but a client may already have removed its callback.
+Use `get_scan_progress(scan_id="ID from a notification or result")` to read the eventual state; omit the ID for the
+latest scan request. This exposes progress metadata only, not history, file names or findings. Only the last 32
+requests are retained in server memory; an evicted ID or server restart makes that ID unavailable. Checkpoints
+remain independent of this ephemeral progress state.
 
 ## Limitations
 
