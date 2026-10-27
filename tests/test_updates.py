@@ -576,7 +576,7 @@ class UpdateTests(unittest.TestCase):
         from mcp.shared.memory import create_connected_server_and_client_session
         from pc_scanner.server import create_server
 
-        engines = {"collect_inventory", "scan_malware", "collect_android", "check_android_monitoring_apps"}
+        engines = {"collect_inventory", "scan_malware", "collect_android", "check_android_monitoring_apps", "rescan_malware_targets"}
 
         async def hints(scanner):
             async with create_connected_server_and_client_session(create_server(scanner)) as session:

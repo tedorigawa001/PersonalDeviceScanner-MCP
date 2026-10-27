@@ -73,6 +73,8 @@ AI が指定できるのは「どの固定クエリを使うか」「どの許�
 | `scanner_status()` | `status` | なし | 設定の有無を表示します。エンジンの動作や安全性は確認しません |
 | `get_scan_progress(scan_id="")` | — | なし | MCPの直近の検査の進捗だけを確認します。キャンセル後も照会できます |
 | `check_clamav_signatures()` | `check-clamav-signatures` | clamscan | 定義の版・作成日時・鮮度と更新手順を確認します。更新・検査は実行しません |
+| `list_malware_gaps(scan_id, ...)` | `malware-gaps <root_alias> [relative_path] --scan GROUP` | なし | 分割検査の未確認理由と対象IDを一覧にします。MCPは同じサーバーの取得結果だけを読み、名前は返しません |
+| `rescan_malware_targets(scan_id, revision, target_ids)` | `malware <root_alias> [relative_path] --retry GROUP --revision N --target ID` | clamscan | IDで選んだ未確認範囲だけを再検査します。元の許可範囲・上限を再確認します |
 | `collect_inventory(query_id, offset=0)` | `inventory <query_id> [--offset N]` | osqueryi | `os_version`・`applications`・`listening_ports` のいずれかを取得します |
 | `scan_malware(root_alias, relative_path=".")` | `malware <root_alias> [relative_path]` | clamscan | 許可フォルダー（またはその中のパス）を検査します |
 | `get_vulnerabilities(cursor="")` | `vulnerabilities [--cursor C]` | Wazuh indexer | 設定した1台の端末の脆弱性を、深刻度の高い順に取得します |
@@ -581,6 +583,56 @@ pc-scanner --config scanner.toml malware home --resume
 - 同時に動かす分割検査は1件。チェックポイントは最大16件、1件16 MiB、1回最大10,000対象に制限します。
   上限や時間切れで終わらなければ未完了を返します。大きな単一ファイル・アーカイブの途中からは再開できず、その対象は再検査します。
   `--batch` を指定して再実行すると、同じ対象のチェックポイントを最初から作り直します。
+
+### 未確認範囲と選択再検査
+
+通常・分割検査の `data.coverage` に、未確認の対象範囲数と理由別件数を返します。対象範囲数はファイル数ではありません。
+サイズ・アーカイブ・深さ制限、権限不足、クラウド未取得、時間切れ、取消、未到達、メタデータ取得不能などを区別します。
+1範囲に複数理由があるため、理由別件数を足して総数にしません。列挙未完は下限、ファイル数は不明と表示します。
+古い定義等の信頼性の制約は `assessment_limits` に分け、未検査ファイル数を推測しません。
+
+対象選択は分割検査で開始します。通常検査だけでは再検査用の名前入りファイルを新たに保存しません。
+
+```bash
+pc-scanner --config scanner.toml malware home . --batch
+pc-scanner --config scanner.toml malware-gaps home . --scan GROUP
+pc-scanner --config scanner.toml malware-gaps home . --scan GROUP --show-paths --json
+pc-scanner --config scanner.toml malware home . --retry GROUP --revision N --target ID
+```
+
+`GROUP`・`N`・`ID` は結果／一覧のグループID・保存成功版・対象IDへ置き換えます。`--target` は最大100個指定でき、
+同じIDは重複排除します。`--retry` と `--batch` / `--resume` は併用できません。元のalias・相対対象も指定します。
+CLI一覧は既定で名前を含まず、`--show-paths` の明示指定時だけ相対パスを表示します。`--reason` は一覧の絞り込みだけです。
+古い版・別グループ・不明なIDは検査前に拒否します。定義・設定が変わった場合は先に明示的に `--resume` してください。
+
+MCPでは分割結果の `data.progress.scan_id` を使い、`list_malware_gaps(scan_id, reasons=[], cursor="", limit=50)` で
+名前を含まない対象ID・理由・検査可否を取得します。1ページ最大100対象、カーソルは版・フィルターに固定されます。
+`rescan_malware_targets(scan_id, revision, target_ids)` は選んだIDだけを検査します。
+取得済みの結果の対応表をサーバー内に直近32要求・シリアライズ容量合計16 MiBまで保持します。
+再起動・追い出しで選択が失効したら、元の `scan_malware(..., resume=true)` で現在の範囲を再確認してください。
+これらのMCPツールはCLIの保存データや通常の履歴を任意に読み出す機能ではありません。
+
+未取得項目は、選んでもメタデータだけを再確認し、内容を開かず `partial` と除外理由を維持します。
+別途ローカルに取得された後でも、検査成功まで未確認を解消しません。属性取得不能時は内容検査を拒否します。
+リンク・祖先・元の深さ上限も再検証し、サイズ／アーカイブ上限を自動で緩めません。
+属性確認とエンジンの読取りは原子的ではないため、並行変更の競合という既存の限界は残ります。
+
+再検査は同じ対象の現在の状態を置換し、親子分割・再開・結果の再取得を加算しません。
+選択対象だけの状態は `data.attempt`、元の範囲全体の状態は最上位 `status` とcoverageに表示します。
+他の未確認範囲があれば、選択対象が完了しても全体は `partial` です。消失した対象も検査済みとは扱いません。
+保持した所見には観測時刻と未再確認の印を付け、今回の新規検出と区別します。
+
+通常の要約履歴には名前を増やさず、グループ・版・試行ID、理由別件数・品質だけを追加します。
+私有チェックポイントはschema 2で結果と台帳を原子的に保存し、既存の0700/0600・所有者確認・容量上限を維持します。
+旧schema 1は再開時に再確認して移行します。保存失敗では前のファイルを保持し、メモリー上の結果を新しい保存成功版とは表示しません。
+
+ダッシュボードはグループの最大の保存成功版を1回だけ集計し、未確認理由と信頼性の制約を所見グラフと分けて表示します。
+詳細保存が有効なら、チェックボックスで選んだIDのCLIオプションを表示します。静的ページから検査は起動しません。
+表示した `--retry ... --revision ...` と選択した `--target ...` を元のCLIコマンドに付け足して実行してください。
+詳細がない場合は要約のみを表示し、対象選択はローカルの `malware-gaps` を使います。
+画面は保存時点の状態です。古いグループを後から再試行しても、新しく開始したグループの集計を置き換えません。
+
+設計と未確認事項は[設計書](docs/malware-coverage-design.md)、[検証記録](docs/acceptance/malware-coverage-2026-10-28.json)を参照してください。
 
 ### 検査前の定義確認と更新案内
 

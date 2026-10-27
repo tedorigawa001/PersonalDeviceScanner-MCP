@@ -74,6 +74,8 @@ It cannot supply arbitrary SQL, paths, executables, or connection targets.
 | `scanner_status()` | `status` | none | Shows what is configured. Does not check engines or PC safety |
 | `get_scan_progress(scan_id="")` | — | none | Reads recent MCP request progress only, including after cancellation |
 | `check_clamav_signatures()` | `check-clamav-signatures` | clamscan | Reads definition version, date, freshness and update steps; never updates or scans |
+| `list_malware_gaps(scan_id, ...)` | `malware-gaps <root_alias> [relative_path] --scan GROUP` | none | Lists batch coverage reasons and opaque target IDs; MCP reads only this server's live results, without names |
+| `rescan_malware_targets(scan_id, revision, target_ids)` | `malware <root_alias> [relative_path] --retry GROUP --revision N --target ID` | clamscan | Rescans selected gaps after rechecking the original authorization and limits |
 | `collect_inventory(query_id, offset=0)` | `inventory <query_id> [--offset N]` | osqueryi | Returns one of `os_version`, `applications`, `listening_ports` |
 | `scan_malware(root_alias, relative_path=".")` | `malware <root_alias> [relative_path]` | clamscan | Scans an authorized folder, or a path inside it |
 | `get_vulnerabilities(cursor="")` | `vulnerabilities [--cursor C]` | Wazuh indexer | Returns vulnerabilities for the one configured device, most severe first |
@@ -592,6 +594,56 @@ pc-scanner --config scanner.toml malware home --resume
 - Only one batch runs at a time across processes. Limits: 16 checkpoints, 16 MiB each, 10,000 parts per call.
   Exhausting a limit/time budget leaves coverage incomplete. A single file/archive cannot resume halfway through;
   an interrupted part is retried. Starting with `--batch` again resets that target's checkpoint.
+
+### Coverage gaps and selected rescans
+
+Normal and batch results include `data.coverage`: unresolved target ranges and reason counts for file/archive/depth
+limits, permission failures, cloud placeholders, timeouts, cancellation, work not reached, and unavailable metadata.
+These are **range counts, not file counts**. Reasons overlap; do not sum them as a total. Incomplete enumeration is
+a lower bound, and unknown file counts stay unknown. Definition freshness and other assessment limits are separate.
+
+Start with a batch scan to enable persisted target selection; ordinary scans do not start saving a named retry manifest.
+
+```bash
+pc-scanner --config scanner.toml malware home . --batch
+pc-scanner --config scanner.toml malware-gaps home . --scan GROUP
+pc-scanner --config scanner.toml malware-gaps home . --scan GROUP --show-paths --json
+pc-scanner --config scanner.toml malware home . --retry GROUP --revision N --target ID
+```
+
+Replace `GROUP`, `N`, and `ID` with the returned group, saved revision and target ID. Repeat `--target` up to 100 times;
+duplicate IDs execute once. `--retry` cannot combine with `--batch` or `--resume`. Supply the original alias/path too.
+Listings omit names unless the local CLI owner explicitly uses `--show-paths`. `--reason` only filters the list.
+Stale revisions, foreign groups and unknown IDs are rejected before scanning. Changed definitions/configuration
+require an explicit resume first.
+
+In MCP, use the batch result's `data.progress.scan_id` with `list_malware_gaps(scan_id, reasons=[], cursor="", limit=50)`.
+It returns name-free IDs, reasons and eligibility, up to 100 targets per page. Cursors bind to the revision and filter.
+Call `rescan_malware_targets(scan_id, revision, target_ids)` to inspect the selection. The server retains up to 32
+request mappings within a 16 MiB serialized-data budget. Restart/eviction requires an explicit resume of the original
+scan to rebuild the mapping. These tools do not offer arbitrary access to CLI checkpoints or past scan history.
+
+Selected placeholders receive only a metadata recheck, keeping their exclusion and `partial` status. A separately
+downloaded file remains unresolved until inspection succeeds. Unavailable metadata prevents content inspection.
+Authorization, ancestor links and original depth/file/archive limits are rechecked; limits are never relaxed automatically.
+Metadata checks and engine reads are not atomic, so concurrent filesystem/provider changes remain a limitation.
+
+Retries replace current observations rather than adding repeated attempts, parent/child partitions or fetched results.
+`data.attempt` describes the selection; top-level `status` and coverage describe the original whole scope.
+Other unresolved ranges keep the whole result partial even when the selection completes. Disappearance is not successful
+inspection. Retained findings keep their observation time and an indication that they were not rechecked in this attempt.
+
+Summary history adds only group/revision/attempt IDs and name-free coverage counts and quality. Private schema-2
+checkpoints atomically save results and the ledger with existing owner checks, 0700/0600 modes and size limits.
+Schema 1 is reinspected on resume before migration. Failed saves preserve the old file and do not publish a new saved revision.
+
+The dashboard uses each group's highest saved revision once, with coverage/assessment limits separate from findings.
+When details were kept, checkboxes reveal selected CLI options. The static page never starts a scan: append the
+`--retry ... --revision ...` prefix and visible `--target ...` options to the original CLI alias/path command yourself.
+Without details, use the local `malware-gaps` listing. The page is a saved snapshot; stale selections are refused.
+A late retry of an older group does not replace a newer group's overview.
+
+See the [design](docs/malware-coverage-design.md) and [verification record](docs/acceptance/malware-coverage-2026-10-28.json).
 
 ### Checking definitions before a scan
 

@@ -2,6 +2,8 @@
 import sys
 import threading
 import secrets
+import copy
+import json
 from functools import partial
 from typing import Literal
 
@@ -39,6 +41,25 @@ def create_server(scanner: Scanner):
     # One router check at a time keeps MyJVN requests spaced out.
     router_lock = anyio.Lock()
     recent_progress = {}
+    coverage_results = {}
+    coverage_sizes = {}
+
+    def trim_coverage():
+        while len(coverage_results) > 32 or sum(coverage_sizes.values()) > 16 * 1024 * 1024:
+            oldest = next(iter(coverage_results))
+            coverage_results.pop(oldest)
+            coverage_sizes.pop(oldest, None)
+
+    def selection(scan_id, revision=None):
+        value = coverage_results.get(scan_id)
+        if value is None or not value["available"]:
+            raise ValueError("selection_unavailable; explicitly resume the original batch scan")
+        ledger = value["ledger"]
+        latest = max(v["ledger"]["revision"] for v in coverage_results.values()
+                     if v["ledger"]["group"] == ledger["group"])
+        if ledger["revision"] != latest or (revision is not None and revision != latest):
+            raise ValueError("Stale coverage revision; list the latest scan result")
+        return value
 
     async def heartbeat(publish, progress):
         # Clients that reset their timeout on progress keep waiting for long scans.
@@ -62,7 +83,7 @@ def create_server(scanner: Scanner):
             cancel.set()
             progress.update(stage="cancelling")
 
-    async def run_engine(ctx: Context, operation: str, lock=engine_lock, **kwargs) -> dict:
+    async def run_engine(ctx: Context, operation: str, lock=engine_lock, _selection=None, **kwargs) -> dict:
         cancel = threading.Event()
         progress = ScanProgress(on_signature_check=lambda: anyio.from_thread.run(publish_signatures))
         scan_id = secrets.token_hex(8)
@@ -96,9 +117,20 @@ def create_server(scanner: Scanner):
             cancelled = False
             try:
                 async with lock:
+                    if _selection:
+                        try:
+                            selection(*_selection)
+                        except ValueError as exc:
+                            progress.finish("error")
+                            return result("clamav", "error", error=str(exc))
                     progress.update(stage="running")
                     report = await anyio.to_thread.run_sync(
                         partial(scanner.invoke, operation, cancel=cancel, progress=progress, **kwargs))
+                    snapshot = getattr(scanner, "_coverage_snapshot", None) if operation == "malware" else None
+                    if snapshot and snapshot["available"]:
+                        coverage_results[scan_id] = copy.deepcopy(snapshot)
+                        coverage_sizes[scan_id] = len(json.dumps(snapshot, ensure_ascii=True))
+                        trim_coverage()
                     progress.finish(report["status"])
             except BaseException as exc:
                 cancelled = isinstance(exc, anyio.get_cancelled_exc_class())
@@ -151,6 +183,40 @@ def create_server(scanner: Scanner):
         Freshness of the daily stamp does not verify database integrity or certify PC safety.
         """
         return await run_engine(ctx, "check_clamav_signatures")
+
+    @server.tool(annotations=local)
+    async def list_malware_gaps(scan_id: str, reasons: list[str] = [], cursor: str = "", limit: int = 50) -> dict:
+        """List name-free target IDs from this server's live batch results only, never scan history.
+        Restart/eviction loses this selection; explicitly resume the original scan to rebuild it.
+        """
+        if engine_lock.locked():
+            return result("clamav", "error", error="Coverage selection is busy; use progress while scanning")
+        try:
+            from . import coverage
+            value = selection(scan_id)
+            data = coverage.listing(value["ledger"], reasons, cursor, limit)
+            coverage_sizes[scan_id] = len(json.dumps(value, ensure_ascii=True))
+            trim_coverage()
+            return result("clamav", "completed", data=data)
+        except Exception as exc:
+            from .core import ScannerError
+            return result("clamav", "error", error=str(exc) if isinstance(exc, (ValueError, ScannerError))
+                          else "Invalid coverage request")
+
+    @server.tool(annotations=engine)
+    async def rescan_malware_targets(ctx: Context, scan_id: str, revision: int, target_ids: list[str]) -> dict:
+        """Explicitly rescan selected batch target IDs. Rechecks authorization, metadata and cloud state.
+        Never downloads placeholders or changes scan limits. Reads file contents and saves private checkpoints.
+        """
+        if engine_lock.locked():
+            return result("clamav", "error", error="Coverage selection is busy")
+        try:
+            value = selection(scan_id, revision)
+        except ValueError as exc:
+            return result("clamav", "error", error=str(exc))
+        return await run_engine(ctx, "malware", _selection=(scan_id, revision), root_alias=value["alias"],
+                                relative_path=value["relative"], retry=value["ledger"]["group"],
+                                revision=revision, target_ids=target_ids)
 
     @server.tool(annotations=engine, description=(
         "Scan within an owner-authorized root with ClamAV. Never removes or quarantines. "

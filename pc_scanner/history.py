@@ -239,6 +239,12 @@ def freshness_fields(data) -> dict:
     return {'freshness_evidence': value} if value is not None else {}
 
 
+def coverage_fields(data) -> dict:
+    from .coverage import project
+    value = project(data.get("coverage")) if isinstance(data, dict) else None
+    return {"coverage": value} if value is not None else {}
+
+
 def entry(operation: str, arguments: dict, report: dict, started: datetime, seconds: float, via: str) -> dict:
     target = {}
     if operation == "vulnerabilities":
@@ -264,7 +270,8 @@ def entry(operation: str, arguments: dict, report: dict, started: datetime, seco
             "via": via, "operation": operation, "target": target, "status": report["status"],
             "findings": findings, "warnings": len(report["warnings"]), **more,
             **({"error": clean_text(report["error"], ERROR_CHARS)} if report.get("error") else {}),
-            **(freshness_fields(data) if operation == 'vulnerabilities' else {})}
+            **(freshness_fields(data) if operation == 'vulnerabilities' else {}),
+            **(coverage_fields(data) if operation == 'malware' else {})}
 
 
 def save_details(path: Path, report: dict, max_bytes: int) -> str:
@@ -402,7 +409,8 @@ def parse(line: str) -> dict | None:
                 "error": None if error is None else text(error, ERROR_CHARS),
                 "more": more if isinstance(more, bool) else None,
                 "details": details if isinstance(details, str) and DETAILS_ID.fullmatch(details) else None,
-                **(freshness_fields(record) if record.get('operation') == 'vulnerabilities' else {})}
+                **(freshness_fields(record) if record.get('operation') == 'vulnerabilities' else {}),
+                **(coverage_fields(record) if record.get('operation') == 'malware' else {})}
     except (ValueError, TypeError, KeyError, AttributeError, RecursionError, OverflowError):
         return None
 

@@ -76,6 +76,8 @@ details.scan:target{outline:2px solid var(--info)}
 .body{padding:4px 14px 14px}
 .callout{background:var(--bad-bg);color:var(--bad);padding:8px 12px;border-radius:6px;margin:10px 0}
 .quiet{color:var(--muted)}
+.retry-option{display:none}input:checked~.retry-option{display:inline}
+input:focus-visible{outline:2px solid var(--info);outline-offset:2px}
 ul{margin:6px 0;padding-left:20px}
 pre{background:var(--code);padding:10px 12px;border-radius:6px;overflow-x:auto;font-size:.8rem;margin:6px 0}
 .chart{display:flex;flex-wrap:wrap;gap:16px 32px;align-items:center;padding:16px}
@@ -189,6 +191,7 @@ def findings_table(findings: list) -> str:
 
 def scan_body(item: dict, report: dict | None, reason: str) -> str:
     parts = [f'<div class="callout">Error: {esc(item["error"])}</div>'] if item["error"] else []
+    parts.append(coverage_panel(item.get("coverage")))
     if report is None:
         parts.append(f'<p class="quiet">{esc(REASONS[reason])}</p>')
         return "".join(parts)
@@ -199,6 +202,7 @@ def scan_body(item: dict, report: dict | None, reason: str) -> str:
     findings = report.get("findings")
     parts.append("<h3>Findings</h3>" + findings_table(findings if isinstance(findings, list) else []))
     if "data" in report:
+        parts.append(coverage_selection(report["data"]))
         parts.append(data_block(report["data"]))
     return "".join(parts)
 
@@ -244,10 +248,44 @@ def latest_runs(entries: list[dict]) -> list[list[tuple[int, dict]]]:
     Pages count together, so findings on the first page still show once a later page is fetched.
     """
     latest = {}
+    best = {}
+    conflicts = set()
     for index, item in enumerate(entries):
+        value = item.get("coverage") if item["operation"] == "malware" else None
+        if not value or not value.get("revision"):
+            continue
+        key = (json.dumps(item["target"], sort_keys=True), value["scan_group_id"])
+        old = best.get(key)
+        if old is None or value["revision"] > old[1]["coverage"]["revision"]:
+            best[key] = (index, item)
+            conflicts.discard(key)
+        elif value["revision"] == old[1]["coverage"]["revision"]:
+            if value != old[1]["coverage"] or item["findings"] != old[1]["findings"] or item["status"] != old[1]["status"]:
+                conflicts.add(key)
+    for index, item in enumerate(entries):
+        value = item.get("coverage") if item["operation"] == "malware" else None
+        if value and value.get("revision"):
+            group_key = (json.dumps(item["target"], sort_keys=True), value["scan_group_id"])
+            if best[group_key][0] != index:
+                continue
+            if group_key in conflicts:
+                item = {**item, "status": "partial", "findings": {},
+                        "coverage": {**value, "unresolved": {"count": 0, "quality": "unknown", "file_count": None},
+                                     "by_reason": {}, "assessment_limits": ["conflicting_snapshot"]}}
         target = {key: value for key, value in item["target"].items() if key not in PAGING}
         key = (item["operation"], json.dumps(target, sort_keys=True))
         run = latest.get(key)
+        if run and value and not value.get("revision"):
+            previous = run[0][1].get("coverage")
+            if previous and previous.get("revision") and previous["scan_group_id"] == value["scan_group_id"]:
+                old_index, old_item = run[0]
+                run[:] = [(old_index, {**old_item, "status": "partial", "coverage": {**previous,
+                    "assessment_limits": sorted(set(previous["assessment_limits"] + ["unsaved_attempt"]))}})]
+                continue
+        if run and value and run[0][1].get("coverage"):
+            previous = run[0][1]["coverage"]
+            if value["group_started_at"] < previous["group_started_at"]:
+                continue
         if run is None or first_page(item):
             latest[key] = [(index, item)]
             continue
@@ -399,9 +437,56 @@ def freshness_notes(run: list[tuple[int, dict]]) -> str:
 def latest_row(run: list[tuple[int, dict]]) -> str:
     total, first, last = combined(run), run[0], run[-1][1]
     return (f'<tr><td class="op">{esc(last["operation"])}</td><td>{esc(history.source(last["operation"]))}</td>'
-            f'<td class="target"><a href="#scan-{first[0]}">{esc(run_label(first[1]))}</a>{run_notes(run)}{freshness_notes(run)}</td>'
+            f'<td class="target"><a href="#scan-{first[0]}">{esc(run_label(first[1]))}</a>{run_notes(run)}{freshness_notes(run)}{coverage_panel(last.get("coverage"))}</td>'
             f'<td>{badge(total["status"], STATUSES)}</td><td>{counts(total)}</td>'
             f'<td class="time">{esc(local_time(last))}</td></tr>')
+
+
+def coverage_panel(value):
+    from .coverage import project, LABELS
+    info = project(value)
+    if not info:
+        return ""
+    total = info["unresolved"]
+    number = "unknown" if total["quality"] == "unknown" else str(total["count"])
+    rows = "".join(f'<tr><td>{esc(LABELS[reason])}</td><td>{count}</td></tr>' for reason, count in info["by_reason"].items())
+    attempt = info.get("attempt")
+    note = (f'<div class="quiet">Selected attempt: {esc(attempt["status"])} · '
+            f'{attempt["finished"]}/{attempt["selected"]} scopes returned</div>' if attempt else "")
+    return (f'<div class="quiet">Unverified target scopes: {number} ({esc(total["quality"])}) · file count unknown</div>'
+            + note + f'<div class="quiet">Last stop: {esc(info.get("stop_reason") or "none")}</div>'
+            '<details><summary>Coverage reasons and assessment limits</summary>'
+            '<p>Reasons may overlap; their sum is not a file total.</p>'
+            f'<table><tbody>{rows}</tbody></table><p>{esc(", ".join(info["assessment_limits"]))}</p></details>')
+
+
+def coverage_selection(data):
+    from .coverage import ID, REASONS as CODES, LABELS, project
+    if not isinstance(data, dict):
+        return ""
+    value = data.get("coverage")
+    info = project(value)
+    if not info or not value.get("selection_available") or not info["revision"]:
+        return ""
+    rows = data.get("coverage_targets")
+    if not isinstance(rows, list):
+        return ""
+    pieces = []
+    for row in rows[:100]:
+        if not isinstance(row, dict) or not isinstance(row.get("target_id"), str) or not ID.fullmatch(row["target_id"]):
+            continue
+        reasons = row.get("reasons")
+        if not isinstance(reasons, list) or not all(isinstance(r, str) and r in CODES for r in reasons):
+            continue
+        ident = row["target_id"]
+        pieces.append(f'<label><input type="checkbox" aria-label="Select {ident}"> {ident} '
+                      f'{esc("; ".join(LABELS[r] for r in reasons))}<code class="retry-option"> --target {ident}</code></label><br>')
+    return ('<details><summary>Select retry targets (local CLI)</summary>'
+            '<p>Saved snapshot only. Add these options to the original malware alias/path command. '
+            'Run it in your terminal; this page never starts a scan. A stale revision is rejected.</p>'
+            f'<pre>--retry {info["scan_group_id"]} --revision {info["revision"]}</pre>'
+            + "".join(pieces) + '<p>Copy the visible --target options. Unknown or omitted details require '
+            'malware-gaps in the local CLI. Cloud placeholders are only checked by metadata.</p></details>')
 
 
 def render(entries: list[dict], loaded: list[tuple[dict | None, str]], meta: dict) -> str:

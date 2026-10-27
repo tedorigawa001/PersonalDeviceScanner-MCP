@@ -62,7 +62,10 @@ def message(state):
             f"finished={count('finished')} pending={count('pending')} reused={count('reused')} "
             f"checkpoint={state['checkpoint']} saved_parts={count('saved_parts')}"
             + (f" scan_id={state['scan_id']}" if state.get("scan_id") else "")
-            + signature_message(state.get("signature_check")))
+            + signature_message(state.get("signature_check"))
+            + (f" unresolved_scopes={state['coverage']['unresolved']['count']} "
+               f"coverage_quality={state['coverage']['unresolved']['quality']} "
+               f"reasons={state['coverage']['by_reason']}" if state.get("coverage") else ""))
 
 
 def signature_message(info):

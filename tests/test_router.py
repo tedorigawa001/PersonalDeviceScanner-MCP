@@ -403,9 +403,11 @@ class RouterTests(unittest.TestCase):
         self.assertEqual(ended["findings"][0]["kind"], "end_of_support")
 
     def test_when_the_settings_were_checked(self):
+        now = datetime(TODAY.year, TODAY.month, TODAY.day, 12).astimezone(timezone.utc)
         for checked_on, expected in ((None, "not recorded"), (TODAY - timedelta(days=200), "200 days ago"),
                                      (TODAY + timedelta(days=5), "in the future")):
-            with self.subTest(checked_on=checked_on):
+            with self.subTest(checked_on=checked_on), patch("pc_scanner.router.datetime", wraps=datetime) as clock:
+                clock.now.return_value = now
                 report = self.check(self.scanner(checked_on=checked_on), FakeMyJVN([]))
                 self.assertTrue(any(expected in w for w in report["warnings"]), report["warnings"])
                 self.assertEqual(report["status"], "partial")

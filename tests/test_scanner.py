@@ -766,7 +766,8 @@ class ScannerTests(unittest.TestCase):
         self.assertTrue(any("could not be read" in warning for warning in report["warnings"]))
 
     def test_directory_coverage_timeout_does_not_start_engine(self):
-        with patch("pc_scanner.core.time.monotonic", side_effect=[0, self.scanner.timeout + 1]), patch(
+        import itertools
+        with patch("pc_scanner.core.time.monotonic", side_effect=itertools.chain([0], itertools.repeat(self.scanner.timeout + 1))), patch(
                 "pc_scanner.core.run_bounded") as run:
             report = self.scanner.invoke("malware", root_alias="test")
         self.assertEqual(report["status"], "error")

@@ -900,23 +900,44 @@ class Scanner:
 
     def malware(self, root_alias: str, relative_path: str = ".",
                 cancel: threading.Event | None = None, batch: bool = False, resume: bool = False,
-                progress=None) -> dict:
+                progress=None, retry: str = "", revision: int | None = None, target_ids=None) -> dict:
+        self._coverage_snapshot = None
         if type(batch) is not bool or type(resume) is not bool:
             raise ScannerError("batch and resume must be true or false")
         if root_alias not in self.roots:
             raise ScannerError("Scan root alias is not authorized")
+        if retry and (batch or resume):
+            raise ScannerError("retry cannot be combined with batch or resume")
+        if not retry and (revision is not None or target_ids):
+            raise ScannerError("Target selection requires retry and revision")
         deadline = time.monotonic() + self.timeout
         if progress:
             progress.set_deadline(deadline)
             progress.update(stage="definitions")
         initial = self.check_clamav_signatures(cancel, deadline=deadline)
         info = initial["data"]["signature_check"]
+        signature_limits = ([] if info["freshness"] == "fresh" else
+                            ["stale_definitions" if info["freshness"] == "stale" else "unknown_definitions"])
         if progress:
             progress.signature_check(info)
         if initial["status"] == "error":
+            from . import coverage
+            coverage.attach(initial, [coverage.issue(relative_path, "not_reached", "unlisted_remainder")], signature_limits)
+            initial["data"].pop("_coverage_issues", None)
             return initial
 
         def with_advice(report):
+            from . import coverage
+            if "coverage" not in report.get("data", {}):
+                reason = ("cancelled" if cancel is not None and cancel.is_set() else
+                          "timeout" if time.monotonic() >= deadline else "engine_error")
+                coverage.attach(report, [coverage.issue(relative_path, reason, "unlisted_remainder")])
+            report["data"].pop("_coverage_issues", None)
+            report["data"].pop("_coverage_finding_paths", None)
+            observed_limits = report["data"]["coverage"]["assessment_limits"]
+            report["data"]["coverage"]["assessment_limits"] = sorted(set(observed_limits + signature_limits))
+            if progress:
+                progress.update(coverage=report["data"]["coverage"])
             report.setdefault("data", {})["signature_check"] = info
             report["warnings"] = initial["warnings"] + report["warnings"]
             if initial["status"] == "partial" and report["status"] == "completed":
@@ -924,9 +945,10 @@ class Scanner:
             return report
 
         try:
-            if batch or resume:
+            if batch or resume or retry:
                 from .malware_batch import scan
-                report = scan(self, root_alias, relative_path, resume, cancel, deadline, progress)
+                report = scan(self, root_alias, relative_path, resume or bool(retry), cancel, deadline, progress,
+                              retry=retry, revision=revision, target_ids=target_ids, initial_limits=signature_limits)
             else:
                 if progress:
                     progress.update(finished=0, pending=1, reused=0, checkpoint="not_applicable")
@@ -934,7 +956,8 @@ class Scanner:
                 if (report.get("data", {}).get("split_required")
                         and any("command-size limit" in warning for warning in report["warnings"])):
                     from .malware_batch import scan
-                    report = scan(self, root_alias, relative_path, False, cancel, deadline, progress)
+                    report = scan(self, root_alias, relative_path, False, cancel, deadline, progress,
+                                  initial_limits=signature_limits)
                 elif progress:
                     progress.update(finished=1, pending=0)
         except ScannerError as exc:
@@ -944,7 +967,8 @@ class Scanner:
     def _malware(self, root_alias: str, relative_path: str = ".",
                  cancel: threading.Event | None = None, *, deadline: float | None = None,
                  max_levels: int = MAX_DIRECTORY_LEVELS, excluded_directory: Path | None = None,
-                 expect_files: bool = True, progress=None) -> dict:
+                 expect_files: bool = True, progress=None, strict_metadata=False, excluded_scopes=()) -> dict:
+        from . import coverage
         if root_alias not in self.roots:
             raise ScannerError("Scan root alias is not authorized")
         if not isinstance(relative_path, str) or "\x00" in relative_path:
@@ -954,6 +978,9 @@ class Scanner:
             raise ScannerError("Use a relative path within the authorized root")
         root = Path(self.roots[root_alias]).resolve(strict=True)
         target = (root / relative).resolve(strict=True)
+        if strict_metadata:
+            from .malware_batch import target_path
+            root, target = target_path(self, root_alias, relative_path)
         if not target.is_relative_to(root):
             raise ScannerError("Scan target escapes the authorized root")
         if not (target.is_dir() or target.is_file()):
@@ -982,6 +1009,13 @@ class Scanner:
         # Signature check, coverage check and engine share one time budget.
         deadline = deadline if deadline is not None else time.monotonic() + self.timeout
         check_cancel(cancel)
+        if strict_metadata:
+            blocked = coverage.safety(target, deadline, cancel, max_levels, excluded_directory, set(excluded_scopes))
+            if blocked:
+                return coverage.attach(result("clamav", "partial", data={"root_alias": root_alias,
+                    "relative_path": clean_text(relative_path, PATH_CHARS), "scan_started": False},
+                    warnings=["Metadata safety check prevented scanning; coverage remains incomplete"]),
+                    [coverage.issue(relative_path, blocked, "subtree_remainder")])
         if progress:
             progress.update(stage="preflight")
         cloud_excluded: list[tuple[str, bool]] = []
@@ -989,6 +1023,11 @@ class Scanner:
             target, deadline, cancel, cloud_excluded, max_levels, excluded_directory)
         exclusions = [("--exclude-dir=" if directory else "--exclude=") + exclusion_pattern(path, directory)
                       for path, directory in cloud_excluded]
+        for scope in excluded_scopes:
+            if not scope.is_relative_to(target) or len(os.fsencode(scope)) > CLAMAV_MATCH_BYTES:
+                raise ScannerError("Selected remainder exclusions cannot be passed safely")
+            exclusions += ["--exclude-dir=" + exclusion_pattern(str(scope), True),
+                           "--exclude=" + exclusion_pattern(str(scope), False)]
         if excluded_directory and excluded_directory.is_relative_to(target):
             if len(os.fsencode(excluded_directory)) > CLAMAV_MATCH_BYTES:
                 raise ScannerError("Checkpoint directory path is too long for safe engine exclusion")
@@ -1005,7 +1044,7 @@ class Scanner:
         exclusion_overflow = sum(len(option) for option in exclusions) > MAX_EXCLUSION_CHARS
         too_long = sum(len(os.fsencode(path)) > CLAMAV_MATCH_BYTES for path, _ in cloud_excluded)
         if target_excluded or exclusion_overflow or unsafe_exclusions or too_long:
-            return result("clamav", "partial", data={
+            return coverage.attach(result("clamav", "partial", data={
                 "root_alias": root_alias, "relative_path": clean_text(relative_path, PATH_CHARS),
                 "exit_code": None, "scan_started": False,
                 "split_required": not target_excluded and (exclusion_overflow or unsafe_exclusions or bool(too_long)),
@@ -1016,7 +1055,9 @@ class Scanner:
                                             "Select a smaller local folder"] if exclusion_overflow else [])
                 + ([f"{too_long} cloud placeholders have paths longer than ClamAV can match for exclusion "
                     f"({CLAMAV_MATCH_BYTES} bytes); no scan was started, so they are not downloaded. "
-                    "Shorten the folder names or scan a folder without them"] if too_long else []))
+                    "Shorten the folder names or scan a folder without them"] if too_long else [])),
+                [coverage.issue(str(Path(path).relative_to(root)), "cloud_placeholder",
+                                "subtree_remainder" if directory else "file") for path, directory in cloud_excluded])
         if progress:
             progress.update(stage="definitions")
         signatures = clamav_signatures(binary, deadline, self.limit, cancel=cancel)
@@ -1044,7 +1085,7 @@ class Scanner:
             "--max-filesize=100M", "--max-scansize=200M", "--max-recursion=16",
             # The target stays last, so a mis-parsed quote cannot place options after it.
             "--alert-exceeds-max=yes", *exclusions, target_argument], remaining, self.limit, cancel=cancel)
-        findings, messages = [], []
+        findings, messages, limit_issues, finding_paths = [], [], [], []
         for line in output.splitlines():
             match = FOUND.fullmatch(line)
             if not match:
@@ -1052,10 +1093,19 @@ class Scanner:
                 continue
             location, signature = match.groups()
             limit_hit = signature.startswith("Heuristics.Limits.Exceeded")
+            if limit_hit:
+                raw_relative = str(Path(location).relative_to(root)) if attributed(location) else relative_path
+                reason = {"Heuristics.Limits.Exceeded.MaxFileSize": "file_size_limit",
+                          "Heuristics.Limits.Exceeded.MaxRecursion": "archive_limit",
+                          "Heuristics.Limits.Exceeded.MaxScanSize": "archive_limit"}.get(signature, "engine_limit_unknown")
+                limit_issues.append(coverage.issue(raw_relative, reason, "archive" if reason == "archive_limit" else "file"))
             findings.append({"kind": "scan_limit" if limit_hit else "malware",
                              "severity": "unknown" if limit_hit else "high",
                              "path": attributed(location), "signature": clean_text(signature)})
-        findings.sort(key=lambda f: f["kind"] != "malware")
+            finding_paths.append(str(Path(location).relative_to(root)) if attributed(location) else None)
+        ordered_findings = sorted(zip(findings, finding_paths), key=lambda pair: pair[0]["kind"] != "malware")
+        findings = [pair[0] for pair in ordered_findings]
+        finding_paths = [pair[1] for pair in ordered_findings]
         findings_capped = len(findings) > PAGE_SIZE
         engine_report, report_truncated = excerpt(mask("\n".join(messages)))
         engine_diagnostic, diagnostic_truncated = excerpt(mask(diagnostic))
@@ -1076,8 +1126,25 @@ class Scanner:
                    or scanned is None or (expect_files and not scanned)
                    or any(f["kind"] == "scan_limit" for f in findings)
                    or (code == 1 and not findings))
-        return result("clamav", "partial" if partial else "completed", findings=findings[:PAGE_SIZE],
+        issues = [coverage.issue(str(Path(path).relative_to(root)), "cloud_placeholder",
+                                 "subtree_remainder" if directory else "file") for path, directory in cloud_excluded]
+        issues += [coverage.issue(str(Path(path).relative_to(root)), "permission_denied", "subtree_remainder")
+                   for path in unreadable if Path(path).is_relative_to(root)]
+        if directory_limit:
+            issues.append(coverage.issue(relative_path, "directory_depth_limit", "subtree_remainder"))
+        issues += limit_issues
+        if errors or code not in (0, 1) or "ERROR" in output or scanned is None or (expect_files and not scanned and not limit_issues):
+            issues.append(coverage.issue(relative_path, "engine_error", "subtree_remainder"))
+        if line_breaks or unattributed or miscounted:
+            issues.append(coverage.issue(relative_path, "attribution_unknown", "subtree_remainder"))
+        if report_truncated or diagnostic_truncated or findings_capped:
+            issues.append(coverage.issue(relative_path, "output_limit", "subtree_remainder"))
+        limits = (["stale_definitions" if age_seconds is not None else "unknown_definitions"] if signature_warnings else [])
+        if diagnostic.strip():
+            limits.append("diagnostic")
+        return coverage.attach(result("clamav", "partial" if partial else "completed", findings=findings[:PAGE_SIZE],
                       data={"root_alias": root_alias, "relative_path": clean_text(relative_path, PATH_CHARS),
+                            "_coverage_finding_paths": finding_paths[:PAGE_SIZE],
                             "exit_code": code, "findings_total": len(findings),
                             "engine_counts": {"scanned": scanned, "infected": infected, "errors": errors},
                             "unreadable_directories": [shown(p) for p in unreadable[:REPORTED_DIRECTORIES]],
@@ -1102,7 +1169,7 @@ class Scanner:
                       + ([f"The engine counted {infected} infected files but {detections} detections were read; "
                           "the report may be incomplete"] if miscounted else [])
                       + ([f"Findings capped at {PAGE_SIZE}; malware findings are listed first"] if findings_capped else [])
-                      + (["Scan coverage incomplete or engine error; do not report this PC as safe"] if partial else []))
+                      + (["Scan coverage incomplete or engine error; do not report this PC as safe"] if partial else [])), issues, limits)
 
     def vulnerabilities(self, cursor: str = "", cancel: threading.Event | None = None) -> dict:
         overall_deadline = time.monotonic() + min(self.timeout, 30)

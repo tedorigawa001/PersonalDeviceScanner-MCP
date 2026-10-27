@@ -99,7 +99,7 @@ test('the installed package sets itself up on first use and serves MCP on a clea
       const tools = await client.request('tools/list', {});
       assert.deepEqual(tools.result.tools.map((tool) => tool.name).sort(),
         ['check_android_monitoring_apps', 'check_clamav_signatures', 'check_router', 'collect_android', 'collect_inventory', 'get_scan_progress', 'get_vulnerabilities',
-          'scan_malware', 'scanner_status']);
+          'list_malware_gaps', 'rescan_malware_targets', 'scan_malware', 'scanner_status']);
       const status = await client.request('tools/call', { name: 'scanner_status', arguments: {} });
       const report = JSON.parse(status.result.content[0].text);
       assert.equal(report.status, 'completed');

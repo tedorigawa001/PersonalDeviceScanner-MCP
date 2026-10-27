@@ -67,6 +67,16 @@ def main():
     malware.add_argument("relative_path", nargs="?", default=".")
     malware.add_argument("--batch", action="store_true", help="split into resumable parts; saves private checkpoints")
     malware.add_argument("--resume", action="store_true", help="resume the same root/path; recheck changed parts")
+    malware.add_argument("--retry", default="", help="select from a saved coverage group")
+    malware.add_argument("--revision", type=int, default=None, help="required saved coverage revision")
+    malware.add_argument("--target", dest="target_ids", action="append", default=None, help="opaque target ID; repeat up to 100")
+    gaps = commands.add_parser("malware-gaps", help="list private batch coverage targets locally")
+    gaps.add_argument("root_alias")
+    gaps.add_argument("relative_path", nargs="?", default=".")
+    gaps.add_argument("--scan", required=True)
+    gaps.add_argument("--reason", action="append", default=[])
+    gaps.add_argument("--show-paths", action="store_true")
+    gaps.add_argument("--json", action="store_true")
     vulnerabilities = commands.add_parser("vulnerabilities")
     vulnerabilities.add_argument("--cursor", default="", help="continue from data.next_cursor")
     android = commands.add_parser("android", help="read fixed facts from a registered Android device over USB")
@@ -103,12 +113,29 @@ def main():
         if args.command == "dashboard":
             write_dashboard(scanner, args.limit, not args.no_open)
             return
+        if args.command == "malware-gaps":
+            from . import coverage, malware_batch
+            ledger = malware_batch.read_coverage(scanner, args.root_alias, args.relative_path)
+            if ledger["group"] != args.scan:
+                raise ScannerError("Invalid or stale coverage group")
+            rows = coverage.targets(ledger, args.show_paths)
+            if args.reason and not set(args.reason) <= coverage.REASONS:
+                raise ScannerError("Invalid coverage reason")
+            rows = [row for row in rows if not args.reason or set(row["reasons"]) & set(args.reason)]
+            report = result("clamav", "completed", data={"coverage": coverage.summary(ledger), "targets": rows})
+            if not args.json:
+                from .core import clean_text
+                print(f"Coverage {ledger['group']} revision={ledger['revision']} (target scopes, not file counts)")
+                for row in rows:
+                    print(row["target_id"], "; ".join(coverage.LABELS[r] for r in row["reasons"]), row["eligibility"].replace("_", " "),
+                          clean_text(row.get("relative_path", "")))
+                return
         if args.command == "history":
             report = show_history(scanner, args.limit)
             if not args.json:
                 print_history(report)
                 return
-        else:
+        elif args.command != "malware-gaps":
             scanner.via = "cli"
             kwargs = {k: v for k, v in vars(args).items() if k not in {"config", "command"}}
             if args.command in {"malware", "check-clamav-signatures"}:
