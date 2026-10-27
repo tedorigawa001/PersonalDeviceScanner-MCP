@@ -73,6 +73,7 @@ It cannot supply arbitrary SQL, paths, executables, or connection targets.
 |---|---|---|---|
 | `scanner_status()` | `status` | none | Shows what is configured. Does not check engines or PC safety |
 | `get_scan_progress(scan_id="")` | — | none | Reads recent MCP request progress only, including after cancellation |
+| `check_clamav_signatures()` | `check-clamav-signatures` | clamscan | Reads definition version, date, freshness and update steps; never updates or scans |
 | `collect_inventory(query_id, offset=0)` | `inventory <query_id> [--offset N]` | osqueryi | Returns one of `os_version`, `applications`, `listening_ports` |
 | `scan_malware(root_alias, relative_path=".")` | `malware <root_alias> [relative_path]` | clamscan | Scans an authorized folder, or a path inside it |
 | `get_vulnerabilities(cursor="")` | `vulnerabilities [--cursor C]` | Wazuh indexer | Returns vulnerabilities for the one configured device, most severe first |
@@ -592,6 +593,36 @@ pc-scanner --config scanner.toml malware home --resume
   Exhausting a limit/time budget leaves coverage incomplete. A single file/archive cannot resume halfway through;
   an interrupted part is retried. Starting with `--batch` again resets that target's checkpoint.
 
+### Checking definitions before a scan
+
+```bash
+pc-scanner --config scanner.toml check-clamav-signatures
+```
+
+In MCP, call `check_clamav_signatures()` without arguments. No authorized scan root is required.
+It runs only the configured `clamscan --version`. `data.signature_check` returns the engine version,
+daily definition version/date, age and limit, check time, `freshness` and `update_steps`.
+It does not scan target files, update definitions, perform network lookups or write scan history.
+
+- `fresh`: the definition date is within the limit, including exactly at the limit; `stale`: over the limit.
+- `unknown`: the date is unavailable or in the future. A readable daily stamp does not verify database integrity or PC safety.
+- `check_failed`: configuration/startup failure, no valid version response, timeout or cancellation.
+  CLI exits 0 for `fresh`, and 2 for the other states.
+
+Normal, batch and resumed malware scans perform the same check before a potentially long directory walk.
+CLI stderr and supported MCP progress notifications carry version/date, freshness and brief update advice.
+The final report retains `data.signature_check` as **pre-scan** evidence; existing per-target and batch-completion freshness checks remain.
+Stale or unknown definitions allow scanning with warnings and keep the result at least `partial`.
+A failed check prevents scanning. A standalone check is limited to 30 seconds or the shorter configured limit;
+the pre-scan check shares the whole scan deadline.
+
+Update advice points to the owner's configured official freshclam service, or `freshclam` with approved configuration
+and permissions. Update the database clamscan actually uses; ask the administrator if permission is denied.
+The tool never changes ownership/permissions or handles sudo or administrator passwords. Recheck after updating.
+See the [official ClamAV update procedure](https://docs.clamav.net/manual/Usage/SignatureManagement.html).
+ClamAV stderr warnings about old definitions can also prevent reuse of completed batch parts.
+This feature never runs an updater: `update_performed` is always `false`.
+
 ### Long-scan progress
 
 CLI `malware` displays progress on stderr about once a second, plus a final snapshot, for ordinary,
@@ -614,10 +645,11 @@ pc-scanner progress: stage=scanning elapsed=12.0s finished=3 pending=7 reused=2 
   `not_started` means this call has not checked/saved checkpoint data yet, not that older data is absent;
   `not_applicable` means no checkpoint is used, as with an ordinary scan.
 - Final results include `data.progress` (time named `elapsed_seconds`). Notifications contain no file names,
-  findings or engine output.
+  findings or raw engine output.
 
 MCP sends changes at most once a second, with the existing ten-second heartbeat while unchanged, when the client
-requests progress. Its numeric progress is elapsed seconds; `total` is omitted. Other operations show stage/time
+supports progress notifications. Pre-scan definition advice is also sent before walking the root, with at most a
+one-second delivery wait. Numeric progress is elapsed seconds; `total` is omitted. Other operations show stage/time
 while unobserved part counts remain unknown. Rendering depends on the client.
 
 After the client cancels, no further notification is sent, because MCP progress may only refer to requests still in

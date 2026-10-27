@@ -72,6 +72,7 @@ AI が指定できるのは「どの固定クエリを使うか」「どの許�
 |---|---|---|---|
 | `scanner_status()` | `status` | なし | 設定の有無を表示します。エンジンの動作や安全性は確認しません |
 | `get_scan_progress(scan_id="")` | — | なし | MCPの直近の検査の進捗だけを確認します。キャンセル後も照会できます |
+| `check_clamav_signatures()` | `check-clamav-signatures` | clamscan | 定義の版・作成日時・鮮度と更新手順を確認します。更新・検査は実行しません |
 | `collect_inventory(query_id, offset=0)` | `inventory <query_id> [--offset N]` | osqueryi | `os_version`・`applications`・`listening_ports` のいずれかを取得します |
 | `scan_malware(root_alias, relative_path=".")` | `malware <root_alias> [relative_path]` | clamscan | 許可フォルダー（またはその中のパス）を検査します |
 | `get_vulnerabilities(cursor="")` | `vulnerabilities [--cursor C]` | Wazuh indexer | 設定した1台の端末の脆弱性を、深刻度の高い順に取得します |
@@ -581,6 +582,33 @@ pc-scanner --config scanner.toml malware home --resume
   上限や時間切れで終わらなければ未完了を返します。大きな単一ファイル・アーカイブの途中からは再開できず、その対象は再検査します。
   `--batch` を指定して再実行すると、同じ対象のチェックポイントを最初から作り直します。
 
+### 検査前の定義確認と更新案内
+
+```bash
+pc-scanner --config scanner.toml check-clamav-signatures
+```
+
+MCPでは引数なしの `check_clamav_signatures()` を呼びます。許可フォルダーの設定は不要です。
+設定した `clamscan --version` だけを使い、結果の `data.signature_check` にエンジン版、定義の版・作成日時、
+経過日数、上限、確認日時、`freshness` と `update_steps` を返します。対象ファイルを検査せず、更新・外部照会・履歴保存もしません。
+
+- `fresh` は日時が上限以内（期限ちょうども含む）、`stale` は期限超過です。
+- `unknown` は定義日時が不明、または未来です。日次定義の日時が読めても、定義全体の完全性やPCの安全性を保証しません。
+- `check_failed` は実行ファイルの未設定・起動失敗・有効な応答なし・時間切れ・キャンセルなどです。
+  終了コードは `fresh` が0、`stale` / `unknown` / `check_failed` が2です。
+
+`malware` の通常検査・分割・再開でも、長いフォルダー走査の前に同じ確認を行い、CLIのstderrとMCPの進捗通知へ
+版・日時・鮮度・更新案内を送ります。MCPではクライアントが進捗通知に対応している必要があります。
+最終結果にも `data.signature_check` を残します。これは**検査前**の情報で、各対象の検査直前・分割検査終了時の既存判定も維持します。
+古い・日時不明なら制約を残して検査を続け、結果が `completed` でも `partial` にします。確認失敗では検査を開始しません。
+単独の確認は最大30秒（設定の検査上限が短ければその値）、検査前の確認は検査全体の時間上限を共有します。
+
+更新は、所有者が設定した公式freshclamの自動更新サービス、または承認済みの設定・権限での `freshclam` 実行を案内します。
+clamscanが実際に参照する保存先を更新し、権限不足なら管理者へ依頼してください。所有者・権限を自動で変更せず、
+MCPでsudoや管理者パスワードを扱いません。更新後は同じ確認を再実行します。手順は[ClamAV公式文書](https://docs.clamav.net/manual/Usage/SignatureManagement.html)を参照してください。
+古い定義によるClamAVの標準エラー警告は、分割検査の再利用も妨げる場合があります。
+この機能では更新を実行せず、`update_performed` は常に `false` です。
+
 ### 長時間検査の進捗
 
 CLIの `malware` は、通常検査・`--batch`・`--resume` とも進捗をstderrに約1秒間隔で表示し、最後にも状態を表示します。
@@ -601,9 +629,10 @@ pc-scanner progress: stage=scanning elapsed=12.0s finished=3 pending=7 reused=2 
   これは今回の終了数とは別で、未確認の過去レコードを含む場合があります。`write_failed` は最新の保存失敗を示し、
   `saved_parts` はその前の保存成功件数を保持します。`unavailable` は再開データを利用できない状態です。
   `not_started` は今回まだ再開データの確認・保存をしておらず過去の保存有無は不明、`not_applicable` は通常検査など保存対象外です。
-- 結果の `data.progress` に同じ情報（経過時間は `elapsed_seconds`）を返します。通知にはファイル名・所見・エンジン出力を含めません。
+- 結果の `data.progress` に同じ情報（経過時間は `elapsed_seconds`）を返します。通知にはファイル名・所見・生のエンジン出力を含めません。
 
 MCPは進捗通知に対応したクライアントへ、状態変化を最大毎秒1回、変化がなくても既定10秒ごとに通知します。
+検査前の定義確認結果は、フォルダー走査に入る前に別途通知します（送信待ちは最大1秒）。
 通知値は経過秒数で、`total` は指定しません。Android・Wazuhなどは段階・経過時間を示し、取得していない対象数は不明のままです。
 表示方法はクライアントによります。
 

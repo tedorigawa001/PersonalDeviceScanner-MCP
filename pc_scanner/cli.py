@@ -58,6 +58,7 @@ def main():
     parser.add_argument("--config", default="scanner.toml")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("status")
+    commands.add_parser("check-clamav-signatures", help="read definition freshness and update steps; never updates")
     inventory = commands.add_parser("inventory")
     inventory.add_argument("query_id", choices=["os_version", "applications", "listening_ports"])
     inventory.add_argument("--offset", type=int, default=0, help="continue from data.next_offset")
@@ -110,10 +111,11 @@ def main():
         else:
             scanner.via = "cli"
             kwargs = {k: v for k, v in vars(args).items() if k not in {"config", "command"}}
-            if args.command == "malware":
+            if args.command in {"malware", "check-clamav-signatures"}:
                 from .progress import CLIProgress
                 with CLIProgress() as display:
-                    report = scanner.invoke("malware", progress=display.progress, cancel=display.cancel, **kwargs)
+                    report = scanner.invoke(args.command.replace("-", "_"),
+                                            progress=display.progress, cancel=display.cancel, **kwargs)
             else:
                 report = scanner.invoke(args.command.replace("-", "_"), **kwargs)
     except ScannerError as exc:

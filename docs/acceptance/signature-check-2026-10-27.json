@@ -1,0 +1,87 @@
+{
+  "date": "2026-10-27",
+  "base_revision": "cfab99b",
+  "tested_changes": "Uncommitted read-only ClamAV definition status and pre-scan freshness/update advice",
+  "environment": {
+    "os": "macOS 27.2", "architecture": "arm64",
+    "python_versions": ["3.14.10", "3.15.2"], "mcp_sdk": "1.30.0", "node": "26.12.1"
+  },
+  "interfaces": {
+    "cli": "pc-scanner --config scanner.toml check-clamav-signatures",
+    "mcp": "check_clamav_signatures()",
+    "core": "Scanner.invoke(check_clamav_signatures)",
+    "result_field": "data.signature_check",
+    "states": ["fresh", "stale", "unknown", "check_failed"],
+    "cli_exit_codes": {"fresh": 0, "stale_or_unknown_or_check_failed": 2},
+    "no_scan_root_required": true,
+    "mcp_annotations": {"readOnlyHint": true, "openWorldHint": false},
+    "update_performed": false
+  },
+  "behavior": {
+    "inspection": "Only the owner-configured clamscan --version; parses the existing local-time daily database stamp",
+    "freshness": "Exact age is compared to the configured maximum; exactly at the limit is fresh, one microsecond over is stale. Missing or future dates are unknown",
+    "scope": "A daily stamp does not verify the integrity or completeness of every database, update-service health, or PC safety",
+    "failure": "Missing/unstartable engine, invalid version response, timeout or cancellation returns check_failed with error and update guidance",
+    "pre_scan": "Normal, batch and resume malware scans inspect definitions before directory traversal; CLI stderr and MCP notifications carry summary and owner-managed update advice immediately",
+    "pre_scan_result": "Retained as data.signature_check including after ordinary ScannerError failures; existing per-target and batch-completion freshness checks are preserved",
+    "continuation": "Stale/unknown retains warnings and at least partial status; failed inspection prevents scanning",
+    "deadlines": "Standalone check uses min(configured timeout, 30 seconds). Pre-scan probe shares the scan deadline; immediate MCP advice delivery waits at most one second",
+    "updates": "No updater is executed. Advice points to the owner's configured official freshclam service or approved configuration and permissions, then rechecking. Permission failures require administrator action without automatic ownership/permission changes",
+    "batch_reuse": "Advice explains that real ClamAV stderr warnings about old definitions can prevent reuse",
+    "read_only": "Standalone checks perform no scan, network/release lookup, history or checkpoint write, database update or permission change",
+    "dependencies_locks_sbom_changed": false,
+    "official_update_procedure": "https://docs.clamav.net/manual/Usage/SignatureManagement.html"
+  },
+  "regression_tests": {
+    "new_tests": 15,
+    "coverage": [
+      "Standalone fresh status without scan roots or history writes",
+      "Stale advice is available before walking and retained in the final result",
+      "Exact expiry and one microsecond over",
+      "Missing and future dates stay unknown",
+      "Failed inspection is distinct and prevents walking",
+      "Only --version is executed, with bounded timeout and no release lookup",
+      "Pre-cancelled check never starts the engine",
+      "Post-advice scan errors retain the signature evidence",
+      "Unauthorized aliases are rejected before the engine starts",
+      "Real CLI command emits one JSON result and reports failed invalid-engine response",
+      "MCP tool works without roots and declares local read-only behavior",
+      "MCP pre-scan advice is delivered before directory traversal",
+      "An actual child process is stopped at the standalone check deadline",
+      "Probe and scan share one deadline with an actual timed-out engine child",
+      "Control characters in engine version are escaped before progress display"
+    ],
+    "existing_fixture_changes": "CLI and cloud-only MCP fixtures now supply a valid version response because pre-scan inspection occurs before traversal; tool-list expectations include the new tool"
+  },
+  "tests": {
+    "python_3_14_10": {"total": 386, "passed": 380, "failed": 0, "skipped": 6, "seconds": 29.657},
+    "python_3_15_2": {"total": 386, "passed": 380, "failed": 0, "skipped": 6, "seconds": 29.189},
+    "skip_reason": "Windows-only tests on this Mac",
+    "android_and_mcp_executed": true,
+    "npm_python_3_14": {"total": 26, "passed": 26, "failed": 0, "skipped": 0, "automatic_python_discovery": true, "hash_checked_install_required": true, "real_stdio_mcp_round_trip": true},
+    "npm_python_3_15": {"total": 26, "passed": 26, "failed": 0, "skipped": 0, "explicit_python_override": true, "real_stdio_mcp_round_trip": true},
+    "logs_directory": "/tmp/pc-scanner-signatures-20261027"
+  },
+  "actual_mac_read_only_probe": {
+    "engine": "ClamAV 1.5.4",
+    "definition_version": 28157,
+    "definition_built_at": "2026-10-18T06:24:14+00:00",
+    "freshness": "stale",
+    "cli_exit_code": 2,
+    "mcp_status": "partial",
+    "transport": "Real SDK client to CLI serve subprocess over stdio",
+    "definition_progress_message_observed": true,
+    "scan_root_configured": false,
+    "database_file_sizes_and_modification_times_unchanged": true,
+    "history_or_checkpoint_created": false,
+    "update_executed": false,
+    "personal_or_cloud_files_scanned": false,
+    "database_integrity_verified": false
+  },
+  "remaining": [
+    "Explicit MCP definition updating is not implemented; database destination and privilege policy still require a decision",
+    "Normal installed definitions are still old; this feature only reports and advises",
+    "Native Windows acceptance and Windows CI were not run here",
+    "Third-party MCP graphical client rendering was not manually checked"
+  ]
+}

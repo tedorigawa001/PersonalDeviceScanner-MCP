@@ -59,7 +59,10 @@ class ProgressTests(unittest.TestCase):
         config.write_text('[local]\nclamav_binary = ' + json.dumps(sys.executable)
                           + '\n[scan_roots]\ntest = ' + json.dumps(str(self.root))
                           + '\n[history]\nfile = ' + json.dumps(self.config["history"]["file"]) + '\n')
-        process = subprocess.run([sys.executable, "-m", "pc_scanner.cli", "--config", str(config),
+        bootstrap = ('from pc_scanner import core, cli; from datetime import datetime, timezone; '
+                     'core.clamav_signatures=lambda *a,**k: {"engine":"test", "version":1, '
+                     '"built_at":datetime.now(timezone.utc)}; cli.main()')
+        process = subprocess.run([sys.executable, "-c", bootstrap, "--config", str(config),
                                   "malware", "test", "--batch"], capture_output=True, text=True, timeout=15)
         report = json.loads(process.stdout)
         self.assertIn("pc-scanner progress: stage=", process.stderr)

@@ -64,7 +64,7 @@ def create_server(scanner: Scanner):
 
     async def run_engine(ctx: Context, operation: str, lock=engine_lock, **kwargs) -> dict:
         cancel = threading.Event()
-        progress = ScanProgress()
+        progress = ScanProgress(on_signature_check=lambda: anyio.from_thread.run(publish_signatures))
         scan_id = secrets.token_hex(8)
         progress.update(scan_id=scan_id)
         if len(recent_progress) >= MAX_PROGRESS_RECORDS:
@@ -81,6 +81,13 @@ def create_server(scanner: Scanner):
                 except Exception:
                     return False  # Progress delivery must not change the result or saved work.
             return True
+
+        async def publish_signatures():
+            # Send pre-scan advice before walking the root; do not block the worker on a slow client.
+            if cancel.is_set():
+                return
+            with anyio.move_on_after(1):
+                await publish()
 
         async with anyio.create_task_group() as group:
             group.start_soon(heartbeat, publish, progress)
@@ -136,6 +143,14 @@ def create_server(scanner: Scanner):
                                 offset: int = 0) -> dict:
         """Read fixed osquery query. Results come in pages of 500; pass next_offset to continue."""
         return await run_engine(ctx, "inventory", query_id=query_id, offset=offset)
+
+    @server.tool(annotations=local)
+    async def check_clamav_signatures(ctx: Context) -> dict:
+        """Read the configured ClamAV definition stamp, freshness and owner-managed freshclam update steps.
+        No root or file contents are inspected; no update, network lookup or history write is performed.
+        Freshness of the daily stamp does not verify database integrity or certify PC safety.
+        """
+        return await run_engine(ctx, "check_clamav_signatures")
 
     @server.tool(annotations=engine, description=(
         "Scan within an owner-authorized root with ClamAV. Never removes or quarantines. "

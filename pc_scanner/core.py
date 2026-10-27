@@ -50,7 +50,8 @@ NAME_CHARS, PATH_CHARS = 256, 1024
 SORT_VALUE_CHARS, CURSOR_CHARS = 4096, 65536
 # Far beyond any agent's inventory (500 records a page); keeps the page number in cursors bounded.
 MAX_PAGES = 1000000
-SOURCES = {"status": "bridge", "inventory": "osquery", "malware": "clamav", "vulnerabilities": "wazuh",
+SOURCES = {"status": "bridge", "inventory": "osquery", "malware": "clamav",
+           "check_clamav_signatures": "clamav", "vulnerabilities": "wazuh",
            "android": "adb", "android_check": "adb", "router_check": "router", "router_products": "router"}
 
 # OpenSSL's X509_V_ERR_HOSTNAME_MISMATCH and X509_V_ERR_IP_ADDRESS_MISMATCH.
@@ -849,27 +850,96 @@ class Scanner:
                       + page_warnings
                       + (["One page, engine warning, or no observable rows; coverage incomplete"] if partial else []))
 
+    def check_clamav_signatures(self, cancel: threading.Event | None = None,
+                               *, deadline: float | None = None, progress=None) -> dict:
+        """Inspect the configured engine's daily definition stamp; never run an updater."""
+        deadline = deadline if deadline is not None else time.monotonic() + min(self.timeout, 30)
+        if progress:
+            progress.set_deadline(deadline)
+            progress.update(stage="definitions", checkpoint="not_applicable")
+        info = {"engine": None, "version": None, "built_at": None, "age_days": None,
+                "max_age_days": self.max_signature_age, "freshness": "check_failed",
+                "checked_at": datetime.now(timezone.utc).isoformat(), "update_performed": False,
+                "update_steps": [
+                    "Use the owner's configured official freshclam update service, or run freshclam with "
+                    "the owner-approved configuration and permissions for the database clamscan actually uses.",
+                    "If permission is denied, ask the administrator to update it; do not change database "
+                    "ownership or permissions automatically. No update is run by this check.",
+                    "After updating, run CLI check-clamav-signatures or MCP check_clamav_signatures again. "
+                    "Old ClamAV stderr warnings can prevent batch result reuse until definitions are updated."]}
+        def shown(report):
+            if progress:
+                progress.signature_check(info)
+            return report
+
+        try:
+            check_cancel(cancel)
+            signatures = clamav_signatures(self.binary("clamav_binary"), deadline, self.limit, cancel)
+            check_cancel(cancel)
+            if signatures["engine"] is None:
+                raise ScannerError("ClamAV definition check failed; no valid version response")
+        except (ScannerError, OSError, ValueError, OverflowError) as exc:
+            return shown(result("clamav", "error", data={"signature_check": info},
+                          error=str(exc) if isinstance(exc, ScannerError) else
+                                "ClamAV definition check failed; check engine configuration and permissions",
+                          warnings=["Definitions were not verified; no update was run. Follow signature_check.update_steps"]))
+        info.update(engine=clean_text(signatures["engine"], 100), version=signatures["version"])
+        built = signatures["built_at"]
+        age = (datetime.now(timezone.utc) - built).total_seconds() if built else None
+        info.update(built_at=built.isoformat() if built else None,
+                    age_days=math.ceil(age / 8640) / 10 if age is not None else None,
+                    freshness="unknown" if age is None or age < 0 else
+                              "stale" if age > self.max_signature_age * 86400 else "fresh")
+        warnings = ([] if info["freshness"] == "fresh" else [
+            "Definitions are stale; update with the configured freshclam procedure before a reliable scan"
+            if info["freshness"] == "stale" else
+            "Definition date is unknown or in the future; check definitions and the system clock",
+            "No update was run. Follow signature_check.update_steps; scan coverage may remain partial"])
+        return shown(result("clamav", "completed" if info["freshness"] == "fresh" else "partial",
+                            data={"signature_check": info}, warnings=warnings))
+
     def malware(self, root_alias: str, relative_path: str = ".",
                 cancel: threading.Event | None = None, batch: bool = False, resume: bool = False,
                 progress=None) -> dict:
         if type(batch) is not bool or type(resume) is not bool:
             raise ScannerError("batch and resume must be true or false")
+        if root_alias not in self.roots:
+            raise ScannerError("Scan root alias is not authorized")
         deadline = time.monotonic() + self.timeout
         if progress:
             progress.set_deadline(deadline)
-        if batch or resume:
-            from .malware_batch import scan
-            return scan(self, root_alias, relative_path, resume, cancel, deadline, progress)
+            progress.update(stage="definitions")
+        initial = self.check_clamav_signatures(cancel, deadline=deadline)
+        info = initial["data"]["signature_check"]
         if progress:
-            progress.update(finished=0, pending=1, reused=0, checkpoint="not_applicable")
-        report = self._malware(root_alias, relative_path, cancel, deadline=deadline, progress=progress)
-        if (report.get("data", {}).get("split_required")
-                and any("command-size limit" in warning for warning in report["warnings"])):
-            from .malware_batch import scan
-            return scan(self, root_alias, relative_path, False, cancel, deadline, progress)
-        if progress:
-            progress.update(finished=1, pending=0)
-        return report
+            progress.signature_check(info)
+        if initial["status"] == "error":
+            return initial
+
+        def with_advice(report):
+            report.setdefault("data", {})["signature_check"] = info
+            report["warnings"] = initial["warnings"] + report["warnings"]
+            if initial["status"] == "partial" and report["status"] == "completed":
+                report["status"] = "partial"
+            return report
+
+        try:
+            if batch or resume:
+                from .malware_batch import scan
+                report = scan(self, root_alias, relative_path, resume, cancel, deadline, progress)
+            else:
+                if progress:
+                    progress.update(finished=0, pending=1, reused=0, checkpoint="not_applicable")
+                report = self._malware(root_alias, relative_path, cancel, deadline=deadline, progress=progress)
+                if (report.get("data", {}).get("split_required")
+                        and any("command-size limit" in warning for warning in report["warnings"])):
+                    from .malware_batch import scan
+                    report = scan(self, root_alias, relative_path, False, cancel, deadline, progress)
+                elif progress:
+                    progress.update(finished=1, pending=0)
+        except ScannerError as exc:
+            report = result("clamav", "error", error=str(exc))
+        return with_advice(report)
 
     def _malware(self, root_alias: str, relative_path: str = ".",
                  cancel: threading.Event | None = None, *, deadline: float | None = None,
@@ -1201,12 +1271,13 @@ class Scanner:
         operations = {"status": self.status, "inventory": self.inventory,
                       "malware": self.malware, "vulnerabilities": self.vulnerabilities,
                       "android": self.android_collect, "android_check": self.android_check,
-                      "router_check": self.router_check, "router_products": self.router_products}
+                      "router_check": self.router_check, "router_products": self.router_products,
+                      "check_clamav_signatures": self.check_clamav_signatures}
         source = SOURCES.get(operation, "bridge")
         started, clock = datetime.now(timezone.utc), time.perf_counter()
         if progress:
             progress.update(stage="preflight" if operation == "malware" else "running")
-            if operation == "malware":
+            if operation in {"malware", "check_clamav_signatures"}:
                 kwargs["progress"] = progress
             else:
                 progress.update(checkpoint="not_applicable")

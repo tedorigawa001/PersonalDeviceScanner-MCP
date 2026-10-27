@@ -1,6 +1,6 @@
 """Per-call, thread-safe progress. Counters describe parts, not an estimated percentage.
 
-No file names or engine output enter notifications. Saved counts change only after an
+No file names or raw engine output enter notifications. Saved counts change only after an
 atomic checkpoint write, independently of the number of parts observed in memory.
 """
 import threading
@@ -12,11 +12,12 @@ CLI_INTERVAL_SECONDS = 1.0
 
 
 class ScanProgress:
-    def __init__(self):
+    def __init__(self, on_signature_check=None):
         self._lock = threading.Lock()
         self._start = time.monotonic()
         self._end = None
         self._deadline = None
+        self._on_signature_check = on_signature_check
         self._state = {"stage": "waiting", "finished": None, "pending": None, "reused": None,
                        "checkpoint": "not_started", "saved_parts": None}
 
@@ -28,6 +29,14 @@ class ScanProgress:
     def set_deadline(self, deadline):
         with self._lock:
             self._deadline = deadline
+
+    def signature_check(self, info):
+        self.update(signature_check=info)
+        if self._on_signature_check:
+            try:
+                self._on_signature_check()
+            except Exception:
+                pass  # Advice delivery must not prevent scanning or checkpoint preservation.
 
     def finish(self, stage, cancel=None):
         with self._lock:
@@ -52,13 +61,22 @@ def message(state):
     return (f"stage={state['stage']} elapsed={state['elapsed_seconds']:.1f}s "
             f"finished={count('finished')} pending={count('pending')} reused={count('reused')} "
             f"checkpoint={state['checkpoint']} saved_parts={count('saved_parts')}"
-            + (f" scan_id={state['scan_id']}" if state.get("scan_id") else ""))
+            + (f" scan_id={state['scan_id']}" if state.get("scan_id") else "")
+            + signature_message(state.get("signature_check")))
+
+
+def signature_message(info):
+    if not info:
+        return ""
+    return (f" definitions={info['freshness']} engine={info['engine']} signature_version={info['version']} "
+            f"built_at={info['built_at']} age_days={info['age_days']} max_age_days={info['max_age_days']} "
+            "update=owner-configured_freshclam;ask_administrator_if_denied;recheck_after_update;no_update_run")
 
 
 class CLIProgress:
     """stderr only; Ctrl+C requests cancellation and lets the worker preserve its checkpoint."""
     def __init__(self):
-        self.progress = ScanProgress()
+        self.progress = ScanProgress(on_signature_check=self._write)
         self.cancel = threading.Event()
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._watch, daemon=True)

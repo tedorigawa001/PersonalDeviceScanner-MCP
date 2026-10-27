@@ -7,6 +7,7 @@ import tempfile
 import threading
 import time
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 
 class SlowScanner:
@@ -89,7 +90,7 @@ class MCPTests(unittest.TestCase):
         from pc_scanner.server import create_server
 
         async def exercise(root):
-            # A configured engine (never started here): an unconfigured one is a configuration error.
+            # Version is checked before traversal, but a cloud-only target never starts a scan.
             scanner = Scanner({"local": {"clamav_binary": sys.executable}, "scan_roots": {"test": str(root)}})
             async with create_connected_server_and_client_session(create_server(scanner)) as session:
                 reply = await session.call_tool("scan_malware", {"root_alias": "test", "relative_path": "remote.txt"})
@@ -103,7 +104,10 @@ class MCPTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "remote.txt").write_text("test")
-            with patch("pc_scanner.core.cloud_placeholder", return_value=True):
+            with patch("pc_scanner.core.cloud_placeholder", return_value=True), patch(
+                    "pc_scanner.core.clamav_signatures", return_value={
+                        "engine": "test", "version": 1, "built_at": datetime.now(timezone.utc)}), patch(
+                    "pc_scanner.core.run_bounded", side_effect=AssertionError("cloud target must not scan")):
                 asyncio.run(exercise(root))
 
     def test_stdio_round_trip(self):
@@ -118,7 +122,7 @@ class MCPTests(unittest.TestCase):
                     await session.initialize()
                     tools = {t.name: t for t in (await session.list_tools()).tools}
                     self.assertEqual(set(tools), {
-                    "scanner_status", "get_scan_progress", "collect_inventory", "scan_malware", "get_vulnerabilities",
+                    "scanner_status", "get_scan_progress", "check_clamav_signatures", "collect_inventory", "scan_malware", "get_vulnerabilities",
                         "collect_android", "check_android_monitoring_apps", "check_router"})
                     # No JVN lookup configured, so the router check stays on this PC.
                     self.assertFalse(tools["check_router"].annotations.openWorldHint)
