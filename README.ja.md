@@ -576,6 +576,8 @@ pc-scanner --config scanner.toml malware home --resume
 - `data.batch` に今回の終了対象数（`finished`）、残った対象数（`pending`）、再利用数（`reused`）を返します。
   所見とエンジン件数を今回の対象から集計し、過去の対象や再利用結果を二重計上しません。
   クラウド除外・権限不足・深さやファイルの制限などがあれば `partial` のままです。
+  以前の実行の所見は、その対象を再び検査するまで `"retained": true` を付けて残します。対象を検査できなくなった場合
+  （分割できないほど大きい・読めない・エンジンの失敗）も同じで、その対象は未確認として示します。
 - **チェックポイントは履歴と別に保存します。** 分割検査は `history.enabled=false`・`history.details=false` でも、
   再開に必要な相対ファイル名・所見を履歴の隣の `malware-checkpoints/` に保存します。通常の履歴要約には追加しません。
   macOS/Linuxではフォルダー0700・ファイル0600、Windowsでも所有者を確認し、ファイルのリンク・FIFO・ハードリンクを再開に使いません。

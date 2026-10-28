@@ -586,6 +586,8 @@ pc-scanner --config scanner.toml malware home --resume
   not an atomic snapshot or a fresh read of every file's contents.
 - `data.batch` reports finished, pending and reused parts. Findings and engine counts are aggregated without counting
   reused/deleted targets twice. Cloud exclusions, unreadable paths and other coverage limits keep the result `partial`.
+  A finding from an earlier run stays, marked `"retained": true`, until its part is scanned again, also when that part
+  can no longer be inspected (too large to divide, unreadable, engine failure); the part is then listed as unverified.
 - **Checkpoints are separate from history.** Even with `history.enabled=false` or `history.details=false`, batch scans
   save relative names and findings needed for resume in `malware-checkpoints/` beside the history file. These are not
   added to ordinary history summaries. POSIX folders/files use 0700/0600; Windows ownership is checked too. Linked,
