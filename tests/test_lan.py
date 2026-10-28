@@ -282,9 +282,15 @@ class LANTests(unittest.TestCase):
                     before = time.monotonic()
                     await session.send_notification(types.ClientNotification(types.CancelledNotification(
                         params=types.CancelledNotificationParams(requestId=request_id))))
-                self.assertTrue(stopped.is_set())
+                # The SDK answers "Request cancelled" at once; the worker notices on its next poll.
+                self.assertTrue(await anyio.to_thread.run_sync(stopped.wait, 1))
                 self.assertLess(time.monotonic() - before, 1)
-                progress = await session.call_tool("get_scan_progress", {})
+                with anyio.fail_after(3):
+                    while True:
+                        progress = await session.call_tool("get_scan_progress", {})
+                        if json.loads(progress.content[0].text)["data"]["stage"] == "cancelled":
+                            break
+                        await anyio.sleep(0.01)
                 text = progress.content[0].text
                 self.assertNotIn("Secret", text)
                 self.assertNotIn("192.168.10.2", text)
