@@ -36,20 +36,20 @@ MAX_LIMIT = 1000
 # Far above any real count, offset or page number, and far below the 4,300 digits Python refuses to print.
 NUMBER_LIMIT = 10 ** 9
 ERROR_CHARS = 500
-OPERATIONS = {"inventory", "malware", "vulnerabilities", "android", "android_check", "router_check"}
+OPERATIONS = {"inventory", "malware", "vulnerabilities", "android", "android_check", "router_check", "discover_lan_devices"}
 SEVERITIES = ("critical", "high", "medium", "low", "unknown")
 # What identifies the target. The Wazuh cursor names records, so only whether one was passed and the
 # page it leads to are kept.
 TARGETS = {"inventory": ("query_id", "offset"), "malware": ("root_alias", "relative_path"),
            "android": ("device_alias", "query_id"), "android_check": ("device_alias",),
-           "router_check": ("router_alias",)}
+           "router_check": ("router_alias",), "discover_lan_devices": ("network_alias",)}
 # Where a paged result says that another page can be fetched.
 NEXT_PAGE = {"inventory": "next_offset", "vulnerabilities": "next_cursor"}
 # Which scan found it, for the history command and the dashboard. The router check matches JVN iPedia and
 # CISA KEV and reviews the settings the owner answered. It follows from the operation, so it is not recorded.
 SOURCES = {"vulnerabilities": "Wazuh", "malware": "ClamAV", "android": "Android (adb)",
            "android_check": "Android (adb)", "router_check": "Router check (JVN, KEV, settings)",
-           "inventory": "osquery"}
+           "inventory": "osquery", "discover_lan_devices": "LAN discovery"}
 # A link is refused, so a history file in a shared folder cannot be pointed at another file.
 NO_FOLLOW = getattr(os, "O_NOFOLLOW", 0)
 # Opening a FIFO put in its place fails or returns at once instead of holding up the scan; regular files ignore it.
@@ -246,6 +246,7 @@ def coverage_fields(data) -> dict:
 
 
 def entry(operation: str, arguments: dict, report: dict, started: datetime, seconds: float, via: str) -> dict:
+    from . import lan
     target = {}
     if operation == "vulnerabilities":
         target["continued"] = bool(arguments.get("cursor"))
@@ -271,7 +272,8 @@ def entry(operation: str, arguments: dict, report: dict, started: datetime, seco
             "findings": findings, "warnings": len(report["warnings"]), **more,
             **({"error": clean_text(report["error"], ERROR_CHARS)} if report.get("error") else {}),
             **(freshness_fields(data) if operation == 'vulnerabilities' else {}),
-            **(coverage_fields(data) if operation == 'malware' else {})}
+            **(coverage_fields(data) if operation == 'malware' else {}),
+            **(lan.summary(data) if operation == 'discover_lan_devices' else {})}
 
 
 def save_details(path: Path, report: dict, max_bytes: int) -> str:
@@ -389,6 +391,7 @@ def text(value, limit: int = NAME_CHARS) -> str:
 def parse(line: str) -> dict | None:
     """One recorded scan, checked and cleaned again: the file may have been edited or damaged."""
     try:
+        from . import lan
         record = json.loads(line)
         started = datetime.fromisoformat(record["started_at"])
         started.astimezone()  # a time that cannot be shown here is a damaged line
@@ -410,7 +413,8 @@ def parse(line: str) -> dict | None:
                 "more": more if isinstance(more, bool) else None,
                 "details": details if isinstance(details, str) and DETAILS_ID.fullmatch(details) else None,
                 **(freshness_fields(record) if record.get('operation') == 'vulnerabilities' else {}),
-                **(coverage_fields(record) if record.get('operation') == 'malware' else {})}
+                **(coverage_fields(record) if record.get('operation') == 'malware' else {}),
+                **(lan.summary(record) if record.get('operation') == 'discover_lan_devices' else {})}
     except (ValueError, TypeError, KeyError, AttributeError, RecursionError, OverflowError):
         return None
 

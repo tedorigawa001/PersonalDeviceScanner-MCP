@@ -52,7 +52,8 @@ SORT_VALUE_CHARS, CURSOR_CHARS = 4096, 65536
 MAX_PAGES = 1000000
 SOURCES = {"status": "bridge", "inventory": "osquery", "malware": "clamav",
            "check_clamav_signatures": "clamav", "vulnerabilities": "wazuh",
-           "android": "adb", "android_check": "adb", "router_check": "router", "router_products": "router"}
+           "android": "adb", "android_check": "adb", "router_check": "router", "router_products": "router",
+           "discover_lan_devices": "lan"}
 
 # OpenSSL's X509_V_ERR_HOSTNAME_MISMATCH and X509_V_ERR_IP_ADDRESS_MISMATCH.
 WRONG_HOST = {62: "Hostname mismatch: the certificate is not for the host in wazuh.url",
@@ -270,7 +271,9 @@ SETTINGS = {"local": {"osquery_binary", "clamav_binary", "timeout_seconds", "max
             "history": {"enabled", "file", "details", "details_max_mb"},
             "router": {"jvn_lookup", "kev_file", "max_kev_age_days", "max_check_age_days"},
             "routers": None,
-            "updates": {"lookup"}}
+            "updates": {"lookup"},
+            "lan": {"enabled", "timeout_seconds", "max_devices", "expose_identifiers_to_mcp"},
+            "lan_networks": None}
 
 
 def unknown_settings(config: dict) -> list[str]:
@@ -288,7 +291,8 @@ def unknown_settings(config: dict) -> list[str]:
     for section in config:
         if section not in SETTINGS:
             # A key outside its section is a likely slip too, so every known name is a candidate.
-            warn(section, did_you_mean(section, everywhere))
+            hint = f"did you mean 'local.{section}'?" if section in SETTINGS["local"] else did_you_mean(section, everywhere)
+            warn(section, hint)
     for section, keys in SETTINGS.items():
         for key in config.get(section, {}) if keys is not None else ():
             if key in keys:
@@ -674,7 +678,7 @@ class Scanner:
         self.update_settings = config.get("updates", {})
         if not all(isinstance(v, dict) for v in (self.local, self.roots, self.wazuh, self.android,
                                                   self.android_devices, self.history_settings,
-                                                  self.update_settings)):
+                                                  self.update_settings, config.get("lan", {}), config.get("lan_networks", {}))):
             raise ScannerError("Configuration sections must be tables")
         self.config_warnings = unknown_settings(config)
         from . import freshness
@@ -742,6 +746,9 @@ class Scanner:
         from . import router
         self.router_settings, self.routers, router_warnings = router.load(config)
         self.config_warnings += router_warnings
+        from . import lan
+        self.lan_settings, self.lan_networks, lan_warnings = lan.load(config)
+        self.config_warnings += lan_warnings
         # Set by the CLI ("cli") or the MCP server ("mcp"); scans are recorded only then.
         self.via = None
         ca_file = self.wazuh.get("ca_file", "")
@@ -804,6 +811,9 @@ class Scanner:
             "scan_root_aliases": list(self.roots),
             "android_device_aliases": list(self.android_devices),
             "router_aliases": list(self.routers),
+            "lan_enabled": self.lan_settings["enabled"],
+            "lan_network_aliases": list(self.lan_networks),
+            "lan_mcp_disclosure": self.lan_settings["expose_identifiers_to_mcp"],
             "router_jvn_lookup": self.router_settings["jvn_lookup"],
             "router_kev_configured": bool(self.router_settings["kev_file"]),
             "update_lookup": self.update_lookup,
@@ -1342,17 +1352,22 @@ class Scanner:
         from . import router
         return router.products(self, maker, keyword, cancel)
 
+    def discover_lan_devices(self, network_alias: str, cancel=None, progress=None) -> dict:
+        from . import lan
+        return lan.discover(self, network_alias, cancel, progress)
+
     def invoke(self, operation: str, progress=None, **kwargs) -> dict:
         operations = {"status": self.status, "inventory": self.inventory,
                       "malware": self.malware, "vulnerabilities": self.vulnerabilities,
                       "android": self.android_collect, "android_check": self.android_check,
                       "router_check": self.router_check, "router_products": self.router_products,
-                      "check_clamav_signatures": self.check_clamav_signatures}
+                      "check_clamav_signatures": self.check_clamav_signatures,
+                      "discover_lan_devices": self.discover_lan_devices}
         source = SOURCES.get(operation, "bridge")
         started, clock = datetime.now(timezone.utc), time.perf_counter()
         if progress:
             progress.update(stage="preflight" if operation == "malware" else "running")
-            if operation in {"malware", "check_clamav_signatures"}:
+            if operation in {"malware", "check_clamav_signatures", "discover_lan_devices"}:
                 kwargs["progress"] = progress
             else:
                 progress.update(checkpoint="not_applicable")
@@ -1369,10 +1384,10 @@ class Scanner:
             report = result(source, "error",
                             error=f"Unexpected internal error ({type(exc).__name__}); the operation was not completed")
         if self.update_lookup and report["status"] != "error":
-            if progress:
-                progress.update(stage="updates")
             from . import updates
             if operation in updates.ENGINES:
+                if progress:
+                    progress.update(stage="updates")
                 try:
                     updates.check(self, operation, report, kwargs.get("cancel"))
                 except Exception:
@@ -1385,6 +1400,8 @@ class Scanner:
             from . import history
             if operation in history.OPERATIONS:
                 try:
+                    if operation == "discover_lan_devices" and progress:
+                        progress.update(stage="saving")
                     history.append(self.history_path(), history.entry(
                         operation, kwargs, report, started, time.perf_counter() - clock, self.via),
                         report if self.history_details else None, self.history_details_mb * 1024 * 1024)

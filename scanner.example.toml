@@ -32,6 +32,23 @@ lookup = false
 # Explicitly grant scan access. Example: downloads = '/Users/you/Downloads'
 [scan_roots]
 
+# Optional LAN observations. Only the owner configures authorized ranges.
+[lan]
+enabled = false
+timeout_seconds = 15
+max_devices = 256
+# Results contain IPs, MACs and names which may reach the AI provider.
+expose_identifiers_to_mcp = false
+
+# One physical connection; Windows uses an adapter InterfaceGuid instead of en0.
+# CIDRs must be private and on-link. DHCP changes require updating expected local IPs.
+# [lan_networks.home]
+# interface = "en0"
+# local_addresses = ["192.168.10.20"]
+# cidrs = ["192.168.10.0/24"]
+# neighbor_cache = true
+# mdns = false # true allows multicast to the entire selected link, not just this CIDR
+
 [wazuh]
 # Existing Wazuh indexer, NOT the manager API on port 55000.
 url = ""

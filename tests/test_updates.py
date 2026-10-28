@@ -583,8 +583,8 @@ class UpdateTests(unittest.TestCase):
                 return {t.name: t.annotations.openWorldHint for t in (await session.list_tools()).tools}
 
         on, off = asyncio.run(hints(self.scanner())), asyncio.run(hints(self.scanner(lookup=False)))
-        self.assertEqual({name for name, hint in on.items() if hint}, engines | {"get_vulnerabilities"})
-        self.assertEqual({name for name, hint in off.items() if hint}, {"get_vulnerabilities"})
+        self.assertEqual({name for name, hint in on.items() if hint}, engines | {"get_vulnerabilities", "discover_lan_devices"})
+        self.assertEqual({name for name, hint in off.items() if hint}, {"get_vulnerabilities", "discover_lan_devices"})
 
 
 if __name__ == "__main__":

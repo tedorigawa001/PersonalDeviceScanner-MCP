@@ -123,7 +123,7 @@ class MCPTests(unittest.TestCase):
                     tools = {t.name: t for t in (await session.list_tools()).tools}
                     self.assertEqual(set(tools), {
                     "scanner_status", "get_scan_progress", "check_clamav_signatures", "collect_inventory", "scan_malware", "get_vulnerabilities",
-                    "list_malware_gaps", "rescan_malware_targets",
+                    "list_malware_gaps", "rescan_malware_targets", "discover_lan_devices",
                         "collect_android", "check_android_monitoring_apps", "check_router"})
                     # No JVN lookup configured, so the router check stays on this PC.
                     self.assertFalse(tools["check_router"].annotations.openWorldHint)

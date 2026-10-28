@@ -1,6 +1,7 @@
 # 家庭LAN内のデバイス検出（第1段階）の設計
 
-状態：設計案（2026-10-28）。実装・LANへの問い合わせ・実機受入は未実施。
+状態：第1段階のコードと自動検証を追加（2026-10-28）。家庭LANへの問い合わせ・実LAN受入は未実施。
+自動検証と残る受入は[検証記録](acceptance/lan-discovery-2026-10-28.json)を参照。
 所有者が許可した家庭LANについて、ARP・IPv6近隣キャッシュとmDNS/DNS-SDの観測を一覧にする。
 CLI・MCPで取得し、所有者が保存を許可した結果を静的ダッシュボードで確認する。
 
@@ -22,7 +23,7 @@ Android端末からのLAN探索も対象外。実行ホストのWindows・macOS�
 LAN内にも第三者の機器がありうるため、本人が管理し、探索を許可できるネットワークだけを登録する。
 
 ```toml
-# 将来の設定案。現行のscanner.tomlにはまだ追加しない。
+# 設定例。実環境の値は所有者が記入する。既定では無効。
 [lan]
 enabled = false
 timeout_seconds = 15             # 全手段を共有する上限。1..30秒
@@ -214,9 +215,39 @@ Dockerは解析・集約の試験に使えるが、家庭LANのマルチキャ�
 
 ## 根拠と残る制約
 
+### 実装で確定したこと（2026-10-28）
+
+- `lan.py`が許可・集約、`lan_os.py`がOS観測、`lan_mdns.py`がDNS-SD探索、
+  `lan_windows.py`が同期`WSARecvMsg`を担当する。依存追加なし、ロック・SBOM・第三者表示は変更しない。
+- LGPLライブラリは採用せず、標準ライブラリの同期UDP・厳格なDNSパーサーを選択した。
+  TXT・CNAME・外部DNSは扱わず、PTR→SRV→A/AAAAの関連だけを採用する。DNS圧縮は後方参照・32段・名前長で制限する。
+  観測窓は最大5秒、全体上限から最終許可確認用の1秒を残す。質問は各IP系統で1回だけ送り、背景スレッド・自動再送を使わない。
+- macOSは数値コマンド、Linuxは固定絶対パスの`ip -j`とsysfs、Windowsは固定の非対話PowerShellで
+  GUID・物理属性・アドレス・経路・近隣を取得する。WindowsのIP Helper API直接呼び出し案から変更し、設定値をスクリプトへ補間しない。
+- mDNSは5353番のマルチキャスト方式を実装した。一時ポートQU方式との比較と、既存の応答器とのポート共有の実測は未実施。
+  共有できなければ通信を続けず、その手段の失敗として返す。家庭LANへの問い合わせは実機受入で別途許可を得て行う。
+- 各OSの受信接続・TTL/hop limit=255を検証する。このMacではループバックUDPで接続・TTLの実取得を確認。
+  ソケットで指定・取得できなければ閉じ、全接続方式へ切り替えない。
+- 応答を検証できない場合は`receive_unverified`、OSの権限拒否は`blocked`。無受信だけでは`no_responses`にしない。
+  ファイアウォール・macOSの許可画面の実測は未実施で、静かなLANと受信遮断の完全な判別は保証しない。
+- 同時実行の制限はプロセス内。MCPでは即時busyだが、別CLIプロセスを横断する制限は設けていない。
+- 未解決等の近隣行は除外するが、その除外理由のOS横断での件数集計は未対応。
+  methodsの観測件数は取得行数であり、許可範囲・重複を整理したdevice_countとは異なる。
+- 実LAN、複数接続/VPN、各OSの権限と切断、実ブラウザーでの表示・開閉は受入が残る。
+  自動試験の完了と各OS受入全体の完了を区別する。
+- 実装のレビュー（2026-10-28）で、受入で確かめる2点を加えた（いずれも未確認で、欠陥とは判断していない）。
+  - Windows：mDNSの観測窓（最大5秒）の間、接続変更の確認が約0.5秒ごとに`Get-NetNeighbor`を含むPowerShellの取得全体を
+    実行する。1回あたり1秒前後かかると、その間は受信を読まないため、応答を取りこぼしうる。所要時間と受信への影響を測り、
+    必要なら接続・アドレス・経路だけの軽い確認に分ける。
+  - macOS：ローカルネットワークの許可が拒否された場合、送信は権限エラー（`PermissionError`）ではなく
+    「No route to host」（`EHOSTUNREACH`）で失敗する可能性がある。その場合は`blocked`ではなく`mdns_failed`となり、
+    「OSがLANへのアクセスを拒否した」案内も出ない。実際の失敗の仕方を確かめ、該当すれば`blocked`として扱う。
+
 - [RFC 6762: Multicast DNS](https://www.rfc-editor.org/rfc/rfc6762)：ローカルリンクの名前解決・マルチキャストとTTLの扱い。
   one-shot問い合わせ（5.1）とQUビット（5.4）。
 - [RFC 6763: DNS-Based Service Discovery](https://www.rfc-editor.org/rfc/rfc6763)：PTR/SRV/TXTを使うサービス探索。
+- [Microsoft: IPPROTO_IP socket options](https://learn.microsoft.com/en-us/windows/win32/winsock/ipproto-ip-socket-options)：接続指定とパケット情報。
+- [Microsoft: WSARecvMsg](https://learn.microsoft.com/en-us/windows/win32/api/mswsock/nc-mswsock-lpfn_wsarecvmsg)：同期UDP受信と制御情報。
 - [Apple TN3179: Understanding local network privacy](https://developer.apple.com/documentation/technotes/tn3179-understanding-local-network-privacy)：
   macOSのローカルネットワークのプライバシー設定。本文は2026-10-28の時点で確認できておらず、適用範囲は試作で確かめる。
 

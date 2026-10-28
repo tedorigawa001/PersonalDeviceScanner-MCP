@@ -347,6 +347,53 @@ USB ケーブルでこの PC につないだ**自分の** Android スマート�
 - 結果が `completed` になるのは、JVN と KEV の両方を全件照合でき、設定がすべて回答済みで、確かめた日が新しい
   （`router.max_check_age_days`、既定180日）ときだけです。
 
+### 家庭LANのデバイスを観測する
+
+`lan-devices`で既存のARP・IPv6近隣キャッシュと、許可したmDNS/DNS-SD広告を読みます。
+IPの総当たり、ポートへの接続、ルーターへのログイン、脆弱性検査は行いません。管理・探索を許可できる家庭LANだけを登録してください。
+
+```toml
+[lan]
+enabled = true
+timeout_seconds = 15
+max_devices = 256
+expose_identifiers_to_mcp = false
+
+[lan_networks.home]
+interface = "en0"
+local_addresses = ["192.168.10.20"]
+cidrs = ["192.168.10.0/24"]
+neighbor_cache = true
+mdns = false
+```
+
+接続名・その接続に期待するIP・許可するオンリンクCIDRは所有者が実環境に合わせて記入します。
+Windowsはアダプターの `InterfaceGuid`、Linuxはシステムの `ip` コマンドを使用します。
+IPv4プライベート範囲と明示したIPv6のULA・リンクローカルに対応し、グローバルIPv6は対象外です。
+知らないネットワーク設定キーはエラーにします。DHCPで期待IPが変わったら設定を更新してください。
+同じIP構成の別のWi-Fiは識別できないため、実行場所を確認してください。
+
+```sh
+pc-scanner --config scanner.toml lan-devices home
+pc-scanner --config scanner.toml lan-devices home --json
+pc-scanner --config scanner.toml dashboard
+```
+
+`mdns=true`は選択した接続の**リンク全体**への問い合わせを許可します。CIDRは採用する結果を制限しますが、
+問い合わせが届く相手は制限できません。全体の1〜30秒の上限内で最大5秒観測します。
+接続・IPの変更、上限到達、取消は停止して既取得分を `partial` にし、既定接続・VPN・外部DNSへ切り替えません。
+必要なOS機能が使えなければ通信せず失敗します。Windows/Linuxの実LAN受入は未実施です。
+受信を検証できなければ `receive_unverified`、OSの権限拒否は `blocked` とし、「応答なし」と断定しません。
+5353番の共有・ファイアウォール・ローカルネットワーク許可の実測は受入が残ります。
+
+MCPの `discover_lan_devices(network_alias)` は、所有者が `lan.expose_identifiers_to_mcp=true` にしたときだけ実行できます。
+結果のIP・MAC・申告名・サービスはクライアントからAI提供元へ送られる可能性があります。
+外部メーカー照会・エンジン更新照会はせず、進捗は段階・経過時間・件数だけです。Ctrl+C/MCP取消で通信資源を閉じます。
+ダッシュボードはLANごとの最新観測とサービスの開閉を独立表示し、IP・広告ポートはリンク化せず、脆弱性の円グラフにも加算しません。
+通常履歴は件数・手段・制約コードだけです。機器表には `history.details=true` が必要で、
+`history.enabled=false`なら結果を永続保存しません。スリープ中・分離された機器などを見逃し、実際の最終通信時刻は不明です。
+詳しくは[設計書・受入計画](docs/lan-discovery-design.md)を参照してください。
+
 ### エンジンの更新を確かめる場合
 
 このツールがエンジンを更新することはありませんが、古くなっていれば知らせることはできます。設定ファイルで有効にします。

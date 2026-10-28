@@ -348,6 +348,54 @@ against published vulnerabilities and public guidance. The design is in [docs/ro
 - The result is `completed` only when JVN and KEV were both matched in full, every setting was answered, and the
   answers are recent (`router.max_check_age_days`, default 180).
 
+### Observing devices on your home LAN
+
+`lan-devices` reads the existing ARP/IPv6 neighbor cache and optionally browses mDNS/DNS-SD advertisements.
+It never probes hosts, connects to advertised ports, logs in to routers, or performs vulnerability checks.
+Only register networks you own or have permission to inspect; observations are not all devices or proof of online status.
+
+```toml
+[lan]
+enabled = true
+timeout_seconds = 15
+max_devices = 256
+expose_identifiers_to_mcp = false
+
+[lan_networks.home]
+interface = "en0"
+local_addresses = ["192.168.10.20"]
+cidrs = ["192.168.10.0/24"]
+neighbor_cache = true
+mdns = false
+```
+
+Set your actual physical interface, expected local IPs and canonical on-link CIDRs yourself. Windows uses its adapter
+`InterfaceGuid`; Linux needs the system `ip` command. Only RFC1918 IPv4, IPv6 ULA and explicitly authorized link-local
+ranges are supported. Public IPv6 is excluded. Unknown network keys fail closed; DHCP address changes require updating
+the expected IP. Matching IP configuration cannot distinguish two Wi-Fi networks: verify where you are connected.
+
+```sh
+pc-scanner --config scanner.toml lan-devices home
+pc-scanner --config scanner.toml lan-devices home --json
+pc-scanner --config scanner.toml dashboard
+```
+
+`mdns=true` allows multicast to the **entire selected link**; CIDRs filter adopted results, not query delivery.
+Collection lasts at most five seconds within the overall 1–30 second budget. Interface/address changes, limits or
+cancellation return partial evidence. The operation never falls back to a default/VPN connection or external DNS.
+Unsupported OS facilities fail closed. Native Windows/Linux LAN acceptance is still pending.
+No validated mDNS reception is reported as `receive_unverified`, not proof of no responses; OS permission denial is `blocked`.
+Port 5353 sharing and firewall/local-network permission behavior still require native LAN acceptance.
+
+MCP exposes `discover_lan_devices(network_alias)` only with owner-enabled `lan.expose_identifiers_to_mcp=true`.
+Results include IPs, MACs, self-reported names and services which the client may send to its AI provider. No external
+vendor or engine-release lookup runs. Progress has stages, elapsed time and counts only; Ctrl+C/MCP cancellation closes resources.
+The dashboard has a separate latest-observation list with service details and plain-text addresses, not service links.
+Devices do not enter the vulnerability chart. Normal history contains counts and method/limitation codes only;
+device tables require `history.details=true`. `history.enabled=false` prevents persistent results.
+Sleeping, isolated and silent devices may be absent; actual cache age/last communication is unknown.
+See the [design and acceptance plan](docs/lan-discovery-design.md).
+
 ### Checking for engine updates
 
 The scanner never updates an engine itself, but it can tell you when one is out of date. Turn it on in the configuration file:
@@ -401,6 +449,10 @@ Then every inventory, malware and Android scan reads its engine's version (`osqu
   ```
 
 ## Configuration reference
+
+LAN: `lan.enabled=false`, `lan.timeout_seconds=15` (1–30), `lan.max_devices=256` (1–512),
+`lan.expose_identifiers_to_mcp=false`. Each `lan_networks.<alias>` requires `interface`, `local_addresses` and `cidrs`,
+with `neighbor_cache=true` and `mdns=false` by default. See the LAN example above.
 
 | Setting | Description | Default |
 |---|---|---|

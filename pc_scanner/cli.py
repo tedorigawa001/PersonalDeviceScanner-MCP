@@ -59,6 +59,9 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("status")
     commands.add_parser("check-clamav-signatures", help="read definition freshness and update steps; never updates")
+    lan_devices = commands.add_parser("lan-devices", help="observe devices on an owner-authorized LAN; names, IPs and MACs are included")
+    lan_devices.add_argument("network_alias")
+    lan_devices.add_argument("--json", action="store_true", help="print the complete LAN observations")
     inventory = commands.add_parser("inventory")
     inventory.add_argument("query_id", choices=["os_version", "applications", "listening_ports"])
     inventory.add_argument("--offset", type=int, default=0, help="continue from data.next_offset")
@@ -140,11 +143,11 @@ def main():
                 return
         elif args.command != "malware-gaps":
             scanner.via = "cli"
-            kwargs = {k: v for k, v in vars(args).items() if k not in {"config", "command"}}
-            if args.command in {"malware", "check-clamav-signatures"}:
+            kwargs = {k: v for k, v in vars(args).items() if k not in {"config", "command", "json"}}
+            if args.command in {"malware", "check-clamav-signatures", "lan-devices"}:
                 from .progress import CLIProgress
                 with CLIProgress() as display:
-                    report = scanner.invoke(args.command.replace("-", "_"),
+                    report = scanner.invoke("discover_lan_devices" if args.command == "lan-devices" else args.command.replace("-", "_"),
                                             progress=display.progress, cancel=display.cancel, **kwargs)
             else:
                 report = scanner.invoke(args.command.replace("-", "_"), **kwargs)
@@ -156,7 +159,21 @@ def main():
         # Exit 2 ("not completed"), never 1, which means "completed with findings".
         report = result("bridge", "error",
                         error=f"Unexpected internal error ({type(exc).__name__}); the operation was not completed")
-    print(json.dumps(report, ensure_ascii=False, indent=2))
+    if args.command == "lan-devices" and not args.json:
+        print("Observed LAN devices (not all devices; cached records do not prove online status)")
+        print("IP / scope\tNames\tMAC\tMethods / states\tAdvertised services (not probed)")
+        for row in report.get("data", {}).get("devices", []):
+            print("\t".join([", ".join(a["ip"] + ("%" + a["scope"] if a["scope"] else "") for a in row["addresses"]),
+                ", ".join(row["names"]) or "unknown", row["mac"] or "unknown", ", ".join(row["methods"]) + " / " +
+                ", ".join(str(e["state"]) for e in row["evidence"]),
+                ", ".join(s["type"] + ":" + str(s["port"]) for s in row["services"]) or "none observed"]))
+        print("Status:", report["status"], "Observed records:", report.get("data", {}).get("device_count", "unknown"))
+        print("Methods:", ", ".join(k + "=" + v["status"] for k, v in report.get("data", {}).get("methods", {}).items()))
+        print("Limitations:", ", ".join(report.get("data", {}).get("limitations", [])))
+        for warning in report["warnings"] + ([report["error"]] if report.get("error") else []):
+            print("pc-scanner: " + warning, file=sys.stderr)
+    else:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
     if report["status"] in {"partial", "error"}:
         raise SystemExit(2)
     if report["findings"]:

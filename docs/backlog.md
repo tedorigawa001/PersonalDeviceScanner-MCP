@@ -86,7 +86,13 @@
 ## 中
 
 - [ ] **家庭LAN内のデバイス検出を追加する**（2026-10-28）
-  - [第1段階の設計書](lan-discovery-design.md)を作成。設計のみで、実装・LAN探索・実機受入は未実施。
+  - [第1段階の設計書](lan-discovery-design.md)に沿ってCLI・MCP・ダッシュボードのコードと自動試験を追加（2026-10-28）。家庭LAN探索・実LAN受入は未実施。
+    `lan-devices <alias> [--json]` / `discover_lan_devices(network_alias)`。許可設定とMCP提供許可は既定無効。
+    標準ライブラリの同期UDPで最大5秒、接続・送受信数・受信量を制限。無受信はreceive_unverified、権限拒否はblockedと区別する。
+    一時ポートQU方式との比較・5353番の共有・各OSの権限/VPN/切断・実ブラウザー操作は受入が残る。
+    [検証記録](acceptance/lan-discovery-2026-10-28.json)：LAN回帰35件中34件成功・Windowsネイティブ1件skip。
+    Python 3.14/3.15は各464件中457件成功・Windows専用7件skip、npmは各26件すべて成功。
+    このMacのループバックで受信接続・TTLを確認。実LAN・Windows CIは未実施で、項目全体は未完了のままとする。
   - 所有者が登録した接続・ローカルIP・CIDRに限り、ARP/IPv6近隣キャッシュと明示許可したmDNSを使う。
     mDNSは同じリンク全体へ届くためCIDRで送信範囲を狭められないことを明記。VPN・別接続・外部DNSへの切り替えを禁止する。
   - CLI・MCPで観測一覧を取得し、詳細保存を許可した場合だけダッシュボードに機器表を表示する。

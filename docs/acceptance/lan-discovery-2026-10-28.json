@@ -1,0 +1,132 @@
+{
+  "recorded_at": "2026-10-28T12:54:14.329669+00:00",
+  "scope": "LAN discovery implementation and automated verification; no household LAN acceptance",
+  "base_commit": "e7483a8def0fe98d9f5d932715d667cf9db2065c",
+  "environment": {
+    "os": "macOS-27.2-arm64-arm-64bit-Mach-O",
+    "architecture": "arm64",
+    "python": [
+      "3.14.10",
+      "3.15.2"
+    ],
+    "mcp_sdk": "1.30.0",
+    "node": "26.12.1"
+  },
+  "implementation": {
+    "cli": "lan-devices <network_alias> [--json]",
+    "mcp": "discover_lan_devices(network_alias)",
+    "dashboard": "Separate latest LAN observations and expandable advertised services",
+    "defaults": "disabled; MCP identifier disclosure separately disabled",
+    "dependencies_added": false,
+    "mdns_transport": "Bounded synchronous multicast UDP on port 5353; per-packet receive interface and TTL/hop-limit verification; IPv6 source pinned with packet metadata",
+    "platforms": "macOS numeric commands, Linux ip -j/sysfs, Windows fixed PowerShell and WSARecvMsg/WSASendMsg",
+    "network_effects_in_this_verification": "Synthetic packets and loopback UDP only; npm E2E uses its normal dependency installation and MCP harness; no household LAN discovery was invoked"
+  },
+  "verification": {
+    "python314": {
+      "total": 464,
+      "passed": 457,
+      "skipped": 7,
+      "failed": 0,
+      "seconds": 30.388,
+      "log": "/tmp/pc-scanner-lan-20261028/python314.log"
+    },
+    "python315": {
+      "total": 464,
+      "passed": 457,
+      "skipped": 7,
+      "failed": 0,
+      "seconds": 30.047,
+      "log": "/tmp/pc-scanner-lan-20261028/python315.log"
+    },
+    "npm314": {
+      "total": 26,
+      "passed": 26,
+      "skipped": 0,
+      "failed": 0,
+      "real_stdio_mcp": true,
+      "hash_required": true,
+      "log": "/tmp/pc-scanner-lan-20261028/npm314.log"
+    },
+    "npm315": {
+      "total": 26,
+      "passed": 26,
+      "skipped": 0,
+      "failed": 0,
+      "real_stdio_mcp": true,
+      "hash_required": false,
+      "log": "/tmp/pc-scanner-lan-20261028/npm315.log"
+    }
+  },
+  "lan_regression": {
+    "total": 35,
+    "passed_on_mac": 34,
+    "skipped_native_windows": 1,
+    "cases": [
+      "test_disabled_and_unknown_alias_never_read_the_network",
+      "test_cache_filters_scope_and_merges_evidence_without_claiming_online",
+      "test_invalid_or_expanded_authorization_is_rejected",
+      "test_misspelled_network_permission_key_is_not_ignored",
+      "test_interface_or_address_mismatch_fails_before_reading_cache_or_mdns",
+      "test_network_change_keeps_observations_partial",
+      "test_empty_cache_does_not_claim_no_devices_or_safety",
+      "test_same_name_is_not_identity_and_conflicting_macs_are_visible",
+      "test_limit_exact_and_one_over_are_distinguished",
+      "test_multicast_and_zero_mac_are_not_devices",
+      "test_cancellation_and_busy_do_not_start_readers",
+      "test_partial_mdns_evidence_survives_cancel",
+      "test_unverified_reception_and_permission_denial_are_not_no_responses",
+      "test_mcp_disclosure_is_separate_from_local_authorization",
+      "test_history_and_dashboard_keep_identifiers_only_in_opted_in_details",
+      "test_history_disabled_does_not_write_and_updates_lookup_does_not_call_out",
+      "test_darwin_numeric_formats_and_interface_filter",
+      "test_linux_and_windows_backends_filter_and_validate_os_facts",
+      "test_secondary_self_addresses_are_not_listed",
+      "test_real_cli_rejects_disabled_lan_without_network_access",
+      "test_real_mcp_schema_disclosure_gate_and_result",
+      "test_real_mcp_busy_cancel_and_progress_do_not_expose_identifiers",
+      "test_related_records_resolve_service_and_ignore_txt_and_unrelated_addresses",
+      "test_ttl_expiry_and_goodbye_remove_current_advertisements",
+      "test_peer_records_cannot_expand_scope_or_trigger_external_name_queries",
+      "test_malformed_compression_and_record_lengths_are_rejected",
+      "test_record_cap_does_not_grow_unbounded",
+      "test_receive_interface_and_hop_limit_are_required_on_each_os",
+      "test_collector_closes_all_sockets_on_cancel_before_first_send",
+      "test_collector_drops_wrong_interface_and_off_scope_packets_and_bounds_traffic",
+      "test_socket_setup_fails_closed_and_releases_socket",
+      "test_ipv6_query_pins_authorized_source_and_interface",
+      "test_windows_control_header_has_pointer_alignment_and_length_checks",
+      "test_native_packet_interface_and_ttl_on_loopback_only",
+      "test_windows_native_receiver_on_loopback"
+    ]
+  },
+  "checks": {
+    "configuration_and_readme_toml": "passed",
+    "local_document_links": "passed",
+    "git_diff_check": "passed",
+    "generated_html": "/tmp/pc-scanner-lan-20261028/history.html",
+    "html_csp_and_escaping": "passed",
+    "history_and_html_permissions": "0600",
+    "native_mac_loopback_receive_interface_and_ttl": "passed",
+    "mcp_busy_and_cancel": "passed; mock collector ended within 1 second; no identifiers in retained progress"
+  },
+  "known_limits": [
+    "Household LAN, multicast reachability and real device advertisements were not tested.",
+    "Windows CI and native Windows/Linux tests were not run here; 6 existing Windows-only tests plus 1 new native Winsock test skipped.",
+    "OS firewall/local-network permission denial and port 5353 coexistence require real acceptance. No valid reception yields receive_unverified, not no_responses.",
+    "Ephemeral-port QU transport comparison is deferred; port 5353 multicast mode is implemented.",
+    "VPN/multi-NIC/interface removal behavior has fixture coverage but requires real per-OS acceptance.",
+    "Actual browser rendering and interactions were not tested; generated HTML/CSP/markup were checked.",
+    "Per-reason excluded neighbor row counts across OSes are not implemented.",
+    "Concurrency limit is per process; separate CLI processes do not share a lock.",
+    "Addresses alone do not identify a home Wi-Fi network. Public IPv6 and proof of physical device identity/online status are unsupported."
+  ],
+  "source_sha256": {
+    "pc_scanner/lan.py": "f436b95c200d1a1d0b8a87f9a1efb78c09c18b983586b7c8f573063b4621238f",
+    "pc_scanner/lan_mdns.py": "d8e2a0f4f2012982acdbb453c1a170bf2752f792a3fa1737685ae1e1f60f0f3d",
+    "pc_scanner/lan_os.py": "89a8c0d842fa3b1f2bffb2712e2ad42884e9ebd8dfe94a7772e53dccbbc77b85",
+    "pc_scanner/lan_windows.py": "7f006acf68390d129699f85f8515d1a83ac19439656ba07da9ba0efb053a294b"
+  },
+  "changes_to_local_configuration_or_devices": false,
+  "commit_or_push_performed": false
+}

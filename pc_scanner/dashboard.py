@@ -200,6 +200,9 @@ def scan_body(item: dict, report: dict | None, reason: str) -> str:
         parts.append("<h3>Warnings</h3><ul>" + "".join(f"<li>{esc(shorten(w if isinstance(w, str) else str(w)))}</li>"
                                                      for w in warnings) + "</ul>")
     findings = report.get("findings")
+    if item["operation"] == "discover_lan_devices":
+        parts.append(lan_details(report.get("data", {})))
+        return "".join(parts)
     parts.append("<h3>Findings</h3>" + findings_table(findings if isinstance(findings, list) else []))
     if "data" in report:
         parts.append(coverage_selection(report["data"]))
@@ -489,11 +492,61 @@ def coverage_selection(data):
             'malware-gaps in the local CLI. Cloud placeholders are only checked by metadata.</p></details>')
 
 
+def lan_details(data):
+    if not isinstance(data, dict):
+        return '<p class="quiet">LAN details unavailable.</p>'
+    rows = []
+    def listing(obj, key, maximum=512):
+        value = obj.get(key, [])
+        return value[:maximum] if isinstance(value, list) else []
+    def joined(obj, key):
+        return ", ".join(str(v) for v in listing(obj, key))
+    for device in listing(data, "devices"):
+        if not isinstance(device, dict):
+            continue
+        addresses = ", ".join(str(a.get("ip", "")) + ("%" + str(a["scope"]) if a.get("scope") else "")
+                              for a in listing(device, "addresses") if isinstance(a, dict))
+        services = "".join(f'<li>{esc(s.get("instance", ""))} · {esc(s.get("type", ""))} · port {esc(s.get("port", ""))}</li>'
+                           for s in listing(device, "services") if isinstance(s, dict))
+        states = "; ".join(str(e.get("state", "")) + " · observed " + str(e.get("observed_at", ""))
+                           + " · expires " + str(e.get("expires_at") or "unknown")
+                           for e in listing(device, "evidence") if isinstance(e, dict))
+        rows.append(f'<tr><td>{esc(addresses)}</td><td>{esc(joined(device, "names"))}</td>'
+                    f'<td>{esc(device.get("mac") or "unknown")}</td><td>{esc(joined(device, "methods"))}</td>'
+                    f'<td>{esc(states)}</td><td><details><summary>Advertised services</summary><ul>{services}</ul></details></td></tr>')
+    return ('<p class="quiet">Observed devices only. Advertised ports were not probed; cached entries do not prove online status.</p>'
+            + f'<p>Limitations: {esc(joined(data, "limitations"))}</p>'
+            + ('<div class="scroll"><table><thead><tr><th>IP / scope</th><th>Names (self-reported)</th><th>MAC</th>'
+               '<th>Methods</th><th>Observation evidence</th><th>Services</th></tr></thead><tbody>' + "".join(rows) + '</tbody></table></div>'
+               if rows else '<p>No devices observed. This does not mean there are no devices.</p>'))
+
+
+def lan_section(runs):
+    rows = []
+    for run in runs:
+        index, item = run[-1]
+        if item["operation"] != "discover_lan_devices":
+            continue
+        value = item.get("lan_observation", {})
+        notes = "; ".join(k + "=" + v["status"] for k, v in value.get("methods", {}).items())
+        notes += "; " + ", ".join(value.get("limitations", []))
+        rows.append(f'<tr><td><a href="#scan-{index}">{esc(run_label(item))}</a></td><td>{badge(item["status"], STATUSES)}</td>'
+                    f'<td>{esc(value.get("device_count", "unknown"))}</td><td>{esc(local_time(item))}</td>'
+                    f'<td>{esc(value.get("stop_reason") or "—")}</td><td>{esc(notes)}</td></tr>')
+    if not rows:
+        return ""
+    return ('<h2>Devices observed on LAN</h2><p class="quiet">Latest observation per authorized LAN; counts are not combined across runs. '
+            'Check the observation time: these are saved results, not a live connection list.</p>'
+            '<div class="panel scroll"><table><thead><tr><th>LAN</th><th>Status</th><th>Observed records</th>'
+            '<th>Last observation</th><th>Stop reason</th><th>Methods / limitations</th></tr></thead><tbody>' + "".join(rows) + '</tbody></table></div>')
+
+
 def render(entries: list[dict], loaded: list[tuple[dict | None, str]], meta: dict) -> str:
     statuses = {status: sum(item["status"] == status for item in entries) for status in sorted(STATUSES)}
     summary = ", ".join(f"{name} {count}" for name, count in statuses.items())
     runs = latest_runs(entries)
-    latest_rows = "".join(latest_row(run) for run in runs)
+    other_runs = [r for r in runs if r[-1][1]["operation"] != "discover_lan_devices"]
+    latest_rows = "".join(latest_row(run) for run in other_runs)
     scans = "".join(
         f'<details class="scan panel" id="scan-{index}"><summary>'
         f'<span class="time">{esc(local_time(item))}</span>{badge(item["status"], STATUSES)}'
@@ -519,7 +572,8 @@ def render(entries: list[dict], loaded: list[tuple[dict | None, str]], meta: dic
 {skipped}
 <div class="notice">This page holds results from this PC. Keep it to yourself. No finding does not prove a device is
 safe, and <b>partial</b> or <b>error</b> means coverage was incomplete.</div>
-{severity_section(runs) if entries else ""}
+{lan_section(runs)}
+{severity_section(other_runs) if other_runs else ""}
 <h2>Latest result for each target</h2>
 {f'<div class="panel scroll"><table><thead><tr><th>Operation</th><th>Source</th><th>Target</th><th>Status</th><th>Findings</th><th>Last scan</th></tr></thead><tbody>{latest_rows}</tbody></table></div>' if entries else '<p class="quiet">No scans recorded yet.</p>'}
 <h2>Scans, newest first</h2>
