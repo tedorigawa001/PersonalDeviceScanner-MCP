@@ -111,12 +111,12 @@
     "mcp_busy_and_cancel": "passed; mock collector ended within 1 second; no identifiers in retained progress"
   },
   "known_limits": [
-    "Household LAN, multicast reachability and real device advertisements were not tested.",
+    "Real LAN CLI/MCP acceptance ran. The first runs saw no other responder (only this Mac answered); after an Android phone joined, mDNS detected it with validated responses on macOS (follow_up_android_mdns).",
     "Windows CI and native Windows/Linux tests were not run here; 6 existing Windows-only tests plus 1 new native Winsock test skipped.",
     "OS firewall/local-network permission denial and port 5353 coexistence require real acceptance. No valid reception yields receive_unverified, not no_responses.",
     "Ephemeral-port QU transport comparison is deferred; port 5353 multicast mode is implemented.",
     "VPN/multi-NIC/interface removal behavior has fixture coverage but requires real per-OS acceptance.",
-    "Actual browser rendering and interactions were not tested; generated HTML/CSP/markup were checked.",
+    "Actual browser checks passed for real empty/partial results, a separately labeled synthetic fixture, and a real remote device's advertised service (follow_up_android_mdns).",
     "Per-reason excluded neighbor row counts across OSes are not implemented.",
     "Concurrency limit is per process; separate CLI processes do not share a lock.",
     "Addresses alone do not identify a home Wi-Fi network. Public IPv6 and proof of physical device identity/online status are unsupported."
@@ -128,5 +128,225 @@
     "pc_scanner/lan_windows.py": "7f006acf68390d129699f85f8515d1a83ac19439656ba07da9ba0efb053a294b"
   },
   "changes_to_local_configuration_or_devices": false,
-  "commit_or_push_performed": false
+  "commit_or_push_performed": false,
+  "follow_up_real_lan_and_browser": {
+    "checked_at": "2026-10-28T13:14:33.959912+00:00",
+    "status": "partial_acceptance",
+    "scope": "Owner-authorized physical LAN interface; private IPv4 and scoped IPv6 link-local only. No router login, port probing or setting changes.",
+    "private_trial_directory": "/tmp/pc-scanner-lan-acceptance-20261028-tk5rtrkg",
+    "identifiers_in_repository": false,
+    "cli": {
+      "status": "partial",
+      "duration_seconds": 5.047,
+      "device_count": 0,
+      "methods": {
+        "neighbor_cache": {
+          "enabled": true,
+          "status": "completed",
+          "observations": 1
+        },
+        "mdns": {
+          "enabled": true,
+          "status": "receive_unverified",
+          "observations": 0,
+          "received_packets": 0,
+          "validated_packets": 0,
+          "sent_queries": 2,
+          "receive_path": "unverified"
+        }
+      },
+      "limitations": [
+        "cache_is_not_online_evidence",
+        "mdns_receive_unverified",
+        "not_a_security_assessment",
+        "observed_only",
+        "public_ipv6_not_supported",
+        "no_devices_observed"
+      ]
+    },
+    "local_stdio_mcp": {
+      "status": "partial",
+      "duration_seconds": 5.08,
+      "device_count": 0,
+      "methods": {
+        "neighbor_cache": {
+          "enabled": true,
+          "status": "completed",
+          "observations": 1
+        },
+        "mdns": {
+          "enabled": true,
+          "status": "receive_unverified",
+          "observations": 0,
+          "received_packets": 0,
+          "validated_packets": 0,
+          "sent_queries": 2,
+          "receive_path": "unverified"
+        }
+      },
+      "limitations": [
+        "cache_is_not_online_evidence",
+        "mdns_receive_unverified",
+        "not_a_security_assessment",
+        "observed_only",
+        "public_ipv6_not_supported",
+        "no_devices_observed"
+      ],
+      "progress_messages": 3,
+      "ai_provider_called": false
+    },
+    "neighbor_cross_check": {
+      "raw_cache_observations": 1,
+      "eligible_other_devices": 0,
+      "excluded_as_self": 1
+    },
+    "native_dns_sd_cross_check": {
+      "command": "dns-sd -i <authorized interface> -t 5 -B _services._dns-sd._udp local.",
+      "exit_code": 0,
+      "service_type_add_events": 3,
+      "events_same_initial_timestamp": true,
+      "interpretation": "Could be cached/self advertisements; not counted as newly observed remote devices."
+    },
+    "real_mcp_cancellation": {
+      "seconds_to_terminal_progress": 0.058,
+      "stage": "cancelled",
+      "observed_stages": [
+        "cancelling",
+        "cancelled"
+      ],
+      "methods": {
+        "neighbor_cache": "completed",
+        "mdns": "partial"
+      }
+    },
+    "browser": {
+      "engine": "Codex in-app browser",
+      "real_result_page": "passed: partial/0, cancellation/limitations, no-devices caveat, latest-history anchor, expand/collapse",
+      "synthetic_fixture": "Explicit SYNTHETIC UI TEST heading and SYNTHETIC-UI-ONLY alias; not household device evidence.",
+      "synthetic_device_table": "passed: one row, literal <test> text, IP/MAC plain text, methods and evidence",
+      "synthetic_service_expand_collapse": "passed: _ipp._tcp.local and port 631 visible only when expanded",
+      "latest_summary_deduplication": "passed: repeated identical fixture snapshots and four real attempts produce one latest row per alias",
+      "external_links": 0,
+      "ip_links": 0,
+      "script_elements": 0,
+      "browser_warning_or_error_logs": 0,
+      "viewport_width": 1280,
+      "document_width": 1280,
+      "screenshots": "inspected via browser tool; not stored in repository",
+      "cosmetic_note": "LAN-only history also shows an empty generic Latest result for each target table below the dedicated LAN section."
+    },
+    "privacy": {
+      "permanent_scanner_configuration_changed": false,
+      "router_or_device_settings_changed": false,
+      "firewall_or_local_network_permissions_changed": false,
+      "private_history_mode": "0600",
+      "temporary_directory_mode": "0700",
+      "preview": "127.0.0.1 only, two newly generated HTML routes, no config/JSON/directory serving",
+      "preview_cleanup": "Temporary loopback server stopped after browser verification; saved HTML and rendered real-result tab retained."
+    },
+    "packet_capture": {
+      "executed": false,
+      "approval_review": "Rejected the optional packet capture because explicit authorization did not cover bulk third-party packet capture/storage. Continued without capture; no workaround used."
+    },
+    "remaining": [
+      "Successful detection/resolution of a separate real LAN device remains unverified: zero validated mDNS packets received.",
+      "Firewall/privacy denial versus a silent LAN remains undistinguished; receive_unverified is retained.",
+      "Packet-level proof of egress isolation was not collected.",
+      "QU/ephemeral-port versus port 5353 coexistence comparison remains unverified.",
+      "Windows/Linux, multi-NIC/VPN transitions and network-disconnect acceptance remain pending."
+    ],
+    "product_code_changed": false,
+    "full_test_suite_rerun": false,
+    "reason_no_full_rerun": "Acceptance and documentation only; no product or regression-test code changed."
+  },
+  "follow_up_android_mdns": {
+    "checked_at": [
+      "2026-10-28T13:44:22.492476+00:00",
+      "2026-10-28T13:52:08.175824+00:00"
+    ],
+    "status": "macos_real_lan_mdns_detection_passed",
+    "scope": "Same owner-authorized Wi-Fi, macOS 27.2 arm64, Python 3.14.10, real CLI. Temporary config outside the repository: one physical interface, its private IPv4 address and /24 on-link range, neighbor_cache=true, mdns=true, IPv6 not enabled, expose_identifiers_to_mcp=false. No probing, router access or setting changes.",
+    "identifiers_in_repository": false,
+    "run_before_phone": {
+      "status": "partial",
+      "device_count": 1,
+      "neighbor_cache": {
+        "status": "completed",
+        "observations": 5
+      },
+      "mdns": {
+        "status": "receive_unverified",
+        "sent_queries": 1,
+        "received_packets": 0,
+        "validated_packets": 0
+      }
+    },
+    "diagnosis_of_receive_unverified": {
+      "native_dns_sd": "dns-sd -B _services._dns-sd._udp local. listed 3 service types (6 Add events) on this Mac",
+      "passive_receive": "Sockets with the implementation's options (IP_BOUND_IF, SO_REUSEPORT, port 5353) and without IP_BOUND_IF each received 3 packets during dns-sd browsing: reception works and port 5353 coexists with mDNSResponder on macOS",
+      "own_query_answers": "3 META queries from a plain socket with multicast loopback on: 3 replies, all from this Mac; 0 from other devices. The implementation disables loopback and excludes its own addresses",
+      "conclusion": "No other mDNS responder answered on the link at that time; receive_unverified was correct and was not caused by a block. macOS did not block sending or receiving in this session"
+    },
+    "run_after_owner_joined_android_phone": {
+      "status": "completed",
+      "device_count": 2,
+      "neighbor_cache": {
+        "status": "completed",
+        "observations": 5
+      },
+      "mdns": {
+        "status": "completed",
+        "sent_queries": 5,
+        "received_packets": 5,
+        "validated_packets": 5,
+        "receive_path": "observed"
+      },
+      "new_device": {
+        "methods": [
+          "mdns"
+        ],
+        "service_types": [
+          "_nearbypresence._tcp.local"
+        ],
+        "address_family": "IPv4",
+        "evidence_state": "advertised",
+        "expires_at_present": true,
+        "self_reported_name_present": true
+      },
+      "neighbor_cache_note": "The phone was not in the ARP cache (no traffic with this Mac; the tool never probes)",
+      "limitations": [
+        "cache_is_not_online_evidence",
+        "not_a_security_assessment",
+        "observed_only",
+        "public_ipv6_not_supported"
+      ]
+    },
+    "browser": {
+      "engine": "Claude desktop built-in browser",
+      "serving": "127.0.0.1 only; a copy of the generated dashboard HTML alone in its own directory",
+      "checked": "Devices observed on LAN section at the pane's narrow width and 1280 px; alias link to the scan; details expand with warnings, limitations and the device table; the real phone's service instance listed under Advertised services; latest observation shown per alias without adding runs together",
+      "console_messages": 0,
+      "csp": "default-src 'none'; hashed stylesheet only; no scripts",
+      "cosmetic_notes": [
+        "LAN-only history also shows an empty Latest result for each target table (as noted above)",
+        "A device without services shows an empty Advertised services expander; the CLI prints 'none observed'"
+      ]
+    },
+    "privacy": {
+      "permanent_scanner_configuration_changed": false,
+      "real_history_unchanged": true,
+      "private_history_mode": "0600",
+      "temporary_directory_mode": "0700",
+      "cleanup": "After the owner's review: preview server stopped, temporary .claude/launch.json removed, temporary config, history, details, results and dashboard deleted"
+    },
+    "not_covered": [
+      "Denied macOS Local Network permission (not exercised)",
+      "IPv6",
+      "MCP with disclosure enabled",
+      "Network change during a run",
+      "Windows and Linux",
+      "QU/ephemeral-port comparison"
+    ],
+    "recorded_by": "Claude Code session (review and acceptance assistance)"
+  }
 }
