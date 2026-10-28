@@ -45,7 +45,7 @@ class CoverageTests(unittest.TestCase):
         ledger = malware_batch.read_coverage(Scanner(self.config), "test", ".")
         info = report["data"]["coverage"]
         return {"retry": info["scan_group_id"], "revision": info["revision"],
-                "target_ids": [ledger["nodes"][name]["id"]]}
+                "target_ids": [ledger["nodes"][str(Path(name))]["id"]]}  # ledger names use this OS's separator
 
     def test_cloud_gap_is_structured_and_does_not_start_an_engine(self):
         with patch("pc_scanner.core.cloud_placeholder", return_value=True), patch(
@@ -169,7 +169,7 @@ class CoverageTests(unittest.TestCase):
         coverage.put(ledger, "folder", ["metadata_unavailable"], "subtree_remainder")
         coverage.normalize(ledger)
         self.assertEqual(set(ledger["nodes"]["folder"]["excludes"]),
-                         {ledger["nodes"]["folder/a"]["id"], ledger["nodes"]["folder/b"]["id"]})
+                         {ledger["nodes"][str(Path("folder/a"))]["id"], ledger["nodes"][str(Path("folder/b"))]["id"]})
 
     def test_failed_save_retains_previous_revision_and_disables_latest_selection(self):
         first = self.batch()
@@ -524,7 +524,7 @@ class CoverageTests(unittest.TestCase):
         nodes, ids = state["coverage"]["nodes"], []
         for parent in range(10):
             for child in range(99):  # recorded before their parent, as after a later split
-                nodes[f"D{parent}/f{child}"] = {"id": secrets.token_hex(16), "reasons": ["file_size_limit"],
+                nodes[str(Path(f"D{parent}") / f"f{child}")] = {"id": secrets.token_hex(16), "reasons": ["file_size_limit"],
                                                 "kind": "file", "active": True}
         for parent in range(10):
             nodes[f"D{parent}"] = {"id": secrets.token_hex(16), "reasons": ["changed_during_scan"],
