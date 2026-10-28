@@ -64,6 +64,8 @@ WINDOWS_RECALL_ATTRIBUTES = 0x1000 | 0x40000 | 0x400000
 MAX_EXCLUSION_CHARS = 8000  # keep the engine command bounded, including on Windows
 # clamscan matches an exclusion against the first 512 bytes (UTF-8) of a path (match_regex in
 # ClamAV's common/misc.c), so a longer path would be read, and downloaded, despite its exclusion.
+# An excluded path must be shorter still: one of exactly 512 bytes also matches every longer path
+# that starts with it, which would then be skipped unreported.
 CLAMAV_MATCH_BYTES = 512
 
 
@@ -84,7 +86,10 @@ def cloud_placeholder(path: Path) -> bool:
 def exclusion_pattern(path: str, directory: bool) -> str:
     """Literal path in ClamAV's POSIX extended regex, not a user-supplied regex."""
     escaped = re.sub(r'([\\.\[\]{}()*+?^$|])', r'\\\1', path)
-    return "^" + escaped + (r"($|[/\\])" if directory else "$")
+    # Only a real separator may follow a folder: on macOS and Linux a backslash is part of a name,
+    # so "X\anything" is a sibling of X that must still be scanned.
+    separator = r"[/\\]" if os.name == "nt" else "/"
+    return "^" + escaped + (f"($|{separator})" if directory else "$")
 
 
 def is_link(path: Path) -> bool:
@@ -1024,12 +1029,12 @@ class Scanner:
         exclusions = [("--exclude-dir=" if directory else "--exclude=") + exclusion_pattern(path, directory)
                       for path, directory in cloud_excluded]
         for scope in excluded_scopes:
-            if not scope.is_relative_to(target) or len(os.fsencode(scope)) > CLAMAV_MATCH_BYTES:
+            if not scope.is_relative_to(target) or len(os.fsencode(scope)) >= CLAMAV_MATCH_BYTES:
                 raise ScannerError("Selected remainder exclusions cannot be passed safely")
             exclusions += ["--exclude-dir=" + exclusion_pattern(str(scope), True),
                            "--exclude=" + exclusion_pattern(str(scope), False)]
         if excluded_directory and excluded_directory.is_relative_to(target):
-            if len(os.fsencode(excluded_directory)) > CLAMAV_MATCH_BYTES:
+            if len(os.fsencode(excluded_directory)) >= CLAMAV_MATCH_BYTES:
                 raise ScannerError("Checkpoint directory path is too long for safe engine exclusion")
             exclusions.append("--exclude-dir=" + exclusion_pattern(str(excluded_directory), True))
         unsafe_exclusions = False
@@ -1042,7 +1047,7 @@ class Scanner:
                            "downloading their contents; scan coverage is incomplete"] if cloud_excluded else [])
         target_excluded = any(path == str(target) for path, _ in cloud_excluded)
         exclusion_overflow = sum(len(option) for option in exclusions) > MAX_EXCLUSION_CHARS
-        too_long = sum(len(os.fsencode(path)) > CLAMAV_MATCH_BYTES for path, _ in cloud_excluded)
+        too_long = sum(len(os.fsencode(path)) >= CLAMAV_MATCH_BYTES for path, _ in cloud_excluded)
         if target_excluded or exclusion_overflow or unsafe_exclusions or too_long:
             return coverage.attach(result("clamav", "partial", data={
                 "root_alias": root_alias, "relative_path": clean_text(relative_path, PATH_CHARS),
@@ -1053,8 +1058,8 @@ class Scanner:
                                             "Select a smaller local folder"] if unsafe_exclusions else [])
                 + (["Cloud exclusions exceed the command-size limit; no scan was started. "
                                             "Select a smaller local folder"] if exclusion_overflow else [])
-                + ([f"{too_long} cloud placeholders have paths longer than ClamAV can match for exclusion "
-                    f"({CLAMAV_MATCH_BYTES} bytes); no scan was started, so they are not downloaded. "
+                + ([f"{too_long} cloud placeholders have paths too long for ClamAV to exclude reliably "
+                    f"({CLAMAV_MATCH_BYTES} bytes or more); no scan was started, so they are not downloaded. "
                     "Shorten the folder names or scan a folder without them"] if too_long else [])),
                 [coverage.issue(str(Path(path).relative_to(root)), "cloud_placeholder",
                                 "subtree_remainder" if directory else "file") for path, directory in cloud_excluded]

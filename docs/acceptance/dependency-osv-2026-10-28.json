@@ -1,0 +1,154 @@
+{
+  "checked_at": "2026-10-28T09:36:42.690919+00:00",
+  "recorded_at": "2026-10-28T09:37:34.322038+00:00",
+  "method": {
+    "service": "OSV",
+    "query_endpoint": "https://api.osv.dev/v1/querybatch",
+    "advisory_endpoint": "https://api.osv.dev/v1/vulns/{id}",
+    "ecosystem": "PyPI",
+    "scope": "Exact pinned package versions in four lockfiles; direct and transitive dependencies",
+    "unique_package_versions": 31,
+    "raw_response_sha256": "883c33ecf154576f53e5c4f34d86ba9a2444773a12fa8ff6a011f159f5abeb1f",
+    "also_checked": {
+      "ecosystem": "GitHub Actions",
+      "scope": "Actions pinned by commit SHA in .github/workflows",
+      "versions": {
+        "actions/checkout": "7.0.1",
+        "actions/setup-node": "7.0.0",
+        "actions/setup-python": "7.0.0",
+        "actions/upload-artifact": "7.0.1"
+      },
+      "findings": 0
+    }
+  },
+  "profiles": [
+    {
+      "profile": "requirements-agent.lock",
+      "package_count": 29,
+      "findings": []
+    },
+    {
+      "profile": "profiles/darwin-x86_64-cp314/requirements-agent.lock",
+      "package_count": 29,
+      "findings": [
+        {
+          "package": "cryptography",
+          "version": "48.0.1",
+          "vulns": [
+            {
+              "id": "GHSA-g6cj-pr64-35w5",
+              "modified": "2026-09-10T03:50:53.610446Z"
+            },
+            {
+              "id": "GHSA-jwv3-5hgf-82ww",
+              "modified": "2026-09-24T14:45:10.238420Z"
+            },
+            {
+              "id": "GHSA-m2h6-j472-rp4c",
+              "modified": "2026-09-24T15:00:04.719975Z"
+            },
+            {
+              "id": "PYSEC-2026-3552",
+              "modified": "2026-08-04T14:30:15.036332Z"
+            },
+            {
+              "id": "PYSEC-2026-3553",
+              "modified": "2026-08-04T14:30:26.222821Z"
+            },
+            {
+              "id": "PYSEC-2026-3554",
+              "modified": "2026-08-04T14:30:26.230323Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "profile": "profiles/linux-x86_64-cp314/requirements-agent.lock",
+      "package_count": 29,
+      "findings": []
+    },
+    {
+      "profile": "profiles/windows-amd64-cp314/requirements-agent.lock",
+      "package_count": 30,
+      "findings": []
+    }
+  ],
+  "distinct_advisories": [
+    {
+      "id": "GHSA-g6cj-pr64-35w5",
+      "cves": [
+        "CVE-2026-69247"
+      ],
+      "aliases": [
+        "CVE-2026-69247",
+        "PYSEC-2026-3552"
+      ],
+      "summary": "cryptography: PKCS#7 EnvelopedData decryption exposes a Bleichenbacher oracle through distinguishable errors and timing",
+      "fixed_versions": [
+        "50.0.0"
+      ],
+      "modified": "2026-09-10T03:50:53.610446769Z"
+    },
+    {
+      "id": "GHSA-jwv3-5hgf-82ww",
+      "cves": [
+        "CVE-2026-69249"
+      ],
+      "aliases": [
+        "CVE-2026-69249",
+        "PYSEC-2026-3553"
+      ],
+      "summary": "python-cryptography: Duplicate self-signed intermediates can cause exponential path-building",
+      "fixed_versions": [
+        "49.0.0"
+      ],
+      "modified": "2026-09-24T14:45:10.238420831Z"
+    },
+    {
+      "id": "GHSA-m2h6-j472-rp4c",
+      "cves": [
+        "CVE-2026-69248"
+      ],
+      "aliases": [
+        "CVE-2026-69248",
+        "PYSEC-2026-3554"
+      ],
+      "summary": "python-cryptography verifier accepts wildcard DNS names allowing escape from permittedSubtrees",
+      "fixed_versions": [
+        "49.0.0"
+      ],
+      "modified": "2026-09-24T15:00:04.719975807Z"
+    }
+  ],
+  "result": {
+    "new_findings": 0,
+    "remaining_distinct_cves": 3,
+    "status": "known_exception_continues",
+    "deduplication": "GHSA and PYSEC aliases represent the same three CVEs",
+    "compared_with": "dependency-osv-2026-10-24.json: identical raw OSV response (same SHA-256). The Intel Mac lock moved unchanged from the repository root to profiles/darwin-x86_64-cp314 when the reference profile switched to macOS arm64 (983872f); the root lock is now the former arm64 profile with the same versions and hashes. Only the known Intel Mac cryptography 48.0.1 advisories remain."
+  },
+  "intel_mac_exception": {
+    "package": "cryptography",
+    "version": "48.0.1",
+    "decision": "Continue the owner-approved 2026-10-12 exception; vulnerabilities remain unfixed in this profile",
+    "wheel_check": {
+      "source": "https://pypi.org/pypi/cryptography/json",
+      "latest_at_check": "50.0.2",
+      "intel_compatible_wheels": {
+        "48.0.1": 3,
+        "49.0.0": 0,
+        "50.0.0": 0,
+        "50.0.1": 0,
+        "50.0.2": 0
+      }
+    },
+    "current_code_assessment": "Code added since v0.7.2 (malware_batch, coverage, progress, the ClamAV definition check) imports neither cryptography nor ssl; cryptography is used only by test servers. Scoped static evidence, not proof that every future dependency path is unreachable.",
+    "profile": "profiles/darwin-x86_64-cp314/requirements-agent.lock"
+  },
+  "limitations": [
+    "OSV results reflect the database at checked_at; zero findings is not proof of safety",
+    "Lockfile assessment does not inventory every environment installed by users",
+    "No dependency update or source build was performed"
+  ]
+}

@@ -735,8 +735,8 @@ remain independent of this ephemeral progress state.
   Exclusions produce `partial` and a warning, with `data.cloud_excluded_count` and `data.cloud_excluded_paths` (up to 20 entries).
   Downloaded files remain eligible. Oversized exclusion arguments trigger the batch mode above. Other unsafe
   exclusions prevent an ordinary scan from starting and return `partial`.
-  ClamAV compares exclusions with only the first 512 bytes (UTF-8) of a path, so a placeholder with a longer path
-  also stops the scan before it starts (`partial`), rather than letting ClamAV read and download it.
+  ClamAV compares exclusions with only the first 512 bytes (UTF-8) of a path, so a placeholder whose path is 512 bytes
+  or longer (at exactly 512, the exclusion would also hide longer paths that start with it) also stops the scan before it starts (`partial`), rather than letting ClamAV read and download it.
   Detection reflects metadata at preflight time; concurrent sync-state changes and providers that do not expose these attributes are outside this guarantee.
 - Unreadable folders do not stop the scan. They are listed in `data.unreadable_directories` (up to 20) and the result is `partial`.
 - Detections are checked against ClamAV's own summary. If its count of infected files or of errors does not match

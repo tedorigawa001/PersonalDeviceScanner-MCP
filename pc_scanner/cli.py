@@ -122,13 +122,16 @@ def main():
             if args.reason and not set(args.reason) <= coverage.REASONS:
                 raise ScannerError("Invalid coverage reason")
             rows = [row for row in rows if not args.reason or set(row["reasons"]) & set(args.reason)]
+            # Names are escaped for --json too, as everywhere else (found in the review of 2026-10-28).
+            from .core import clean_text, PATH_CHARS
+            rows = [{**row, "relative_path": clean_text(row["relative_path"], PATH_CHARS)} if "relative_path" in row else row
+                    for row in rows]
             report = result("clamav", "completed", data={"coverage": coverage.summary(ledger), "targets": rows})
             if not args.json:
-                from .core import clean_text
                 print(f"Coverage {ledger['group']} revision={ledger['revision']} (target scopes, not file counts)")
                 for row in rows:
                     print(row["target_id"], "; ".join(coverage.LABELS[r] for r in row["reasons"]), row["eligibility"].replace("_", " "),
-                          clean_text(row.get("relative_path", "")))
+                          row.get("relative_path", ""))
                 return
         if args.command == "history":
             report = show_history(scanner, args.limit)

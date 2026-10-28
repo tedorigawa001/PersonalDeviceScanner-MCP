@@ -466,3 +466,149 @@ class CoverageTests(unittest.TestCase):
         self.assertEqual(retry["status"], "partial")
         self.assertEqual((node["active"], node["reasons"]), (True, ["not_reached"]))
         self.assertEqual(retry["data"]["coverage"]["by_reason"], {"cloud_placeholder": 1, "not_reached": 1})
+
+    # Vulnerability check of 2026-10-28 (independent review, each reproduced before fixing).
+
+    @staticmethod
+    def excluding_engine(argv, *args, **kwargs):
+        """Stand-in for clamscan: walks the target and applies --exclude/--exclude-dir as ClamAV's
+        regex matching does, reporting files that contain a test marker."""
+        import re
+        files = [re.compile(a.split("=", 1)[1]) for a in argv if a.startswith("--exclude=")]
+        dirs = [re.compile(a.split("=", 1)[1]) for a in argv if a.startswith("--exclude-dir=")]
+        target, found, scanned = argv[-1], [], 0
+        for current, subdirs, names in os.walk(target):
+            subdirs[:] = [d for d in subdirs if not any(p.search(os.path.join(current, d)) for p in dirs)]
+            for name in names:
+                path = os.path.join(current, name)
+                if any(p.search(path) for p in files):
+                    continue
+                scanned += 1
+                if b"TEST-MARKER" in Path(path).read_bytes():
+                    found.append(f"{path}: Test.Marker FOUND")
+        output = "\n".join(found + [f"Scanned files: {scanned}", f"Infected files: {len(found)}"]) + "\n"
+        return int(bool(found)), output, ""
+
+    def test_folder_exclusion_does_not_hide_a_sibling_named_with_a_backslash(self):
+        import re
+        from pc_scanner import core
+        pattern = re.compile(core.exclusion_pattern("/r/P/big.iso", True))
+        self.assertTrue(pattern.search("/r/P/big.iso"))
+        self.assertTrue(pattern.search("/r/P/big.iso/inner"))
+        self.assertFalse(pattern.search("/r/P/big.isox"))
+        if os.name != "nt":
+            self.assertFalse(pattern.search("/r/P/big.iso\\payload"))  # a sibling; "\" is part of its name
+        with patch.object(core.os, "name", "nt"):
+            windows = re.compile(core.exclusion_pattern("C:\\r\\P", True))
+        self.assertTrue(windows.search("C:\\r\\P\\inner"))
+        self.assertFalse(windows.search("C:\\r\\Px"))
+
+    @unittest.skipIf(os.name == "nt", "a backslash cannot be part of a Windows file name")
+    def test_cloud_folder_exclusion_still_scans_a_backslash_sibling(self):
+        sibling = self.root / "sub" / ".x.icloud\\payload"
+        sibling.mkdir(parents=True)
+        (self.root / "sub" / ".x.icloud").mkdir()
+        (sibling / "mal.exe").write_bytes(b"xx TEST-MARKER xx")
+        with patch("pc_scanner.core.cloud_placeholder", side_effect=lambda path: Path(path).name == ".x.icloud"), \
+                patch("pc_scanner.core.run_bounded", side_effect=self.excluding_engine):
+            report = Scanner(self.config).invoke("malware", root_alias="test", relative_path="sub")
+        self.assertEqual([Path(f["path"]).name for f in report["findings"]], ["mal.exe"])
+
+    def test_selective_rescan_bookkeeping_stays_fast_on_a_large_ledger(self):
+        import secrets
+        import time
+        first = self.batch()
+        folder = Path(self.config["history"]["file"]).parent.resolve() / "malware-checkpoints"
+        path = next(folder.glob("*.json"))
+        state = json.loads(path.read_bytes())
+        nodes, ids = state["coverage"]["nodes"], []
+        for parent in range(10):
+            for child in range(99):  # recorded before their parent, as after a later split
+                nodes[f"D{parent}/f{child}"] = {"id": secrets.token_hex(16), "reasons": ["file_size_limit"],
+                                                "kind": "file", "active": True}
+        for parent in range(10):
+            nodes[f"D{parent}"] = {"id": secrets.token_hex(16), "reasons": ["changed_during_scan"],
+                                   "kind": "subtree_remainder", "active": True}
+            ids.append(nodes[f"D{parent}"]["id"])
+        history.replace_private(path, json.dumps(state).encode())
+        info = first["data"]["coverage"]
+        started = time.monotonic()
+        with patch("pc_scanner.core.run_bounded", side_effect=self.clean):
+            retry = Scanner(self.config).invoke("malware", root_alias="test", retry=info["scan_group_id"],
+                                                revision=info["revision"], target_ids=ids)
+        self.assertLess(time.monotonic() - started, 10)  # took about 49 s before the fix
+        self.assertEqual(retry["data"]["attempt"]["selected"], 10)
+
+    def test_a_folder_too_big_to_divide_stays_a_gap_and_later_folders_are_scanned(self):
+        (self.root / "big").mkdir()
+        for index in range(8):
+            (self.root / "big" / f"{index}.txt").write_text("x")
+        (self.root / "zz").mkdir()
+        (self.root / "zz" / "late.txt").write_text("x")
+        scanned = []
+        def engine(argv, *args, **kwargs):
+            scanned.append(Path(argv[-1]).name)
+            return self.clean()
+        with patch("pc_scanner.malware_batch.MAX_PART_ENTRIES", 3), patch("pc_scanner.malware_batch.MAX_PARTS", 5), \
+                patch("pc_scanner.core.run_bounded", side_effect=engine):
+            report = Scanner(self.config).invoke("malware", root_alias="test", batch=True)
+        self.assertIn("zz", scanned)
+        self.assertNotIn("big", scanned)
+        self.assertEqual(report["data"]["coverage"]["by_reason"], {"metadata_limit": 1})
+        self.assertEqual(report["status"], "partial")
+
+    def test_checkpoint_folder_is_recognised_in_any_letter_case(self):
+        probe = self.base / "case-probe"
+        probe.write_text("x")
+        if not (self.base / "CASE-PROBE").exists():
+            self.skipTest("this file system distinguishes letter case")
+        config = {**self.config, "history": {"file": str(self.root / "state" / "history.jsonl")}}
+        (self.root / "state" / "malware-checkpoints").mkdir(parents=True, mode=0o700)
+        os.chmod(self.root / "state", 0o700)
+        with patch("pc_scanner.core.run_bounded", side_effect=AssertionError("must not scan")):
+            refused = Scanner(config).invoke("malware", root_alias="test", relative_path="state/MALWARE-CHECKPOINTS",
+                                             batch=True)
+        self.assertEqual(refused["error"], "Checkpoint files cannot be a batch scan target")
+        targets = []
+        def engine(argv, *args, **kwargs):
+            targets.append(argv[-1].lower())
+            return self.clean()
+        with patch("pc_scanner.core.run_bounded", side_effect=engine):
+            Scanner(config).invoke("malware", root_alias="test", relative_path="STATE", batch=True)
+        self.assertFalse([t for t in targets if "malware-checkpoints" in t], targets)
+
+    def test_gap_listing_json_escapes_names(self):
+        (self.root / "evil\u202etxt.exe").write_text("x")
+        first = self.batch()
+        config = self.base / "scanner.toml"
+        config.write_text('[local]\nclamav_binary=' + json.dumps(sys.executable) + '\n[scan_roots]\ntest='
+                          + json.dumps(str(self.root)) + '\n[history]\nenabled=false\nfile='
+                          + json.dumps(self.config["history"]["file"]) + '\n')
+        process = subprocess.run([sys.executable, "-m", "pc_scanner.cli", "--config", str(config), "malware-gaps", "test",
+                                  "--scan", first["data"]["coverage"]["scan_group_id"], "--show-paths", "--json"],
+                                 text=True, encoding="utf-8", capture_output=True, timeout=30,
+                                 cwd=Path(__file__).resolve().parents[1])
+        self.assertNotIn("\u202e", process.stdout)
+        self.assertIn("evil\\\\u202etxt.exe", process.stdout)
+
+    @unittest.skipIf(os.name == "nt", "POSIX permission bits")
+    def test_batch_creates_a_private_history_folder(self):
+        config = {**self.config, "history": {"file": str(self.base / "fresh" / "history.jsonl")}}
+        with patch("pc_scanner.core.run_bounded", side_effect=self.clean):
+            Scanner(config).invoke("malware", root_alias="test", batch=True)
+        self.assertEqual((self.base / "fresh").stat().st_mode & 0o077, 0)
+
+    def test_rescanning_the_whole_root_does_not_inspect_folders_above_it(self):
+        first = self.batch()
+        folder = Path(self.config["history"]["file"]).parent.resolve() / "malware-checkpoints"
+        path = next(folder.glob("*.json"))
+        state = json.loads(path.read_bytes())
+        state["coverage"]["nodes"]["."].update(reasons=["changed_during_scan"], active=True)
+        history.replace_private(path, json.dumps(state).encode())
+        info = first["data"]["coverage"]
+        above = self.root.resolve().parent
+        with patch("pc_scanner.core.cloud_placeholder", side_effect=lambda p: Path(p) == above), \
+                patch("pc_scanner.core.run_bounded", side_effect=self.clean) as engine:
+            Scanner(self.config).invoke("malware", root_alias="test", retry=info["scan_group_id"],
+                                        revision=info["revision"], target_ids=[state["coverage"]["nodes"]["."]["id"]])
+        self.assertEqual(engine.call_count, 1)

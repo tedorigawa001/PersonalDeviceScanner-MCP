@@ -485,13 +485,14 @@ class ScannerTests(unittest.TestCase):
                 self.assertFalse(report["data"]["scan_started"])
                 self.assertTrue(any("512 bytes" in warning for warning in report["warnings"]), report["warnings"])
                 run.assert_not_called()
-            # The limit is in bytes, and a path of exactly the limit can still be matched.
-            for limit, too_long in ((length, False), (length - 1, True)):
+            # The limit is in bytes, and an excluded path must be shorter than it: at exactly the limit
+            # (found in the review of 2026-10-28), the exclusion also matched longer paths starting with it.
+            for limit, too_long in ((length + 1, False), (length, True)):
                 with self.subTest(cloud=cloud.name, limit=limit), self.placeholder_metadata(
                         {cloud.name: (0x40000000, 0)}), patch("pc_scanner.core.CLAMAV_MATCH_BYTES", limit), patch(
                         "pc_scanner.core.run_bounded", return_value=(0, CLEAN_SCAN, "")) as run:
                     report = self.scanner.invoke("malware", root_alias="test")
-                    self.assertEqual(any(f"({limit} bytes)" in warning for warning in report["warnings"]), too_long)
+                    self.assertEqual(any(f"({limit} bytes or more)" in warning for warning in report["warnings"]), too_long)
                     try:
                         engine_argument(str(cloud.resolve()))
                     except ScannerError:
