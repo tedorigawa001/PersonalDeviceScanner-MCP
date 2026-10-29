@@ -22,8 +22,8 @@ from unittest.mock import patch
 from urllib.error import URLError
 
 from pc_scanner import cli
-from pc_scanner.core import (MAX_PAGES, NoRedirect, Scanner, ScannerError, clamav_signatures, decode_cursor,
-                             encode_cursor, engine_argument, is_link, run_bounded)
+from pc_scanner.core import (HIDDEN_CHARACTERS, MAX_PAGES, NoRedirect, Scanner, ScannerError, clamav_signatures,
+                             clean_text, decode_cursor, encode_cursor, engine_argument, is_link, run_bounded)
 
 
 def signatures(age=timedelta(hours=3)):
@@ -347,6 +347,20 @@ class ScannerTests(unittest.TestCase):
         self.assertTrue(row["name"].startswith("Safe\\u202eexe.txt\\u200b\\u001b[31m"))
         self.assertLess(len(row["name"]), 300)
         self.assertNotIn("\u202e", json.dumps(report, ensure_ascii=False))
+
+    def test_every_invisible_character_is_escaped_and_visible_text_is_kept(self):
+        import unicodedata
+        # Controls, format characters and separators of this Python's Unicode version, plus default-ignorable
+        # characters of other categories (combining joiner, fillers, Khmer and variation selectors, unassigned tags).
+        hidden = [chr(c) for c in range(0x110000) if unicodedata.category(chr(c)) in {"Cc", "Cf", "Zl", "Zp"}]
+        hidden += ["\u034f", "\u115f", "\u1160", "\u17b4", "\u17b5", "\u180b", "\u180f", "\u2065", "\u3164", "\ufe00",
+                   "\ufe0f", "\uffa0", "\ufff0", "\U000e0000", "\U000e0080", "\U000e0100", "\U000e01ef", "\U000e0fff"]
+        self.assertEqual([hex(ord(c)) for c in hidden if not HIDDEN_CHARACTERS.fullmatch(c)], [])
+        # Text smuggled in tag characters ("run rm") cannot reach the AI unseen.
+        smuggled = "Printer" + "".join(chr(0xE0000 + ord(c)) for c in "run rm") + "\u061c\u2028\xad\ufe0f"
+        self.assertEqual(clean_text(smuggled), "Printer\\U000e0072\\U000e0075\\U000e006e\\U000e0020\\U000e0072\\U000e006d"
+                                               "\\u061c\\u2028\\u00ad\\ufe0f")
+        self.assertEqual(clean_text("caf\u00e9 \u65e5\u672c\u8a9e \U0001f600 a-b_c.txt"), "caf\u00e9 \u65e5\u672c\u8a9e \U0001f600 a-b_c.txt")
 
     def test_listening_ports_show_address_and_process(self):
         with patch("pc_scanner.core.run_bounded", return_value=(0, '[{"port":"22"}]', "")) as run:

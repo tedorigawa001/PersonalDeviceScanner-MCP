@@ -18,7 +18,11 @@ def command(paths, args, deadline, cancel):
     binary = next((p for p in paths if Path(p).is_file()), None)
     if binary is None:
         raise NotImplementedError
-    code, out, err = run_bounded([binary, *args], max(0.001, deadline - time.monotonic()), MAX_BYTES, cancel=cancel)
+    try:
+        code, out, err = run_bounded([binary, *args], max(0.001, deadline - time.monotonic()), MAX_BYTES, cancel=cancel)
+    except ScannerError:
+        check(deadline, cancel)  # the runner stopped for a cancel or the deadline: report that, not a failed read
+        raise
     check(deadline, cancel)
     if code or err or len(out.encode("utf-8")) >= MAX_BYTES:
         raise ScannerError("LAN OS observations could not be read completely")

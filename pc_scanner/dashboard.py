@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 
 from . import history
-from .core import HIDDEN_CHARACTERS, clean_text
+from .core import HIDDEN_CHARACTERS, clean_text, escaped
 
 # One large result (a long app list, a full engine report) must not swamp the page.
 DATA_CHARS = 50_000
@@ -160,7 +160,7 @@ def data_block(data) -> str:
     except (ValueError, TypeError, RecursionError):
         return '<p class="quiet">The data cannot be shown.</p>'
     # JSON already escapes line breaks inside strings, so the only raw ones are the layout's own.
-    text = HIDDEN_CHARACTERS.sub(lambda m: m.group() if m.group() == "\n" else f"\\u{ord(m.group()):04x}", text)
+    text = HIDDEN_CHARACTERS.sub(lambda m: m.group() if m.group() == "\n" else escaped(m), text)
     note = ""
     if len(text) > DATA_CHARS:
         text, note = text[:DATA_CHARS], f'<p class="quiet">Cut at {DATA_CHARS:,} characters.</p>'

@@ -114,9 +114,12 @@ class Answers:
         self.values = {}
 
     def add(self, incoming, now):
-        flush = {(n, t) for n, t, ttl, v, f in incoming if f and ttl}
+        # Cache-flush only replaces unique records received over a second ago (RFC 6762 10.2); PTRs are shared,
+        # so one device cannot erase the services other devices advertised.
+        flush = {(n, t) for n, t, ttl, v, f in incoming if f and ttl and t != 12}
         for key in list(self.values):
-            if (key[0], key[1]) in flush or self.values[key][0] <= now:
+            expires, received = self.values[key]
+            if ((key[0], key[1]) in flush and now - received > 1) or expires <= now:
                 self.values.pop(key)
         for name, typ, ttl, value, _ in incoming:
             key = (name, typ, value)
@@ -249,7 +252,7 @@ def receiving_interface(ancillary, version):
 
 def collect(spec, snapshot, deadline, cancel, guard, output, progress=None):
     # Small standard-library transport instead of an unbounded background resolver. Every packet is counted.
-    sockets, answers, sent, received, size, valid = [], Answers(), set(), 0, 0, 0
+    sockets, answers, sent, received, ignored, size, valid = [], Answers(), set(), 0, 0, 0, {}
     start_rows = len(output)
     pending = {(META, 12)}
     until = min(time.monotonic() + 5.0, deadline - 1.0)  # reserve the final authorization check
@@ -286,6 +289,17 @@ def collect(spec, snapshot, deadline, cancel, guard, output, progress=None):
                     packet, ancillary, flags, peer = s.recvmsg(9000, 256)
                 except BlockingIOError:
                     continue
+                index, ttl = receiving_interface(ancillary, version)
+                try:
+                    sender = address(peer[0].split("%")[0])
+                except ValueError:
+                    sender = None
+                # Link-local senders may describe an authorized ULA service; the sender itself must
+                # still be explicitly allowed, per this stage's authorization policy.
+                if index != snapshot["index"] or ttl != 255 or peer[1] != 5353 or sender is None or not in_scope(sender, spec):
+                    # Traffic from other links or senders is dropped unread; it cannot use up the limits below.
+                    ignored += 1
+                    continue
                 received, size = received + 1, size + len(packet)
                 if received > MAX_PACKETS:
                     raise Stopped("packet_limit")
@@ -293,19 +307,11 @@ def collect(spec, snapshot, deadline, cancel, guard, output, progress=None):
                     raise Stopped("byte_limit")
                 if flags & (getattr(socket, "MSG_TRUNC", 0x0100) | getattr(socket, "MSG_CTRUNC", 0x0200)):
                     raise Stopped("byte_limit")
-                index, ttl = receiving_interface(ancillary, version)
-                if index != snapshot["index"] or ttl != 255 or peer[1] != 5353:
-                    continue
                 try:
-                    sender = address(peer[0].split("%")[0])
-                    # Link-local senders may describe an authorized ULA service; the sender itself must
-                    # still be explicitly allowed, per this stage's authorization policy.
-                    if not in_scope(sender, spec):
-                        continue
                     incoming = records(packet)
                 except (ValueError, struct.error):
                     continue
-                valid += 1
+                valid[version] = valid.get(version, 0) + 1
                 answers.add(incoming, time.time())
                 wanted, _ = answers.wanted(time.time())
                 pending |= wanted - sent
@@ -313,8 +319,11 @@ def collect(spec, snapshot, deadline, cancel, guard, output, progress=None):
                 if progress:
                     progress.update(observed_records=len(output))
         output[start_rows:] = answers.rows(spec, time.time())
-        return {"received_packets": received, "validated_packets": valid, "sent_queries": queries,
-                "receive_path": "observed" if valid else "unverified"}
+        # Each IP version is its own receive path: replies on one must not vouch for a blocked other.
+        families = sorted({version for _, _, version in sockets})
+        return {"received_packets": received, "ignored_packets": ignored, "validated_packets": sum(valid.values()),
+                "validated_by_family": {f"ipv{v}": valid.get(v, 0) for v in families}, "sent_queries": queries,
+                "receive_path": "observed" if families and all(valid.get(v) for v in families) else "unverified"}
     finally:
         for s, _, _ in sockets:
             s.close()

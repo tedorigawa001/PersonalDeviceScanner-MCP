@@ -197,6 +197,8 @@ def discover(scanner, network_alias, cancel=None, progress=None):
                 try:
                     now = lan_os.snapshot(spec["interface"], deadline, cancel)
                     changed = authorized(now, spec) != identity
+                except Stopped:
+                    raise  # a cancel or the deadline during the read is not a network change
                 except (ScannerError, OSError, ValueError, NotImplementedError):
                     changed = True
                 if changed:

@@ -1,5 +1,6 @@
 import copy
 import asyncio
+import ctypes
 import importlib.util
 import ipaddress
 import json
@@ -14,6 +15,7 @@ import time
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from pc_scanner.core import Scanner, ScannerError
@@ -21,8 +23,17 @@ from pc_scanner import lan, lan_os, lan_mdns as mdns, history, dashboard
 
 
 class LANTests(unittest.TestCase):
+    def setUp(self):
+        # A failed history write only becomes a warning, so record attempts and fail the test afterwards.
+        writes = []
+        patcher = patch("pc_scanner.history.append", side_effect=lambda path, *a, **k: writes.append(path))
+        patcher.start()
+        self.addCleanup(lambda: self.assertEqual(writes, [], "a LAN test tried to write scan history"))
+        self.addCleanup(patcher.stop)
+
     def config(self, **settings):
-        return {"lan": {"enabled": True, **settings}, "lan_networks": {"home": {
+        # History off: an MCP scanner records by default, and that file is the owner's real history.
+        return {"history": {"enabled": False}, "lan": {"enabled": True, **settings}, "lan_networks": {"home": {
             "interface": "en0", "local_addresses": ["192.168.10.20"],
             "cidrs": ["192.168.10.0/24"], "neighbor_cache": True, "mdns": False}}}
 
@@ -87,6 +98,45 @@ class LANTests(unittest.TestCase):
         self.assertEqual(report["data"]["stop_reason"], "network_changed")
         self.assertEqual(report["data"]["device_count"], 1)
 
+    def run_os_reads(self, at, effect, **settings):
+        """The real Darwin backend with fake command output; `effect` runs inside command call number `at`."""
+        outputs = {"ifconfig": 'en0: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 1500\n\tether 02:00:00:00:00:01\n'
+                               '\tinet 192.168.10.20 netmask 0xffffff00 broadcast 192.168.10.255\n\tmedia: autoselect\n\tstatus: active\n',
+                   "arp": "? (192.168.10.2) at 2:0:0:0:0:2 on en0 ifscope [ethernet]\n",
+                   "ndp": "Neighbor Linklayer Address Netif Expire S Flags\n"}
+        calls, cancel = [], threading.Event()
+        def run(argv, timeout, limit, cancel=None):
+            calls.append(Path(argv[0]).name)
+            if len(calls) == at:
+                effect(cancel, timeout)
+            return 0, outputs[calls[-1]], ""
+        with patch("pc_scanner.lan_os.platform.system", return_value="Darwin"), patch(
+                "pc_scanner.lan_os.socket.if_nametoindex", return_value=4), patch(
+                "pc_scanner.lan_os.Path", **{"return_value.is_file.return_value": True}), patch(
+                "pc_scanner.lan_os.run_bounded", side_effect=run):
+            return Scanner(self.config(**settings)).invoke("discover_lan_devices", network_alias="home", cancel=cancel), calls
+
+    def test_cancel_or_deadline_during_an_os_read_is_not_a_network_change_or_error(self):
+        def stopped(cancel, timeout):
+            cancel.set()
+            raise ScannerError("Scan cancelled; engine stopped before completing")
+        def expired(cancel, timeout):
+            time.sleep(timeout)
+            raise ScannerError("Engine timed out; scan was not completed")
+        # Calls: ifconfig (authorization), ifconfig (check before the cache), arp, ndp, ifconfig (final check).
+        for at, effect, reason, settings in [(5, stopped, "cancelled", {}), (5, lambda cancel, timeout: cancel.set(), "cancelled", {}),
+                                              (5, expired, "timeout", {"timeout_seconds": 1}), (1, stopped, "cancelled", {}),
+                                              (3, stopped, "cancelled", {})]:
+            with self.subTest(at=at, reason=reason):
+                report, calls = self.run_os_reads(at, effect, **settings)
+                self.assertEqual(len(calls), at)
+                self.assertEqual(report["status"], "partial", report)
+                self.assertEqual(report["data"]["stop_reason"], reason)
+                self.assertNotIn("network_changed", report["data"]["limitations"])
+                self.assertNotIn("neighbor_cache_failed", report["data"]["limitations"])
+                if at == 3:
+                    self.assertEqual(report["data"]["methods"]["neighbor_cache"]["status"], "partial")
+
     def test_empty_cache_does_not_claim_no_devices_or_safety(self):
         report = self.run_cache()
         self.assertEqual(report["status"], "completed")
@@ -128,14 +178,15 @@ class LANTests(unittest.TestCase):
     def test_partial_mdns_evidence_survives_cancel(self):
         config = self.config(); config["lan_networks"]["home"]["mdns"] = True
         def stopped(spec, snapshot, deadline, cancel, guard, rows, progress):
-            rows.append({"ip": "192.168.10.2", "method": "mdns", "name": "Test\u202e<script>.local"})
+            rows.append({"ip": "192.168.10.2", "method": "mdns", "name": "Test\u202e<script>\U000e0072\u2028\u061c.local"})
             raise lan.Stopped("cancelled")
         with patch("pc_scanner.lan_os.snapshot", return_value=self.snapshot()), patch(
                 "pc_scanner.lan_os.neighbors", return_value=[]), patch("pc_scanner.lan_mdns.collect", side_effect=stopped):
             report = Scanner(config).invoke("discover_lan_devices", network_alias="home")
         self.assertEqual(report["status"], "partial")
         self.assertEqual(report["data"]["methods"]["mdns"]["observations"], 1)
-        self.assertNotIn("\u202e", json.dumps(report, ensure_ascii=False))
+        for hidden in ("\u202e", "\U000e0072", "\u2028", "\u061c"):
+            self.assertNotIn(hidden, json.dumps(report, ensure_ascii=False))
 
     def test_unverified_reception_and_permission_denial_are_not_no_responses(self):
         config = self.config(); config["lan_networks"]["home"]["mdns"] = True
@@ -364,6 +415,19 @@ class MDNSTests(unittest.TestCase):
                 a.add([((b"two", b"local"), 1, 120, "192.168.10.3", False)], 1001)
         self.assertEqual(len(a.values), 1)
 
+    def test_cache_flush_spares_shared_service_records_and_answers_from_the_last_second(self):
+        typ, instance, host = (b"_http", b"_tcp", b"local"), (b"test", b"_http", b"_tcp", b"local"), (b"test", b"local")
+        a = mdns.Answers(); a.add(mdns.records(self.answer(self.fixture())), 1000)
+        # Another device's PTRs with the cache-flush bit must not erase this device's service.
+        a.add([(typ, 12, 120, (b"other",) + typ, True), (mdns.META, 12, 120, typ, True)], 1010)
+        self.assertIn((typ, 12, instance), a.values)
+        # A unique record replaces the same name and type only when the old copy is over a second old.
+        a.add([(host, 1, 120, "192.168.10.4", True)], 1010.5)
+        a.add([(host, 1, 120, "192.168.10.5", True)], 1011)
+        self.assertEqual(sorted(v for n, t, v in a.values if (n, t) == (host, 1)), ["192.168.10.4", "192.168.10.5"])
+        a.add([(host, 1, 120, "192.168.10.6", True)], 1012.5)
+        self.assertEqual([v for n, t, v in a.values if (n, t) == (host, 1)], ["192.168.10.6"])
+
     def test_receive_interface_and_hop_limit_are_required_on_each_os(self):
         for system, kind, pkt in (("Linux", 8, struct.pack("=I", 4) + b"\0" * 8),
                                   ("Darwin", 20, b"\0\0" + struct.pack("=H", 4)),
@@ -410,6 +474,53 @@ class MDNSTests(unittest.TestCase):
         self.assertEqual(len(sock.sent), 1)
         self.assertEqual(sock.sent[0][1], ("224.0.0.251", 5353))
 
+    def collect_queues(self, queues, spec):
+        """Runs the collector on a fake clock over queued (payload, flags, peer, interface) datagrams per IP version."""
+        class Fake:
+            def __init__(self, items): self.items = list(items); self.closed = False
+            def close(self): self.closed = True
+            def sendto(self, *args): pass
+            def sendmsg(self, *args): pass
+            def recvmsg(self, *args):
+                if not self.items: raise BlockingIOError
+                payload, flags, peer, interface = self.items.pop(0)
+                return payload, [interface], flags, peer
+        socks, ticks, rows = {version: Fake(items) for version, items in queues.items()}, iter(range(10 ** 7)), []
+        clock = SimpleNamespace(monotonic=lambda: 1000 + next(ticks) / 4000, time=time.time)
+        with patch.object(mdns, "open_socket", side_effect=lambda ip, index: (socks[ip.version], None)), \
+                patch.object(mdns, "time", clock), \
+                patch.object(mdns.select, "select", side_effect=lambda r, w, x, t: ([s for s in r if s.items], [], [])), \
+                patch.object(mdns, "receiving_interface", side_effect=lambda ancillary, version: (ancillary[0], 255)):
+            result = mdns.collect(spec, {"index": 4}, 1010, None, lambda: None, rows)
+        self.assertTrue(all(s.closed for s in socks.values()))
+        return result, rows
+
+    def test_traffic_from_other_links_or_senders_cannot_use_up_the_receive_limits(self):
+        packet, truncated = self.answer(self.fixture()), getattr(socket, "MSG_TRUNC", 0x0100)
+        outside = [(b"x" * 9000, truncated, ("192.168.11.5", 5353), 4),  # another subnet
+                   (b"x" * 9000, truncated, ("192.168.10.2", 5353), 9)]  # another interface
+        outside += [(b"junk", 0, ("192.168.11.5", 5353), 4)] * (mdns.MAX_PACKETS + 1)
+        result, rows = self.collect_queues({4: outside + [(packet, 0, ("192.168.10.2", 5353), 4)]}, self.spec())
+        self.assertEqual([r["ip"] for r in rows], ["192.168.10.2"])
+        self.assertEqual((result["received_packets"], result["ignored_packets"], result["receive_path"]),
+                         (1, mdns.MAX_PACKETS + 3, "observed"))
+        # The same truncated datagram from an authorized sender on this link still stops the run.
+        with self.assertRaises(lan.Stopped) as stop:
+            self.collect_queues({4: [(b"x" * 9000, truncated, ("192.168.10.2", 5353), 4)]}, self.spec())
+        self.assertEqual(stop.exception.reason, "byte_limit")
+
+    def test_each_ip_version_must_verify_its_own_reception(self):
+        spec = lan.load({"lan_networks": {"home": {"interface": "en0", "local_addresses": ["192.168.10.20", "fd00::20"],
+                                                   "cidrs": ["192.168.10.0/24", "fd00::/64"], "mdns": True}}})[1]["home"]
+        packet = self.answer(self.fixture())
+        v4, v6 = (packet, 0, ("192.168.10.2", 5353), 4), (packet, 0, ("fd00::2", 5353, 0, 4), 4)
+        # IPv4 replies blocked, IPv6 ones arrive: IPv4-only devices would be missing, so reception is unverified.
+        result, rows = self.collect_queues({4: [], 6: [v6]}, spec)
+        self.assertEqual((result["receive_path"], result["validated_by_family"]), ("unverified", {"ipv4": 0, "ipv6": 1}))
+        self.assertEqual([r["ip"] for r in rows], ["192.168.10.2"])
+        result, _ = self.collect_queues({4: [v4], 6: [v6]}, spec)
+        self.assertEqual((result["receive_path"], result["validated_by_family"]), ("observed", {"ipv4": 1, "ipv6": 1}))
+
     def test_socket_setup_fails_closed_and_releases_socket(self):
         class Fake:
             closed = False
@@ -451,6 +562,27 @@ class MDNSTests(unittest.TestCase):
             self.assertEqual(controls(data, word), [(0, 21, payload)])
             with self.assertRaises(OSError):
                 controls((999).to_bytes(word, "little") + data[word:], word)
+
+    def test_windows_oversized_datagram_is_reported_truncated_instead_of_failing(self):
+        from pc_scanner import lan_windows
+        receiver = lan_windows.Receiver.__new__(lan_windows.Receiver)
+        receiver.socket = SimpleNamespace(fileno=lambda: 3)
+        def receive(fd, message, count, overlapped, routine):
+            # Winsock fills the buffer with the start of the datagram, then reports the error.
+            msg = message._obj
+            ctypes.memmove(msg.buffers[0].buf, b"x" * msg.buffers[0].len, msg.buffers[0].len)
+            peer = struct.pack("=H", socket.AF_INET) + struct.pack("!H", 5353) + socket.inet_aton("192.168.10.2")
+            ctypes.memmove(msg.name, peer, len(peer))
+            msg.control.len = 0
+            return -1
+        receiver.receive = receive
+        receiver.ws = SimpleNamespace(WSAGetLastError=lambda: 10040)  # WSAEMSGSIZE
+        packet, ancillary, flags, peer = receiver.recvmsg(16, 64)
+        self.assertEqual((packet, ancillary, peer), (b"x" * 16, [], ("192.168.10.2", 5353)))
+        self.assertTrue(flags & 0x0100)
+        receiver.ws = SimpleNamespace(WSAGetLastError=lambda: 10054)  # any other error still fails
+        with self.assertRaises(OSError):
+            receiver.recvmsg(16, 64)
 
     def test_native_packet_interface_and_ttl_on_loopback_only(self):
         import platform

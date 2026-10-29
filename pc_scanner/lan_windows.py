@@ -20,16 +20,21 @@ def controls(data, word_size=struct.calcsize("P")):
     return values
 
 
+class Buffer(ctypes.Structure):
+    _fields_ = [("len", ctypes.c_uint32), ("buf", ctypes.c_void_p)]
+
+
+class Message(ctypes.Structure):
+    _fields_ = [("name", ctypes.c_void_p), ("namelen", ctypes.c_int), ("buffers", ctypes.POINTER(Buffer)),
+                ("count", ctypes.c_uint32), ("control", Buffer), ("flags", ctypes.c_uint32)]
+
+
 class Receiver:
+    Buffer, Message = Buffer, Message
+
     def __init__(self, sock):
         self.socket = sock
         uint = ctypes.c_uint32
-        class Buffer(ctypes.Structure):
-            _fields_ = [("len", uint), ("buf", ctypes.c_void_p)]
-        class Message(ctypes.Structure):
-            _fields_ = [("name", ctypes.c_void_p), ("namelen", ctypes.c_int),
-                        ("buffers", ctypes.POINTER(Buffer)), ("count", uint), ("control", Buffer), ("flags", uint)]
-        self.Buffer, self.Message = Buffer, Message
         self.ws = ctypes.WinDLL("Ws2_32.dll", use_last_error=True)
         ioctl = self.ws.WSAIoctl
         ioctl.argtypes = [ctypes.c_size_t, uint, ctypes.c_void_p, uint, ctypes.c_void_p, uint,
@@ -82,12 +87,16 @@ class Receiver:
         buf = self.Buffer(size, ctypes.addressof(payload))
         msg = self.Message(ctypes.addressof(peer), len(peer), ctypes.pointer(buf), 1,
                            self.Buffer(control_size, ctypes.addressof(control)), 0)
-        count = ctypes.c_uint32()
+        count, truncated = ctypes.c_uint32(), 0
         if self.receive(self.socket.fileno(), ctypes.byref(msg), ctypes.byref(count), None, None) != 0:
             code = self.ws.WSAGetLastError()
             if code == 10035:
                 raise BlockingIOError
-            raise OSError(code, "WSARecvMsg failed")
+            if code != 10040:
+                raise OSError(code, "WSARecvMsg failed")
+            # WSAEMSGSIZE: the datagram was cut to the buffer. Report it truncated, as recvmsg does elsewhere,
+            # so the collector applies its limit instead of failing the whole method.
+            count.value, truncated = size, 0x0100
         family = struct.unpack_from("=H", peer.raw)[0]
         port = struct.unpack_from("!H", peer.raw, 2)[0]
         if family == socket.AF_INET:
@@ -96,4 +105,4 @@ class Receiver:
             source = (socket.inet_ntop(family, peer.raw[8:24]), port, 0, struct.unpack_from("=I", peer.raw, 24)[0])
         else:
             raise OSError("Unexpected address family")
-        return payload.raw[:count.value], controls(control.raw[:msg.control.len]), msg.flags, source
+        return payload.raw[:count.value], controls(control.raw[:msg.control.len]), msg.flags | truncated, source

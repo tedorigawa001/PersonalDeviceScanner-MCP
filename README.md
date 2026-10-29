@@ -385,6 +385,7 @@ Collection lasts at most five seconds within the overall 1–30 second budget. I
 cancellation return partial evidence. The operation never falls back to a default/VPN connection or external DNS.
 Unsupported OS facilities fail closed. Native Windows/Linux LAN acceptance is still pending.
 No validated mDNS reception is reported as `receive_unverified`, not proof of no responses; OS permission denial is `blocked`.
+Reception is verified per IP version: with both IPv4 and IPv6 registered, replies on one do not vouch for the other.
 Port 5353 sharing and firewall/local-network permission behavior still require native LAN acceptance.
 
 MCP exposes `discover_lan_devices(network_alias)` only with owner-enabled `lan.expose_identifiers_to_mcp=true`.
@@ -877,8 +878,9 @@ remain independent of this ephemeral progress state.
 - Passing results to a cloud AI may send application names, process IDs, file names, host names, and similar data. The PC owner decides where results go and how much is shared.
 - To reduce what is sent, file paths are returned relative to the authorized folder, and absolute paths in engine output are replaced with `<alias>`.
 - Text from the PC or the index (file, application and package names, engine output) is cleaned before it is returned:
-  control, bidi and zero-width characters are shown as `\uXXXX`, bytes that are not UTF-8 as `\xNN`, and names are
-  capped at 256 characters (paths at 1,024). osquery rows keep only the expected columns; Wazuh fields are type-checked.
+  control and format characters, line separators and every other invisible character (bidi controls, zero-width
+  characters, Unicode tags, variation selectors) are shown as `\uXXXX` (`\UXXXXXXXX` above U+FFFF), bytes that are
+  not UTF-8 as `\xNN`, and names are capped at 256 characters (paths at 1,024). osquery rows keep only the expected columns; Wazuh fields are type-checked.
 - Engine output is shortened to its first and last 60 lines in total, and lines over 500 characters keep both ends (`data.engine_text_truncated` is true when anything was shortened). Findings are capped at 500, with malware listed first.
 
 ### Operating assumptions

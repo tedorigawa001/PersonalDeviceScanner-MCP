@@ -42,9 +42,13 @@ REPORTED_DIRECTORIES = 20
 # stat defines this only on Windows; the value is fixed by the Windows SDK.
 JUNCTION_TAG = getattr(stat, "IO_REPARSE_TAG_MOUNT_POINT", 0xA0000003)
 FOUND = re.compile(r"(.+): (.+) FOUND")
-# Characters that can hide or reorder text for a reader: C0/C1 controls, bidi controls,
-# zero-width characters and the byte order mark.
-HIDDEN_CHARACTERS = re.compile("[\x00-\x1f\x7f-\x9f\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]")
+# Characters that can hide or reorder text for a reader: controls and format characters (Unicode Cc, Cf),
+# line and paragraph separators, and every default-ignorable code point (bidi controls, zero-width
+# characters, soft hyphen, variation selectors, tags and fillers), which renderers may draw as nothing.
+HIDDEN_CHARACTERS = re.compile(
+    "[\x00-\x1f\x7f-\x9f\xad\u034f\u0600-\u0605\u061c\u06dd\u070f\u0890\u0891\u08e2\u115f\u1160\u17b4\u17b5"
+    "\u180b-\u180f\u200b-\u200f\u2028-\u202e\u2060-\u206f\u3164\ufe00-\ufe0f\ufeff\uffa0\ufff0-\ufffb"
+    "\U000110bd\U000110cd\U00013430-\U0001343f\U0001bca0-\U0001bca3\U0001d173-\U0001d17a\U000e0000-\U000e0fff]")
 NAME_CHARS, PATH_CHARS = 256, 1024
 # Sort values can be long package paths; cursors stay bounded for the AI's context.
 SORT_VALUE_CHARS, CURSOR_CHARS = 4096, 65536
@@ -114,8 +118,13 @@ def clean_text(value, limit: int | None = NAME_CHARS) -> str:
         text = text.encode("utf-8", "surrogateescape").decode("utf-8", "backslashreplace")
     except UnicodeEncodeError:
         text = text.encode("utf-8", "backslashreplace").decode("utf-8")
-    text = HIDDEN_CHARACTERS.sub(lambda match: f"\\u{ord(match.group()):04x}", text)
+    text = HIDDEN_CHARACTERS.sub(escaped, text)
     return text if limit is None or len(text) <= limit else text[:limit] + "...(truncated)"
+
+
+def escaped(match: re.Match) -> str:
+    code = ord(match.group())
+    return f"\\u{code:04x}" if code <= 0xFFFF else f"\\U{code:08x}"
 
 
 def check_cancel(cancel: threading.Event | None) -> None:
