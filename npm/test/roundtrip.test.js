@@ -75,7 +75,7 @@ async function initialize(client) {
 
 test('the installed package sets itself up on first use and serves MCP on a clean stdout',
   { skip: !OPT_IN && 'set PC_SCANNER_NPM_E2E=1 to run (installs packages from PyPI)', timeout: 15 * 60 * 1000 },
-  async () => {
+  async (t) => {
     const work = fs.mkdtempSync(path.join(os.tmpdir(), 'pc-scanner-npm-'));
     try {
       // From the packed tarball, so a file missing from "files" fails here.
@@ -95,11 +95,12 @@ test('the installed package sets itself up on first use and serves MCP on a clea
       if (AUTO_DISCOVER) delete env.PC_SCANNER_PYTHON;
 
       const client = connect(launcherPath, ['--config', config, 'serve'], env);
+      t.after(() => client.server.stdin.end()); // Also close MCP when a new-tool assertion fails.
       await initialize(client);
       const tools = await client.request('tools/list', {});
       assert.deepEqual(tools.result.tools.map((tool) => tool.name).sort(),
         ['check_android_monitoring_apps', 'check_clamav_signatures', 'check_router', 'collect_android', 'collect_inventory', 'discover_lan_devices', 'get_scan_progress', 'get_vulnerabilities',
-          'list_malware_gaps', 'rescan_malware_targets', 'scan_malware', 'scanner_status']);
+          'list_malware_gaps', 'observe_outbound_connections', 'rescan_malware_targets', 'scan_malware', 'scanner_status']);
       const status = await client.request('tools/call', { name: 'scanner_status', arguments: {} });
       const report = JSON.parse(status.result.content[0].text);
       assert.equal(report.status, 'completed');
@@ -146,6 +147,7 @@ test('the installed package sets itself up on first use and serves MCP on a clea
       if (process.platform !== 'win32') {
         // The environment is reused, and SIGTERM to the launcher stops the server too.
         const again = connect(launcherPath, ['--config', config, 'serve'], env);
+        t.after(() => again.server.stdin.end());
         await initialize(again);
         assert.doesNotMatch(again.stderr(), SETUP_MESSAGE);
         const children = childProcess.spawnSync('pgrep', ['-P', String(again.server.pid)], { encoding: 'utf8' });

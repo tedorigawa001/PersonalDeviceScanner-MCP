@@ -1,0 +1,169 @@
+{
+  "date": "2026-10-30",
+  "verified_at_jst": "2026-10-30T07:57:03.439139+09:00",
+  "status": "udp_normalization_fixed_regressions_and_mac_cli_mcp_verified",
+  "previous_acceptance_record": "outbound-connections-macos-2026-10-30.json",
+  "change": {
+    "file": "pc_scanner/connections.py",
+    "behavior": "Recognize valid unspecified remote addresses with port 0 for UDP before checking address-family agreement. Return destination_unavailable without creating a connection or inferring a destination.",
+    "bounds_preserved": [
+      "UDP only",
+      "recognized IP socket families only",
+      "remote address must parse as an unspecified IP",
+      "port must parse as a valid zero port",
+      "invalid ports, malformed addresses, actual endpoint family mismatches and TCP mismatches remain rejected"
+    ]
+  },
+  "regressions": {
+    "methods_added": 2,
+    "positive_cases": "IPv4 and all supported IPv6 family numbers with IPv4/IPv6/mapped unspecified representations; repeated samples preserve real connections and count missing destinations without invalid_rows.",
+    "negative_cases": "Invalid/empty/boolean/out-of-range ports, malformed addresses, specified mismatched endpoints, nonzero mismatched ports and TCP remain invalid.",
+    "before_fix": "Positive method failed with 5 subtest errors and 1 aggregation assertion failure; negative method passed.",
+    "after_fix": "Both methods passed; included in both final full suites."
+  },
+  "environment": {
+    "macos": "27.2",
+    "architecture": "arm64",
+    "python": "3.14.10",
+    "mcp_sdk": "1.30.0",
+    "ran_as_root": false
+  },
+  "source": {
+    "frozen_python_source_sha256": "80a319c13a31d37c4b5bea138c8bb9e81e512485a3c95ecd72d1ce0268e0d1c0",
+    "working_tree_python_source_sha256_at_end": "80a319c13a31d37c4b5bea138c8bb9e81e512485a3c95ecd72d1ce0268e0d1c0",
+    "all_python_ast_matches_frozen_copy": true
+  },
+  "real_cli": {
+    "exit": 0,
+    "status": "completed",
+    "connection_count": 68,
+    "process_count": 15,
+    "sampling": {
+      "planned": 10,
+      "successful": 10,
+      "failed": 0,
+      "attempted": 10,
+      "skipped": 0,
+      "interval_seconds": 1
+    },
+    "unavailable_counts": {
+      "destination_unavailable": 220
+    },
+    "limitations": [
+      "direction_unknown",
+      "no_byte_counts",
+      "not_a_security_assessment",
+      "observed_only",
+      "os_visible_scope_only",
+      "process_join_not_atomic",
+      "process_start_resolution_seconds",
+      "short_lived_connections_may_be_missed",
+      "udp_destinations_may_be_missing"
+    ],
+    "duration_seconds": 10.255,
+    "persistence": "details_saved"
+  },
+  "real_local_stdio_mcp": {
+    "status": "completed",
+    "connection_count": 66,
+    "process_count": 16,
+    "returned_records": 66,
+    "omitted_count": 0,
+    "sampling": {
+      "planned": 10,
+      "successful": 10,
+      "failed": 0,
+      "attempted": 10,
+      "skipped": 0,
+      "interval_seconds": 1
+    },
+    "persistence": "details_saved",
+    "progress_messages": 12,
+    "schema_has_no_target_arguments": true,
+    "read_only_annotation": true,
+    "no_external_world_annotation": true,
+    "excerpt_counts_consistent": true,
+    "progress_has_no_identifiers": true,
+    "cancel_after_completed_sample": true,
+    "client_cancel_error": true,
+    "cancel_terminal_seconds": 0.031,
+    "cancel_terminal_stage": "cancelled",
+    "cancel_saved": "details_saved",
+    "unavailable_counts": {
+      "destination_unavailable": 220
+    },
+    "duration_seconds": 10.26,
+    "external_ai_service_used": false,
+    "cancelled_observation_remains_partial_as_intended": true
+  },
+  "full_tests": {
+    "python314": {
+      "total": 498,
+      "passed": 491,
+      "skipped": 7,
+      "failures": 0,
+      "errors": 0,
+      "duration_seconds": 38.702,
+      "log": "python314.log",
+      "sha256": "d73cc91b25ba62bf0d0d908c23ba8987f9e8a7ebcbbe8093260293b2182deb78"
+    },
+    "python315": {
+      "total": 498,
+      "passed": 491,
+      "skipped": 7,
+      "failures": 0,
+      "errors": 0,
+      "duration_seconds": 38.705,
+      "log": "python315.log",
+      "sha256": "5eec14a2f56c0cfabb68c2cddf39770add46ba6ce5dcabb626cc40891dd8a307"
+    },
+    "npm314_hashed_auto_discovery": {
+      "tests": 26,
+      "pass": 26,
+      "fail": 0,
+      "skipped": 0,
+      "log": "npm314.log",
+      "sha256": "0a55967ead9ad010ac83e508794764e2416ea71359ac4f23025941bbcae9cc8c"
+    },
+    "npm315_explicit_interpreter": {
+      "tests": 26,
+      "pass": 26,
+      "fail": 0,
+      "skipped": 0,
+      "log": "npm315.log",
+      "sha256": "ac5182ff160eb7481af1acb0eb7b8f1730d18bd79ba4296692f3447d619adb40"
+    },
+    "coverage": "Complete unittest discovery includes Android/MCP. Only 7 native Windows tests skipped on macOS. npm includes package install, hash rejection and actual stdio MCP.",
+    "windows_linux_native_ci_run": false
+  },
+  "privacy": {
+    "permanent_configuration_changed": false,
+    "packet_capture": false,
+    "communication_body_collected_or_saved": false,
+    "reverse_dns_or_reputation_queries": false,
+    "actual_identifiers_in_chat_or_repository": false,
+    "history_summary_identifier_keys_absent": true,
+    "details_only_in_private_local_trial": true,
+    "trial_directory_mode": "0o700",
+    "history_mode": "0o600"
+  },
+  "count_note": "Unavailable counts are per-read rows, not unique sessions or packet counts; CLI/MCP execute at different times and their observed counts need not match.",
+  "remaining": [
+    "Windows/Linux actual engine acceptance and latest CI",
+    "Administrator-vs-standard-user visibility, VPN/disconnect/route-only changes",
+    "No new browser session in this UDP follow-up; prior browser acceptance remains scoped to its earlier saved results",
+    "Sampled sockets do not determine initiation direction, payload/byte counts, complete short-lived or unconnected UDP traffic, or malware safety"
+  ],
+  "evidence": {
+    "private_local_directory": "private local temporary path (not recorded)",
+    "raw_data_committed": false,
+    "hashes": {
+      "cli.json": "687762b8ed78b24e8bbfa540b21ee552c0b517e65a48f0615ba560d3ce5d0862",
+      "cli-progress.txt": "b41323e9db31bc43ce5e807a9a5d38702d20596f9b4bebb76609577c123155f0",
+      "mcp.json": "aa007ed5afb7e6e2eb983acb28a2b1293a6c1eac7c78108cc6d4aecbf63d7bc4",
+      "mcp-progress.txt": "531de4848c3d71312372cd1c58c9cb212aabe0a486f6738181772bd05d82c3b9",
+      "cancel-progress.json": "ffeb5695ebd3a96b1ce9622e852cbbbdafa0010124e69be6a78d081689fe4162",
+      "history.jsonl": "e6801cbdfcc8e71ffda5e6f7bd865635c899f22fa8d9c247cd39e977166cfdb2"
+    }
+  }
+}

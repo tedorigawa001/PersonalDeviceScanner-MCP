@@ -1,0 +1,341 @@
+{
+  "date": "2026-10-29",
+  "verified_at_jst": "2026-10-29T23:50:03.603444+09:00",
+  "status": "implemented_automated_tests_passed_real_host_acceptance_pending",
+  "base_commit": "24e196a",
+  "source_state": "working_tree_uncommitted",
+  "environment": {
+    "os": "Darwin",
+    "release": "27.2.0",
+    "architecture": "arm64",
+    "python_primary": "3.14.10",
+    "python_secondary": "Python 3.15.2",
+    "mcp_sdk": "1.30.0",
+    "node": "v26.12.1"
+  },
+  "implementation": {
+    "cli": "pc-scanner --config scanner.toml outbound-connections [--json]",
+    "mcp": "observe_outbound_connections()",
+    "dashboard": "independent latest observation, process disclosures and page-local history links",
+    "backend": "fixed projections of osquery process_open_sockets, processes and interface_addresses",
+    "enabled_by_default": false,
+    "mcp_identifiers_disclosed_by_default": false,
+    "new_dependencies": false,
+    "limits": "duration 1..60s; interval 1..10s; per read 2s/2MiB/10000 rows; total 16MiB; records 1..10000; result conservative 2MiB; overall duration+5s",
+    "privacy": [
+      "no packet API or payload collection",
+      "no command-line or environment projection",
+      "no reverse DNS, reputation API or endpoint connection",
+      "process display name strips directory components; Unicode invisibles escaped",
+      "raw engine output held only in bounded memory",
+      "history summary allowlists counts and fixed limitations, no identifiers",
+      "full endpoint/process results saved only with history.details=true; history disabled saves nothing",
+      "name-free progress and save status; no destination links or external dashboard resources"
+    ],
+    "aggregation": [
+      "same socket duplicated within a sample counted once",
+      "same PID/start-time and endpoints across samples share a record",
+      "unknown start-time not merged across samples",
+      "same PID with different start-time or local port stays separate",
+      "latest history display does not sum observations; replaying an older observation does not replace newer partial/zero results",
+      "connection counts never added to vulnerability severities"
+    ]
+  },
+  "verification": {
+    "connection_regressions_python314": {
+      "total": 23,
+      "duration_seconds": 10.998,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 23,
+      "successful": true,
+      "log": "regression-final2.log",
+      "sha256": "5af5ff242ece62b1ecb8eaa215933b234bc6329ee0def6145d08dadfd7ca30e3",
+      "failed_tests": []
+    },
+    "final_connection_and_dashboard_regressions_python314": {
+      "total": 58,
+      "duration_seconds": 5.867,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 58,
+      "successful": true,
+      "log": "regression-dashboard-final.log",
+      "sha256": "f9f50cf3ed42ae70213e181f7fae6af960d2eb3550362a93014caa0cff81425f",
+      "failed_tests": []
+    },
+    "regression_overlap_note": "58 includes the 23 connection cases; do not add these counts together.",
+    "python314_full_final": {
+      "total": 493,
+      "duration_seconds": 37.78,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 7,
+      "passed": 486,
+      "successful": true,
+      "log": "python314-settled.log",
+      "sha256": "7b477a23a949ebeb0bcf9587db3d9d18d920768d17628e8ea0b8d62b13387601",
+      "failed_tests": []
+    },
+    "python315_full_final": {
+      "total": 493,
+      "duration_seconds": 37.242,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 7,
+      "passed": 486,
+      "successful": true,
+      "log": "python315-settled.log",
+      "sha256": "f7e71e221116652dcbf15f1cd65c55e0a949fad0a88f11d14d75c39409bacea6",
+      "failed_tests": []
+    },
+    "npm314_hashed_auto_discovery": {
+      "tests": 26,
+      "pass": 26,
+      "fail": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "log": "npm314-final.log",
+      "sha256": "6140dd72033e97ad05be07846cc8f16d0c97e481f52c75784f85a8bd9b70b0a5"
+    },
+    "npm315_explicit_interpreter": {
+      "tests": 26,
+      "pass": 26,
+      "fail": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "log": "npm315-final.log",
+      "sha256": "261ac5fb94d802b853a0bbe93bb55d777889cbcd1222c26a1514a1e659e38ba6"
+    },
+    "coverage": [
+      "CLI text and JSON dispatch",
+      "fixed projections with logging/events disabled",
+      "extra injected payload/cmdline/environment fields dropped from results/details",
+      "summary sanitization when reading edited history",
+      "MCP SDK schema/annotations/disclosure gate/busy/cancel/final progress",
+      "real stalled synthetic child stopped and reaped",
+      "read deadline exactly and 1 microsecond beyond; total deadline checks",
+      "network change, limits, malformed rows, IP classification and missing UDP destination",
+      "private temporary history summary/details and save-failure state",
+      "HTML escaping, detail disclosures, no endpoint links, duplicate/replayed history",
+      "Android and existing MCP tests in both complete Python suites",
+      "npm package/install/hash rejection/stdout-clean real stdio MCP"
+    ],
+    "skips": "Seven Windows-only tests on macOS; no missing MCP SDK skips.",
+    "macos_osquery_check": "Only process_open_sockets schema and fixed flags inspected; personal connection rows not queried."
+  },
+  "earlier_unsuccessful_runs": {
+    "python314_initial": {
+      "total": 492,
+      "duration_seconds": 479.675,
+      "failures": 1,
+      "errors": 4,
+      "skipped": 7,
+      "passed": 480,
+      "successful": false,
+      "log": "python314.log",
+      "sha256": "73320cfd592400e99fdbc8496f34e94b60c078c6839452872627c41e79498f3e",
+      "failed_tests": [
+        "test_local_listing_is_name_free_unless_explicitly_requested (test_coverage.CoverageTests.test_local_listing_is_name_free_unless_explicitly_requested)",
+        "test_real_cli_retry_parses_target_ids_and_replaces_saved_counts (test_coverage.CoverageTests.test_real_cli_retry_parses_target_ids_and_replaces_saved_counts)",
+        "test_cli_accepts_batch_and_resume_and_keeps_the_same_target (test_malware_batch.MalwareBatchTests.test_cli_accepts_batch_and_resume_and_keeps_the_same_target)",
+        "test_stdio_round_trip (test_mcp.MCPTests.test_stdio_round_trip)",
+        "test_indexer_time_is_deducted_from_manager_budget (test_freshness.FreshnessTests.test_indexer_time_is_deducted_from_manager_budget)"
+      ]
+    },
+    "python315_initial": {
+      "total": 492,
+      "duration_seconds": 477.337,
+      "failures": 2,
+      "errors": 2,
+      "skipped": 7,
+      "passed": 481,
+      "successful": false,
+      "log": "python315.log",
+      "sha256": "7666f5ba66ea1f9b3f05d82887b0cb08d16f32ad4d480f3880bb690d4eec0c07",
+      "failed_tests": [
+        "test_stdio_round_trip (test_mcp.MCPTests.test_stdio_round_trip)",
+        "test_cli_progress_uses_stderr_and_leaves_one_json_result_on_stdout (test_progress.ProgressTests.test_cli_progress_uses_stderr_and_leaves_one_json_result_on_stdout)",
+        "test_cancel_during_engine_keeps_previous_results_and_resume_retries_pending (test_malware_batch.MalwareBatchTests.test_cancel_during_engine_keeps_previous_results_and_resume_retries_pending)",
+        "test_requests_are_spaced_out (test_router.RouterTests.test_requests_are_spaced_out)"
+      ]
+    },
+    "python314_high_load": {
+      "total": 493,
+      "duration_seconds": 610.299,
+      "failures": 6,
+      "errors": 2,
+      "skipped": 7,
+      "passed": 478,
+      "successful": false,
+      "log": "python314-final.log",
+      "sha256": "8e1f867d9e456c2af2217885c7c0cf5dbd148b90c1071cfaefea1edac3331731",
+      "failed_tests": [
+        "test_cli_progress_uses_stderr_and_leaves_one_json_result_on_stdout (test_progress.ProgressTests.test_cli_progress_uses_stderr_and_leaves_one_json_result_on_stdout)",
+        "test_cli_status_command_returns_one_json_without_updating (test_signatures.SignatureTests.test_cli_status_command_returns_one_json_without_updating)",
+        "test_indexer_time_is_deducted_from_manager_budget (test_freshness.FreshnessTests.test_indexer_time_is_deducted_from_manager_budget)",
+        "test_timeout_checkpoint_can_be_resumed (test_malware_batch.MalwareBatchTests.test_timeout_checkpoint_can_be_resumed)",
+        "test_cli_ctrl_c_reports_saved_checkpoint_and_stops_child_without_traceback (test_progress.ProgressTests.test_cli_ctrl_c_reports_saved_checkpoint_and_stops_child_without_traceback)",
+        "test_cancel_reaches_a_waiting_wazuh_request (test_scanner.ScannerTests.test_cancel_reaches_a_waiting_wazuh_request) (stall='in the body')",
+        "test_slow_real_wazuh_server_stops_at_the_deadline (test_scanner.ScannerTests.test_slow_real_wazuh_server_stops_at_the_deadline) (slow='trickling')",
+        "test_time_limit_stops_actual_signature_check_child (test_signatures.SignatureTests.test_time_limit_stops_actual_signature_check_child)"
+      ]
+    },
+    "python315_high_load": {
+      "total": 493,
+      "duration_seconds": 809.26,
+      "failures": 2,
+      "errors": 4,
+      "skipped": 7,
+      "passed": 480,
+      "successful": false,
+      "log": "python315-final.log",
+      "sha256": "c89e558e3347f37fb4c3145f90456fd24445396ffd50fe59a1d156f50a651db0",
+      "failed_tests": [
+        "test_local_listing_is_name_free_unless_explicitly_requested (test_coverage.CoverageTests.test_local_listing_is_name_free_unless_explicitly_requested)",
+        "test_real_cli_rejects_disabled_lan_without_network_access (test_lan.LANTests.test_real_cli_rejects_disabled_lan_without_network_access)",
+        "test_long_scan_does_not_block_server (test_mcp.MCPTests.test_long_scan_does_not_block_server)",
+        "test_cli_progress_uses_stderr_and_leaves_one_json_result_on_stdout (test_progress.ProgressTests.test_cli_progress_uses_stderr_and_leaves_one_json_result_on_stdout)",
+        "test_cli_ctrl_c_reports_saved_checkpoint_and_stops_child_without_traceback (test_progress.ProgressTests.test_cli_ctrl_c_reports_saved_checkpoint_and_stops_child_without_traceback)",
+        "test_mcp_streams_real_mid_scan_counters_and_elapsed_time (test_progress.ProgressTests.test_mcp_streams_real_mid_scan_counters_and_elapsed_time)"
+      ]
+    },
+    "failed_timing_cases_retry": {
+      "total": 8,
+      "duration_seconds": 52.93,
+      "failures": 5,
+      "errors": 1,
+      "skipped": 0,
+      "passed": 2,
+      "successful": false,
+      "log": "retry-timing314.log",
+      "sha256": "8a7e1f59a9cead47ebc27827d425e3fb5e323fd56c41949c895c0bdab1f61ceb",
+      "failed_tests": [
+        "test_cli_status_command_returns_one_json_without_updating (tests.test_signatures.SignatureTests.test_cli_status_command_returns_one_json_without_updating)",
+        "test_indexer_time_is_deducted_from_manager_budget (tests.test_freshness.FreshnessTests.test_indexer_time_is_deducted_from_manager_budget)",
+        "test_timeout_checkpoint_can_be_resumed (tests.test_malware_batch.MalwareBatchTests.test_timeout_checkpoint_can_be_resumed)",
+        "test_cli_ctrl_c_reports_saved_checkpoint_and_stops_child_without_traceback (tests.test_progress.ProgressTests.test_cli_ctrl_c_reports_saved_checkpoint_and_stops_child_without_traceback)",
+        "test_cancel_reaches_a_waiting_wazuh_request (tests.test_scanner.ScannerTests.test_cancel_reaches_a_waiting_wazuh_request) (stall='before the headers')",
+        "test_time_limit_stops_actual_signature_check_child (tests.test_signatures.SignatureTests.test_time_limit_stops_actual_signature_check_child)"
+      ]
+    },
+    "pre_feature_baseline_timing_comparison": {
+      "commit": "24e196a",
+      "total": 3,
+      "duration_seconds": 5.613,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 2,
+      "successful": false,
+      "log": "baseline-timing.log",
+      "sha256": "a834029a9d4015fe5c202badfc7ad9547e0baeed369ddd262475cc422dab216c",
+      "failed_tests": [
+        "test_timeout_checkpoint_can_be_resumed (tests.test_malware_batch.MalwareBatchTests.test_timeout_checkpoint_can_be_resumed)"
+      ]
+    },
+    "investigation": [
+      "Initial tool-list expectations updated in Python and npm for the new tool.",
+      "A CLI test mixed a frozen synthetic clock with real Event.wait; a traceback established the test-fixture cause, then CLI coverage used real time.",
+      "Host load averages observed above 80; full suites took 610/809s with timing and subprocess failures. Baseline also failed one of three representative timing cases.",
+      "After load fell to 5.36, the final suites ran sequentially in 37.780/37.242s and both passed without relaxing timeouts or changing existing runtime behavior.",
+      "Initial failed npm runs were stopped and their child test processes reaped. Final npm suites both passed; test cleanup now closes MCP even on assertion failure."
+    ]
+  },
+  "data_scope": {
+    "real_personal_connections_collected": false,
+    "packet_capture": false,
+    "cloud_files_downloaded": false,
+    "permanent_configuration_changed": false,
+    "test_data": "synthetic OS rows, owned local test services and temporary history only",
+    "external_requests": "official documentation, dependency installation and existing controlled API tests; no new real-host connection scan"
+  },
+  "remaining": [
+    "Windows/macOS/Linux actual standard-user visibility and attribution acceptance",
+    "OS-specific permission and network-change behavior",
+    "real-browser display/disclosure/history link acceptance",
+    "latest Windows/Linux CI; local synthetic tests do not replace native acceptance",
+    "sampled sockets cannot establish initiation direction, byte counts, complete short-lived/UDP coverage or malware/safety",
+    "process start times have second resolution and the process/socket join is not atomic; same-second PID reuse remains ambiguous",
+    "address fingerprints cannot detect route-only changes or prove physical interface identity"
+  ],
+  "evidence_storage": {
+    "local_directory": "/tmp/pc-scanner-connections-20261029",
+    "raw_logs_committed": false,
+    "note": "Logs are local temporary evidence; their digests are recorded here."
+  },
+  "review_fixes_2026_10_30": {
+    "reason": "The implementation started from 24e196a, so the review points added to the design in 53a594c were missing.",
+    "changes": [
+      "outbound_connections.save_details (default false): details are saved only with history.details=true as well; otherwise summary_saved, and a configuration warning when save_details=true without history.details",
+      "MCP reply: classification_counts, process_counts (by classification), unattributed_records first; at most 100 process entries and 100 records within 64 KiB of the SDK's 2-space JSON; omitted_count, omitted_process_count and a warning",
+      "max_connections 1..2000; states limited to 16 characters and 16 per record so the growth reserve is 316 bytes instead of 2048",
+      "digits allowed in state names (FIN_WAIT_1, FIN_WAIT2 had become unknown)",
+      "records in one fixed order (internet candidates first, then process, then destination) for the CLI, MCP and dashboard",
+      "unused import removed; design status line, README, README.ja and the example configuration updated"
+    ],
+    "observed_with_synthetic_rows": {
+      "history_details_only": "summary_saved, no details file, no unknown-setting warning",
+      "records_2000": "completed with 2000 records (before: partial, result_size_limit at 806)",
+      "mcp_reply_from_2000_records": {
+        "records": 85,
+        "omitted_count": 1915,
+        "bytes": 64921
+      },
+      "note": "The 64 KiB limit binds before 100 records in practice (about 85 short IPv4 records, fewer for IPv6 or long names)."
+    },
+    "verification": {
+      "connection_regressions": {
+        "python314": {
+          "total": 26,
+          "passed": 26
+        },
+        "python315": {
+          "total": 26,
+          "passed": 26
+        }
+      },
+      "python314_full": {
+        "total": 496,
+        "passed": 489,
+        "skipped": 7,
+        "failures": 0,
+        "errors": 0
+      },
+      "python315_full": {
+        "total": 496,
+        "passed": 489,
+        "skipped": 7,
+        "failures": 0,
+        "errors": 0
+      },
+      "npm_python314": {
+        "tests": 26,
+        "pass": 25,
+        "fail": 0,
+        "skipped": 1,
+        "skipped_reason": "the opt-in package end-to-end test installs from PyPI and was not run for this change"
+      },
+      "mutations": {
+        "total": 11,
+        "caught": 11,
+        "cases": [
+          "details gate removed",
+          "old 2048 reserve",
+          "MCP excerpt not applied",
+          "digits rejected in state",
+          "10000 accepted",
+          "byte budget ignored",
+          "unattributed records merged into a process",
+          "no fixed order",
+          "save_details not a known key",
+          "states uncapped",
+          "omitted warning dropped"
+        ]
+      },
+      "real_history_unchanged": true
+    }
+  }
+}

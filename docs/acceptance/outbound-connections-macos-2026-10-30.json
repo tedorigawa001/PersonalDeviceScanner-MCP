@@ -1,0 +1,229 @@
+{
+  "date": "2026-10-30",
+  "verified_at_jst": "2026-10-30T07:45:12.051456+09:00",
+  "status": "partial_acceptance_with_udp_normalization_followup",
+  "scope": "This Mac only: real OS-visible connections, read-only CLI/local SDK stdio MCP, local installed Chrome rendering and interaction",
+  "authorization": "Owner explicitly approved collecting process/PID/endpoint metadata and keeping private local trial history/dashboard; no identifiers in chat or repository records.",
+  "source": {
+    "git_head_at_recording": "53a594c85ad495b1973c9095938865ebed03ae85",
+    "uncommitted_working_tree_copy": true,
+    "frozen_python_source_sha256": "6185a3bb8f62bb79ddd399617816afd9de034828875db76c32e6b4a8355ad69d",
+    "working_tree_python_source_sha256_at_end": "be464bffc389dd1dd4622d5540c61da8e7f6530fb9609cadbbe3285400044000",
+    "comparison": {
+      "files_with_text_changes": [
+        "pc_scanner/connections.py"
+      ],
+      "all_python_sources_ast_equal": true
+    },
+    "difference_note": "Only the explanatory MAX_CONNECTIONS comment differs; every Python AST matches the fixed trial copy at the final comparison.",
+    "production_code_changed_by_this_acceptance": false
+  },
+  "environment": {
+    "macos": "27.2",
+    "architecture": "arm64",
+    "python": "3.14.10",
+    "mcp_sdk": "1.30.0",
+    "node": "v26.12.1",
+    "osquery": "osqueryi version 5.23.1"
+  },
+  "trial_settings": {
+    "permanent_configuration_changed": false,
+    "osquery_binary": "/usr/local/bin/osqueryi",
+    "history": "dedicated private temporary file; enabled/details true; 10MiB details limit",
+    "outbound_connections": {
+      "enabled": true,
+      "duration_seconds": 10,
+      "interval_seconds": 1,
+      "max_connections": 2000,
+      "expose_identifiers_to_mcp": true,
+      "save_details": true
+    },
+    "updates_lookup": false,
+    "mcp_provider": "local Python MCP SDK client over stdio; no external AI service"
+  },
+  "cli_json": {
+    "source_sha256": "6185a3bb8f62bb79ddd399617816afd9de034828875db76c32e6b4a8355ad69d",
+    "exit": 2,
+    "status": "partial",
+    "connection_count": 68,
+    "process_count": 13,
+    "sampling": {
+      "planned": 10,
+      "successful": 10,
+      "failed": 0,
+      "attempted": 10,
+      "skipped": 0,
+      "interval_seconds": 1
+    },
+    "limitations": [
+      "direction_unknown",
+      "invalid_rows",
+      "no_byte_counts",
+      "not_a_security_assessment",
+      "observed_only",
+      "os_visible_scope_only",
+      "process_join_not_atomic",
+      "process_start_resolution_seconds",
+      "short_lived_connections_may_be_missed",
+      "udp_destinations_may_be_missing"
+    ],
+    "stop_reason": null,
+    "persistence": "details_saved",
+    "error": null,
+    "duration_seconds": 10.255,
+    "unavailable_row_counts": {
+      "destination_unavailable": 60,
+      "invalid_rows": 160
+    }
+  },
+  "cli_text": {
+    "exit": 2,
+    "has_status": true,
+    "has_observed_records": true,
+    "has_destination_heading": true,
+    "has_uncertainty_notice": true,
+    "has_persistence": true,
+    "duration_seconds_setting": 3,
+    "separate_trial_history": true
+  },
+  "mcp": {
+    "status": "partial",
+    "connection_count": 71,
+    "process_count": 13,
+    "returned_records": 71,
+    "omitted_count": 0,
+    "sampling": {
+      "planned": 10,
+      "successful": 10,
+      "failed": 0,
+      "attempted": 10,
+      "skipped": 0,
+      "interval_seconds": 1
+    },
+    "persistence": "details_saved",
+    "progress_messages": 12,
+    "schema_has_no_target_arguments": true,
+    "read_only_annotation": true,
+    "no_external_world_annotation": true,
+    "excerpt_counts_consistent": true,
+    "progress_has_no_identifiers": true,
+    "cancel_after_completed_sample": true,
+    "client_cancel_error": true,
+    "cancel_terminal_seconds": 0.027,
+    "cancel_terminal_stage": "cancelled",
+    "cancel_saved": "details_saved",
+    "duration_seconds": 10.257,
+    "unavailable_row_counts": {
+      "destination_unavailable": 60,
+      "invalid_rows": 150
+    }
+  },
+  "browser": {
+    "browser": "installed Google Chrome, isolated headless context",
+    "actual_generated_html_loaded": true,
+    "history_anchor_navigation": true,
+    "outer_open": true,
+    "outer_close": true,
+    "process_groups": 13,
+    "process_open": true,
+    "process_close": true,
+    "rendered_records": 71,
+    "records_match_saved_result": true,
+    "destinations_displayed": true,
+    "latest_partial_and_counts_visible": true,
+    "all_links_page_local": true,
+    "no_script_elements": true,
+    "csp_default_none": true,
+    "no_external_requests": true,
+    "console_and_page_errors": 0,
+    "no_document_horizontal_overflow": true,
+    "mode": "headless installed Chrome, isolated temporary profile; automated interaction, not human/in-app-browser visual acceptance",
+    "data": "actual generated history.html, no synthetic replacement of identifiers; DOM text/screenshots never sent to an AI tool",
+    "transport": "single allowed route on 127.0.0.1 with random path; no directory listing, cache disabled; browser and preview server closed after trial"
+  },
+  "privacy_history_and_aggregation": {
+    "history_records": 4,
+    "reports_with_connection_details": 3,
+    "latest_status": "partial",
+    "latest_stop_reason": "cancelled",
+    "latest_connection_count": 71,
+    "latest_saved_rows": 71,
+    "history_summary_contains_no_identifiers": true,
+    "details_contain_no_body_cmdline_environment_fields": true,
+    "skipped_history_lines": 0,
+    "trial_directory_private": true,
+    "history_private": true,
+    "details_private": true,
+    "replay_does_not_add_counts": true,
+    "history_summary_keys_are_identifier_free": true,
+    "packet_capture": false,
+    "communication_body_collected": false,
+    "communication_body_saved": false,
+    "reverse_dns_or_reputation_queries": false,
+    "identifiers_in_repository_record": false,
+    "screenshots_created": false,
+    "count_note": "Connections are sampled records, not packets/sessions or malware findings. CLI and MCP counts differ because their observations occurred at different times. Unavailable row counts sum per sample."
+  },
+  "followups": [
+    {
+      "id": "macos-unconnected-udp-representation",
+      "status": "resolved",
+      "evidence": {
+        "unconnected_udp_with_unspecified_remote": 15,
+        "ipv6_family_with_ipv4_unspecified_text": 15
+      },
+      "description": "osquery reports some unconnected UDP rows with IPv6 family but an IPv4 unspecified remote-address representation. normalize checks family before destination absence and rejects these as invalid_rows.",
+      "impact": "Usable connections remain visible, but normal reads return partial with invalid_rows instead of classifying this known missing destination as destination_unavailable.",
+      "next": "Add a synthetic regression for the observed shape, normalize the unspecified destination before family validation as appropriate, then repeat real CLI/MCP acceptance. Do not infer an actual UDP destination.",
+      "resolution_record": "outbound-connections-udp-normalization-2026-10-30.json",
+      "resolution": "Normalized with regression coverage; actual Mac CLI and local MCP both completed without invalid_rows on 2026-10-30."
+    },
+    {
+      "id": "remaining-platforms-and-visibility",
+      "status": "open",
+      "description": "Windows/Linux native acceptance, administrator-vs-standard-user visibility, routing/VPN/disconnect and short-lived/unconnected UDP coverage remain unverified."
+    },
+    {
+      "id": "timeout-under-stalled-real-read",
+      "status": "not_run",
+      "description": "Normal windows finished in about 10.26s and actual cancellation was checked. A deliberately stalled real osquery read and forced full-operation timeout were not exercised in this trial."
+    }
+  ],
+  "initial_unsuccessful_attempt": {
+    "status": "error",
+    "error_type": "NameError",
+    "source_not_fixed": true,
+    "note": "The first CLI attempt while the source was changing returned an internal NameError. Direct reads and the fixed copy did not reproduce it; no root cause or code fix is claimed."
+  },
+  "browser_harness_iteration": {
+    "initial_failure": "The verification function referenced a Node-side expected value from browser-side evaluation without passing it as an argument.",
+    "resolution": "Passed the numeric count explicitly; repeated complete browser assertions passed. No application source change."
+  },
+  "full_test_note": "This was an actual-host/browser acceptance run, not another full Python/npm test run. The prior 2026-10-29 automated verification record covers its stated earlier source only.",
+  "evidence": {
+    "private_local_directory": "private local temporary path (not recorded)",
+    "dashboard": "private local temporary path (not recorded)",
+    "sha256": {
+      "cli.json": "41f5bd5cf07bf414f7b37a05df44b9ae17cb60664f03b3f59dda47dc839cf8af",
+      "cli-progress.txt": "abfc753ecb023a051e4a669906a134881661b4b69076421052b26629a16f541c",
+      "cli-text.txt": "3f6dd0292660b588edd4a4a61a9a07a514cb5381336715866571b72893d7830f",
+      "mcp.json": "cd201b91a4105f66da0ab29572ca708b66c44a8ebe1e58586fb5ddb79243d33f",
+      "mcp-progress.txt": "9d8f0c4160ef6ee05577877385388765a7955b2c5dbfacf67d1ce19fd5d97887",
+      "cancel-progress.json": "9ea0777ef26861defd570ac4ecc6a4c8df1505452d67ee574dcc8599c5c94f42",
+      "history.jsonl": "a86532df5084684ce2439b2ed95dce060861de0a690151f18be7ea4eb1c3eb0c",
+      "history.html": "51f57fcc1a45423b74f97f57a9f1b9538f8cecfe7a8f994610aef6e67c3a458e",
+      "browser-summary.json": "6972303f890b733a105eda03ed346ba7638cb7873b23b6109ebf6860c4c576ac",
+      "privacy-history-summary.json": "f652ae20746a81fd7c848d2fa723d923eb14500f06e42d69295b653a5172f10b",
+      "mcp_acceptance.py": "d762e5a7a2051f282b98674eb29da3034e818297d527278d50c636d4aed947c7",
+      "browser_acceptance.cjs": "2fc109e0cf572da3ec1ec94cf96b0b4934c7e408d2c4be8b223432e368af20ec"
+    },
+    "raw_data_committed": false,
+    "retention": "Temporary local files may be removed by the OS; only this identifier-free acceptance record is added to the repository."
+  },
+  "follow_up_udp_normalization": {
+    "date": "2026-10-30",
+    "status": "verified",
+    "record": "outbound-connections-udp-normalization-2026-10-30.json",
+    "initial_trial_preserved": true
+  }
+}

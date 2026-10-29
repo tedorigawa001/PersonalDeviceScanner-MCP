@@ -447,10 +447,47 @@ lookup = true    # エンジンのバージョンを公式の最新リリース�
   .venv/bin/python -m pip install --no-deps .
   ```
 
+### 外向き接続の観測（第1段階）
+
+`pc-scanner --config scanner.toml outbound-connections`（JSONは`--json`）で、このPCのOSが公開する
+プロセスと接続先IP/portを時間を区切って観測します。`local.osquery_binary`の設定が必要です。
+パケット・通信本文・コマンドラインは取得せず、逆引き・外部照会・遮断・権限昇格は行いません。
+接続一覧の定期読み取りなので、受信した接続も含み、開始方向や実送信は不明です。
+短命接続や他ユーザーのプロセスを見逃しうるため、0件でも「安全」「通信なし」と判断しません。
+
+```toml
+[outbound_connections]
+enabled = false
+duration_seconds = 10
+interval_seconds = 1
+max_connections = 2000
+expose_identifiers_to_mcp = false
+save_details = false
+```
+
+観測時間は1..60秒、間隔は1..10秒かつ観測時間以下、統合レコード上限は1..2000です。
+MCPの`observe_outbound_connections()`は対象等の引数を取りません。プロセス名・PID・接続先が利用するAIへ
+渡りうるため、所有者が`expose_identifiers_to_mcp`を明示的に有効にした場合だけ実行します。
+MCPクライアントは結果の大きさを制限するため、MCPにはプロセス別・宛先分類別の件数を先に返し、
+接続レコードは`internet_candidate`を先頭に最大100件・64KiBまでとします。省いた件数は`omitted_count`に示し、全件はCLIと保存した詳細で確認します。
+進捗には件数と保存状況だけを含め、Ctrl+C・MCP取消では途中の結果と終了状態を保持します。
+
+履歴要約は件数と制約だけです。接続先・プロセス詳細は`history.details=true`かつ`outbound_connections.save_details=true`の場合だけ保存します。
+他の検査のために詳細保存を有効にしても、利用したサービスの記録に相当する接続先は保存し始めません。
+`history.enabled=false`では保存しません。詳細にも通信本文・エンジンの生出力は残しません。
+`pc-scanner dashboard`で最新の観測を脆弱性件数と分けて表示し、プロセス別開閉・ページ内履歴リンクで確認できます。
+接続先へのリンクは生成しません。読み取りの出現回数をセッション数・送信回数として数えません。
+osqueryの固定列だけを使い、ログ・イベント収集を無効にします。シェルのDBはメモリー内です。
+このMacの実CLI・ローカルMCP取得と、隔離したChromeでの表示・開閉・履歴リンクは部分受入済みです。
+未接続UDPの正規化は修正し、実CLI・ローカルMCPで`invalid_rows`なし・`completed`を確認しました。
+権限差・Windows/Linux実機は残ります。[UDP再受入記録](docs/acceptance/outbound-connections-udp-normalization-2026-10-30.json)を参照してください。
+[受入記録](docs/acceptance/outbound-connections-macos-2026-10-30.json)と[設計・検証計画](docs/outbound-connections-design.md)を参照してください。
+
 ## 設定項目
 
 | 項目 | 説明 | 既定値 |
 |---|---|---|
+| `outbound_connections` | 接続観測の許可・観測時間1..60秒・間隔1..10秒・上限1..2000件。MCP提供と詳細保存はそれぞれ明示許可 | 無効 |
 | `local.osquery_binary` | osqueryi の絶対パス。空欄なら無効 | 空欄 |
 | `local.clamav_binary` | clamscan の絶対パス。空欄なら無効。`.bat` / `.cmd` は使えません | 空欄 |
 | `local.timeout_seconds` | 1回の操作の制限時間（1〜3600秒）。ClamAV ではフォルダー確認と検査の合計、Wazuh は最大30秒です | `600` |

@@ -57,7 +57,7 @@ MAX_PAGES = 1000000
 SOURCES = {"status": "bridge", "inventory": "osquery", "malware": "clamav",
            "check_clamav_signatures": "clamav", "vulnerabilities": "wazuh",
            "android": "adb", "android_check": "adb", "router_check": "router", "router_products": "router",
-           "discover_lan_devices": "lan"}
+           "discover_lan_devices": "lan", "observe_outbound_connections": "connections"}
 
 # OpenSSL's X509_V_ERR_HOSTNAME_MISMATCH and X509_V_ERR_IP_ADDRESS_MISMATCH.
 WRONG_HOST = {62: "Hostname mismatch: the certificate is not for the host in wazuh.url",
@@ -282,7 +282,9 @@ SETTINGS = {"local": {"osquery_binary", "clamav_binary", "timeout_seconds", "max
             "routers": None,
             "updates": {"lookup"},
             "lan": {"enabled", "timeout_seconds", "max_devices", "expose_identifiers_to_mcp"},
-            "lan_networks": None}
+            "lan_networks": None,
+            "outbound_connections": {"enabled", "duration_seconds", "interval_seconds", "max_connections",
+                                     "expose_identifiers_to_mcp", "save_details"}}
 
 
 def unknown_settings(config: dict) -> list[str]:
@@ -687,7 +689,8 @@ class Scanner:
         self.update_settings = config.get("updates", {})
         if not all(isinstance(v, dict) for v in (self.local, self.roots, self.wazuh, self.android,
                                                   self.android_devices, self.history_settings,
-                                                  self.update_settings, config.get("lan", {}), config.get("lan_networks", {}))):
+                                                  self.update_settings, config.get("lan", {}), config.get("lan_networks", {}),
+                                                  config.get("outbound_connections", {}))):
             raise ScannerError("Configuration sections must be tables")
         self.config_warnings = unknown_settings(config)
         from . import freshness
@@ -758,6 +761,11 @@ class Scanner:
         from . import lan
         self.lan_settings, self.lan_networks, lan_warnings = lan.load(config)
         self.config_warnings += lan_warnings
+        from . import connections
+        self.connection_settings = connections.load(config)
+        if self.connection_settings["save_details"] and not self.history_details:
+            self.config_warnings.append("outbound_connections.save_details has no effect while history.details = false")
+        self._connection_lock = threading.Lock()
         # Set by the CLI ("cli") or the MCP server ("mcp"); scans are recorded only then.
         self.via = None
         ca_file = self.wazuh.get("ca_file", "")
@@ -820,6 +828,8 @@ class Scanner:
             "scan_root_aliases": list(self.roots),
             "android_device_aliases": list(self.android_devices),
             "router_aliases": list(self.routers),
+            "outbound_connections_enabled": self.connection_settings["enabled"],
+            "outbound_connections_mcp_disclosure": self.connection_settings["expose_identifiers_to_mcp"],
             "lan_enabled": self.lan_settings["enabled"],
             "lan_network_aliases": list(self.lan_networks),
             "lan_mcp_disclosure": self.lan_settings["expose_identifiers_to_mcp"],
@@ -1361,6 +1371,10 @@ class Scanner:
         from . import router
         return router.products(self, maker, keyword, cancel)
 
+    def observe_outbound_connections(self, cancel=None, progress=None) -> dict:
+        from . import connections
+        return connections.observe(self, cancel, progress)
+
     def discover_lan_devices(self, network_alias: str, cancel=None, progress=None) -> dict:
         from . import lan
         return lan.discover(self, network_alias, cancel, progress)
@@ -1371,12 +1385,13 @@ class Scanner:
                       "android": self.android_collect, "android_check": self.android_check,
                       "router_check": self.router_check, "router_products": self.router_products,
                       "check_clamav_signatures": self.check_clamav_signatures,
-                      "discover_lan_devices": self.discover_lan_devices}
+                      "discover_lan_devices": self.discover_lan_devices,
+                      "observe_outbound_connections": self.observe_outbound_connections}
         source = SOURCES.get(operation, "bridge")
         started, clock = datetime.now(timezone.utc), time.perf_counter()
         if progress:
             progress.update(stage="preflight" if operation == "malware" else "running")
-            if operation in {"malware", "check_clamav_signatures", "discover_lan_devices"}:
+            if operation in {"malware", "check_clamav_signatures", "discover_lan_devices", "observe_outbound_connections"}:
                 kwargs["progress"] = progress
             else:
                 progress.update(checkpoint="not_applicable")
@@ -1409,14 +1424,23 @@ class Scanner:
             from . import history
             if operation in history.OPERATIONS:
                 try:
-                    if operation == "discover_lan_devices" and progress:
+                    if operation in {"discover_lan_devices", "observe_outbound_connections"} and progress:
                         progress.update(stage="saving")
+                    details = report if self.history_details else None
+                    if operation == "observe_outbound_connections":
+                        # Destinations show which services were used, so their details need a consent of their own.
+                        details = details if self.connection_settings["save_details"] else None
+                        report.setdefault("data", {})["persistence"] = "details_saved" if details else "summary_saved"
                     history.append(self.history_path(), history.entry(
                         operation, kwargs, report, started, time.perf_counter() - clock, self.via),
-                        report if self.history_details else None, self.history_details_mb * 1024 * 1024)
+                        details, self.history_details_mb * 1024 * 1024)
                 except Exception:
                     # Never at the cost of the result: the scan itself already finished.
+                    if operation == "observe_outbound_connections":
+                        report.setdefault("data", {})["persistence"] = "save_failed"
                     report["warnings"].append("Scan history could not be written; the scan itself is unaffected")
+        if operation == "observe_outbound_connections" and progress:
+            progress.update(persistence=report.get("data", {}).get("persistence", "not_saved"))
         if progress:
             progress.finish(report["status"], kwargs.get("cancel"))
             report.setdefault("data", {})["progress"] = progress.snapshot()

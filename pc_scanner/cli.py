@@ -62,6 +62,8 @@ def main():
     lan_devices = commands.add_parser("lan-devices", help="observe devices on an owner-authorized LAN; names, IPs and MACs are included")
     lan_devices.add_argument("network_alias")
     lan_devices.add_argument("--json", action="store_true", help="print the complete LAN observations")
+    outbound = commands.add_parser("outbound-connections", help="read OS-visible processes and destinations; no packets or payloads")
+    outbound.add_argument("--json", action="store_true", help="print complete socket observations with coverage limitations")
     inventory = commands.add_parser("inventory")
     inventory.add_argument("query_id", choices=["os_version", "applications", "listening_ports"])
     inventory.add_argument("--offset", type=int, default=0, help="continue from data.next_offset")
@@ -144,10 +146,10 @@ def main():
         elif args.command != "malware-gaps":
             scanner.via = "cli"
             kwargs = {k: v for k, v in vars(args).items() if k not in {"config", "command", "json"}}
-            if args.command in {"malware", "check-clamav-signatures", "lan-devices"}:
+            if args.command in {"malware", "check-clamav-signatures", "lan-devices", "outbound-connections"}:
                 from .progress import CLIProgress
                 with CLIProgress() as display:
-                    report = scanner.invoke("discover_lan_devices" if args.command == "lan-devices" else args.command.replace("-", "_"),
+                    report = scanner.invoke({"lan-devices": "discover_lan_devices", "outbound-connections": "observe_outbound_connections"}.get(args.command, args.command.replace("-", "_")),
                                             progress=display.progress, cancel=display.cancel, **kwargs)
             else:
                 report = scanner.invoke(args.command.replace("-", "_"), **kwargs)
@@ -159,7 +161,21 @@ def main():
         # Exit 2 ("not completed"), never 1, which means "completed with findings".
         report = result("bridge", "error",
                         error=f"Unexpected internal error ({type(exc).__name__}); the operation was not completed")
-    if args.command == "lan-devices" and not args.json:
+    if args.command == "outbound-connections" and not args.json:
+        data = report.get("data", {})
+        print("Observed connections: direction and actual transmissions unknown; short-lived connections may be missed")
+        print("Status:", report["status"], "Observed at:", data.get("finished_at", "unknown"),
+              "Elapsed:", data.get("duration_seconds", "unknown"), "Saved:", data.get("persistence", "not_saved"))
+        print("PID / process\tDestination / scope / port\tProtocol\tClass\tAttribution")
+        for row in data.get("connections", []):
+            print(str(row["pid"]) + " / " + (row["process"] or "unknown"),
+                  row["remote_ip"] + ("%" + row["remote_scope"] if row["remote_scope"] else "") + ":" + str(row["remote_port"]),
+                  row["protocol"], row["classification"], row["attribution_quality"], sep="\t")
+        print("Observed records:", data.get("connection_count", "unknown"), "Sampling:", data.get("sampling", {}))
+        print("Limitations:", ", ".join(data.get("limitations", [])))
+        for warning in report["warnings"] + ([report["error"]] if report.get("error") else []):
+            print("pc-scanner: " + warning, file=sys.stderr)
+    elif args.command == "lan-devices" and not args.json:
         print("Observed LAN devices (not all devices; cached records do not prove online status)")
         print("IP / scope\tNames\tMAC\tMethods / states\tAdvertised services (not probed)")
         for row in report.get("data", {}).get("devices", []):

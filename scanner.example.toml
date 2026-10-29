@@ -118,3 +118,13 @@ max_check_age_days = 180
 # wps = false
 # wifi_security = "wpa3"          # wpa3, wpa2-aes, wpa2-tkip, wep or open
 # unknown_vpn_accounts = false
+
+# Read-only, sampled socket observations; never captures packets or payloads.
+# Names/PIDs/endpoints may reveal private services. MCP disclosure needs explicit owner consent.
+[outbound_connections]
+enabled = false
+duration_seconds = 10             # 1..60
+interval_seconds = 1              # 1..10, no greater than duration
+max_connections = 2000            # 1..2000
+expose_identifiers_to_mcp = false
+save_details = false              # also needs history.details = true to save processes and destinations

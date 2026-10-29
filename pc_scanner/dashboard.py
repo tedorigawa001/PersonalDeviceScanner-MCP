@@ -200,6 +200,9 @@ def scan_body(item: dict, report: dict | None, reason: str) -> str:
         parts.append("<h3>Warnings</h3><ul>" + "".join(f"<li>{esc(shorten(w if isinstance(w, str) else str(w)))}</li>"
                                                      for w in warnings) + "</ul>")
     findings = report.get("findings")
+    if item["operation"] == "observe_outbound_connections":
+        parts.append(connection_details(report.get("data", {})))
+        return "".join(parts)
     if item["operation"] == "discover_lan_devices":
         parts.append(lan_details(report.get("data", {})))
         return "".join(parts)
@@ -278,6 +281,10 @@ def latest_runs(entries: list[dict]) -> list[list[tuple[int, dict]]]:
         target = {key: value for key, value in item["target"].items() if key not in PAGING}
         key = (item["operation"], json.dumps(target, sort_keys=True))
         run = latest.get(key)
+        if run and item["operation"] == "observe_outbound_connections":
+            # Re-reading an older observation must not replace the newer observation.
+            if datetime.fromisoformat(item["started_at"]) < datetime.fromisoformat(run[-1][1]["started_at"]):
+                continue
         if run and value and not value.get("revision"):
             previous = run[0][1].get("coverage")
             if previous and previous.get("revision") and previous["scan_group_id"] == value["scan_group_id"]:
@@ -541,11 +548,64 @@ def lan_section(runs):
             '<th>Last observation</th><th>Stop reason</th><th>Methods / limitations</th></tr></thead><tbody>' + "".join(rows) + '</tbody></table></div>')
 
 
+def connection_details(data):
+    if not isinstance(data, dict):
+        return '<p>Connection details unavailable.</p>'
+    groups = {}
+    values = data.get("connections", [])
+    for row in values[:2000] if isinstance(values, list) else []:
+        if not isinstance(row, dict):
+            continue
+        key = (str(row.get("pid")), str(row.get("process_started_at_epoch")), str(row.get("process")))
+        if row.get("attribution_quality") == "unverified":
+            key += (str(row.get("connection_id", len(groups))),)
+        groups.setdefault(key, []).append(row)
+    parts = ['<p>OS-visible socket observations only; direction and actual transmissions are unknown. '
+             'Short-lived connections may be missed. No packet contents were collected.</p>']
+    limits = data.get("limitations", [])
+    parts.append('<p>Limitations: ' + esc(", ".join(str(v) for v in limits[:64]) if isinstance(limits, list) else "unknown") + '</p>')
+    for key in ("sampling", "excluded_counts", "unavailable_counts"):
+        counts_value = data.get(key, {})
+        if isinstance(counts_value, dict):
+            parts.append('<p>' + esc(key) + ': ' + esc(", ".join(
+                str(k) + "=" + str(v) for k, v in list(counts_value.items())[:32])) + '</p>')
+    for rows in groups.values():
+        row = rows[0]
+        title = str(row.get("pid") or "unknown PID") + " / " + str(row.get("process") or "unknown process")
+        body = "".join('<tr>' + ''.join('<td>' + esc(r.get(k) if r.get(k) is not None else "unknown") + '</td>'
+            for k in ("remote_ip", "remote_scope", "remote_port", "protocol", "classification", "attribution_quality",
+                      "first_observed_at", "last_observed_at", "sample_count")) + '</tr>' for r in rows)
+        parts.append('<details><summary>' + esc(title) + '</summary><div class="scroll"><table><thead><tr>'
+            '<th>Destination</th><th>Scope</th><th>Port</th><th>Protocol</th><th>Class</th><th>Attribution</th>'
+            '<th>First observed</th><th>Last observed</th><th>Samples (not transmissions)</th></tr></thead><tbody>'
+            + body + '</tbody></table></div></details>')
+    if not groups:
+        parts.append('<p>No connections observed. This does not establish absence of traffic or malware.</p>')
+    return ''.join(parts)
+
+
+def connection_section(runs):
+    for run in runs:
+        index, item = run[-1]
+        if item["operation"] != "observe_outbound_connections":
+            continue
+        value = item.get("connection_observation", {})
+        return ('<h2>Connections observed on this PC</h2><p class="quiet">Latest saved observation only, not live traffic. '
+                'Counts are observed records, not sessions or transmissions. History from multiple hosts is unsupported. '
+                'Check the observation time; saved results become stale.</p><div class="panel">'
+                f'<a href="#scan-{index}">This PC connection history</a> · {badge(item["status"], STATUSES)} · '
+                f'Observed records: {esc(value.get("connection_count", "unknown"))} · '
+                f'Processes with start time: {esc(value.get("process_count", "unknown"))} · '
+                f'Observation: {esc(local_time(item))} · Stop reason: {esc(value.get("stop_reason") or "—")}'
+                f'<p>Limitations: {esc(", ".join(value.get("limitations", [])))}</p></div>')
+    return ""
+
+
 def render(entries: list[dict], loaded: list[tuple[dict | None, str]], meta: dict) -> str:
     statuses = {status: sum(item["status"] == status for item in entries) for status in sorted(STATUSES)}
     summary = ", ".join(f"{name} {count}" for name, count in statuses.items())
     runs = latest_runs(entries)
-    other_runs = [r for r in runs if r[-1][1]["operation"] != "discover_lan_devices"]
+    other_runs = [r for r in runs if r[-1][1]["operation"] not in {"discover_lan_devices", "observe_outbound_connections"}]
     latest_rows = "".join(latest_row(run) for run in other_runs)
     scans = "".join(
         f'<details class="scan panel" id="scan-{index}"><summary>'
@@ -573,6 +633,7 @@ def render(entries: list[dict], loaded: list[tuple[dict | None, str]], meta: dic
 <div class="notice">This page holds results from this PC. Keep it to yourself. No finding does not prove a device is
 safe, and <b>partial</b> or <b>error</b> means coverage was incomplete.</div>
 {lan_section(runs)}
+{connection_section(runs)}
 {severity_section(other_runs) if other_runs else ""}
 <h2>Latest result for each target</h2>
 {f'<div class="panel scroll"><table><thead><tr><th>Operation</th><th>Source</th><th>Target</th><th>Status</th><th>Findings</th><th>Last scan</th></tr></thead><tbody>{latest_rows}</tbody></table></div>' if entries else '<p class="quiet">No scans recorded yet.</p>'}

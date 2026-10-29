@@ -449,6 +449,43 @@ Then every inventory, malware and Android scan reads its engine's version (`osqu
   .venv/bin/python -m pip install --no-deps .
   ```
 
+### Observing outbound connections (stage 1)
+
+Use `pc-scanner --config scanner.toml outbound-connections` (or `--json`) to observe this PC's
+OS-visible processes and destination IP/ports for a bounded window. Requires the configured `local.osquery_binary`.
+No packets, communication contents, command lines, reverse DNS, reputation requests, blocking or elevation are used.
+This is a sampled socket list: incoming connections can appear, direction and actual transmissions are unknown,
+short-lived connections can be missed, and other users' processes may be hidden. Zero records does not establish safety.
+
+```toml
+[outbound_connections]
+enabled = false
+duration_seconds = 10
+interval_seconds = 1
+max_connections = 2000
+expose_identifiers_to_mcp = false
+save_details = false
+```
+
+`duration_seconds` is 1..60, `interval_seconds` is 1..10 and no greater than duration, and `max_connections` is 1..2000.
+MCP exposes `observe_outbound_connections()` with no target arguments; the owner must explicitly enable
+`expose_identifiers_to_mcp` to share process names, PIDs and endpoint addresses with the client's AI service.
+MCP clients cap tool results, so MCP returns counts by process and destination class first, then at most 100 records
+(internet candidates first) within 64 KiB; `omitted_count` says how many only the CLI or saved details show.
+Progress contains counters and persistence status only. Ctrl+C/MCP cancellation returns or retains a partial observation.
+
+History summaries contain counts and limitations only. Endpoint/process details are saved only when both
+`history.details=true` and `outbound_connections.save_details=true`, so turning on details for other scans does not
+start recording which services this PC used. `history.enabled=false` saves nothing. No packet body or raw engine output is stored even in details.
+`pc-scanner dashboard` shows the latest saved observation separately from vulnerability counts, with process disclosures
+and a page-local history link; it never links to destinations. Sampling appearances are not session or transmission counts.
+The backend uses fixed osquery projections, with logging/events disabled and an in-memory shell database.
+Partial macOS acceptance covered real CLI/local MCP observations and isolated Chrome display, disclosures and history links.
+Unconnected UDP normalization was fixed and real macOS CLI/local MCP observations completed without `invalid_rows`.
+Privilege comparisons and Windows/Linux native acceptance remain unverified; see the [UDP follow-up](docs/acceptance/outbound-connections-udp-normalization-2026-10-30.json).
+See the [macOS acceptance record](docs/acceptance/outbound-connections-macos-2026-10-30.json).
+See [design and verification plan](docs/outbound-connections-design.md).
+
 ## Configuration reference
 
 LAN: `lan.enabled=false`, `lan.timeout_seconds=15` (1–30), `lan.max_devices=256` (1–512),
@@ -457,6 +494,7 @@ with `neighbor_cache=true` and `mdns=false` by default. See the LAN example abov
 
 | Setting | Description | Default |
 |---|---|---|
+| `outbound_connections` | Opt-in sampled socket observation; duration 1..60, interval 1..10, max records 1..2000; MCP disclosure and saved details each require explicit permission | disabled |
 | `local.osquery_binary` | Absolute path to osqueryi. Empty disables it | empty |
 | `local.clamav_binary` | Absolute path to clamscan. Empty disables it. `.bat` / `.cmd` files are rejected | empty |
 | `local.timeout_seconds` | Time limit per operation (1–3600 seconds). For ClamAV it covers the folder check and the scan together; Wazuh uses at most 30 seconds | `600` |

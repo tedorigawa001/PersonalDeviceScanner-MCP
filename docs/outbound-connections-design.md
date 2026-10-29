@@ -1,6 +1,7 @@
 # 個人PCの外向き通信の観測（第1段階）の設計
 
-状態：設計案（2026-10-29、同日のレビューを反映）。未実装・実環境未検証。
+状態：第1段階を実装（2026-10-29、2026-10-30のレビューを反映）。2026-10-30にmacOSの実接続・ブラウザーの部分受入を追加。
+未接続UDPの正規化は同日に修正・macOS再受入済み。権限差、Windows/Linuxの実環境は未確認・残課題。
 
 ## 目的と第1段階の範囲
 
@@ -24,7 +25,7 @@ CLI・MCPで時間を区切って観測し、保存を許可した結果を静�
 既定で無効。所有者の設定だけで観測時間・件数上限とMCP提供を決める。AIが任意のPID・パス・コマンド・接続先を指定する入口を作らない。
 
 ```toml
-# 新規設定案。実装前のため、現行の設定ファイルにはまだ追加しない。
+# 実装済み。既定では無効。所有者が設定する。
 [outbound_connections]
 enabled = false
 duration_seconds = 10             # 1..60秒。観測窓
@@ -206,3 +207,46 @@ MCP経由のScannerは既定で履歴を記録するため、試験の設定で�
 
 接続の開始方向・実送信量を得るOSイベント収集、常駐監視、既知の悪性接続先照合、通知・遮断は別途設計する。
 第1段階の一覧からマルウェア検出率や通信の安全性を判断しない。設計作成だけでは実装・受入のバックログを完了にしない。
+
+## 第1段階の実装メモ（2026-10-29）
+
+- 共通バックエンドは既存osqueryの固定投影を採用した。代替のネイティブAPIへの自動フォールバックは実装しない。
+  `process_open_sockets`と`processes`のPID JOIN、`interface_addresses`の開始・各読み取り前後・終了時確認を使う。
+  経路・VPNの内部変更だけでアドレスが変わらない場合は検知できず、物理接続の同一性を保証しない。
+- `--disable_extensions=true --disable_logging=true --disable_events=true`を固定し、シェルモード・JSONで読む。
+  列は[ソケット定義](https://raw.githubusercontent.com/osquery/osquery/master/specs/process_open_sockets.table)、
+  [プロセス定義](https://raw.githubusercontent.com/osquery/osquery/master/specs/processes.table)、
+  [アドレス定義](https://raw.githubusercontent.com/osquery/osquery/master/specs/interface_addresses.table)を確認。
+  [公式シェル説明](https://osquery.readthedocs.io/en/latest/introduction/using-osqueryi/)では既定のDBはメモリー内、
+  [フラグ説明](https://osquery.readthedocs.io/en/latest/installation/cli-flags/)にログ・イベント無効化を記載。
+- 開始時刻は秒精度でソケットとのJOINも非原子的。同じPIDの秒内再利用は区別できず、
+  `attribution_quality=start_time_observed_nonatomic`と制約で明示する。生成時刻・名前が欠けた行はunverifiedで、読み取り間で統合しない。
+- 結果の2MiB上限は既存行の増加分を予約した保守的な見積もりで守る。増加は後の状態・最終観測時刻・出現回数だけなので、
+  状態を16文字以下・1接続16種類までに制限して予約を約0.3KiBにした（osqueryのTCP状態名は12文字以下・13種類）。
+  通常の行なら2000件が2MiBに収まり、極端に長いプロセス名が続く場合だけ件数上限より前にpartialになりうる。
+- 結果の接続は宛先分類（`internet_candidate`が先頭）・プロセス・接続先の固定順に並べ、CLI・MCP・ダッシュボードで同じ順にする。
+- MCPには`classification_counts`、プロセス別の`process_counts`（分類別の内訳つき）、PIDと対応できない`unattributed_records`を先に返し、
+  `process_counts`と`connections`をそれぞれ最大100件、応答のJSON（MCP SDKの2字下げ）全体を64KiBまでとする。
+  省いた件数は`omitted_count`・`omitted_process_count`と警告で示す。全件はCLIと詳細保存に残す。
+- 詳細の保存は`history.details=true`と`outbound_connections.save_details=true`の両方が必要。片方だけなら要約だけを保存し、
+  `persistence`は`summary_saved`。`save_details=true`で`history.details=false`の場合は設定の警告を返す。
+- macOSでの実接続取得とブラウザー操作の部分受入を2026-10-30に実施。権限差・他OSの取得範囲の受入は未実施。
+  合成データの試験をOS別の実通信確認とは扱わない。
+  検証結果は[検証記録](acceptance/outbound-connections-2026-10-29.json)を参照。
+
+## macOSの部分受入（2026-10-30）
+
+所有者の許可した実接続でCLI・ローカルMCP stdioを確認し、Chromeの隔離した一時プロフィールで保存結果の表示・開閉・履歴移動を確認した。
+実接続先・PID・プロセス名・画面画像はAIやリポジトリへ送らず、集計と成否だけを[受入記録](acceptance/outbound-connections-macos-2026-10-30.json)に残した。
+CLI/MCPは各10回の読み取りに成功したが、未接続UDPのIPv6行にIPv4形式の宛先未指定が返り、`invalid_rows`で`partial`となった。
+初回試験では宛先不明として扱う正規化の回帰・再受入が必要と判定した。方向・実送信量・短命接続の網羅性を確認した試験ではない。
+試験中の更新と混同しないためソースをコピーに固定し、終了時の作業ツリーとの差はコメントだけでPythonの構文木が一致することを確認した。
+初回の内部NameErrorは固定コピーでは再現しておらず、修正済みとは断定しない。強制した低速読取の時間切れ、権限差・切断/VPN・他OSは残る。
+
+### 未接続UDPの再受入（同日）
+
+UDPの有効な宛先未指定IPとポート0の組み合わせは、IP系統を照合する前に`destination_unavailable`へ分類する。
+宛先を推測した接続レコードは作らない。無効なIP・ポート、実宛先の系統不一致、TCPの系統不一致は従来どおり拒否する。
+回帰2件で修正前の失敗と修正後の成功を確認し、実CLI・ローカルMCPは各10回の読み取りで`invalid_rows`なし・`completed`となった。
+Android・MCPを含む両Pythonの全498件とnpm各26件の結果、残る7件のWindows専用skipは
+[修正・再受入記録](acceptance/outbound-connections-udp-normalization-2026-10-30.json)を参照。
