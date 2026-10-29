@@ -1,0 +1,166 @@
+{
+  "date": "2026-10-29",
+  "review_completed_at": "2026-10-29T10:07:01.719488+09:00",
+  "scope": "Independent review of commit 3babbb4 and its regression/full test results; not a repository-wide vulnerability audit or native Windows acceptance",
+  "revisions": {
+    "base": "6cf88204c8c9dc50e898b4407135336ed7812498",
+    "head": "3babbb4a69849c0948f02e1092fc29c542a85d64"
+  },
+  "review": {
+    "status": "completed_with_platform_verification_gaps",
+    "additional_findings": 0,
+    "changed_production_files_reviewed": [
+      "pc_scanner/core.py",
+      "pc_scanner/dashboard.py",
+      "pc_scanner/lan.py",
+      "pc_scanner/lan_mdns.py",
+      "pc_scanner/lan_os.py",
+      "pc_scanner/lan_windows.py"
+    ],
+    "supporting_changes_reviewed": [
+      "tests/test_lan.py",
+      "tests/test_scanner.py",
+      "README.md",
+      "README.ja.md",
+      "docs/backlog.md",
+      "docs/lan-discovery-design.md",
+      "docs/acceptance/dependency-osv-2026-10-29.json"
+    ],
+    "areas": [
+      "Common Unicode control, format, separator and default-ignorable character escaping, including non-BMP characters",
+      "Dashboard JSON/HTML encoding and existing CSP/output limits",
+      "Per-IP-family mDNS reception verification and partial status",
+      "Authorized-interface, TTL, sender and port checks before accepted-traffic limits",
+      "Shared PTR cache-flush rejection and preservation of unique records received within the last second",
+      "Cancellation and deadline classification during bounded OS reads",
+      "Windows ctypes structure layout and synthetic WSAEMSGSIZE truncation handling",
+      "LAN test isolation from the owner's actual scan history"
+    ]
+  },
+  "test_execution": {
+    "host": "macOS arm64",
+    "method": "Immutable Git snapshots in disposable temporary directories; current tests used for the baseline comparison with history disabled",
+    "python314": {
+      "python": "3.14.10",
+      "command": "python -m unittest discover -s tests -q",
+      "total": 470,
+      "passed": 463,
+      "skipped": 7,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 32.603,
+      "includes": ["Android", "MCP SDK/stdio", "LAN synthetic and loopback regressions"],
+      "log_ref": "artifacts/verification/python314.log"
+    },
+    "python315": {
+      "python": "3.15.2",
+      "command": "python -m unittest discover -s tests -q",
+      "total": 470,
+      "passed": 463,
+      "skipped": 7,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 32.194,
+      "includes": ["Android", "MCP SDK/stdio", "LAN synthetic and loopback regressions"],
+      "log_ref": "artifacts/verification/python315.log"
+    },
+    "npm314": {
+      "command": "PC_SCANNER_NPM_E2E=1 PC_SCANNER_NPM_EXPECT_HASHED=1 PC_SCANNER_NPM_AUTO_DISCOVER=1 npm test",
+      "total": 26,
+      "passed": 26,
+      "skipped": 0,
+      "failed": 0,
+      "duration_ms": 7704.843,
+      "hash_required": true,
+      "real_installed_package_and_stdio_mcp": true,
+      "log_ref": "artifacts/verification/npm314.log"
+    },
+    "npm315": {
+      "command": "PC_SCANNER_NPM_E2E=1 PC_SCANNER_NPM_EXPECT_HASHED=0 PC_SCANNER_NPM_AUTO_DISCOVER=0 PC_SCANNER_PYTHON=<absolute Python 3.15 interpreter> npm test",
+      "total": 26,
+      "passed": 26,
+      "skipped": 0,
+      "failed": 0,
+      "duration_ms": 5240.130208,
+      "hash_required": false,
+      "real_installed_package_and_stdio_mcp": true,
+      "log_ref": "artifacts/verification/npm315.log"
+    }
+  },
+  "regression_comparison": {
+    "selected_tests": [
+      "tests.test_lan.LANTests.test_cancel_or_deadline_during_an_os_read_is_not_a_network_change_or_error",
+      "tests.test_lan.LANTests.test_partial_mdns_evidence_survives_cancel",
+      "tests.test_lan.MDNSTests.test_cache_flush_spares_shared_service_records_and_answers_from_the_last_second",
+      "tests.test_lan.MDNSTests.test_traffic_from_other_links_or_senders_cannot_use_up_the_receive_limits",
+      "tests.test_lan.MDNSTests.test_each_ip_version_must_verify_its_own_reception",
+      "tests.test_lan.MDNSTests.test_windows_oversized_datagram_is_reported_truncated_instead_of_failing",
+      "tests.test_scanner.ScannerTests.test_every_invisible_character_is_escaped_and_visible_text_is_kept"
+    ],
+    "fixed_head": {"total": 7, "passed": 7, "failed": 0, "seconds": 1.326},
+    "baseline": {
+      "total": 7,
+      "outcome": "Expected unsuccessful run: 8 failure events and 3 errors, including subtests; these are not 11 distinct test cases",
+      "failure_events": 8,
+      "errors": 3,
+      "seconds": 1.142,
+      "interpretation": "The fixed commit passes the selected regressions. Baseline failures/errors include changed test-fixture or result-shape requirements, so the additional compatibility checks below distinguish those from the original behavior."
+    },
+    "baseline_compatibility_checks": {
+      "method": "On the disposable baseline only, restore Receiver structure attributes normally installed by its constructor so the synthetic test reaches the old recvmsg error handling. Production source was not edited.",
+      "baseline_windows": "WSAEMSGSIZE (10040) raises OSError",
+      "fixed_windows": "The same synthetic test passes with truncation flags",
+      "baseline_single_family_reception": "observed despite an unverified registered IPv4 receive path",
+      "fixed_single_family_reception": "unverified",
+      "native_windows_executed": false
+    },
+    "log_refs": [
+      "artifacts/verification/regression-head.log",
+      "artifacts/verification/regression-base.log",
+      "artifacts/verification/regression-base-compat.log",
+      "artifacts/verification/regression-head-compat.log",
+      "artifacts/verification/baseline_compat.py"
+    ]
+  },
+  "windows_verification": {
+    "native_machine": "not_run",
+    "ci": "not_run_or_verified_in_this_review",
+    "skips_per_python_run": 7,
+    "skip_scope": "Six existing Windows-only tests and one native Winsock test",
+    "synthetic_validation_is_not_native_acceptance": true,
+    "remaining": [
+      "Run and inspect Windows CI results for this commit",
+      "Verify WSAEMSGSIZE preserves usable receive-interface/TTL metadata on supported Windows installations",
+      "Verify multicast interface selection when multiple adapters have the same IPv4 address",
+      "Verify port 5353 coexistence and effects on the OS responder's unicast responses"
+    ]
+  },
+  "dependency_check": {
+    "record_reviewed": "dependency-osv-2026-10-29.json",
+    "fresh_osv_query_performed": false,
+    "record_consistency": "Four profiles; no new findings in the committed record; known Intel Mac cryptography 48.0.1 exception continues",
+    "dependencies_or_runtimes_updated": false,
+    "exception_reapproved_or_remediated_by_this_review": false
+  },
+  "evidence": {
+    "scan_id": "bd266482-0995-4b3d-8596-88708a1c746f",
+    "scan_status": "completed",
+    "storage": "Codex Security local scan artifacts, outside the repository",
+    "report_ref": "report.md",
+    "coverage_ref": "coverage.json",
+    "findings_ref": "findings.json",
+    "log_ref_note": "All log_ref values above are relative to this scan's retained artifact directory; the machine-local artifact bundle is not copied into the repository"
+  },
+  "limitations": [
+    "No additional findings were identified in the reviewed commit; this does not prove the entire repository or upstream dependencies are vulnerability-free",
+    "Windows native execution and Windows CI remain unverified; macOS synthetic Winsock tests do not close those items",
+    "No real household LAN discovery, packet capture, router login or device-setting change was performed in this review",
+    "No fresh OSV/API lookup was performed; the earlier OSV record and its Intel Mac exception were checked for consistency only"
+  ],
+  "record_update": {
+    "purpose": "Record the completed review and test results at the owner's request",
+    "full_tests_rerun_for_documentation_update": false,
+    "product_code_changed": false,
+    "commit_or_push_performed": false
+  }
+}
