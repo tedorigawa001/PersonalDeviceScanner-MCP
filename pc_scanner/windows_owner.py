@@ -1,5 +1,6 @@
 """Windows ownership checks on already opened handles; no optional packages needed."""
 import ctypes
+import os
 from ctypes import wintypes
 
 
@@ -93,3 +94,37 @@ def owns_directory(path) -> bool:
         return owns_handle(handle)
     finally:
         kernel.CloseHandle(handle)
+
+
+def open_checkpoint(path, delete=False) -> int:
+    """Open the entry itself, without following a reparse point; deletion stays handle-bound."""
+    import msvcrt
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                                  ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    kernel.CreateFileW.restype = wintypes.HANDLE
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel.CloseHandle.restype = wintypes.BOOL
+    # GENERIC_READ | READ_CONTROL | optional DELETE; no write/delete sharing during deletion.
+    handle = kernel.CreateFileW(str(path), 0x80020000 | (0x10000 if delete else 0),
+                                1 if delete else 7, None, 3, 0x00300000, None)
+    if handle == ctypes.c_void_p(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        return msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY)
+    except BaseException:
+        kernel.CloseHandle(handle)
+        raise
+
+
+def delete_checkpoint_handle(fd: int) -> None:
+    """Mark only the already validated handle for deletion when it closes."""
+    import msvcrt
+    class Disposition(ctypes.Structure):
+        _fields_ = [("DeleteFile", ctypes.c_ubyte)]  # BOOLEAN, not the four-byte BOOL.
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.SetFileInformationByHandle.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD]
+    kernel.SetFileInformationByHandle.restype = wintypes.BOOL
+    value = Disposition(1)
+    if not kernel.SetFileInformationByHandle(msvcrt.get_osfhandle(fd), 4, ctypes.byref(value), ctypes.sizeof(value)):
+        raise ctypes.WinError(ctypes.get_last_error())

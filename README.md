@@ -682,11 +682,44 @@ pc-scanner --config scanner.toml malware home --resume
 - **Checkpoints are separate from history.** Even with `history.enabled=false` or `history.details=false`, batch scans
   save relative names and findings needed for resume in `malware-checkpoints/` beside the history file. These are not
   added to ordinary history summaries. POSIX folders/files use 0700/0600; Windows ownership is checked too. Linked,
-  hard-linked or nonregular checkpoint files are refused for resume. Storage failures are reported. To remove this data,
-  stop scanning before deleting that folder.
+  hard-linked or nonregular checkpoint files are refused for resume. Storage failures are reported. Use the local
+  checkpoint manager below to remove selected saved state safely.
 - Only one batch runs at a time across processes. Limits: 16 checkpoints, 16 MiB each, 10,000 parts per call.
   Exhausting a limit/time budget leaves coverage incomplete. A single file/archive cannot resume halfway through;
   an interrupted part is retried. Starting with `--batch` again resets that target's checkpoint.
+
+### Managing saved batch checkpoints (local CLI only)
+
+```bash
+pc-scanner --config scanner.toml malware-checkpoints list
+pc-scanner --config scanner.toml malware-checkpoints list --show-paths --json
+pc-scanner --config scanner.toml malware-checkpoints delete CHECKPOINT_ID --revision REVISION_TOKEN
+```
+
+Copy the full `checkpoint_id` and `revision` from the same latest list result. `revision` is the deletion token,
+not `coverage_revision`. There is no wildcard, bulk-delete or force option. A changed or replaced file requires
+listing again. Any running batch scan protects **all** checkpoints: list shows `scan_running=true` and
+`deletable=false`; deletion fails promptly. The manager shares the scan's in-process and cross-process locks.
+The `scan_running` flag is conservative: a competing checkpoint-management operation can also hold that lock.
+
+Only the selected owned, private, bounded regular checkpoint file is removed. Symlinks, junctions/reparse points,
+hard links, placeholders, oversized files and foreign owners are refused. A corrupt but safely readable owned file
+can be explicitly deleted to free a slot. Scan files, scan history, other checkpoints and the shared lock stay intact.
+Deletion loses that checkpoint's saved progress and findings; start a new batch without `--resume` to inspect again.
+The directory and lock file may remain after the last checkpoint is removed. No engine is required, and the commands
+work with history recording disabled or with an old scan root no longer configured.
+
+The list shows IDs, save times and saved-part counts; new checkpoints also carry the save-time root alias and target.
+Relative target names are shown only with `--show-paths`, escaped in text and JSON. Labels do not select files or
+prove the current root mapping. Older checkpoints may have no target label; schema 2 still has a scan-group ID.
+Enumeration is bounded (256 directory entries, 32 MiB read overall, 5 seconds); incomplete/unreadable listings are
+explicit. `deletable` is eligibility, not a promise that OS permissions or another reader will allow deletion.
+These commands do not create a missing checkpoint directory or append to scan history. The list may create/reuse
+the shared lock in an existing store. No checkpoint-management operation is registered with MCP or `Scanner.invoke`.
+
+Verified on macOS with synthetic state and real CLI/MCP transports: both Python suites passed 513 of 520 tests
+(7 Windows-only skips), and both npm profiles passed 26 tests. Native Windows deletion/ACL acceptance remains open.
+See the [verification record](docs/acceptance/checkpoint-management-2026-10-31.json).
 
 ### Coverage gaps and selected rescans
 

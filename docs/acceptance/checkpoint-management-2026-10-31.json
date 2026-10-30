@@ -1,0 +1,147 @@
+{
+  "date": "2026-10-31",
+  "verified_at_jst": "2026-10-31T00:16:07.654155+09:00",
+  "status": "implemented_and_automated_tests_passed_native_windows_acceptance_pending",
+  "base_commit": "713f2f0ed5c6273eaccb7cf51e712121e1314dea",
+  "source_state": "working_tree_uncommitted",
+  "source_and_test_sha256": {
+    "pc_scanner/checkpoints.py": "61d7355df66ee05309b66aeed01bdcdda265f1952ff9d573b8836ab621628a69",
+    "pc_scanner/cli.py": "9c6bdb5c380f0ad5313cf33334b9294359c1eb40b16c45252c4969f46481a9fc",
+    "pc_scanner/malware_batch.py": "041e8edb74afd13b7e2ab2ed5192e5f5b7fe8679d4b7fef80188d6650f959fd3",
+    "pc_scanner/windows_owner.py": "32956f22ffbfc70ad0bb6c16a4856da11060990a4a205a3a98d0a1635334fa41",
+    "tests/test_checkpoints.py": "c88dbb24570f4b3abf3d695049d80f18c4fc3e44b99ef58861a0b10cb95e1afc",
+    "tests/test_windows_owner.py": "e55f2bc5fcef109d7d45282b15eeffdb37d208d11d9da83be59b1f39f4177fab",
+    "npm/test/roundtrip.test.js": "1dc589072a4e20c60a6ee1097093e6ea37a6b08a921687d74bf13bcd0e63102e"
+  },
+  "commands": [
+    "pc-scanner --config scanner.toml malware-checkpoints list [--show-paths] [--json]",
+    "pc-scanner --config scanner.toml malware-checkpoints delete CHECKPOINT_ID --revision REVISION_TOKEN [--json]"
+  ],
+  "behavior": {
+    "mcp_tools_added": false,
+    "scanner_invoke_operations_added": false,
+    "mcp_context_rejected_before_storage_access": true,
+    "deletion_selection": "Exact lowercase 64-hex checkpoint ID and 64-hex revision token; no path/prefix/wildcard/bulk/force inputs.",
+    "revision": "SHA256 of bounded file contents and opened file identity/size/write/change metadata; replacements and updates require relisting.",
+    "active_protection": "Same malware_batch in-process lock and persistent .active.lock cross-process lock. Any scan or competing manager operation protects all deletions; lock acquisition waits at most about 50ms.",
+    "listing_during_busy": "Reports a conservative scan_running protection flag, partial status and deletable=false. Another checkpoint management operation can also hold the lock.",
+    "scope": "Only the selected file is removed; never scan files, scan history, other checkpoints, the checkpoint directory, or the shared lock.",
+    "metadata": "New schema-2 saves include root_alias and relative target labels in both normal and selected retry persistence. Labels are display-only, never scan or deletion authorization.",
+    "legacy": "Existing schema-1/2 state remains resumable; missing labels remain unknown. Corrupt but safely readable owned bounded state can be explicitly removed.",
+    "limits": {
+      "checkpoint_capacity_unchanged": 16,
+      "directory_entries": 256,
+      "total_read_bytes": 33554432,
+      "per_file_bytes": 16777216,
+      "operation_deadline_seconds": 5
+    },
+    "privacy": "Relative labels only with --show-paths, escaped for text/JSON; no full checkpoint contents/findings shown; no engine required; no history append; missing stores are not created.",
+    "posix": "Pin the private directory with a no-follow descriptor, open/stat/unlink relative to it, verify ownership/regular file/link count/local availability and revision.",
+    "windows": "Open the reparse point itself with read/delete access as needed; verify opened file owner and attributes; delete only by validated handle with one-byte FILE_DISPOSITION_INFO. No path-delete fallback on API errors.",
+    "remaining_risk": "MCP can still fill the fixed 16 slots again. This is an owner-operated recovery facility, not automatic quota eviction or prevention."
+  },
+  "environment": {
+    "system": "Darwin",
+    "macos": "27.2",
+    "architecture": "arm64",
+    "python314": "3.14.10",
+    "python315": "Python 3.15.2",
+    "mcp_sdk": "1.30.0",
+    "node": "v26.12.1"
+  },
+  "verification": {
+    "new_tests": {
+      "checkpoint_management": 20,
+      "portable_windows_handle_contracts": 2
+    },
+    "related_regressions": {
+      "total": 62,
+      "passed": 59,
+      "skipped": 3,
+      "failures": 0,
+      "errors": 0,
+      "duration_seconds": 5.754,
+      "log": "regressions-final.log",
+      "sha256": "1a2d913083dcbd1869ca319a33ba189f8a6e77f6f2223d485c2dfdb911558d10"
+    },
+    "python314_full": {
+      "total": 520,
+      "passed": 513,
+      "skipped": 7,
+      "failures": 0,
+      "errors": 0,
+      "duration_seconds": 38.416,
+      "log": "python314-final.log",
+      "sha256": "bcaa823d5647588da0e3beaf89cc1a1beac8067e684aecf7b6a2cf38677489da"
+    },
+    "python315_full": {
+      "total": 520,
+      "passed": 513,
+      "skipped": 7,
+      "failures": 0,
+      "errors": 0,
+      "duration_seconds": 38.152,
+      "log": "python315-final.log",
+      "sha256": "a82ad70b058fb1491b4aee66b14ee9bba214d1589ec45dd60f215a5e138a8e4e"
+    },
+    "npm314_hashed_auto_discovery": {
+      "tests": 26,
+      "pass": 26,
+      "fail": 0,
+      "skipped": 0,
+      "log": "npm314-final.log",
+      "sha256": "559dcdc64c558b7efded5708524d0b19a7a4167868cc294a2ad6bd38ebcae9e2"
+    },
+    "npm315_explicit_interpreter": {
+      "tests": 26,
+      "pass": 26,
+      "fail": 0,
+      "skipped": 0,
+      "log": "npm315-final.log",
+      "sha256": "bb191d34b393df79e88329c72b9f3a7674fa4043171acfedbec273002f86d933"
+    },
+    "cases": [
+      "No store/directory/engine creation on empty listing",
+      "New metadata, optional escaped relative labels, legacy/corrupt/orphan cleanup",
+      "One selected deletion preserves input content, other checkpoints, history and lock",
+      "Changed content and identical-content replacement reject stale revision",
+      "Malformed/traversal/newline/uppercase/partial IDs or tokens rejected",
+      "In-process and actual other-process lock holders reject deletion promptly",
+      "Actual batch scanner paused at a synthetic engine stage retains its saved state until release",
+      "Two CLI processes cannot delete the same selection twice",
+      "Filled 16-slot store rejects a new scan; one explicit deletion permits a new scan without discarding other state",
+      "Symlink/hardlink/directory/FIFO/cloud/oversized/foreign file and foreign lock rejected",
+      "Read and enumeration limits explicit; POSIX nonprivate permissions not silently repaired",
+      "Real CLI text/JSON and config warnings, no engine dependency",
+      "Actual SDK MCP list has no checkpoint tools and rejects unknown delete_checkpoint",
+      "Portable mocked Win32 checks verify access/share/reparse/no-recall flags, handle cleanup on conversion error, one-byte disposition, API failure",
+      "Complete suites include Android, existing batch/coverage/history tests and MCP",
+      "Packed npm launcher executes an empty local checkpoint list, creates no state folder and retains exact MCP schema; hash rejection tested"
+    ],
+    "fixture_iteration": "The first ownership test mocked every regular file as foreign, including the shared lock, so the operation correctly failed before the selected row. The test now distinguishes selected-file ownership from foreign-lock rejection; final tests pass.",
+    "native_windows_api_executed_on_this_mac": false,
+    "windows_ci_run": false,
+    "native_windows_note": "Existing CI discovers the cross-platform manager tests, which use real Win32 handles on Windows; that new CI/native acceptance has not been run here."
+  },
+  "data_scope": {
+    "existing_personal_checkpoints_read_or_deleted": false,
+    "existing_personal_scan_history_read_or_written": false,
+    "permanent_configuration_changed": false,
+    "new_feature_tests": "Synthetic private temporary roots/state; mock engine results with real metadata planning and persistence; real local CLI/MCP transports and OS locks.",
+    "external_network": "npm dependency installation only for package E2E; no live device scan or packet capture."
+  },
+  "remaining": [
+    "Windows native handle/ACL/reparse/reader-sharing acceptance and latest Windows CI",
+    "The owner must choose unwanted checkpoints; no automatic eviction, bulk deletion or MCP deletion is implemented.",
+    "Saved labels can be absent or stale; they do not establish current authorization. Native filesystem I/O failures still fail closed."
+  ],
+  "primary_windows_api_references": [
+    "https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea",
+    "https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-setfileinformationbyhandle",
+    "https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_disposition_info"
+  ],
+  "evidence": {
+    "local_log_directory": "private local temporary path (not recorded)",
+    "raw_logs_committed": false
+  }
+}

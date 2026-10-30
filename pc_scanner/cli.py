@@ -82,6 +82,15 @@ def main():
     gaps.add_argument("--reason", action="append", default=[])
     gaps.add_argument("--show-paths", action="store_true")
     gaps.add_argument("--json", action="store_true")
+    checkpoints = commands.add_parser("malware-checkpoints", help="locally list or remove saved batch progress; never exposed to MCP")
+    actions = checkpoints.add_subparsers(dest="checkpoint_action", required=True)
+    saved_list = actions.add_parser("list", help="list saved checkpoint IDs and revision tokens")
+    saved_list.add_argument("--show-paths", action="store_true", help="show saved relative target names locally")
+    saved_list.add_argument("--json", action="store_true")
+    saved_delete = actions.add_parser("delete", help="delete one unchanged checkpoint; scan files/history stay intact")
+    saved_delete.add_argument("checkpoint_id")
+    saved_delete.add_argument("--revision", required=True, help="exact revision token from the checkpoint list")
+    saved_delete.add_argument("--json", action="store_true")
     vulnerabilities = commands.add_parser("vulnerabilities")
     vulnerabilities.add_argument("--cursor", default="", help="continue from data.next_cursor")
     android = commands.add_parser("android", help="read fixed facts from a registered Android device over USB")
@@ -138,7 +147,13 @@ def main():
                     print(row["target_id"], "; ".join(coverage.LABELS[r] for r in row["reasons"]), row["eligibility"].replace("_", " "),
                           row.get("relative_path", ""))
                 return
-        if args.command == "history":
+        if args.command == "malware-checkpoints":
+            from . import checkpoints
+            scanner.via = "cli"
+            report = (checkpoints.list_checkpoints(scanner, args.show_paths) if args.checkpoint_action == "list"
+                      else checkpoints.delete_checkpoint(scanner, args.checkpoint_id, args.revision))
+            report["warnings"] = scanner.config_warnings + report["warnings"]
+        elif args.command == "history":
             report = show_history(scanner, args.limit)
             if not args.json:
                 print_history(report)
@@ -161,7 +176,23 @@ def main():
         # Exit 2 ("not completed"), never 1, which means "completed with findings".
         report = result("bridge", "error",
                         error=f"Unexpected internal error ({type(exc).__name__}); the operation was not completed")
-    if args.command == "outbound-connections" and not args.json:
+    if args.command == "malware-checkpoints" and not args.json:
+        data = report.get("data", {})
+        print("Status:", report["status"])
+        if args.checkpoint_action == "list":
+            print("Checkpoint slots:", data.get("capacity_count", "unknown"), "/", data.get("capacity", "unknown"),
+                  "Batch scan running:", data.get("scan_running", "unknown"))
+            for row in data.get("checkpoints", []):
+                print(row["checkpoint_id"], "state=" + row["state"], "deletable=" + str(row["deletable"]),
+                      "target=" + row.get("root_alias", "unknown (legacy or damaged)"), row.get("relative_path", ""))
+                print("  revision=" + row.get("revision", "unavailable"), "saved=" + str(row.get("last_saved_at", "unknown")),
+                      "parts=" + str(row.get("saved_parts", "unknown")))
+            print("Deleting a checkpoint removes its saved progress/findings, not scan files or history.")
+        elif data.get("deleted"):
+            print("Deleted checkpoint:", data["checkpoint_id"])
+        for warning in report["warnings"] + ([report["error"]] if report.get("error") else []):
+            print("pc-scanner: " + warning, file=sys.stderr)
+    elif args.command == "outbound-connections" and not args.json:
         data = report.get("data", {})
         print("Observed connections: direction and actual transmissions unknown; short-lived connections may be missed")
         print("Status:", report["status"], "Observed at:", data.get("finished_at", "unknown"),

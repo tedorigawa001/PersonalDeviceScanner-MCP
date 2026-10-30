@@ -1,8 +1,11 @@
 """Ownership boundaries, including real Windows security descriptors in CI."""
 import contextlib
+import ctypes
+from types import SimpleNamespace
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -69,6 +72,44 @@ class OwnershipTests(unittest.TestCase):
         with patch.object(history.os, "name", "nt"), \
                 patch.object(windows_owner, "owns_fd", side_effect=[True, OSError("owner unavailable")]):
             self.assertIsNone(history.read_private(self.path, 100))
+
+
+class CheckpointHandleTests(unittest.TestCase):
+    def api(self):
+        from unittest.mock import MagicMock
+        kernel = MagicMock()
+        kernel.CreateFileW.return_value = 123
+        kernel.SetFileInformationByHandle.return_value = 1
+        return kernel
+
+    def test_delete_open_requests_exact_access_and_closes_on_fd_conversion_failure(self):
+        from pc_scanner import windows_owner as w
+        kernel = self.api()
+        def fail(*args): raise OSError("conversion failed")
+        crt = SimpleNamespace(open_osfhandle=fail)
+        with patch.object(w.ctypes, "WinDLL", return_value=kernel, create=True), \
+             patch.object(w.os, "O_BINARY", 0, create=True), patch.dict(sys.modules, {"msvcrt": crt}):
+            with self.assertRaises(OSError): w.open_checkpoint("synthetic.json", delete=True)
+        args = kernel.CreateFileW.call_args.args
+        self.assertEqual(args[1:3], (0x80030000, 1))
+        self.assertEqual(args[4:6], (3, 0x00300000))
+        kernel.CloseHandle.assert_called_once_with(123)
+        kernel.SetFileInformationByHandle.assert_not_called()
+
+    def test_disposition_is_one_byte_and_api_failure_never_falls_back(self):
+        from pc_scanner import windows_owner as w
+        kernel = self.api()
+        crt = SimpleNamespace(get_osfhandle=lambda fd: 123)
+        with patch.object(w.ctypes, "WinDLL", return_value=kernel, create=True), \
+             patch.object(w.ctypes, "get_last_error", return_value=5, create=True), \
+             patch.object(w.ctypes, "WinError", side_effect=lambda code: OSError(code, "denied"), create=True), \
+             patch.dict(sys.modules, {"msvcrt": crt}):
+            w.delete_checkpoint_handle(7)
+            args = kernel.SetFileInformationByHandle.call_args.args
+            self.assertEqual((args[0], args[1], args[3]), (123, 4, 1))
+            self.assertEqual(ctypes.cast(args[2], ctypes.POINTER(ctypes.c_ubyte))[0], 1)
+            kernel.SetFileInformationByHandle.return_value = 0
+            with self.assertRaises(OSError): w.delete_checkpoint_handle(7)
 
 
 @unittest.skipUnless(os.name == "nt", "Windows security APIs")

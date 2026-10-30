@@ -88,7 +88,8 @@ test('the installed package sets itself up on first use and serves MCP on a clea
       fs.mkdirSync(folder);
       fs.writeFileSync(path.join(folder, 'notes.txt'), 'nothing to see\n');
       const config = path.join(work, 'scanner.toml');
-      fs.writeFileSync(config, `[scan_roots]\ndemo = ${JSON.stringify(folder)}\n`);
+      const testHistory = path.join(work, 'state', 'history.jsonl');
+      fs.writeFileSync(config, `[scan_roots]\ndemo = ${JSON.stringify(folder)}\n[history]\nenabled = false\nfile = ${JSON.stringify(testHistory)}\n`);
       const env = { ...process.env, PC_SCANNER_CACHE_DIR: path.join(work, 'cache') };
       // The hash-required CI jobs exercise the packed launcher's automatic search,
       // not just the explicit interpreter override used by the other jobs.
@@ -109,6 +110,13 @@ test('the installed package sets itself up on first use and serves MCP on a clea
       assert.deepEqual(await client.exited, { code: 0, signal: null });
       assert.deepEqual(client.stray, [], 'setup output must not reach the MCP channel');
       assert.match(client.stderr(), SETUP_MESSAGE);
+
+      // The packed distribution includes local checkpoint management; an empty list creates no store.
+      const checkpoints = childProcess.spawnSync(process.execPath,
+        [launcherPath, '--config', config, 'malware-checkpoints', 'list', '--json'], { env, encoding: 'utf8' });
+      assert.equal(checkpoints.status, 0, checkpoints.stderr);
+      assert.deepEqual(JSON.parse(checkpoints.stdout).data.checkpoints, []);
+      assert.equal(fs.existsSync(path.dirname(testHistory)), false);
 
       // Python runs isolated (-I): modules planted in the current folder are never imported.
       const planted = path.join(work, 'planted');
