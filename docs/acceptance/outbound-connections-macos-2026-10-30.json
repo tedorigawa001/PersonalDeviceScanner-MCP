@@ -193,7 +193,14 @@
     "status": "error",
     "error_type": "NameError",
     "source_not_fixed": true,
-    "note": "The first CLI attempt while the source was changing returned an internal NameError. Direct reads and the fixed copy did not reproduce it; no root cause or code fix is claimed."
+    "note": "The first CLI attempt while the source was changing returned an internal NameError. Direct reads and the fixed copy did not reproduce it.",
+    "likely_cause": {
+      "explanation": "A review fix was applied in two edits: connections.py used order() from 07:28:51 JST and defined it at 07:29:23 JST. A process that imported the module in between fails when it sorts the result, after the observation window.",
+      "reproduced_2026_10_30": "A scratch copy with order() removed returned status error with 'Unexpected internal error (NameError)' for synthetic rows.",
+      "attempt_time_compared": false,
+      "code_fix_needed": false,
+      "prevention": "Interdependent edits are applied in one write while trials may run from the same working tree."
+    }
   },
   "browser_harness_iteration": {
     "initial_failure": "The verification function referenced a Node-side expected value from browser-side evaluation without passing it as an argument.",
