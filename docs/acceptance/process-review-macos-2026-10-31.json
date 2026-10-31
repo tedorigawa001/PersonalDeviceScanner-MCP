@@ -237,5 +237,13 @@
     "No browser/dashboard acceptance; this stage has no dashboard or built-in report writer",
     "Full Android/MCP suites were not rerun for this documentation-only acceptance update; implementation record retains preceding 538-test runs"
   ],
-  "privacy": "Repository record contains aggregate counts, fixed status codes, public runtime versions and repository source hashes only. Actual names, PIDs, source/launch paths, package names, script hashes and local evidence paths are excluded."
+  "privacy": "Repository record contains aggregate counts, fixed status codes, public runtime versions and repository source hashes only. Actual names, PIDs, source/launch paths, package names, script hashes and local evidence paths are excluded.",
+  "stop_followup": {
+    "date": "2026-10-31",
+    "record": "process-review-stop-macos-2026-10-31.json",
+    "result": "passed_with_scope_limits",
+    "trials": 18,
+    "scope": "Real osquery response-delivery stalls: deadline/cancel, cleanup, same-instance recovery and confirmation states verified. Native syscall/filesystem stalls remain unconfirmed.",
+    "source_scope": "Current worktree including preexisting uncommitted enhancements; exact hashes pinned in follow-up record."
+  }
 }

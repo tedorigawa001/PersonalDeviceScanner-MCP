@@ -1,0 +1,562 @@
+{
+  "date": "2026-10-31",
+  "timezone": "Asia/Tokyo",
+  "feature": "Process review deadline, cancellation, process cleanup and state retention",
+  "result": "passed_with_scope_limits",
+  "environment": {
+    "os": "macOS",
+    "version": "27.2",
+    "architecture": "arm64",
+    "live_acceptance_python": "3.14.10"
+  },
+  "source_under_test": {
+    "base_commit": "1d368f0",
+    "includes_preexisting_uncommitted_process_review_and_cli_enhancements": true,
+    "source_sha256": {
+      "pc_scanner/process_review.py": "d49d21d1a16df08db6ae361bbcf49d1388bb03064e0456ef6ba230f583634665",
+      "pc_scanner/core.py": "51afc8bd1f8584ef857ddcf450afe2e4a1fb9e4bd538195c24b771f9873fe527",
+      "pc_scanner/connections.py": "f54254ea0b9ed170a43e98dacdaec560919de9e180dfb14406c842b52eb4e380",
+      "pc_scanner/server.py": "fe51f9ae8057e02dad13884e70b777d28ecea94099798db28235671d6fc528f6",
+      "pc_scanner/cli.py": "48883bb4a0e5e81ce34f80dfe2845f7901a2a7f56d4653710046101cbda1a624",
+      "pc_scanner/progress.py": "9985503e2c7f12566e818b2df1f532a629eaecb351e176e9aa21406041a9730e"
+    },
+    "source_unchanged_during_trials": true,
+    "product_code_modified_by_this_task": false
+  },
+  "method": {
+    "actual_read": "Existing osquery executes the fixed owner-selected process/parent projection successfully. The test wrapper then withholds that real JSON response for 6 seconds. A controlled sleeping descendant tests process-group cleanup.",
+    "delay_locations": [
+      "initial identity read",
+      "final identity read",
+      "next target after first target final check completed"
+    ],
+    "timeout_seconds": 2,
+    "cancel_methods": [
+      "SIGINT to Python CLI itself",
+      "threading.Event on same Scanner",
+      "MCP CancelledNotification over local SDK stdio"
+    ],
+    "recovery": "Disable trial delay only; invoke again on same Scanner or same MCP server.",
+    "native_syscall_or_filesystem_stall": false,
+    "real_osquery_exited_before_delivery_delay": true
+  },
+  "trial_count": 18,
+  "trials": [
+    {
+      "transport": "cli",
+      "phase": "initial",
+      "mode": "timeout",
+      "elapsed_seconds": 2.179,
+      "cancel_to_exit_seconds": null,
+      "state": {
+        "status": "partial",
+        "stop_reason": "timeout",
+        "identity": "not_rechecked",
+        "launch": "unavailable",
+        "private_details_cleared": true
+      },
+      "cleanup": {
+        "recorded_child_processes": 3,
+        "remaining_processes": 0,
+        "real_osquery_responses_completed": 1
+      },
+      "lock_scope": "CLI instance exits; same-instance lock separately checked in direct and MCP trials"
+    },
+    {
+      "transport": "direct_scanner",
+      "phase": "initial",
+      "mode": "timeout",
+      "elapsed_seconds": 2.085,
+      "cancel_to_exit_seconds": null,
+      "state": {
+        "status": "partial",
+        "stop_reason": "timeout",
+        "identity": "not_rechecked",
+        "launch": "unavailable",
+        "private_details_cleared": true
+      },
+      "cleanup": {
+        "recorded_child_processes": 3,
+        "remaining_processes": 0,
+        "real_osquery_responses_completed": 1
+      },
+      "lock_released": true,
+      "followup": {
+        "lock_reacquired_by_followup": true,
+        "identity": "start_time_matches",
+        "launch": "loaded_job_pid_matches",
+        "status": "partial"
+      }
+    },
+    {
+      "transport": "mcp_stdio",
+      "phase": "initial",
+      "mode": "timeout",
+      "elapsed_seconds": 2.094,
+      "state": {
+        "status": "partial",
+        "stop_reason": "timeout",
+        "identity": "not_rechecked",
+        "launch": "unavailable",
+        "anonymous_response": true
+      },
+      "cleanup": {
+        "recorded_child_processes": 3,
+        "remaining_processes": 0,
+        "real_osquery_responses_completed": 1
+      },
+      "final_progress_stage": "timed_out",
+      "followup": {
+        "lock_reacquired_by_followup": true,
+        "identity": "start_time_matches",
+        "launch": "loaded_job_pid_matches",
+        "status": "partial"
+      },
+      "external_ai_provider_used": false,
+      "cancel_to_request_end_seconds": null
+    },
+    {
+      "transport": "cli",
+      "phase": "initial",
+      "mode": "cancel",
+      "elapsed_seconds": 0.381,
+      "cancel_to_exit_seconds": 0.045,
+      "state": {
+        "status": "partial",
+        "stop_reason": "cancelled",
+        "identity": "not_rechecked",
+        "launch": "unavailable",
+        "private_details_cleared": true
+      },
+      "cleanup": {
+        "recorded_child_processes": 3,
+        "remaining_processes": 0,
+        "real_osquery_responses_completed": 1
+      },
+      "lock_scope": "CLI instance exits; same-instance lock separately checked in direct and MCP trials"
+    },
+    {
+      "transport": "direct_scanner",
+      "phase": "initial",
+      "mode": "cancel",
+      "elapsed_seconds": 0.312,
+      "cancel_to_exit_seconds": 0.03,
+      "state": {
+        "status": "partial",
+        "stop_reason": "cancelled",
+        "identity": "not_rechecked",
+        "launch": "unavailable",
+        "private_details_cleared": true
+      },
+      "cleanup": {
+        "recorded_child_processes": 3,
+        "remaining_processes": 0,
+        "real_osquery_responses_completed": 1
+      },
+      "lock_released": true,
+      "followup": {
+        "lock_reacquired_by_followup": true,
+        "identity": "start_time_matches",
+        "launch": "loaded_job_pid_matches",
+        "status": "partial"
+      }
+    },
+    {
+      "transport": "mcp_stdio",
+      "phase": "initial",
+      "mode": "cancel",
+      "elapsed_seconds": 0.28,
+      "state": {
+        "mcp_request_cancelled": true,
+        "normal_result_suppressed": true,
+        "confirmation_state_checked_in_cli_and_direct_trials": true
+      },
+      "cleanup": {
+        "recorded_child_processes": 3,
+        "remaining_processes": 0,
+        "real_osquery_responses_completed": 1
+      },
+      "final_progress_stage": "cancelled",
+      "followup": {
+        "lock_reacquired_by_followup": true,
+        "identity": "start_time_matches",
+        "launch": "loaded_job_pid_matches",
+        "status": "partial"
+      },
+      "external_ai_provider_used": false,
+      "cancel_to_request_end_seconds": 0.002
+    },
+    {
+      "transport": "cli",
+      "phase": "final",
+      "mode": "timeout",
+      "elapsed_seconds": 2.172,
+      "cancel_to_exit_seconds": null,
+      "state": {
+        "status": "partial",
+        "stop_reason": "timeout",
+        "identity": "not_rechecked",
+        "launch": "unavailable",
+        "private_details_cleared": true
+      },
+      "cleanup": {
+        "recorded_child_processes": 5,
+        "remaining_processes": 0,
+        "real_osquery_responses_completed": 2
+      },
+      "lock_scope": "CLI instance exits; same-instance lock separately checked in direct and MCP trials"
+    },
+    {
+      "transport": "direct_scanner",
+      "phase": "final",
+      "mode": "timeout",
+      "elapsed_seconds": 2.082,
+      "cancel_to_exit_seconds": null,
+      "state": {
+        "status": "partial",
+        "stop_reason": "timeout",
+        "identity": "not_rechecked",
+        "launch": "unavailable",
+        "private_details_cleared": true
+      },
+      "cleanup": {
+        "recorded_child_processes": 5,
+        "remaining_processes": 0,
+        "real_osquery_responses_completed": 2
+      },
+      "lock_released": true,
+      "followup": {
+        "lock_reacquired_by_followup": true,
+        "identity": "start_time_matches",
+        "launch": "loaded_job_pid_matches",
+        "status": "partial"
+      }
+    },
+    {
+      "transport": "mcp_stdio",
+      "phase": "final",
+      "mode": "timeout",
+      "elapsed_seconds": 2.088,
+      "state": {
+        "status": "partial",
+        "stop_reason": "timeout",
+        "identity": "not_rechecked",
+        "launch": "unavailable",
+        "anonymous_response": true
+      },
+      "cleanup": {
+        "recorded_child_processes": 5,
+        "remaining_processes": 0,
+        "real_osquery_responses_completed": 2
+      },
+      "final_progress_stage": "timed_out",
+      "followup": {
+        "lock_reacquired_by_followup": true,
+        "identity": "start_time_matches",
+        "launch": "loaded_job_pid_matches",
+        "status": "partial"
+      },
+      "external_ai_provider_used": false,
+      "cancel_to_request_end_seconds": null
+    },
+    {
+      "transport": "cli",
+      "phase": "final",
+      "mode": "cancel",
+      "elapsed_seconds": 0.689,
+      "cancel_to_exit_seconds": 0.07,
+      "state": {
+        "status": "partial",
+        "stop_reason": "cancelled",
+        "identity": "not_rechecked",
+        "launch": "unavailable",
+        "private_details_cleared": true
+      },
+      "cleanup": {
+        "recorded_child_processes": 5,
+        "remaining_processes": 0,
+        "real_osquery_responses_completed": 2
+      },
+      "lock_scope": "CLI instance exits; same-instance lock separately checked in direct and MCP trials"
+    },
+    {
+      "transport": "direct_scanner",
+      "phase": "final",
+      "mode": "cancel",
+      "elapsed_seconds": 0.608,
+      "cancel_to_exit_seconds": 0.063,
+      "state": {
+        "status": "partial",
+        "stop_reason": "cancelled",
+        "identity": "not_rechecked",
+        "launch": "unavailable",
+        "private_details_cleared": true
+      },
+      "cleanup": {
+        "recorded_child_processes": 5,
+        "remaining_processes": 0,
+        "real_osquery_responses_completed": 2
+      },
+      "lock_released": true,
+      "followup": {
+        "lock_reacquired_by_followup": true,
+        "identity": "start_time_matches",
+        "launch": "loaded_job_pid_matches",
+        "status": "partial"
+      }
+    },
+    {
+      "transport": "mcp_stdio",
+      "phase": "final",
+      "mode": "cancel",
+      "elapsed_seconds": 0.546,
+      "state": {
+        "mcp_request_cancelled": true,
+        "normal_result_suppressed": true,
+        "confirmation_state_checked_in_cli_and_direct_trials": true
+      },
+      "cleanup": {
+        "recorded_child_processes": 5,
+        "remaining_processes": 0,
+        "real_osquery_responses_completed": 2
+      },
+      "final_progress_stage": "cancelled",
+      "followup": {
+        "lock_reacquired_by_followup": true,
+        "identity": "start_time_matches",
+        "launch": "loaded_job_pid_matches",
+        "status": "partial"
+      },
+      "external_ai_provider_used": false,
+      "cancel_to_request_end_seconds": 0.002
+    },
+    {
+      "transport": "mcp_stdio",
+      "phase": "initial",
+      "mode": "timeout",
+      "elapsed_seconds": 2.095,
+      "cancel_to_request_end_seconds": null,
+      "cancel_to_cleanup_confirmed_seconds": null,
+      "elapsed_to_cleanup_confirmed_seconds": 2.095,
+      "state": {
+        "status": "partial",
+        "stop_reason": "timeout",
+        "identity": "not_rechecked",
+        "launch": "unavailable",
+        "anonymous_response": true
+      },
+      "cleanup": {
+        "recorded_child_processes": 3,
+        "remaining_processes": 0,
+        "real_osquery_responses_completed": 1
+      },
+      "final_progress_stage": "timed_out",
+      "followup": {
+        "lock_reacquired_by_followup": true,
+        "identity": "start_time_matches",
+        "launch": "loaded_job_pid_matches",
+        "status": "partial"
+      },
+      "external_ai_provider_used": false
+    },
+    {
+      "transport": "mcp_stdio",
+      "phase": "initial",
+      "mode": "cancel",
+      "elapsed_seconds": 0.29,
+      "cancel_to_request_end_seconds": 0.003,
+      "cancel_to_cleanup_confirmed_seconds": 0.054,
+      "elapsed_to_cleanup_confirmed_seconds": 0.341,
+      "state": {
+        "mcp_request_cancelled": true,
+        "normal_result_suppressed": true,
+        "confirmation_state_checked_in_cli_and_direct_trials": true
+      },
+      "cleanup": {
+        "recorded_child_processes": 3,
+        "remaining_processes": 0,
+        "real_osquery_responses_completed": 1
+      },
+      "final_progress_stage": "cancelled",
+      "followup": {
+        "lock_reacquired_by_followup": true,
+        "identity": "start_time_matches",
+        "launch": "loaded_job_pid_matches",
+        "status": "partial"
+      },
+      "external_ai_provider_used": false
+    },
+    {
+      "transport": "mcp_stdio",
+      "phase": "final",
+      "mode": "timeout",
+      "elapsed_seconds": 2.085,
+      "cancel_to_request_end_seconds": null,
+      "cancel_to_cleanup_confirmed_seconds": null,
+      "elapsed_to_cleanup_confirmed_seconds": 2.086,
+      "state": {
+        "status": "partial",
+        "stop_reason": "timeout",
+        "identity": "not_rechecked",
+        "launch": "unavailable",
+        "anonymous_response": true
+      },
+      "cleanup": {
+        "recorded_child_processes": 5,
+        "remaining_processes": 0,
+        "real_osquery_responses_completed": 2
+      },
+      "final_progress_stage": "timed_out",
+      "followup": {
+        "lock_reacquired_by_followup": true,
+        "identity": "start_time_matches",
+        "launch": "loaded_job_pid_matches",
+        "status": "partial"
+      },
+      "external_ai_provider_used": false
+    },
+    {
+      "transport": "mcp_stdio",
+      "phase": "final",
+      "mode": "cancel",
+      "elapsed_seconds": 0.569,
+      "cancel_to_request_end_seconds": 0.003,
+      "cancel_to_cleanup_confirmed_seconds": 0.078,
+      "elapsed_to_cleanup_confirmed_seconds": 0.644,
+      "state": {
+        "mcp_request_cancelled": true,
+        "normal_result_suppressed": true,
+        "confirmation_state_checked_in_cli_and_direct_trials": true
+      },
+      "cleanup": {
+        "recorded_child_processes": 5,
+        "remaining_processes": 0,
+        "real_osquery_responses_completed": 2
+      },
+      "final_progress_stage": "cancelled",
+      "followup": {
+        "lock_reacquired_by_followup": true,
+        "identity": "start_time_matches",
+        "launch": "loaded_job_pid_matches",
+        "status": "partial"
+      },
+      "external_ai_provider_used": false
+    },
+    {
+      "transport": "direct_scanner",
+      "phase": "next_target",
+      "mode": "timeout",
+      "elapsed_seconds": 2.06,
+      "cancel_to_exit_seconds": null,
+      "state": {
+        "status": "partial",
+        "stop_reason": "timeout",
+        "completed_target_identity_preserved": true,
+        "completed_target_launch_preserved": true,
+        "completed_target_details_preserved": true,
+        "current_target_identity": "not_rechecked",
+        "current_target_details_cleared": true
+      },
+      "cleanup": {
+        "recorded_child_processes": 7,
+        "remaining_processes": 0,
+        "real_osquery_responses_completed": 3
+      },
+      "lock_released": true,
+      "followup": {
+        "lock_reacquired_by_followup": true,
+        "identity": "start_time_matches",
+        "launch": "loaded_job_pid_matches",
+        "status": "partial"
+      }
+    },
+    {
+      "transport": "direct_scanner",
+      "phase": "next_target",
+      "mode": "cancel",
+      "elapsed_seconds": 0.892,
+      "cancel_to_exit_seconds": 0.043,
+      "state": {
+        "status": "partial",
+        "stop_reason": "cancelled",
+        "completed_target_identity_preserved": true,
+        "completed_target_launch_preserved": true,
+        "completed_target_details_preserved": true,
+        "current_target_identity": "not_rechecked",
+        "current_target_details_cleared": true
+      },
+      "cleanup": {
+        "recorded_child_processes": 7,
+        "remaining_processes": 0,
+        "real_osquery_responses_completed": 3
+      },
+      "lock_released": true,
+      "followup": {
+        "lock_reacquired_by_followup": true,
+        "identity": "start_time_matches",
+        "launch": "loaded_job_pid_matches",
+        "status": "partial"
+      }
+    }
+  ],
+  "verified": [
+    "All recorded test wrapper, real engine and sleeping descendant PIDs absent after stops and in final sweep",
+    "Direct Scanner lock released; same-instance follow-up succeeded",
+    "Same MCP server accepted follow-up after cancellation/deadline",
+    "Interrupted target identity became not_rechecked, launch unavailable, private details cleared (CLI/direct)",
+    "MCP timeout returned anonymous unconfirmed states; MCP cancellation suppressed normal response and progress became cancelled",
+    "Completed first target identity/launch/details retained when next target interrupted (direct Scanner timeout/cancel)",
+    "Input hashes and modes unchanged; no target start/restart/stop or startup setting change",
+    "No test history directory created despite history/details enabled",
+    "Private directories 0700, data files 0600, trial reader executables 0700"
+  ],
+  "regression_recheck": [
+    {
+      "python": "3.14.10",
+      "command": "bdo .venv/bin/python -m unittest tests.test_process_review -q",
+      "total": 20,
+      "passed": 20,
+      "skipped": 0
+    },
+    {
+      "python": "3.15.2",
+      "command": "bdo .venv-dev/bin/python -m unittest tests.test_process_review -q",
+      "total": 20,
+      "passed": 20,
+      "skipped": 0
+    }
+  ],
+  "initial_attempts": [
+    {
+      "issue": "Generated trial wrapper newline escaping error prevented a stall",
+      "resolution": "Excluded from timing acceptance; fixed harness and syntax-checked both layers. Product reported partial read unavailable."
+    },
+    {
+      "issue": "First SIGINT targeted command proxy instead of Python CLI",
+      "resolution": "Excluded from cancellation acceptance; signalled Python CLI directly. All earlier recorded test processes subsequently absent."
+    },
+    {
+      "issue": "One diagnostic file inherited 0644 inside the private 0700 evidence directory",
+      "resolution": "Normalized that test evidence file to 0600; target permissions untouched; final evidence permission sweep passed."
+    }
+  ],
+  "privacy": {
+    "real_names_pids_paths_package_names_script_hashes": "Private local evidence only, excluded from repository",
+    "target_scripts_launched_or_restarted": false,
+    "payload_or_packet_capture": false,
+    "socket_or_destination_queries": false,
+    "command_line_or_environment_collection": false,
+    "external_identifier_queries": false,
+    "external_ai_provider": false
+  },
+  "limitations": [
+    "Response delivery was stalled after a real query, not native osquery or filesystem syscalls. Real osquery had exited before delay; wrapper and sleeping descendant were killed during stall.",
+    "Hard bound on filesystem stat/open/read remains unproven.",
+    "Live delayed trials used Python 3.14; Python 3.15 ran 20 targeted regressions only.",
+    "MCP request-cancel response latency differs from worker/process cleanup; supplemental trials measure both.",
+    "CLI exits after one operation; same-instance lock is checked directly and via MCP follow-up.",
+    "Trials include current preexisting uncommitted implementation enhancements; not evidence for base commit alone.",
+    "Native Windows/Linux acceptance, alternate dependency resolution and actual loaded-module attribution remain open.",
+    "Full Android/MCP suites and npm were not rerun for this documentation-only acceptance task."
+  ]
+}
