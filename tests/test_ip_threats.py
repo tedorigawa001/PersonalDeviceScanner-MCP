@@ -334,6 +334,51 @@ class CacheTests(unittest.TestCase):
         for secret in ['8.8.8.8','synthetic-private-app','/synthetic/private']:
             self.assertNotIn(secret,json.dumps(r));self.assertNotIn(secret,json.dumps(append.call_args.args[1]))
 
+    def test_stale_list_matches_are_counted_in_every_anonymous_view(self):
+        self.write()
+        with patch.object(t,'clock',return_value=NOW+timedelta(hours=48)):r=self.observe([self.row(),self.row(remote_address='1.1.1.1')])
+        v=r['data']['destination_threats'];self.assertEqual(v['destination_counts'],{'unverified':2})
+        self.assertEqual(v['historical_match_destinations'],1);self.assertIn(t.HISTORICAL,r['warnings'])
+        anon=t.anonymous(r);self.assertEqual(anon['data']['destination_threats']['historical_match_destinations'],1)
+        self.assertIn(t.HISTORICAL,anon['warnings']);self.assertNotIn('8.8.8.8',json.dumps(anon))
+        item=history.entry('check_connection_destinations',{},r,NOW,1,'cli');parsed=history.parse(json.dumps(item))
+        self.assertEqual(parsed['destination_threats']['historical_match_destinations'],1)
+        rendered=dashboard.render([parsed],[(None,'off')],{'file':'synthetic-history','recording':True,'details':False,'details_mb':1,'skipped':0,'generated':'synthetic'})
+        self.assertIn('matched only an out-of-date list',rendered)
+        # More historical matches than unverified destinations is an edited line, not a summary.
+        dirty=copy.deepcopy(item);dirty['destination_threats']['historical_match_destinations']=3
+        self.assertNotIn('destination_threats',history.parse(json.dumps(dirty)))
+
+    def test_invalid_or_future_attempt_record_resets_without_request(self):
+        self.write()
+        for raw in [json.dumps({'attempted_at':t.stamp(NOW+timedelta(days=365))}).encode(),b'{broken']:
+            with self.subTest(raw=raw[:12]):
+                with t.Cache(t.cache_settings(self.scanner())).open() as cache:cache.atomic('attempt.json',raw,1024)
+                with patch.object(t,'clock',return_value=NOW):r=self.scanner().invoke('update_ip_threat_lists')
+                self.assertEqual(r['data']['stop_reason'],'attempt_record_invalid')
+                self.assertEqual(json.loads((self.folder/'attempt.json').read_bytes()),{'attempted_at':t.stamp(NOW)})
+                with patch.object(t,'clock',return_value=NOW+timedelta(minutes=59)):r=self.scanner().invoke('update_ip_threat_lists')
+                self.assertEqual(r['data']['stop_reason'],'rate_limited_no_request_sent')
+        with patch.object(t,'clock',return_value=NOW+timedelta(hours=1)),patch.object(t,'download',side_effect=lambda v,*a:feed(v)):
+            self.assertEqual(self.scanner().invoke('update_ip_threat_lists')['status'],'completed')
+
+
+class DashboardTests(unittest.TestCase):
+    def entry(self,operation,started,count):
+        data={'observation_id':secrets.token_hex(16),'connection_count':count,'process_count':1,'limitations':[],'stop_reason':None,'connections':[]}
+        return history.parse(json.dumps(history.entry(operation,{},{'source':'connections','status':'completed','findings':[],'warnings':[],'data':data},started,1,'cli')))
+
+    def test_newest_connection_run_is_shown_across_operations(self):
+        meta={'file':'synthetic-history','recording':True,'details':False,'details_mb':1,'skipped':0,'generated':'synthetic'}
+        operations={'observe_outbound_connections','check_connection_destinations'}
+        for newer in sorted(operations):
+            entries=[self.entry((operations-{newer}).pop(),NOW-timedelta(days=1),11),self.entry(newer,NOW,22)]
+            for ordered in (entries,entries[::-1]):
+                with self.subTest(newer=newer,reversed=ordered is not entries):
+                    html=dashboard.render(ordered,[(None,'off')]*2,meta)
+                    section=html.split('Connections observed on this PC',1)[1].split('</div>',1)[0]
+                    self.assertIn('Observed records: 22',section);self.assertNotIn('Observed records: 11',section)
+
 
 class NetworkTests(unittest.TestCase):
     def test_updater_has_fixed_urls_headers_tls_and_no_proxy(self):

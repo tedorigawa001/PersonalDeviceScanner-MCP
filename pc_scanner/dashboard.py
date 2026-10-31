@@ -592,6 +592,9 @@ def destination_threat_summary(data):
     if value is None:
         return '<p>Destination threat-list summary unavailable.</p>' if "destination_threats" in data else ""
     body = '<p>' + esc(value["notice"]) + '</p><p>Historical check (UTC): ' + esc(value["checked_at"]) + ' · Coverage: ' + esc(value["coverage"]) + '</p>'
+    if value["historical_match_destinations"]:
+        body = ('<p class="notice">' + str(value["historical_match_destinations"]) + ' destination(s) matched only an out-of-date list '
+                'and remain unverified. Update the list locally and check again.</p>') + body
     if value["destination_counts"].get("matched"):
         body = '<p class="notice">Warning: observed destinations match public threat-list networks. Review the local evidence; this is not proof of infection.</p>' + body
     body += '<p>Unique destinations by state: ' + esc(json.dumps(value["destination_counts"], sort_keys=True)) + '</p>'
@@ -602,20 +605,20 @@ def destination_threat_summary(data):
 
 
 def connection_section(runs):
-    for run in runs:
-        index, item = run[-1]
-        if item["operation"] not in {"observe_outbound_connections", "check_connection_destinations"}:
-            continue
-        value = item.get("connection_observation", {})
-        return ('<h2>Connections observed on this PC</h2><p class="quiet">Latest saved observation only, not live traffic. '
-                'Counts are observed records, not sessions or transmissions. History from multiple hosts is unsupported. '
-                'Check the observation time; saved results become stale.</p><div class="panel">'
-                f'<a href="#scan-{index}">This PC connection history</a> · {badge(item["status"], STATUSES)} · '
-                f'Observed records: {esc(value.get("connection_count", "unknown"))} · '
-                f'Processes with start time: {esc(value.get("process_count", "unknown"))} · '
-                f'Observation: {esc(local_time(item))} · Stop reason: {esc(value.get("stop_reason") or "—")}'
-                f'<p>Limitations: {esc(", ".join(value.get("limitations", [])))}</p>' + destination_threat_summary(item) + '</div>')
-    return ""
+    # Plain observations and destination checks are separate runs; the newest of either is the latest observation.
+    observed = [run[-1] for run in runs if run[-1][1]["operation"] in {"observe_outbound_connections", "check_connection_destinations"}]
+    if not observed:
+        return ""
+    index, item = max(observed, key=lambda pair: datetime.fromisoformat(pair[1]["started_at"]).astimezone())
+    value = item.get("connection_observation", {})
+    return ('<h2>Connections observed on this PC</h2><p class="quiet">Latest saved observation only, not live traffic. '
+            'Counts are observed records, not sessions or transmissions. History from multiple hosts is unsupported. '
+            'Check the observation time; saved results become stale.</p><div class="panel">'
+            f'<a href="#scan-{index}">This PC connection history</a> · {badge(item["status"], STATUSES)} · '
+            f'Observed records: {esc(value.get("connection_count", "unknown"))} · '
+            f'Processes with start time: {esc(value.get("process_count", "unknown"))} · '
+            f'Observation: {esc(local_time(item))} · Stop reason: {esc(value.get("stop_reason") or "—")}'
+            f'<p>Limitations: {esc(", ".join(value.get("limitations", [])))}</p>' + destination_threat_summary(item) + '</div>')
 
 
 def render(entries: list[dict], loaded: list[tuple[dict | None, str]], meta: dict) -> str:

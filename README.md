@@ -494,6 +494,8 @@ See [design and verification plan](docs/outbound-connections-design.md).
 destinations against a previously downloaded public network list entirely on this PC. A match is a warning,
 not proof of infection or actual transmission. No match does not prove safety. Private/local and special-use
 addresses are outside this list's scope; missing, stale or invalid data produces unverified coverage and `partial`.
+Destinations that matched only an out-of-date list stay unverified, but the CLI, MCP, history and dashboard count
+them separately and prompt you to update the list and check again.
 These warnings remain separate from malware/vulnerability findings and the dashboard severity chart.
 
 ```toml
@@ -508,6 +510,7 @@ save_details = false
 Enable `allow_updates` and explicitly run `pc-scanner --config scanner.toml update-ip-threat-lists`
 to download the fixed IPv4/IPv6 public feeds. Observation and MCP calls never update or access the network.
 Updates use verified HTTPS, no ambient proxy/credentials, bounded reads and a minimum one-hour attempt interval.
+An invalid or future last-attempt time is reset to now without sending a request, so the next update can run an hour later.
 The provider sees the updater's public source IP and request timing; observed destinations and process data
 are never sent. The cache's parent must already exist; choose an absolute `cache_directory` beneath an
 existing private local parent if needed. POSIX only initially; unsafe permissions, cloud/network storage,

@@ -24,9 +24,14 @@ SOURCE = "Spamhaus Project DROP"
 FEED_LIMIT, BUNDLE_LIMIT, MAX_NETWORKS = 4 * 1024 * 1024, 12 * 1024 * 1024, 50000
 STATES = {"matched", "not_listed", "unverified", "not_applicable"}
 NOTICE = "Public threat-list matches are warnings, not proof of infection or transmission. No match does not prove safety."
+HISTORICAL = ("Some destinations matched only an out-of-date public threat list and remain unverified; "
+              "update the list locally and check again")
 
 
 class RateLimited(Exception):
+    pass
+
+class InvalidAttempt(Exception):
     pass
 
 
@@ -173,11 +178,18 @@ def update(scanner, cancel=None, progress=None):
             cache.cleanup()
             when = clock()
             try:
-                attempt = private.decode(cache.read("attempt.json", 1024)[0])
+                raw = cache.read("attempt.json", 1024)[0]
             except FileNotFoundError:
-                attempt = None
-            if attempt is not None:
-                last = private.date(attempt["attempted_at"])
+                raw = None
+            if raw is not None:
+                try:
+                    last = private.date(private.decode(raw)["attempted_at"])
+                except (ValueError, KeyError, TypeError, RecursionError, OverflowError):
+                    last = None
+                if last is None or last > when:
+                    # No request this time, but the interval restarts now instead of blocking updates indefinitely.
+                    cache.atomic("attempt.json", private.encode({"attempted_at": stamp(when)}), 1024)
+                    raise InvalidAttempt
                 if when - last < timedelta(hours=1):
                     raise RateLimited
             cache.atomic("attempt.json", private.encode({"attempted_at": stamp(when)}), 1024)
@@ -217,6 +229,8 @@ def update(scanner, cancel=None, progress=None):
             "feeds": description}, warnings=[NOTICE] + ([] if fresh else ["Downloaded public threat lists are stale or unverified"]))
     except RateLimited:
         reason = "rate_limited_no_request_sent"
+    except InvalidAttempt:
+        reason = "attempt_record_invalid"
     except private.MissingParent:
         reason = "cache_parent_missing"
     except (c.Stopped, ScannerError):
@@ -228,8 +242,12 @@ def update(scanner, cancel=None, progress=None):
     except (OSError, ValueError, KeyError, TypeError, RecursionError, OverflowError):
         reason = ("cancelled" if cancel is not None and cancel.is_set() else
                   "timeout" if time.monotonic() >= deadline else "cache_or_feed_unavailable")
+    warnings = ["Public threat-list update did not complete; the previous current generation was retained", NOTICE]
+    if reason == "attempt_record_invalid":
+        warnings.insert(1, "The last update attempt time was invalid or in the future; no request was sent and "
+                           "it was reset to now, so the next update can run after one hour")
     return result("connections", "partial", data={"updated": False, "persistence": "not_saved", "stop_reason": reason},
-                  warnings=["Public threat-list update did not complete; the previous current generation was retained", NOTICE])
+                  warnings=warnings)
 
 
 def describe(feeds, retrieved, checked, hours):
@@ -325,8 +343,10 @@ def enrich(scanner, report, deadline, cancel=None, progress=None):
         data["stop_reason"] = reason
     counts = dict(Counter(a["state"] for a in destinations.values()))
     matched = [r for r in rows if r["threat"]["state"] == "matched"]
+    historical = sum(a["historical_match"] for a in destinations.values())
     summary = {"checked_at": stamp(checked), "feeds": metadata, "destination_counts": counts,
-        "unique_destinations": len(destinations), "matched_connection_records": len(matched),
+        "unique_destinations": len(destinations), "historical_match_destinations": historical,
+        "matched_connection_records": len(matched),
         "matched_processes": len({(r["pid"], r["process_started_at_epoch"]) for r in matched if r["attribution_quality"] != "unverified"}),
         "matched_unattributed_records": sum(r["attribution_quality"] == "unverified" for r in matched),
         "coverage": "unverified" if reason or any(f["freshness"] != "fresh" for f in metadata.values()) or not metadata else "checked",
@@ -338,6 +358,8 @@ def enrich(scanner, report, deadline, cancel=None, progress=None):
         report["warnings"].append("Destination threat-list coverage is incomplete; stale, unavailable or unfinished checks are unverified")
     if matched:
         report["warnings"].append("Observed destinations match public threat-list networks; review the local evidence and process attribution")
+    if historical:
+        report["warnings"].append(HISTORICAL)
     report["warnings"].append(NOTICE)
 
 
@@ -360,6 +382,8 @@ def anonymous(report):
         warnings=[NOTICE, "Anonymous summary only; real destinations and process identifiers remain local"])
     if value.get("destination_counts", {}).get("matched"):
         out["warnings"].append("Warning: observed destinations match public threat-list networks; review local evidence")
+    if value.get("historical_match_destinations"):
+        out["warnings"].append(HISTORICAL)
     if value.get("coverage") == "unverified":
         out["warnings"].append("Destination threat-list coverage is unverified; do not treat this as a negative result")
     return out
@@ -379,7 +403,10 @@ def summary(data):
         total = private.integer(value["unique_destinations"], c.MAX_CONNECTIONS)
         if sum(clean.values()) != total:
             return {}
+        # Matches against an expired list are a subset of the unverified destinations, never a separate total.
+        historical = private.integer(value["historical_match_destinations"], clean.get("unverified", 0))
         out = {"checked_at": stamp(checked), "destination_counts": clean, "unique_destinations": total,
+               "historical_match_destinations": historical,
                "coverage": private.choice(value["coverage"], {"checked", "unverified"}), "notice": NOTICE,
                **{k: private.integer(value[k], c.MAX_CONNECTIONS) for k in
                   ("matched_connection_records", "matched_processes", "matched_unattributed_records")}}

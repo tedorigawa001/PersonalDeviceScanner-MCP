@@ -255,7 +255,9 @@ def main():
             for row in data.get("connections", []):
                 assessment = row.get("threat", {})
                 print("Destination check:", row["remote_ip"], row["pid"], row["process"] or "unknown",
-                      assessment.get("state"), assessment.get("reason"), json.dumps(assessment.get("evidence", [])), sep="\t")
+                      assessment.get("state"), assessment.get("reason"),
+                      "matched_out_of_date_list" if assessment.get("historical_match") else "-",
+                      json.dumps(assessment.get("evidence", [])), sep="\t")
         for warning in report["warnings"] + ([report["error"]] if report.get("error") else []):
             print("pc-scanner: " + warning, file=sys.stderr)
     elif args.command == "lan-devices" and not args.json:

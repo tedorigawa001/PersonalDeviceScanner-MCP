@@ -168,5 +168,31 @@
     "record": "ip-threat-update-macos-2026-10-31.json",
     "scope": "Real fixed-URL update CLI, immediate cross-Python rate limiting and private storage; nine isolated no-network fault/boundary trials; no connection observation; later uncommitted source changes are outside this acceptance",
     "tested_commit": "03293f7163ef61558422acbbd0fb1c1ce50a96e6"
+  },
+  "review_fixes": {
+    "date": "2026-10-31",
+    "base_commit": "03293f7163ef61558422acbbd0fb1c1ce50a96e6",
+    "fixes": [
+      "Dashboard connection section shows the newer of a plain observation and a destination check instead of always preferring the older check by operation name",
+      "Anonymous MCP, history and dashboard summaries count destinations that matched only an out-of-date list (historical_match_destinations, a subset of unverified), with an update-and-recheck warning; CLI rows mark them",
+      "An invalid or future last-attempt record is reset to now without a request (stop_reason attempt_record_invalid), so updates resume after one hour instead of being blocked indefinitely"
+    ],
+    "source_sha256": {
+      "pc_scanner/ip_threats.py": "f5df82ee7800443c2355799b5ba8e6e55f3c487c34e0248888601750902f589f",
+      "pc_scanner/dashboard.py": "dffd2a1f5dc36725a6a5b2eccf5adbdd4b5df0653c76c9bc30b11b85b60d1320",
+      "pc_scanner/cli.py": "c423b60a2ce1cdc23b77967f665b66f7bfb44239039424f3ba1eb504f40d3235",
+      "tests/test_ip_threats.py": "54f682798b1ab6ccc8dea41b168d0ebcb310f25fcaf59e6bded4e87237b10c64"
+    },
+    "verification": {
+      "new_tests": 3,
+      "new_tests_fail_on_base_commit": true,
+      "full_suite": [
+        {"python": "3.14.10", "total": 611, "passed": 604, "skipped": 7, "errors": 0, "failures": 0},
+        {"python": "3.15.2", "total": 611, "passed": 604, "skipped": 7, "errors": 0, "failures": 0}
+      ],
+      "npm": "Not rerun: the tool list and npm launcher are unchanged",
+      "data": "Synthetic destinations and temporary caches only; no owner connections, real cache or real history"
+    },
+    "not_covered": "The macOS update CLI acceptance above tested 03293f7, before these fixes"
   }
 }
