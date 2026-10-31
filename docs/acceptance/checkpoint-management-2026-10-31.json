@@ -143,5 +143,111 @@
   "evidence": {
     "local_log_directory": "private local temporary path (not recorded)",
     "raw_logs_committed": false
+  },
+  "review_fixes_2026_10_31": {
+    "changes": [
+      "The list only probes the shared scan lock and reads without holding it. A starting batch scan waits about 2 seconds (200 tries, 10 ms apart) for that lock, while a list may read for up to 5 seconds; deletion still validates everything under the lock.",
+      "read_coverage (malware-gaps) uses checkpoint_directory(): a missing folder now reports 'No coverage selection state' instead of an internal FileNotFoundError, without creating the folder; the duplicated folder checks were removed."
+    ],
+    "new_tests": 2,
+    "verification": {
+      "python314_full": {
+        "total": 522,
+        "passed": 515,
+        "skipped": 7,
+        "failures": 0,
+        "errors": 0
+      },
+      "python315_full": {
+        "total": 522,
+        "passed": 515,
+        "skipped": 7,
+        "failures": 0,
+        "errors": 0
+      },
+      "checkpoint_and_coverage_tests": {
+        "python314": 62,
+        "python315": 62,
+        "failures": 0
+      },
+      "npm_python314": {
+        "tests": 26,
+        "pass": 25,
+        "skipped": 1,
+        "skipped_reason": "the opt-in package end-to-end test installs from PyPI and was not run for this change"
+      },
+      "mutations": {
+        "total": 3,
+        "caught": 3,
+        "cases": [
+          "list holds the lock while reading",
+          "missing folder not handled",
+          "busy probe ignored"
+        ]
+      },
+      "real_history_unchanged": true
+    }
+  },
+  "precommit_re_review": {
+    "date": "2026-10-31",
+    "review_result": "No additional actionable correctness or privacy regression found in the supplied changes. No product code changed during this re-review.",
+    "platform_scope": "macOS local tests; Windows CI/native acceptance not run",
+    "combined_worktree_full": [
+      {
+        "python": "3.14.10",
+        "total": 542,
+        "passed": 535,
+        "skipped": 7,
+        "failures": 0,
+        "errors": 0,
+        "seconds": 40.618
+      },
+      {
+        "python": "3.15.2",
+        "total": 542,
+        "passed": 535,
+        "skipped": 7,
+        "failures": 0,
+        "errors": 0,
+        "seconds": 40.816
+      }
+    ],
+    "skip_reason": "Existing Windows-only tests",
+    "npm_e2e": [
+      {
+        "python": "3.14.10",
+        "total": 26,
+        "passed": 26,
+        "skipped": 0,
+        "scope": "combined worktree"
+      },
+      {
+        "python": "3.15.2",
+        "total": 26,
+        "passed": 26,
+        "skipped": 0,
+        "scope": "combined worktree"
+      }
+    ],
+    "targeted_regressions": {
+      "command": "bdo .venv/bin/python -m unittest tests.test_process_review tests.test_checkpoints tests.test_coverage -q",
+      "total": 82,
+      "passed": 82,
+      "skipped": 0
+    },
+    "test_data": "Synthetic fixtures and temporary stores; no real process/connection or personal checkpoint collection.",
+    "review_scope": [
+      "Listing probes and releases the scan lock before inventory",
+      "Deletion retains exclusive locking, revision and file identity rechecks",
+      "Missing coverage directory returns actionable error without creation",
+      "Existing owner/link/private-file storage boundary remains in use"
+    ],
+    "commit_scope": "Checkpoint changes committed separately after process-review changes.",
+    "source_sha256": {
+      "pc_scanner/checkpoints.py": "d3fc3a8e86b1e4b03bf8ac1a0879e2efdf72bfd62e4d9290f4f31f69a112aad7",
+      "pc_scanner/malware_batch.py": "d50b44a702140a89f39b73cb01c8dacf430e7e89bb854aab6c2523d1b2b8b7b1",
+      "tests/test_checkpoints.py": "c9a53af947e1819f500fff6b823ba634c8eec101777b2cfac502dd9cc7e438cc"
+    },
+    "process_review_commit": "4c6fb44"
   }
 }

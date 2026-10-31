@@ -725,6 +725,8 @@ not `coverage_revision`. There is no wildcard, bulk-delete or force option. A ch
 listing again. Any running batch scan protects **all** checkpoints: list shows `scan_running=true` and
 `deletable=false`; deletion fails promptly. The manager shares the scan's in-process and cross-process locks.
 The `scan_running` flag is conservative: a competing checkpoint-management operation can also hold that lock.
+The list only checks the lock when it starts and reads without holding it, so a batch scan can still start meanwhile;
+deletion checks everything again under the lock.
 
 Only the selected owned, private, bounded regular checkpoint file is removed. Symlinks, junctions/reparse points,
 hard links, placeholders, oversized files and foreign owners are refused. A corrupt but safely readable owned file
@@ -741,7 +743,7 @@ explicit. `deletable` is eligibility, not a promise that OS permissions or anoth
 These commands do not create a missing checkpoint directory or append to scan history. The list may create/reuse
 the shared lock in an existing store. No checkpoint-management operation is registered with MCP or `Scanner.invoke`.
 
-Verified on macOS with synthetic state and real CLI/MCP transports: both Python suites passed 513 of 520 tests
+Verified on macOS with synthetic state and real CLI/MCP transports; the final combined re-review passed 535 of 542 tests on both Python versions
 (7 Windows-only skips), and both npm profiles passed 26 tests. Native Windows deletion/ACL acceptance remains open.
 See the [verification record](docs/acceptance/checkpoint-management-2026-10-31.json).
 

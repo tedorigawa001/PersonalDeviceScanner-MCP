@@ -210,11 +210,15 @@ def list_checkpoints(scanner, show_paths=False):
                         "capacity_count": 0, "capacity": batch.MAX_CHECKPOINTS,
                         "enumeration_complete": True, "scan_running": False}
             else:
+                # Only a probe: a starting batch scan waits about 2 seconds for this lock, a full read can
+                # take 5, and deletion checks everything again under the lock anyway.
+                busy = False
                 try:
                     with exclusive(folder):
-                        data = inventory(folder, dirfd, info, False, show_paths, deadline)
+                        pass
                 except history.Busy:
-                    data = inventory(folder, dirfd, info, True, show_paths, deadline)
+                    busy = True
+                data = inventory(folder, dirfd, info, busy, show_paths, deadline)
     except OSError:
         raise core.ScannerError("Checkpoint inventory could not be read safely; check local permissions") from None
     partial = data["scan_running"] or not data["enumeration_complete"] or any(r["state"] == "unavailable" for r in data["checkpoints"])

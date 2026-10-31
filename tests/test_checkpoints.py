@@ -109,6 +109,35 @@ class CheckpointTests(unittest.TestCase):
         self.assertTrue(path.exists())
         self.assertTrue(self.row()["deletable"])
 
+    def test_listing_only_probes_the_scan_lock_and_reads_without_holding_it(self):
+        self.seed(); seen = []
+        describe = checkpoints.describe
+        def reading(raw, show_paths):
+            # A batch scan starting now waits only about 2 seconds, so it must get both locks at once.
+            self.assertTrue(batch._lock.acquire(False)); batch._lock.release()
+            until = time.monotonic() + .05
+            def waiting():
+                if time.monotonic() >= until: raise AssertionError("the list still holds the scan lock")
+            with history.locked(self.folder / ".active", check_wait=waiting): seen.append(True)
+            return describe(raw, show_paths)
+        with patch.object(checkpoints, "describe", reading):
+            report = self.listing()
+        self.assertEqual(seen, [True])
+        self.assertFalse(report["data"]["scan_running"])
+        self.assertTrue(report["data"]["checkpoints"][0]["deletable"])
+
+    def test_gap_listing_without_a_checkpoint_folder_explains_instead_of_crashing(self):
+        with self.assertRaisesRegex(ScannerError, "No coverage selection state"):
+            batch.read_coverage(self.scanner, "sample", ".")
+        config = self.base / "gaps.toml"
+        config.write_text("[scan_roots]\nsample = " + json.dumps(str(self.root)) + "\n[history]\nenabled = false\nfile = "
+                          + json.dumps(self.config["history"]["file"]) + "\n")
+        gaps = subprocess.run([sys.executable, "-m", "pc_scanner.cli", "--config", str(config), "malware-gaps", "sample",
+                               "--scan", "0" * 32, "--json"], capture_output=True, text=True, timeout=15)
+        self.assertEqual(gaps.returncode, 2, gaps.stderr)
+        self.assertIn("No coverage selection state", json.loads(gaps.stdout)["error"])
+        self.assertFalse(self.folder.parent.exists())
+
     def test_other_process_scan_lock_protects_state_and_is_released_after_exit(self):
         path = self.seed(); row = self.row(); ready = self.base / "ready"
         code = ("import sys; from pathlib import Path; from pc_scanner import history; "

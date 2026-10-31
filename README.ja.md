@@ -707,6 +707,7 @@ pc-scanner --config scanner.toml malware-checkpoints delete CHECKPOINT_ID --revi
 分割検査と同じプロセス内・プロセス間ロックを使い、検査中は**すべてのチェックポイントの削除を保護**します。
 一覧は`scan_running=true`・`deletable=false`となり、削除は待ち続けずに失敗します。
 `scan_running`は保守的な使用中表示で、別のチェックポイント管理操作がロックを保持している場合も含みます。
+一覧はロックを開始時に確かめるだけで、読み取り中は保持しないため、その間も分割検査を開始できます。削除はロックの下ですべてを再確認します。
 
 削除するのは選択した所有者の私有・通常・上限内のファイル1件だけです。リンク、ジャンクション・再解析ポイント、
 ハードリンク、クラウド未取得、上限超過、他者所有は拒否します。安全に読める所有者の壊れたJSONは明示的に削除でき、枠を空けられます。
@@ -721,7 +722,7 @@ pc-scanner --config scanner.toml malware-checkpoints delete CHECKPOINT_ID --revi
 保存先がなければ作成せず、管理操作をスキャン履歴へ追加しません。既存の保存先では共有ロックを作成・再利用します。
 MCPにも`Scanner.invoke`にも、この一覧・削除操作を追加しません。
 
-macOSで合成状態と実CLI・MCPを使って検証し、両Pythonの全520件中513件成功・Windows専用7件skip、npmは両環境で各26件成功しました。
+macOSで合成状態と実CLI・MCPを使って検証し、最終再レビューでは両修正を含む両Pythonの全542件中535件成功・Windows専用7件skip、npmは両環境で各26件成功しました。
 Windowsの新しい削除API・ACLの実機受入は未確認です。[検証記録](docs/acceptance/checkpoint-management-2026-10-31.json)を参照してください。
 
 ### 未確認範囲と選択再検査
