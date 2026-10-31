@@ -1,6 +1,7 @@
 """Checkpoint management uses only synthetic private state, never the owner's real checkpoints."""
 import asyncio
 import copy
+import errno
 import importlib.util
 import json
 import os
@@ -284,10 +285,37 @@ class CheckpointTests(unittest.TestCase):
         self.seed(1);self.seed(2)
         with patch.object(checkpoints, "MAX_READ_BYTES", 1):
             r=self.listing();self.assertEqual(r["status"], "partial")
-            self.assertFalse(r["data"]["enumeration_complete"])
+            # Every name was still counted, so the slot count stays exact; only the unread rows are unavailable.
+            self.assertTrue(r["data"]["enumeration_complete"])
+            self.assertEqual({row.get("reason") for row in r["data"]["checkpoints"]}, {"read_budget"})
             self.assertTrue(all(not row["deletable"] for row in r["data"]["checkpoints"]))
         with patch.object(checkpoints, "MAX_ENTRIES", 1):
             self.assertFalse(self.listing()["data"]["enumeration_complete"])
+
+    def test_incomplete_listing_is_warned_even_while_a_scan_runs(self):
+        self.seed(1);self.seed(2)
+        with patch.object(checkpoints, "MAX_ENTRIES", 1), batch._lock:
+            r=self.listing()
+        self.assertTrue(r["data"]["scan_running"]);self.assertFalse(r["data"]["enumeration_complete"])
+        for text in ("A batch scan is running", "could not be safely listed", "the slot count is a lower bound"):
+            self.assertTrue(any(text in w for w in r["warnings"]), (text, r["warnings"]))
+
+    def test_slow_lock_open_and_lock_errors_are_not_reported_as_a_running_scan(self):
+        if os.name == "nt": return  # flock error codes; Windows locking is exercised in Windows CI.
+        path=self.seed();row=self.row();real=os.open
+        def slow(name, *args, **kwargs):
+            if str(name).endswith(".active.lock"): time.sleep(.2)
+            return real(name, *args, **kwargs)
+        with patch.object(history.os, "open", slow):
+            r=self.listing()
+        self.assertFalse(r["data"]["scan_running"]);self.assertTrue(r["data"]["checkpoints"][0]["deletable"])
+        for code in (errno.ENOLCK, errno.ENOTSUP):
+            with self.subTest(errno=code), patch.object(history.fcntl, "flock", side_effect=OSError(code, "synthetic")):
+                start=time.monotonic()
+                with self.assertRaisesRegex(ScannerError, "could not be read safely"):self.listing()
+                with self.assertRaisesRegex(ScannerError, "could not be safely deleted"):self.delete(row)
+                self.assertLess(time.monotonic()-start, 1)
+        self.assertTrue(path.exists())
 
     def test_posix_permissions_are_not_silently_fixed_by_management(self):
         if os.name == "nt": return  # Native ACL ownership is exercised separately in Windows CI.
@@ -324,6 +352,13 @@ class CheckpointTests(unittest.TestCase):
         missing=self.cli('delete',row['checkpoint_id'],'--revision',row['revision'],'--json')
         self.assertEqual(missing.returncode,2)
         self.assertEqual(json.loads(missing.stdout)['status'],'error')
+
+    def test_cli_text_shows_an_incomplete_count_as_a_lower_bound(self):
+        self.seed()
+        for i in range(checkpoints.MAX_ENTRIES):(self.folder/f"unrelated-{i}.txt").write_text("")
+        text=self.cli('list')
+        self.assertEqual(text.returncode,2,text.stderr)
+        self.assertIn('Checkpoint slots: at least',text.stdout);self.assertIn('lower bound',text.stderr)
 
     def test_two_processes_cannot_delete_the_same_selection_twice(self):
         path=self.seed();row=self.row();config=self.config_file()

@@ -30,8 +30,10 @@ HISTORICAL = ("Some destinations matched only an out-of-date public threat list 
 # Fixed per-reason counts of observed rows that could not be used, safe for the anonymous reply.
 UNAVAILABLE = {"invalid_rows", "destination_unavailable", "attribution_unavailable"}
 # Observation limits under which seen connections were dropped before matching: "none listed" is then incomplete.
-DROPPED = {"invalid_rows", "connection_limit", "result_size_limit", "read_limit", "total_byte_limit",
+DROPPED = {"invalid_rows", "read_failed", "connection_limit", "result_size_limit", "read_limit", "total_byte_limit",
            "network_changed", "timeout", "cancelled"}
+# RFC 6052 well-known prefix: the last 32 bits are the IPv4 destination a NAT64 gateway connects to.
+NAT64 = ipaddress.ip_network("64:ff9b::/96")
 HISTORICAL_UNKNOWN = ("Historical match count unavailable in this older saved summary; do not assume zero. "
                       "Update the list locally and check again")
 
@@ -296,6 +298,18 @@ def lookup(feed, addr, deadline, cancel):
     return found, total - len(found)
 
 
+def checked_address(row):
+    """The address to look up, or None for a destination outside the lists' scope."""
+    addr = ipaddress.ip_address(row["remote_ip"])
+    if row["classification"] == "internet_candidate":
+        return addr
+    if addr.version == 6 and addr in NAT64:
+        embedded = ipaddress.IPv4Address(int(addr) & 0xFFFFFFFF)
+        if c.classify(str(embedded), set(), set()) == "internet_candidate":
+            return embedded
+    return None
+
+
 def enrich(scanner, report, deadline, cancel=None, progress=None):
     data = report["data"]
     rows = data.get("connections", [])
@@ -317,7 +331,7 @@ def enrich(scanner, report, deadline, cancel=None, progress=None):
     except (OSError, ValueError, KeyError, TypeError, RecursionError, OverflowError):
         reason = ("cancelled" if cancel is not None and cancel.is_set() else
                   "timeout" if time.monotonic() >= deadline else "cache_unavailable")
-    destinations = {}
+    destinations, versions = {}, {}
     for row in rows:
         # Public addresses share a lookup; link-local/private scopes are separate destinations.
         key = (row["remote_ip"], None if row["classification"] == "internet_candidate" else row.get("remote_scope"))
@@ -327,14 +341,19 @@ def enrich(scanner, report, deadline, cancel=None, progress=None):
         assessment = {"state": "unverified", "reason": reason or "feed_unverified", "historical_match": False,
                       "evidence": [], "omitted_evidence_count": 0}
         destinations[key] = row["threat"] = assessment
-        if row["classification"] != "internet_candidate":
-            assessment.update(state="not_applicable", reason="not_public_candidate")
+        addr = checked_address(row)
+        if addr is None:
+            # An unknown destination may still hide a public one (other NAT64 prefixes, 6to4), so coverage stays unverified.
+            assessment.update(state="not_applicable", reason="classification_unknown" if row["classification"] == "unknown"
+                              else "not_public_candidate")
             continue
+        versions[key] = addr.version
+        if addr.version == 4 and row["classification"] != "internet_candidate":
+            assessment["checked_ipv4"] = str(addr)
         if reason:
             continue
         try:
             c.check(deadline, cancel)
-            addr = ipaddress.ip_address(key[0])
             evidence, omitted = lookup(feeds[addr.version], addr, deadline, cancel)
             freshness = metadata[str(addr.version)]["freshness"]
             if freshness == "fresh":
@@ -354,7 +373,7 @@ def enrich(scanner, report, deadline, cancel=None, progress=None):
     if feeds:
         metadata = describe(feeds, retrieved, checked, scanner.ip_threat_settings["max_age_hours"])
         for key, assessment in destinations.items():
-            if assessment["state"] in {"matched", "not_listed"} and metadata[str(ipaddress.ip_address(key[0]).version)]["freshness"] != "fresh":
+            if assessment["state"] in {"matched", "not_listed"} and metadata[str(versions[key])]["freshness"] != "fresh":
                 assessment.update(state="unverified", reason="feed_unverified_at_completion",
                                   historical_match=bool(assessment["evidence"]))
     if reason in {"timeout", "cancelled"}:
@@ -368,14 +387,15 @@ def enrich(scanner, report, deadline, cancel=None, progress=None):
         "matched_processes": len({(r["pid"], r["process_started_at_epoch"]) for r in matched if r["attribution_quality"] != "unverified"}),
         "matched_unattributed_records": sum(r["attribution_quality"] == "unverified" for r in matched),
         "coverage": "unverified" if reason or any(f["freshness"] != "fresh" for f in metadata.values()) or not metadata
-                    or DROPPED & set(data.get("limitations", [])) else "checked",
+                    or DROPPED & set(data.get("limitations", []))
+                    or any(a["reason"] == "classification_unknown" for a in destinations.values()) else "checked",
         "notice": NOTICE}
     data["destination_threats"] = summary
     if counts.get("unverified") or summary["coverage"] == "unverified":
         if report["status"] != "error":
             report["status"] = "partial"
-        report["warnings"].append("Destination threat-list coverage is incomplete; stale, unavailable or unfinished checks "
-                                  "and connections the observation dropped are unverified")
+        report["warnings"].append("Destination threat-list coverage is incomplete; stale, unavailable or unfinished checks, "
+                                  "destinations of unknown type and connections the observation dropped are unverified")
     if matched:
         report["warnings"].append("Observed destinations match public threat-list networks; review the local evidence and process attribution")
     if historical:

@@ -6,6 +6,8 @@ import json
 import os
 from pathlib import Path
 import plistlib
+import shutil
+import struct
 import sys
 import tempfile
 import threading
@@ -35,9 +37,9 @@ class ReviewTests(unittest.TestCase):
                     "parent": "1", "parent_path": "/private/parent", "parent_start_time": "10"}
         # Enabled but in this temporary folder, never the owner's real history: any save would appear here.
         self.history_file = self.root / "history.jsonl"
-        # The loaded job as `launchctl print` shows it: one tab for top-level fields, two inside blocks.
-        self.job = (f"\tpath = {self.launch}\n\tprogram = /private/node\n\tpid = 42\n"
-                    f"\targuments = {{\n\t\t/private/node\n\t\t{self.script}\n\t}}\n")
+        # The loaded job as `launchctl print` shows it: one outer block, one tab for top-level fields, two inside blocks.
+        self.job = (f"gui/501/private.job = {{\n\tactive count = 1\n\tpath = {self.launch}\n\tprogram = /private/node\n"
+                    f"\targuments = {{\n\t\t/private/node\n\t\t{self.script}\n\t}}\n\n\tpid = 42\n}}\n")
 
     def scanner(self, target=None, **settings):
         return Scanner({"history": {"enabled": True, "details": True, "file": str(self.history_file)}, "process_review": {
@@ -227,6 +229,94 @@ class ReviewTests(unittest.TestCase):
              patch("pc_scanner.core.run_bounded", return_value=(0, self.job, "")):
             info = p.launch_details(self.launch, self.row, self.target, time.monotonic() + 2, None)
         self.assertEqual(info["state"], "loaded_job_pid_matches")
+
+    @unittest.skipUnless(os.name == "posix", "POSIX descriptor-based file reader")
+    def test_launchctl_lines_moved_by_a_line_break_are_not_trusted(self):
+        # A nested value printed with a line break could otherwise add a top-level pid to a job that is not running.
+        idle = self.job.replace("\n\tpid = 42\n", "\n")
+        for output in (idle.replace("\n}\n", "\n\tenvironment = {\n\t\tFOO => x\n\tpid = 42\n\t}\n}\n"),
+                       idle.replace("\n}\n", "\npid = 42\n}\n"), idle + "\tpid = 42\n",
+                       self.job.replace("gui/501/private.job = {\n", ""), self.job.replace("\t}\n", "\t]\n"),
+                       self.job.replace("\n}\n", "\nstray\n}\n"), self.job.replace("\n}\n", "\n\t\tstray\n}\n")):
+            with self.subTest(output=output), patch.object(p.platform, "system", return_value="Darwin"), \
+                 patch("pc_scanner.core.run_bounded", return_value=(0, output, "")):
+                info = p.launch_details(self.launch, self.row, self.target, time.monotonic() + 2, None)
+                self.assertEqual(info["state"], "configured_match_unverified")
+        # Balanced text would keep the structure, so a plist string with a line break is never checked.
+        self.launch.write_bytes(plistlib.dumps({"Label": "private.job", "ProgramArguments": ["/private/node", str(self.script)],
+                                                "EnvironmentVariables": {"FOO": "x\n\t}\n\tpid = 42\n\tbar = {"}}))
+        with patch.object(p.platform, "system", return_value="Darwin"), \
+             patch("pc_scanner.core.run_bounded", side_effect=AssertionError("launchctl must not run")):
+            info = p.launch_details(self.launch, self.row, self.target, time.monotonic() + 2, None)
+        self.assertEqual(info["state"], "configured_match_unverified")
+
+    @unittest.skipUnless(os.name == "posix", "POSIX descriptor-based file reader")
+    def test_launchctl_deep_blocks_printed_on_one_line_still_match(self):
+        # As in real output: arrays, and dictionaries below the top level printed without their line breaks.
+        deep = ('\tevent channels = {\n\t\tcom.example.stream => {\n\t\t\tdescriptor = {\n\t\t\t\t"a-b" => {\n'
+                '\t\t\t\t\t"k" => \t\t\t\t\t"v" => \t\t\t\t}\n\t\t\t\t"c-d" => [\n\t\t\t\t\tname = "x"\n\t\t\t\t]\n'
+                '\t\t\t}\n\t\t}\n\t}\n')
+        with patch.object(p.platform, "system", return_value="Darwin"), \
+             patch("pc_scanner.core.run_bounded", return_value=(0, self.job.replace("\n}\n", "\n" + deep + "}\n"), "")):
+            info = p.launch_details(self.launch, self.row, self.target, time.monotonic() + 2, None)
+        self.assertEqual(info["state"], "loaded_job_pid_matches")
+
+    @unittest.skipUnless(os.name == "posix", "POSIX descriptor-based file reader")
+    def test_malformed_plist_makes_only_its_target_unavailable(self):
+        # Parser errors seen with hostile plists: a bad date, malformed XML and an unhashable binary key.
+        objects = [bytes([0xD1, 1, 2]), bytes([0xA0]), bytes([0x10, 1])]
+        body, offsets = b"bplist00", []
+        for item in objects:
+            offsets.append(len(body))
+            body += item
+        unhashable = body + bytes(offsets) + struct.pack(">6xBBQQQ", 1, 1, len(objects), 0, len(body))
+        other = {"pid": 43, "start_time": 1000, "script_file": str(self.script)}
+        scanner = Scanner({"history": {"enabled": False}, "process_review": {
+            "enabled": True, "targets": {"selected": self.target, "other": other}}})
+        def query(sql):
+            return [{**self.row, "pid": sql.split("WHERE p.pid = ")[1].split()[0]}]
+        for data in (b'<?xml version="1.0"?><plist version="1.0"><dict><key>Label</key><date>nope</date></dict></plist>',
+                     b'<?xml version="1.0"?><plist><dict><key>Label</key>', unhashable):
+            self.launch.write_bytes(data)
+            with self.subTest(data=data[:24]):
+                report = self.invoke(scanner, query=query)
+                first, second = report["data"]["processes"]
+                self.assertEqual(report["status"], "partial")
+                self.assertEqual((first["identity"], first["launch"]), ("start_time_matches", "unavailable"))
+                self.assertIn("launch_unavailable", first["attention"])
+                self.assertEqual(second["script"], "owner_selected_file_hashed")
+
+    @unittest.skipUnless(os.name == "posix", "POSIX descriptor-based file reader")
+    def test_closer_node_entries_shadow_a_farther_package(self):
+        # Node loads name, name.js/.json/.node or a folder without package.json from the nearest node_modules first.
+        app = self.root / "app"
+        app.mkdir()
+        package = app / "package.json"
+        package.write_text(json.dumps({"dependencies": {"private-dependency": "1.0", "@private/dependency": "1.0"}}))
+        for name in ("private-dependency", "@private/dependency"):
+            far = self.root / "node_modules" / name / "package.json"
+            far.parent.mkdir(parents=True)
+            far.write_text(json.dumps({"name": name}))
+        def states():
+            return {d["name"]: d["state"] for d in p.package_details(package, time.monotonic() + 2, None)["dependencies"]}
+        self.assertEqual(set(states().values()), {"metadata_found_not_runtime_proven"})
+        near = app / "node_modules"
+        for shadow, name in (("private-dependency.js", "private-dependency"), ("private-dependency/index.js", "private-dependency"),
+                             ("private-dependency", "private-dependency"), ("@private/dependency.node", "@private/dependency"),
+                             ("@private/dependency/index.js", "@private/dependency")):
+            with self.subTest(shadow=shadow):
+                (near / shadow).parent.mkdir(parents=True, exist_ok=True)
+                (near / shadow).write_text("module.exports = 1")
+                found = states()
+                self.assertEqual(found.pop(name), "resolution_unavailable")
+                self.assertEqual(set(found.values()), {"metadata_found_not_runtime_proven"})
+                shutil.rmtree(near)
+        # A name.js beside the package folder is loaded before it, too.
+        (self.root / "node_modules" / "private-dependency.json").write_text("{}")
+        self.assertEqual(states()["private-dependency"], "resolution_unavailable")
+        with self.assertRaises(ValueError):
+            package.write_text(json.dumps({"dependencies": {"@" + "s" * 300 + "/dependency": "1.0"}}))
+            p.package_details(package, time.monotonic() + 2, None)
 
     def test_identity_changed_after_inspection_clears_attribution(self):
         calls = 0

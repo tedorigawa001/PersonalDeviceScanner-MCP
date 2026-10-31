@@ -79,15 +79,14 @@ def unchanged_directory(folder, info):
 
 @contextmanager
 def exclusive(folder):
-    """Same locks as batch scans, never a long wait or stale PID-file heuristic."""
+    """Same locks as batch scans, never a long wait or stale PID-file heuristic.
+
+    Only a lock still held after five tries 10 ms apart means busy; a slow open or a lock error is not a running scan.
+    """
     if not batch._lock.acquire(False):
         raise history.Busy("A batch scan or checkpoint operation is running")
     try:
-        until = time.monotonic() + .05
-        def waiting():
-            if time.monotonic() >= until:
-                raise history.Busy("A batch scan or checkpoint operation is running")
-        with history.locked(folder / ".active", check_wait=waiting):
+        with history.locked(folder / ".active", attempts=5):
             yield
     finally:
         batch._lock.release()
@@ -184,7 +183,7 @@ def inventory(folder, dirfd, info, busy, show_paths, deadline):
             file_info = entry_stat(folder, dirfd, name)
             safe_file(file_info)
             if read_bytes + file_info.st_size > MAX_READ_BYTES:
-                complete = False
+                # Every name was still counted, so only this row is unavailable; the slot count stays exact.
                 rows.append({**row, "reason": "read_budget"})
                 continue
             with opened(folder, dirfd, name, deadline) as (_, file_info, raw, token):
@@ -223,10 +222,12 @@ def list_checkpoints(scanner, show_paths=False):
                 data = inventory(folder, dirfd, info, busy, show_paths, deadline)
     except OSError:
         raise core.ScannerError("Checkpoint inventory could not be read safely; check local permissions") from None
-    partial = data["scan_running"] or not data["enumeration_complete"] or any(r["state"] == "unavailable" for r in data["checkpoints"])
+    unlisted = not data["enumeration_complete"] or any(r["state"] == "unavailable" for r in data["checkpoints"])
+    partial = data["scan_running"] or unlisted
     return core.result("bridge", "partial" if partial else "completed", data=data,
         warnings=(["A batch scan is running; all checkpoint deletions are protected until it finishes"] if data["scan_running"] else [])
-        + (["Some entries could not be safely listed; no unavailable entries can be deleted through this command"] if partial and not data["scan_running"] else []))
+        + (["Some entries could not be safely listed; no unavailable entries can be deleted through this command"] if unlisted else [])
+        + (["The listing stopped early; the slot count is a lower bound"] if not data["enumeration_complete"] else []))
 
 
 def delete_checkpoint(scanner, checkpoint_id, revision):

@@ -19,6 +19,8 @@ from .connections import Backend, Stopped, check, number, now
 MAX_TARGETS = 16
 MAX_FILE = 1024 * 1024
 PACKAGE = re.compile(r"(?:@[A-Za-z0-9_.-]+/)?[A-Za-z0-9_-][A-Za-z0-9_.-]{0,127}\Z")
+# clean_text appends "...(truncated)" past its limit; saved text must still fit the store's 4096 characters.
+TEXT = 4096 - len("...(truncated)")
 LIMITS = ["not_a_security_assessment", "no_payload_collection", "no_external_queries",
           "process_join_not_atomic", "owner_selected_files_not_proven_runtime_modules",
           "no_source_execution_or_semantic_audit", "no_signature_or_advisory_check",
@@ -108,6 +110,42 @@ def read_file(path, deadline, cancel):
         os.close(fd)
 
 
+def present(folder, names, deadline, cancel):
+    """Which of names exist in folder. Folders are opened as in read_file; no entry is followed or read.
+
+    A missing folder holds none of them.
+    """
+    check(deadline, cancel)
+    if os.name != "posix":
+        raise ValueError("file_backend_unavailable")
+    p = Path(folder)
+    fd = os.open(p.anchor, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        current = Path(p.anchor)
+        for part in p.parts[1:]:
+            check(deadline, cancel)
+            current /= part
+            try:
+                info = os.stat(part, dir_fd=fd, follow_symlinks=False)
+            except FileNotFoundError:
+                return set()
+            if core.cloud_placeholder(current) or not stat.S_ISDIR(info.st_mode):
+                raise ValueError("file_unavailable")
+            child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd)
+            os.close(fd)
+            fd = child
+        found = set()
+        for name in names:
+            try:
+                os.stat(name, dir_fd=fd, follow_symlinks=False)
+            except FileNotFoundError:
+                continue
+            found.add(name)
+        return found
+    finally:
+        os.close(fd)
+
+
 def metadata(backend, target):
     # Integers validated in load(), not tool arguments or strings copied from OS output.
     pid = target["pid"]
@@ -138,13 +176,23 @@ def package_details(path, deadline, cancel):
     resolved, missing, unavailable, records = 0, 0, 0, []
     for name in deps:
         check(deadline, cancel)
-        if not isinstance(name, str) or not PACKAGE.fullmatch(name):
+        # npm allows at most 214 characters, which also keeps a long scope within the saved record's limit.
+        if not isinstance(name, str) or len(name) > 214 or not PACKAGE.fullmatch(name):
             raise ValueError("package_metadata_invalid")
+        scope, _, base_name = name.rpartition("/")
         state, location = "not_found_in_checked_locations", None
         # Standard ancestor lookup only, never NODE_PATH, global installs or executing a loader.
         for base in [Path(path).parent, *Path(path).parent.parents]:
-            candidate = base / "node_modules" / name / "package.json"
+            folder = base / "node_modules" / scope
             try:
+                # Node loads name, name.js/.json/.node or a folder without package.json from the nearest
+                # node_modules before any farther package, so only a lone package folder is attributed.
+                found = present(folder, [base_name + ext for ext in ("", ".js", ".json", ".node")], deadline, cancel)
+                if not found:
+                    continue
+                if found != {base_name}:
+                    raise ValueError("resolution_shadowed")
+                candidate = folder / base_name / "package.json"
                 content, _ = read_file(candidate, deadline, cancel)
                 package = json.loads(content)
                 if not isinstance(package, dict) or package.get("name") != name:
@@ -152,10 +200,8 @@ def package_details(path, deadline, cancel):
                 state, location = "metadata_found_not_runtime_proven", str(candidate)
                 resolved += 1
                 break
-            except FileNotFoundError:
-                continue
             except (OSError, ValueError, RecursionError):
-                # A symlink/unreadable earlier candidate may be the actual Node resolution;
+                # A symlink, unreadable or shadowing earlier entry may be the actual Node resolution;
                 # do not silently attribute a later package to this runtime.
                 state = "resolution_unavailable"
                 unavailable += 1
@@ -169,9 +215,56 @@ def package_details(path, deadline, cancel):
             "resolution_scope": "standard_ancestor_metadata_only"}
 
 
+def line_breaks(value):
+    """Whether a plist string has a line break, which `launchctl print` may show unescaped."""
+    if isinstance(value, str):
+        return "\n" in value or "\r" in value
+    if isinstance(value, dict):
+        return any(line_breaks(k) or line_breaks(v) for k, v in value.items())
+    return isinstance(value, list) and any(line_breaks(v) for v in value)
+
+
+def loaded_job(output):
+    """Top-level fields and blocks of `launchctl print`, or None when its top level is ambiguous.
+
+    The job is one block. Its fields have one tab; a block among them opens with a trailing "{" or "[", holds
+    lines with two or more tabs (deeper levels are not always printed one per line) and closes with a matching
+    "}" or "]" with one tab. A value with a line break can put text at the top level, so any other line with
+    one tab or none makes the output untrusted.
+    """
+    lines = [line for line in output.split("\n") if line.strip("\t")]
+    if len(lines) < 2 or lines[0].startswith("\t") or not lines[0].endswith(" = {") or lines[-1] != "}":
+        return None
+    fields, blocks, closer, inner = {}, {}, None, None
+    for line in lines[1:-1]:
+        content = line.lstrip("\t")
+        tabs = len(line) - len(content)
+        if closer is not None and tabs >= 2:
+            if tabs == 2:
+                inner.append(content)
+        elif tabs != 1:
+            return None
+        elif closer is not None:
+            if content != closer:
+                return None
+            closer = inner = None
+        elif content[-1] in "{[":
+            closer, inner = ("}" if content[-1] == "{" else "]"), []
+            blocks.setdefault(content.partition(" = ")[0], []).append(inner)
+        else:
+            key, _, value = content.partition(" = ")
+            fields.setdefault(key, []).append(value)
+    return (fields, blocks) if closer is None else None
+
+
 def launch_details(path, row, target, deadline, cancel):
     data, info = read_file(path, deadline, cancel)
-    obj = plistlib.loads(data)
+    try:
+        obj = plistlib.loads(data)
+    except Exception:
+        # Hostile plists raise many types (expat errors, AttributeError from a bad date, unhashable keys);
+        # each makes only this target's launch check unavailable.
+        raise ValueError("launch_metadata_invalid") from None
     if not isinstance(obj, dict):
         raise ValueError("launch_metadata_invalid")
     args = obj.get("ProgramArguments", [])
@@ -183,23 +276,24 @@ def launch_details(path, row, target, deadline, cancel):
         not target.get("script_file") or target["script_file"] in args[1:])
     state = "configured_match_unverified" if configured_match else "configured_mismatch"
     label = obj.get("Label")
+    # A line break in any plist string could forge launchctl's lines, so such a job is not checked.
     if (configured_match and platform.system() == "Darwin" and isinstance(label, str)
-            and re.fullmatch(r"[A-Za-z0-9_.-]{1,200}", label)):
+            and re.fullmatch(r"[A-Za-z0-9_.-]{1,200}", label) and not line_breaks(obj)):
         check(deadline, cancel)
         code, output, _ = core.run_bounded(["/bin/launchctl", "print", f"gui/{os.getuid()}/{label}"],
             max(.001, min(2, deadline - time.monotonic())), 128 * 1024, cancel)
         check(deadline, cancel)
-        # Top-level fields only (nested blocks are indented deeper). The loaded job itself must come from this
-        # plist with the same program and script; a shared label or a plist edited after loading is not enough.
-        loaded = {}
-        for key, value in re.findall(r"^\t(path|program|pid) = (.*)$", output, re.M):
-            loaded.setdefault(key, []).append(value)
-        blocks = re.findall(r"^\targuments = \{\n((?:\t\t.*\n)*)\t\}$", output, re.M)
-        loaded_args = [a[2:] for a in blocks[0].splitlines()] if len(blocks) == 1 else []
-        if (code == 0 and loaded.get("pid") == [str(target["pid"])] and loaded.get("path") == [str(Path(path))]
-                and loaded.get("program") == [row.get("path")]
-                and (not target.get("script_file") or target["script_file"] in loaded_args[1:])):
-            state = "loaded_job_pid_matches"
+        # Top-level fields only. The loaded job itself must come from this plist with the same program
+        # and script; a shared label or a plist edited after loading is not enough.
+        job = loaded_job(output) if code == 0 else None
+        if job is not None:
+            fields, blocks = job
+            arguments = blocks.get("arguments", [])
+            loaded_args = arguments[0] if len(arguments) == 1 else []
+            if (fields.get("pid") == [str(target["pid"])] and fields.get("path") == [str(Path(path))]
+                    and fields.get("program") == [row.get("path")]
+                    and (not target.get("script_file") or target["script_file"] in loaded_args[1:])):
+                state = "loaded_job_pid_matches"
     return {**info, "state": state, "run_at_load": obj.get("RunAtLoad") is True,
             "keep_alive_configured": bool(obj.get("KeepAlive")),
             "label": core.clean_text(label) if isinstance(label, str) else None}
@@ -238,7 +332,7 @@ def review(scanner, cancel=None, progress=None, save_details=False):
                     current = None
                     continue
                 item["identity"] = "start_time_matches"
-                item["details"]["process"] = {k: core.clean_text(v, 4096) if isinstance(v, str) else v
+                item["details"]["process"] = {k: core.clean_text(v, TEXT) if isinstance(v, str) else v
                                                for k, v in row.items()}
                 base = (row.get("path") or "").replace("\\", "/").rsplit("/", 1)[-1].lower()
                 item["runtime"] = "node" if base in {"node", "node.exe"} else (
@@ -258,7 +352,7 @@ def review(scanner, cancel=None, progress=None, save_details=False):
                         else:
                             info = launch_details(target[field], row, target, deadline, cancel)
                         item[kind] = info["state"]
-                        item["details"][kind] = {"path": core.clean_text(target[field], 4096), **info}
+                        item["details"][kind] = {"path": core.clean_text(target[field], TEXT), **info}
                         if info["world_writable"]:
                             item["attention"].append(kind + "_world_writable")
                     except (OSError, ValueError, plistlib.InvalidFileException, RecursionError):
@@ -327,7 +421,7 @@ def for_cli(report):
     if state in {"not_saved", "not_saved_interrupted", "not_saved_incomplete", "details_saved", "save_failed"}:
         view["data"]["persistence"] = state
     # A fixed reason the owner can act on; never the path itself.
-    if data.get("persistence_reason") in {"store_parent_missing"}:
+    if data.get("persistence_reason") in {"store_parent_missing", "record_invalid"}:
         view["data"]["persistence_reason"] = data["persistence_reason"]
     from .process_store import ID
     rid = data.get("record_id")

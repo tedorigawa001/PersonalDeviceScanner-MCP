@@ -5,6 +5,7 @@ import base64
 from collections import Counter
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
+import errno
 import hashlib
 import html
 import json
@@ -237,6 +238,35 @@ def local_filesystem(fd):
     return False
 
 
+def acl_allows(fd):
+    """Whether a macOS ACL on fd allows anything; such entries apply regardless of the 0600/0700 mode.
+
+    A folder's inheritable entry is copied to new records, so others could read them. Linux needs no check:
+    its ACL entries are limited by the group mode bits, which the store requires to be 0.
+    """
+    if sys.platform != "darwin":
+        return False
+    import ctypes as c
+    lib = c.CDLL(None, use_errno=True)
+    lib.acl_get_fd_np.argtypes, lib.acl_get_fd_np.restype = [c.c_int, c.c_int], c.c_void_p
+    lib.acl_get_entry.argtypes = [c.c_void_p, c.c_int, c.POINTER(c.c_void_p)]
+    lib.acl_get_tag_type.argtypes = [c.c_void_p, c.POINTER(c.c_int)]
+    lib.acl_free.argtypes = [c.c_void_p]
+    # Darwin SDK sys/acl.h: ACL_TYPE_EXTENDED = 0x100, ACL_FIRST_ENTRY = 0, ACL_NEXT_ENTRY = -1, ACL_EXTENDED_DENY = 2.
+    acl = lib.acl_get_fd_np(fd, 0x100)
+    if not acl:
+        return c.get_errno() != errno.ENOENT
+    try:
+        entry, tag, index = c.c_void_p(), c.c_int(), 0
+        while lib.acl_get_entry(acl, index, c.byref(entry)) == 0:
+            if lib.acl_get_tag_type(entry, c.byref(tag)) != 0 or tag.value != 2:
+                return True
+            index = -1
+        return False
+    finally:
+        lib.acl_free(acl)
+
+
 class Store:
     def __init__(self, settings, cancel=None):
         self.settings, self.cancel = settings, cancel
@@ -252,6 +282,13 @@ class Store:
                 or not (stat.S_ISDIR(info.st_mode) if folder else stat.S_ISREG(info.st_mode))
                 or (not folder and info.st_nlink != 1) or getattr(info, "st_flags", 0) & core.SF_DATALESS):
             raise OSError("Store permissions or type unavailable")
+
+    def private(self, fd, folder=False):
+        info = os.fstat(fd)
+        self.safe(info, folder)
+        if acl_allows(fd):
+            raise OSError("Store ACL allows access")
+        return info
 
     @contextmanager
     def open(self, create=False, file_lock=True):
@@ -271,7 +308,7 @@ class Store:
                 self.check()
                 current /= part
                 # Known cloud roots are refused without opening/hydrating their contents.
-                if part in {"CloudStorage", "Mobile Documents"} or part.lower().startswith("onedrive") or core.cloud_placeholder(current):
+                if core.cloud_root(part) or core.cloud_placeholder(current):
                     raise OSError("Store must be local")
                 try:
                     fd = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=self.parent)
@@ -287,7 +324,7 @@ class Store:
                     raise OSError("Writable store ancestor")
                 os.close(self.parent)
                 self.parent = fd
-            if core.cloud_placeholder(self.path) or self.path.name in {"CloudStorage", "Mobile Documents"} or self.path.name.lower().startswith("onedrive"):
+            if core.cloud_placeholder(self.path) or core.cloud_root(self.path.name):
                 raise OSError("Store must be local")
             if not local_filesystem(self.parent):
                 raise OSError("Local parent filesystem could not be verified")
@@ -299,14 +336,13 @@ class Store:
                     return
                 os.mkdir(self.path.name, 0o700, dir_fd=self.parent)
                 self.fd = os.open(self.path.name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=self.parent)
-            self.info = os.fstat(self.fd)
-            self.safe(self.info, True)
+            self.info = self.private(self.fd, True)
             if not local_filesystem(self.fd):
                 raise OSError("Local filesystem could not be verified")
             if file_lock:
                 import fcntl
                 lockfd = os.open(".lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600, dir_fd=self.fd)
-                self.safe(os.fstat(lockfd))
+                self.private(lockfd)
                 until = min(self.deadline, time.monotonic() + 1)
                 while True:
                     self.check()
@@ -348,8 +384,7 @@ class Store:
         self.unchanged()
         fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=self.fd)
         try:
-            info = os.fstat(fd)
-            self.safe(info)
+            info = self.private(fd)
             if info.st_size > limit:
                 raise OSError("Store file limit")
             data = bytearray()
@@ -540,6 +575,13 @@ def save(scanner, report, cancel=None):
         run_id = data["run_id"]
         if not isinstance(run_id, str) or not ID.fullmatch(run_id):
             raise ValueError("invalid run")
+    except (ValueError, TypeError, KeyError, RecursionError, OverflowError):
+        # Checked before the store is opened, so the cause is this result, not the store.
+        data.update(persistence="save_failed", persistence_reason="record_invalid")
+        report["warnings"].append("Process review details were not saved: this result did not pass the saved-record checks; "
+                                  "the private store was not changed")
+        return
+    try:
         with Store(settings(scanner), cancel).open(create=True) as store:
             entries = store.inventory()
             store.validate_page(entries)

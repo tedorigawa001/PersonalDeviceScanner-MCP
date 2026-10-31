@@ -379,9 +379,11 @@ def observe(scanner, cancel=None, progress=None, check_ip_threats=False):
         limits.update(backend.limits)
     rows = sorted(records.values(), key=order)
     status = "partial" if limits else "completed"
+    error = None
     if not successes and stop not in {"cancelled", "timeout"}:
         status = "error"
-    report = result("connections", status, data={"observation_id": secrets.token_hex(16), "started_at": started,
+        error = "No connection sample was completed; check osquery and the reported limitations"
+    report = result("connections", status, **({"error": error} if error else {}), data={"observation_id": secrets.token_hex(16), "started_at": started,
         "finished_at": now(), "duration_seconds": round(time.monotonic() - begin, 3), "backend": "osquery_fixed_projection",
         "coverage": list(BASE_LIMITS), "sampling": {"planned": planned, "successful": successes, "failed": failures,
             "attempted": attempted, "skipped": skipped, "interval_seconds": settings["interval_seconds"]},

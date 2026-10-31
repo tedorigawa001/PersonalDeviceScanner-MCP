@@ -224,7 +224,10 @@ def main():
         data = report.get("data", {})
         print("Status:", report["status"])
         if args.checkpoint_action == "list":
-            print("Checkpoint slots:", data.get("capacity_count", "unknown"), "/", data.get("capacity", "unknown"),
+            # An incomplete listing counts only what it reached; the JSON says so with enumeration_complete.
+            slots = data.get("capacity_count", "unknown")
+            print("Checkpoint slots:", slots if data.get("enumeration_complete", True) else f"at least {slots}",
+                  "/", data.get("capacity", "unknown"),
                   "Batch scan running:", data.get("scan_running", "unknown"))
             for row in data.get("checkpoints", []):
                 print(row["checkpoint_id"], "state=" + row["state"], "deletable=" + str(row["deletable"]),

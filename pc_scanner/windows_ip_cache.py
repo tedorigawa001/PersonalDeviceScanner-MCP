@@ -13,6 +13,8 @@ import secrets
 import threading
 import time
 
+from .core import cloud_root
+
 _LOCK = threading.Lock()
 _NAMES = {"current.json", "previous.json", "attempt.json", ".lock"}
 _TEMP = re.compile(r"\.[0-9a-f]{32}\.tmp\Z")
@@ -289,7 +291,7 @@ class Store:
                 self.check()
                 if part:
                     current /= part
-                if part in {"CloudStorage", "Mobile Documents"} or (part and part.lower().startswith("onedrive")):
+                if part and cloud_root(part):
                     raise OSError("Cloud cache unavailable")
                 final = i == len(parsed.parts) - 1
                 try:

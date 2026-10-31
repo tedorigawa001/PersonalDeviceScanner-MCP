@@ -111,7 +111,7 @@ class Busy(OSError):
 
 
 @contextlib.contextmanager
-def locked(path: Path, check_wait=None):
+def locked(path: Path, check_wait=None, attempts=LOCK_ATTEMPTS):
     """Held across processes: a CLI and MCP servers that both find the file full must not rotate it twice."""
     fd = os.open(lock_file(path), os.O_RDWR | os.O_CREAT | NO_FOLLOW, 0o600)
     try:
@@ -119,7 +119,7 @@ def locked(path: Path, check_wait=None):
         # Another user's lock file could be held forever to stop the history being written.
         if not stat.S_ISREG(info.st_mode) or not owned(fd, info) or info.st_nlink != 1:
             raise OSError("The history lock file is not this user's regular file")
-        for attempt in range(LOCK_ATTEMPTS):
+        for attempt in range(attempts):
             if check_wait is not None:
                 check_wait()
             try:
@@ -129,7 +129,7 @@ def locked(path: Path, check_wait=None):
                     fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 break
             except OSError as exc:
-                if attempt == LOCK_ATTEMPTS - 1:
+                if attempt == attempts - 1:
                     # flock reports a held lock as EWOULDBLOCK, msvcrt.locking as EACCES.
                     if exc.errno in (errno.EWOULDBLOCK, errno.EAGAIN, errno.EACCES):
                         raise Busy("The lock is held by another process") from exc

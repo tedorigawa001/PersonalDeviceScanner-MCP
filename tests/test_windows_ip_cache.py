@@ -116,6 +116,13 @@ class ModelTests(unittest.TestCase):
             with self.assertRaises(OSError):cache.atomic('.lock',b'not a lock',100)
             self.assertEqual((self.root/'cache/.lock').read_bytes(),b'')
 
+    def test_cloud_roots_are_refused_in_any_letter_case(self):
+        for name in ['cloudstorage','MOBILE DOCUMENTS','onedrive - private']:
+            (self.root/name).mkdir()
+            with self.subTest(name=name),self.assertRaises(OSError):
+                with self.w.Store({**self.settings,'directory':'C:\\'+name+'\\cache'}).open(create=True):pass
+            self.assertFalse((self.root/name/'cache').exists());self.assertEqual(self.api.handles,{})
+
     def test_missing_parent_bad_path_and_cancel_release_process_lock(self):
         import threading
         for path in ['C:\\missing\\cache','\\\\server\\share\\cache','C:\\cache:stream','C:\\a\\..\\cache','C:\\OneDrive\\cache']:

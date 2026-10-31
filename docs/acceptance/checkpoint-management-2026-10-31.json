@@ -22,7 +22,7 @@
     "scanner_invoke_operations_added": false,
     "mcp_context_rejected_before_storage_access": true,
     "deletion_selection": "Exact lowercase 64-hex checkpoint ID and 64-hex revision token; no path/prefix/wildcard/bulk/force inputs.",
-    "revision": "SHA256 of bounded file contents and opened file identity/size/write/change metadata; replacements and updates require relisting.",
+    "revision": "SHA256 of bounded file contents and opened file identity/size/write metadata, plus change metadata on POSIX only (Windows leaves st_ctime out; see windows-ci-latest-fixes-2026-10-31.json); replacements and updates require relisting.",
     "active_protection": "Same malware_batch in-process lock and persistent .active.lock cross-process lock. Any scan or competing manager operation protects all deletions; lock acquisition waits at most about 50ms.",
     "listing_during_busy": "Reports a conservative scan_running protection flag, partial status and deletable=false. Another checkpoint management operation can also hold the lock.",
     "scope": "Only the selected file is removed; never scan files, scan history, other checkpoints, the checkpoint directory, or the shared lock.",

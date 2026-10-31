@@ -330,6 +330,53 @@ class StoreTests(unittest.TestCase):
             self.assertEqual(self.manage()['status'],'partial');q.unlink()
         with patch.object(store.core,'cloud_placeholder',return_value=True),self.assertRaises(core.ScannerError):self.manage()
 
+    def test_cloud_roots_are_refused_in_any_letter_case(self):
+        for parts in (('Library','cloudstorage','x'),('MOBILE DOCUMENTS',),('onedrive - private',)):
+            parent=self.base.joinpath(*parts);parent.mkdir(parents=True,exist_ok=True,mode=0o700)
+            scanner=self.scanner(directory=str(parent/'records'));report=self.report()
+            with self.subTest(parts=parts):
+                with self.assertRaises(core.ScannerError):self.manage(scanner=scanner)
+                store.save(scanner,report);self.assertEqual(report['data']['persistence'],'save_failed')
+                self.assertFalse((parent/'records').exists())
+
+    @unittest.skipUnless(sys.platform=='darwin','macOS ACL entries apply regardless of the file mode')
+    def test_macos_acl_entries_that_allow_access_are_refused(self):
+        parent=self.base/'acl';parent.mkdir(mode=0o700);saved=self.scanner(directory=str(parent/'records'))
+        # An inherited deny entry only restricts access; an inherited allow entry would let others read new records.
+        subprocess.run(['/bin/chmod','+a','everyone deny chown,file_inherit,directory_inherit',str(parent)],check=True)
+        self.save(scanner=saved)
+        subprocess.run(['/bin/chmod','+a','everyone allow read,file_inherit,directory_inherit',str(parent)],check=True)
+        report=self.report();store.save(self.scanner(directory=str(parent/'fresh')),report)
+        self.assertEqual(report['data']['persistence'],'save_failed')
+        record=next((parent/'records').glob('*.json'))
+        subprocess.run(['/bin/chmod','+a','everyone allow read',str(record)],check=True)
+        listed=self.manage(scanner=saved);self.assertEqual(listed['status'],'partial')
+        self.assertEqual(listed['data']['records'][0]['state'],'unavailable')
+
+    def test_long_escaped_text_and_dependency_names_do_not_block_saving(self):
+        # 700 control characters escape to 4,200 characters, and a 300-character scope exceeds npm's 214.
+        package=self.base/'package.json';package.write_text(json.dumps({'dependencies':{'@'+'s'*300+'/dependency':'1.0'}}))
+        scanner=core.Scanner({'history':{'enabled':False,'file':str(self.base/'history.jsonl')},'process_review':{'enabled':True,
+            'targets':{'private-alias':{'pid':42,'start_time':1000,'package_file':str(package)}},
+            'storage':{'enabled':True,'directory':str(self.folder)}}});scanner.via='cli'
+        row={'pid':'42','start_time':'1000','path':'/synthetic/'+'\x01'*700+'/node','name':'n','parent':'1',
+             'parent_path':None,'parent_start_time':'1'}
+        with patch.object(review.Backend,'__init__',lambda self,*a:setattr(self,'limits',set())), \
+             patch.object(review.Backend,'query',return_value=[row]):
+            report=scanner.invoke('review_processes',save_details=True)
+        self.assertEqual(report['data']['persistence'],'details_saved',report['warnings'])
+        saved=self.manage(show_details=True)['data']['records'][0]['details']['processes'][0]
+        self.assertTrue(saved['details']['process']['path'].endswith('...(truncated)'))
+        self.assertEqual(saved['package'],'unavailable')
+
+    def test_a_result_failing_record_checks_names_the_cause_and_leaves_the_store(self):
+        report=self.report()
+        with patch.object(store,'snapshot',side_effect=ValueError('escaped text exceeds limit')):store.save(self.scanner(),report)
+        self.assertEqual((report['data']['persistence'],report['data']['persistence_reason']),('save_failed','record_invalid'))
+        self.assertIn('did not pass the saved-record checks',report['warnings'][0])
+        self.assertEqual(review.for_cli(report)['data']['persistence_reason'],'record_invalid')
+        self.assertFalse(self.folder.exists())
+
     def test_parent_symlink_and_network_filesystem_refused(self):
         alias=self.base/'alias';alias.symlink_to(self.folder,target_is_directory=True)
         with self.assertRaises(core.ScannerError):self.manage(scanner=self.scanner(directory=str(alias)))

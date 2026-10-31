@@ -494,7 +494,9 @@ See [design and verification plan](docs/outbound-connections-design.md).
 destinations against a previously downloaded public network list entirely on this PC. A match is a warning,
 not proof of infection or actual transmission. No match does not prove safety. Private/local and special-use
 addresses are outside this list's scope; missing, stale or invalid data produces unverified coverage and `partial`.
-So do connections the observation had to drop, such as unreadable socket rows or a reached record limit.
+So do connections the observation had to drop, such as unreadable socket rows, failed reads or a reached record limit.
+A special-use or unrecognized destination also leaves coverage unverified, because it can carry a public address
+(6to4 or a NAT64 prefix); one under the well-known NAT64 prefix `64:ff9b::/96` is checked as its embedded IPv4 address.
 Destinations that matched only an out-of-date list stay unverified, but the CLI, MCP, history and dashboard count
 them separately and prompt you to update the list and check again.
 These warnings remain separate from malware/vulnerability findings and the dashboard severity chart.
@@ -514,7 +516,8 @@ Updates use verified HTTPS, no ambient proxy/credentials, bounded reads and a mi
 An invalid or future last-attempt time is reset to now without sending a request, so the next update can run an hour later.
 The provider sees the updater's public source IP and request timing; observed destinations and process data
 are never sent. The cache's parent must already exist; choose an absolute `cache_directory` beneath an
-existing private local parent if needed. POSIX uses owner-only 0700/0600 permissions. The Windows cache
+existing private local parent if needed. POSIX uses owner-only 0700/0600 permissions, and on macOS an ACL entry
+that allows access is refused. The Windows cache
 backend requires a local fixed NTFS/ReFS volume and a protected DACL granting access only to the effective
 user and SYSTEM. It pins directory handles, rejects reparse/cloud placeholders and multi-link files,
 and uses handle-bound publication and cross-process locking. Unsafe existing permissions are refused,
@@ -552,7 +555,9 @@ executed, and no external lookup or remediation occurs. File paths and package m
 
 Checks include identity before/after review, observed parent, Node/Python classification, the selected script's
 hash, standard ancestor node_modules metadata, and whether a selected macOS GUI LaunchAgent's loaded job came from
-that plist with the same program, script and PID.
+that plist with the same program, script and PID. A closer entry Node would load first (`name.js`, `.json`, `.node`,
+or a folder without `package.json`) leaves that dependency unconfirmed. A plist with a line break in any string, or
+`launchctl print` output whose top level is ambiguous, leaves the launch job unconfirmed.
 Selected files and found metadata do not prove runtime loading or safety. Windows file checks and other OS
 startup mechanisms are not implemented; links, placeholders and unavailable items remain unconfirmed.
 The command/loop budget is 1..60 seconds (default 15); blocked filesystem calls cannot be forcibly interrupted.
@@ -584,7 +589,8 @@ pc-scanner --config scanner.toml process-review-records prune --expired --dry-ru
 Use a private, local, non-synced directory with an existing parent; path aliases/symlinks are refused.
 The default is the OS user-state location's `process-review` folder, independent of configured `history.file`.
 The parent must already exist. Directories must be owned and 0700, files 0600; unsafe existing permissions are
-refused, not silently changed. Initial storage supports macOS and recognized local Linux filesystems; Windows
+refused, not silently changed. On macOS an ACL entry that allows access, such as one inherited from the parent
+folder, is refused too. Initial storage supports macOS and recognized local Linux filesystems; Windows
 storage is refused. Known cloud roots/placeholders and unverified network filesystems are refused; not every
 third-party sync arrangement can be detected, so the owner must choose an unsynced location.
 
@@ -593,7 +599,8 @@ The CLI's default save response includes only anonymous states, a random record 
 never saved. Timeout/cancelled collections are not automatically saved (`not_saved_interrupted`), nor are results cut
 short by a read limit or engine warning (`not_saved_incomplete`); ordinary partial results preserve their unconfirmed
 items. A save failure does not change the collection status and is reported separately as `save_failed`; a missing
-folder above the store adds `persistence_reason: store_parent_missing` instead of creating it. Files the store does
+folder above the store adds `persistence_reason: store_parent_missing` instead of creating it, and a result that fails
+the saved-record checks adds `persistence_reason: record_invalid` without changing the store. Files the store does
 not own (for example Finder's `.DS_Store`) are counted as `unmanaged_count` in the list, never read or deleted, and do
 not block saving. Saving and deletion also sync the store folder.
 
@@ -827,6 +834,7 @@ not `coverage_revision`. There is no wildcard, bulk-delete or force option. A ch
 listing again. Any running batch scan protects **all** checkpoints: list shows `scan_running=true` and
 `deletable=false`; deletion fails promptly. The manager shares the scan's in-process and cross-process locks.
 The `scan_running` flag is conservative: a competing checkpoint-management operation can also hold that lock.
+Only a lock still held after a few tries counts; a lock error fails the command instead of showing a running scan.
 The list only checks the lock when it starts and reads without holding it, so a batch scan can still start meanwhile;
 deletion checks everything again under the lock.
 
@@ -841,7 +849,8 @@ The list shows IDs, save times and saved-part counts; new checkpoints also carry
 Relative target names are shown only with `--show-paths`, escaped in text and JSON. Labels do not select files or
 prove the current root mapping. Older checkpoints may have no target label; schema 2 still has a scan-group ID.
 Enumeration is bounded (256 directory entries, 32 MiB read overall, 5 seconds); incomplete/unreadable listings are
-explicit. `deletable` is eligibility, not a promise that OS permissions or another reader will allow deletion.
+explicit, also while a scan runs. When the listing stops early, the text list shows the slot count as `at least N`.
+`deletable` is eligibility, not a promise that OS permissions or another reader will allow deletion.
 These commands do not create a missing checkpoint directory or append to scan history. The list may create/reuse
 the shared lock in an existing store. No checkpoint-management operation is registered with MCP or `Scanner.invoke`.
 

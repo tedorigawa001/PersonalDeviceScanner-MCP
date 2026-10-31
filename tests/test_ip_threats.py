@@ -81,6 +81,10 @@ class ParserTests(unittest.TestCase):
         retained,omitted=t.lookup(parsed,ipaddress.ip_address('8.8.8.8'),time.monotonic()+1,None)
         self.assertEqual(len(retained),4);self.assertEqual(omitted,16)
 
+    def test_status_names_the_cache_backend_in_use(self):
+        backend=Scanner({}).invoke('status')['data']['ip_threat_cache_backend']
+        self.assertEqual(backend,{'posix':'posix','nt':'windows'}[os.name])
+
     def test_settings_and_unknown_key_warning(self):
         for raw in [[],{'enabled':1},{'allow_updates':'true'},{'max_age_hours':True},{'max_age_hours':169},{'cache_directory':'relative'},{'save_details':1}]:
             with self.assertRaises(ScannerError):Scanner({'ip_threats':raw})
@@ -139,6 +143,47 @@ class CacheTests(unittest.TestCase):
                 for scope in ('test0','test1')]
         with patch.object(t,'clock',return_value=NOW):r=self.observe(scoped)
         self.assertEqual(r['data']['destination_threats']['destination_counts'],{'not_applicable':2})
+
+    def test_nat64_is_checked_as_ipv4_and_other_unknown_destinations_leave_coverage_unverified(self):
+        self.write()
+        nat64=self.row(family='10',local_address='2001:4860::2',remote_address='64:ff9b::808:808')
+        with patch.object(t,'clock',return_value=NOW):r=self.observe([nat64])
+        threat=r['data']['connections'][0]['threat']
+        self.assertEqual((threat['state'],threat['checked_ipv4']),('matched','8.8.8.8'))
+        self.assertEqual(r['data']['destination_threats']['coverage'],'checked')
+        # 6to4, a local-use NAT64 prefix and a private IPv4 under the well-known prefix are not looked up.
+        for remote in ['2002:808:808::1','64:ff9b:1::808:808','64:ff9b::a00:1','100.64.0.1']:
+            family,local=('2','192.168.1.2') if '.' in remote else ('10','2001:4860::2')
+            with self.subTest(remote=remote),patch.object(t,'clock',return_value=NOW):
+                r=self.observe([self.row(family=family,local_address=local,remote_address=remote)])
+                threat=r['data']['connections'][0]['threat']
+                self.assertEqual((threat['state'],threat['reason']),('not_applicable','classification_unknown'))
+                self.assertNotIn('checked_ipv4',threat)
+                self.assertEqual(r['data']['destination_threats']['coverage'],'unverified');self.assertEqual(r['status'],'partial')
+                self.assertEqual(t.anonymous(r)['data']['destination_threats']['coverage'],'unverified')
+        with patch.object(t,'clock',return_value=NOW):r=self.observe([self.row(remote_address='192.168.1.3')])
+        self.assertEqual(r['data']['connections'][0]['threat']['reason'],'not_public_candidate')
+        self.assertEqual(r['data']['destination_threats']['coverage'],'checked')
+
+    def test_failed_reads_are_dropped_connections_and_an_explained_error(self):
+        self.write();snapshot=({'192.168.1.2'},{'192.168.1.255'},{('synthetic','192.168.1.2')})
+        scanner=self.scanner();scanner.connection_settings['duration_seconds']=2
+        failure=ScannerError('synthetic read failure')
+        for samples,status in [([failure,failure],'error'),([failure,[self.row()]],'partial')]:
+            clock=Clock()
+            with self.subTest(status=status), \
+                 patch.object(c.Backend,'__init__',lambda self,*a:setattr(self,'limits',set())), \
+                 patch.object(c.Backend,'addresses',return_value=snapshot),patch.object(c.Backend,'sockets',side_effect=samples), \
+                 patch.object(c.time,'monotonic',clock.monotonic),patch.object(c.time,'sleep',clock.sleep), \
+                 patch.object(t,'clock',return_value=NOW):
+                r=scanner.invoke('check_connection_destinations')
+            self.assertEqual(r['status'],status);self.assertIn('read_failed',r['data']['limitations'])
+            self.assertEqual(r['data']['destination_threats']['coverage'],'unverified')
+            if status=='error':
+                self.assertIn('No connection sample was completed',r['error'])
+                self.assertEqual(t.anonymous(r)['error'],'Destination check did not complete; check local permissions and configuration')
+            else:
+                self.assertNotIn('error',r)
 
     def test_missing_and_corrupt_cache_never_create_or_fallback(self):
         with patch.object(t,'clock',return_value=NOW):r=self.observe()

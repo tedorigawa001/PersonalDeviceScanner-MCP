@@ -90,6 +90,12 @@ def cloud_placeholder(path: Path) -> bool:
                 and path.name.endswith(".icloud")))
 
 
+def cloud_root(name: str) -> bool:
+    """Known cloud sync folder names. macOS and Windows ignore case by default, so the check does too."""
+    folded = name.casefold()
+    return folded in {"cloudstorage", "mobile documents"} or folded.startswith("onedrive")
+
+
 def exclusion_pattern(path: str, directory: bool) -> str:
     """Literal path in ClamAV's POSIX extended regex, not a user-supplied regex."""
     escaped = re.sub(r'([\\.\[\]{}()*+?^$|])', r'\\\1', path)
@@ -840,7 +846,7 @@ class Scanner:
             "outbound_connections_enabled": self.connection_settings["enabled"],
             "ip_threat_checks_enabled": self.ip_threat_settings["enabled"],
             "ip_threat_updates_allowed": self.ip_threat_settings["allow_updates"],
-            "ip_threat_cache_backend": "posix" if os.name == "posix" else "unavailable",
+            "ip_threat_cache_backend": {"posix": "posix", "nt": "windows"}.get(os.name, "unavailable"),
             "outbound_connections_mcp_disclosure": self.connection_settings["expose_identifiers_to_mcp"],
             "lan_enabled": self.lan_settings["enabled"],
             "lan_network_aliases": list(self.lan_networks),
