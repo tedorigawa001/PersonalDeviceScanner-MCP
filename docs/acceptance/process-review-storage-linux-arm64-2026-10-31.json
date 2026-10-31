@@ -1,0 +1,170 @@
+{
+  "status": "linux_container_partial_acceptance_passed",
+  "environment": {
+    "os": "Linux-6.10.14-linuxkit-aarch64-with-glibc2.39",
+    "architecture": "aarch64",
+    "python": "3.12.3",
+    "uid": 10001,
+    "mcp": "1.30.0"
+  },
+  "target_count": 1,
+  "checks": {
+    "missing_store_and_no_flag_do_not_create_store": true,
+    "save_requires_both_permissions": true,
+    "real_osquery_cli_save_preserves_unconfirmed_partial": true,
+    "linux_overlay_local_filesystem_and_owner_permissions": true,
+    "explicit_detail_listing": true,
+    "static_html_disclosures_internal_links_csp_uncertainty": true,
+    "actual_stdio_mcp_anonymous_and_store_unchanged": true,
+    "revision_selected_delete_unselected_preserved_and_html_invalidated": true,
+    "controlled_clock_expiry_minus_exact_plus_microsecond_and_prune": true,
+    "linux_tmpfs_real_save_list_delete": true,
+    "linux_proc_filesystem_refused": true,
+    "unsafe_store_permissions_refused": true,
+    "fixture_not_executed_inputs_unchanged_and_no_history": true,
+    "trial_records_and_managed_pages_removed": true
+  },
+  "collection_status": "partial",
+  "mcp_status": "partial",
+  "expiry_states": [
+    "active",
+    "expired",
+    "expired"
+  ],
+  "limitations": [
+    "Linux arm64 container only, not a physical Linux host or other distributions/architectures",
+    "No actual browser rendering or operation; HTML statically verified",
+    "Expiry tested by patching the store clock only, not by waiting seven days",
+    "Synthetic process and selected fixture files; does not prove actual runtime module loading or safety",
+    "Windows backend and latest CI not verified",
+    "Existing-image Python 3.12 runtime dependencies reused; current locked dependency installation, Python 3.14/3.15 and npm roundtrip not revalidated on Linux in this acceptance"
+  ],
+  "date": "2026-10-31",
+  "feature": "Private process review storage on Linux",
+  "source_commit": "c0051cc6e26cebc8b58d771689536f733ff29e97",
+  "source_sha256": {
+    "tests/test_process_store.py": "3bf94fcdf6b37c94f940a19bdf672f4b5406943490c3788ea41d3d48b6a88fdb",
+    "pc_scanner/freshness.py": "38c7fb6d0ca199aab9fea75f2b4975eb91785c5980f5fa40a4d6c80922b057f2",
+    "pc_scanner/process_review.py": "db54c16f6207939b5f02b67b0034158267f1ea90fa8168e9e382760641b2c542",
+    "pc_scanner/server.py": "fe51f9ae8057e02dad13884e70b777d28ecea94099798db28235671d6fc528f6",
+    "pc_scanner/lan_windows.py": "daba031e8d2a4a220c46f9b115c0534c08bd5e2e453f6ca68d63b6e2521b38a0",
+    "pc_scanner/windows_owner.py": "32956f22ffbfc70ad0bb6c16a4856da11060990a4a205a3a98d0a1635334fa41",
+    "pc_scanner/updates.py": "ca9832d6d4cfd3cbe0861f61dc71db38aa9048c691ed8b93f9468338db989864",
+    "pc_scanner/process_store.py": "a37f1c4723ab4103b79481b7d3c224b4c4e38012881ef995c3f99a5938c2fb0a",
+    "pc_scanner/malware_batch.py": "d50b44a702140a89f39b73cb01c8dacf430e7e89bb854aab6c2523d1b2b8b7b1",
+    "pc_scanner/connections.py": "f54254ea0b9ed170a43e98dacdaec560919de9e180dfb14406c842b52eb4e380",
+    "pc_scanner/__init__.py": "f20c53b77ff3989d3d9b673f9e45515edd74776d7375184388a853829bbfc625",
+    "pc_scanner/core.py": "beb792f5baaabeb2858fae98df015931261a52508459010c8e29b544378ef261",
+    "pc_scanner/coverage.py": "812ef9884424ffba722d62598640b95979ca6aed8d089bb365aab96821ef40ba",
+    "pc_scanner/lan.py": "e03a924005d4ca03c9da29415ee80113e07cd49ce7afdd12f5fbb782289cc247",
+    "pc_scanner/checkpoints.py": "fe6da3aea8d80f0bff8abe68289b69b9a0d26fb50637e4b422f840214e591420",
+    "pc_scanner/dashboard.py": "76cc14481ec265de10a98bd18d424658cf1b8c0b669f9d004bccd7563165f371",
+    "pc_scanner/cli.py": "66a78cd4242a7b1be7ed9ed9e777975f7a611094543e4775ff2e445729b1df4e",
+    "pc_scanner/android.py": "a8527c3bd5d428127a78a81032327b2fdfffb79ff268f34f1b9ba35e6d7493d9",
+    "pc_scanner/lan_mdns.py": "d7a18530ebe2ef900016b282cdfab1a6ff1f8ccdfc4b5f0b27959b953b1256f3",
+    "pc_scanner/progress.py": "9985503e2c7f12566e818b2df1f532a629eaecb351e176e9aa21406041a9730e",
+    "pc_scanner/router.py": "0ac29db236b592f00cf0a77bd8d1af45de20afd8cab4d7981f3cddbcc8252500",
+    "pc_scanner/lan_os.py": "82a2f1203368235c04c759783158208229e6bb4248b3b2670a106b97fdf1dddf",
+    "pc_scanner/history.py": "a22edeeb10a5101dbf4a125d152deb1f9e4839088bda2b4b4d50f511f43a548b"
+  },
+  "isolation": {
+    "image_id": "sha256:3e1c98126c919e08f2a14906645d63c849612d776f6425c46938c7c9602c5b6c",
+    "mounts": [],
+    "network_mode": "none",
+    "published_ports": {},
+    "privileged": false,
+    "cap_drop": [
+      "ALL"
+    ],
+    "security_options": [
+      "no-new-privileges"
+    ],
+    "user": "10001:10001",
+    "init": true,
+    "memory_limit_bytes": 1073741824,
+    "pids_limit": 128,
+    "host_data": "Only selected public source, compliance artifacts and pure-Python test dependency copied; no personal folders, host processes, credentials or Docker socket exposed"
+  },
+  "versions": {
+    "osquery": "osqueryi version 5.23.1",
+    "test_dependency_packaging": "26.2"
+  },
+  "harness_sha256": "8979ece09b9c0bbd00f32dd6d6e8b3736c7c95f0f7c85ec23ce0995fe3773090",
+  "source_copy_verification": {
+    "file_count": 334,
+    "result": "All copied public source/test/compliance file hashes matched after acceptance",
+    "module_origin": "/tmp/source/pc_scanner/core.py"
+  },
+  "filesystems": {
+    "ordinary_store": "overlay",
+    "secondary_store": "tmpfs",
+    "rejected_filesystem": "proc"
+  },
+  "verification": {
+    "related_tests": {
+      "total": 55,
+      "passed": 55,
+      "skipped": 0,
+      "seconds": 1.824
+    },
+    "initial_full_suite": {
+      "total": 566,
+      "failures": 3,
+      "errors": 2,
+      "skipped": 8,
+      "seconds": 55.925,
+      "causes": [
+        "Missing copied scripts and example settings",
+        "Container PID 1 was sleep, not a child reaper; four zombie processes parented to PID 1 were observed"
+      ],
+      "disposition": "Recreated dedicated container with --init and completed public test inputs. No product code changes."
+    },
+    "environment_preflight_retry": {
+      "total": 5,
+      "errors": 1,
+      "cause": "Existing image lacked modern packaging. Added existing pip-vendored pure-Python packaging as isolated test-only PYTHONPATH dependency; no downloads or image mutation."
+    },
+    "affected_tests_after_preparation": {
+      "total": 17,
+      "passed": 17,
+      "skipped": 0,
+      "seconds": 0.348
+    },
+    "full_suite": {
+      "command": "/opt/venv/bin/python -m unittest discover -s tests -q",
+      "environment": "PYTHONPATH=/tmp/test-deps:/tmp/source; cwd=/tmp/source; network=none; user=10001:10001; init=true",
+      "total": 578,
+      "passed": 570,
+      "skipped": 8,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 42.985,
+      "skip_reasons": {
+        "Windows-only API/junction/Winsock tests": 7,
+        "Case-insensitive filesystem-only checkpoint test on a case-sensitive Linux filesystem": 1
+      }
+    },
+    "npm": "Not run; no launcher changes",
+    "zombie_processes_after_full_suite": 0,
+    "product_code_changes_required": false
+  },
+  "cleanup": {
+    "first_dedicated_container_removed": true,
+    "final_dedicated_container_removed": true,
+    "other_containers_or_volumes_modified": false,
+    "base_image_retained": true,
+    "synthetic_data_removed_with_container": true
+  },
+  "procedure": [
+    "Reused previously accepted Ubuntu 24.04 arm64 image without package installation or downloads",
+    "Copied latest public source and tests, excluding host config and private data; no mounts",
+    "Ran as UID 10001 with cap-drop ALL, no-new-privileges, network none, no published ports and init",
+    "Created a dedicated sleeping Python process and non-executed script/package fixtures inside the container",
+    "Reviewed it with real osquery and actual CLI; verified explicit save consent, anonymous output, stored partial limitations and permissions",
+    "Used actual MCP SDK ClientSession over stdio; verified strict anonymous fields and unchanged store contents",
+    "Statically parsed generated HTML disclosures, internal anchors and CSP; no browser operation",
+    "Tested revision deletion, unselected record preservation, HTML invalidation, controlled expiry and pruning",
+    "Checked real Linux mountinfo classification of overlay, tmpfs and proc; refused unsafe store permissions",
+    "Ran related and full regression suites; removed trial records/pages and later the dedicated container"
+  ]
+}

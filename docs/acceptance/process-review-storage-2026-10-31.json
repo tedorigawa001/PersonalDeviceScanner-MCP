@@ -211,5 +211,11 @@
     "date": "2026-10-31",
     "record": "process-review-storage-macos-2026-10-31.json",
     "scope": "Existing-process CLI storage lifecycle and local MCP anonymity/non-persistence; parent unavailable-start-time save fix; browser still unverified"
+  },
+  "follow_up_linux_acceptance": {
+    "date": "2026-10-31",
+    "record": "process-review-storage-linux-arm64-2026-10-31.json",
+    "scope": "Ubuntu arm64 container; actual osquery/CLI/MCP; overlay/tmpfs mountinfo check; full suite 578 total, 570 passed, 8 skipped; no product code changes",
+    "remaining": "Physical Linux host, other distributions/architectures, browser operation and new CI remain unverified; Windows storage unsupported"
   }
 }
