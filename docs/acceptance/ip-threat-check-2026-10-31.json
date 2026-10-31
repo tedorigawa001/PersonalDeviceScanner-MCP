@@ -1,0 +1,166 @@
+{
+  "date": "2026-10-31",
+  "feature": "Offline destination threat-list checks and explicit local public-list updates",
+  "status": "initial_implementation_verified_with_limits",
+  "base_commit": "1c221f993fb6e210fb79d0e95157ffaf878586df",
+  "source_state": "Uncommitted feature implementation",
+  "source_sha256": {
+    "pc_scanner/ip_threats.py": "09a896590fb8e2cc574c9e8fb8002be3b3e36bbb15ae0f7978cbcc8443fc6f63",
+    "pc_scanner/connections.py": "c2ab8bdcef31170a525937c35363f9b4c0b6d18ac9910f0d55454292c1dbb2d1",
+    "pc_scanner/core.py": "6af88eda97a6ffff722835a7d4d4f57bd5ad0fe3b3bdec53e47e4fe85a7d4344",
+    "pc_scanner/cli.py": "214ee72c9e2344bf7f1cdb848a85e8efdb07be73db49b086734485273a0d76c4",
+    "pc_scanner/server.py": "2c2c5b06099fa6fc6a2c9f4807f6b3fd51c0482f47e392c27585031f5efc1c87",
+    "pc_scanner/history.py": "dac9bfd6c0ac4f3e130dff76beb05f4ca7ff0b07c3ee5537fa1c717d519440e1",
+    "pc_scanner/dashboard.py": "576bc9f75aef60c0b668a46741a7714c7520719a91aeac34584a910869454f7e",
+    "pc_scanner/process_store.py": "79651253ba22690ffbc694e89bdb29d9905bd122837275978ffac2cceb6b5c4d",
+    "tests/test_ip_threats.py": "d988ccc24f69989b6348c368bc8515c3cb92ceede9d97ddd6f9b7f9bcfd45efb",
+    "tests/test_mcp.py": "cea19ae874ad9d53f11aa7f5678ddbc1c17f39d849f169d29c49cf81fa93c999",
+    "npm/test/roundtrip.test.js": "e250759db8f80a804e965ab6677ce3c91fbc7a974c64f5755f4a37b233930173"
+  },
+  "environment": {
+    "os": "Darwin",
+    "architecture": "arm64",
+    "python": [
+      "3.14.10",
+      "3.15.2"
+    ],
+    "node": "v26.12.1",
+    "mcp_sdk": "1.30.0"
+  },
+  "interfaces": {
+    "cli": [
+      "outbound-connections --check-ip-threats [--json]",
+      "update-ip-threat-lists [--json]"
+    ],
+    "mcp": "check_connection_destinations() without arguments; strict anonymous projection, readOnlyHint=true, openWorldHint=false; no updater tool",
+    "dashboard": "Historical destination state counts, publication/retrieval/check/expiry and source attribution; warning notice and opt-in local connection evidence; never added to severity findings"
+  },
+  "privacy": {
+    "personal_connections_collected": false,
+    "observed_destinations_sent_to_services": false,
+    "payloads_captured": false,
+    "listed_destinations_contacted": false,
+    "mcp": "No IPs/ports, process names/PIDs/start times, CIDRs, reference IDs, paths, file hashes or raw errors; older disclosure settings do not enable identifiers",
+    "history": "Allowlisted anonymous summary; real details require separate owner settings and are never saved by MCP; errors use a fixed message",
+    "test_stores": "Explicit temporary paths; resolving personal default during cache tests fails",
+    "updater": "Fixed HTTPS GETs only; no ambient proxy or credentials; provider sees updater public source IP and timing"
+  },
+  "cache": {
+    "platform": "POSIX only; Windows read/update fail closed",
+    "permissions": "0700 folders / 0600 files, pinned descriptors, local-filesystem validation, no-follow regular owned single-link files",
+    "reader": "Pins a single atomic bundle; no folder, lock file or cache writes",
+    "writer": "Separate-process lock, 30-second total budget, bounded TLS fetches, minimum one-hour attempt interval, atomic v4/v6 publication and last-valid previous generation",
+    "limits": "4 MiB per feed, 50000 raw entries per family, 12 MiB bundle, 32 MiB managed store",
+    "failure": "Old current retained on validation/fetch/cancel/capacity failure; no fallback to old generations on corrupt current read",
+    "timestamps": "Provider publication is freshness basis; expiry at equality; reject publication rollback; successful download cannot refresh stale publication dates",
+    "representation": "Original feed bytes base64-encoded with SHA-256 in one bundle; index validated/rebuilt in memory. Hashes are integrity checks, not publisher signatures.",
+    "dependencies": "Only standard-library imports added; no lock, SBOM or software license changes needed; public datasets not bundled"
+  },
+  "verification": {
+    "new_tests": 29,
+    "standalone_new_tests": {
+      "passed": 29,
+      "skipped": 0,
+      "seconds": 4.702
+    },
+    "full_suite": [
+      {
+        "python": "3.14.10",
+        "command": "bdo .venv/bin/python -m unittest discover -s tests -q",
+        "total": 608,
+        "passed": 601,
+        "skipped": 7,
+        "skip_reason": "Existing Windows-only tests on macOS",
+        "errors": 0,
+        "failures": 0,
+        "seconds": 45.002
+      },
+      {
+        "python": "3.15.2",
+        "command": "bdo .venv-dev/bin/python -m unittest discover -s tests -q",
+        "total": 608,
+        "passed": 601,
+        "skipped": 7,
+        "skip_reason": "Existing Windows-only tests on macOS",
+        "errors": 0,
+        "failures": 0,
+        "seconds": 44.416
+      }
+    ],
+    "npm": [
+      {
+        "python": "3.14.10",
+        "e2e": true,
+        "expect_hashed": true,
+        "total": 26,
+        "passed": 26,
+        "skipped": 0,
+        "seconds": 6.465
+      },
+      {
+        "python": "3.15.2",
+        "e2e": true,
+        "expect_hashed": false,
+        "total": 26,
+        "passed": 26,
+        "skipped": 0,
+        "seconds": 4.907
+      }
+    ],
+    "scope": [
+      "CIDR boundaries, duplicate/overlapping evidence, bounded omitted evidence, IPv4-mapped IPv6 and missing UDP destinations",
+      "Destination/connection/process/sample counters kept distinct, attribution unknown kept apart",
+      "Publication-age expiry minus/equal/plus one microsecond, stale matches vs unlisted, observation crossing expiry, future/corrupt data",
+      "Disabled permissions before collection/network; fixed updater URLs and certificate checks",
+      "Atomic partial-family failure, last generation retained, rate limiting/future attempts, writer contention and recovery",
+      "Read-only cache access, permissions and symlink refusal, current corruption without previous fallback",
+      "Actual local MCP SDK in-memory and stdio transport; all disclosure/detail settings enabled without identifiers or private detail saving",
+      "Anonymous history/error allowlist and dashboard summary without details, HTML escaping and explicit local evidence",
+      "Real TLS fixture: header stall and body stall, each deadline and cancellation, no remaining request worker",
+      "npm package includes new tool, disabled call rejects before collection, no updater MCP tool, cp314 hash and tampered-lock checks",
+      "Scoped link-local IPv6 addresses on different interfaces remain distinct non-applicable destinations"
+    ],
+    "development_corrections": [
+      "Removed a global fake monotonic clock from an asynchronous test harness that otherwise stalled the event loop",
+      "Updated existing Python/npm tool-enumeration expectations for the new tool",
+      "Corrected synthetic dashboard metadata and fixed-order fixture assertions before final successful verification"
+    ]
+  },
+  "public_feed_format_preflight_and_offline_replay": {
+    "status": "public_feed_format_and_offline_replay_verified",
+    "download": "Earlier fixed-URL HTTPS format preflight only; no repeated requests within the hour",
+    "replay": "Replayed captured official bytes through the real cache updater with download mocked; not a live updater acceptance",
+    "feeds": {
+      "4": {
+        "records": 1757,
+        "boundary_lookups": 3512,
+        "sha256": "85c40c0e8a46dfd94df19301923ebc0a5e60e0c9e59a2e33fa9864252d2833d4",
+        "published_at": "2026-10-31T03:44:02.000000+00:00",
+        "copyright": "(c) 2026 The Spamhaus Project SLU",
+        "unique_cidrs": 1756
+      },
+      "6": {
+        "records": 92,
+        "boundary_lookups": 184,
+        "sha256": "ad8af2a4b7666455fa0da2b14e21a80fac2df94e5b393522e678bb62d98420ce",
+        "published_at": "2026-10-30T13:14:02.000000+00:00",
+        "copyright": "(c) 2026 The Spamhaus Project SLU",
+        "unique_cidrs": 92
+      }
+    },
+    "updater_replay_status": "completed",
+    "permissions_verified": true,
+    "personal_connections_collected": false,
+    "listed_destinations_contacted": false,
+    "private_default_resolved": false,
+    "replay_cache_removed": true
+  },
+  "remaining": [
+    "Production CLI updater live acceptance; respect provider minimum refresh interval",
+    "Owner-authorized actual destination observation and local matching; none collected during implementation",
+    "Actual browser rendering/disclosure/link acceptance for the new destination-check view",
+    "Linux new-cache acceptance, current CI and Windows safe cache backend",
+    "Native OS filesystem/resolver blocking is not a demonstrated hard-stop guarantee; TLS header/body stalled-read workers were tested"
+  ],
+  "repository_data": "Only public feed metadata/hashes, counts, fixed states and code hashes; no personal identifiers or full datasets"
+}

@@ -55,6 +55,8 @@ the release workflows, and the published npm package `personal-device-scanner-mc
   folders, change or delete files, reach other hosts, or inspect a device that is not registered.
 - A result hides findings, or makes a PC or device look safer than it is.
 - The owner's data reaches the AI client or the network beyond what the [README](README.md) describes.
+- Destination-list checks disclose observed identifiers, perform per-IP remote queries, or silently download
+  lists; public-list updates are a separate opt-in local CLI operation, never an MCP tool.
 - Another user on the same PC uses the scan history, dashboard, cache or lock files to read or write the owner's files.
 - The npm package, the locked dependencies or the SBOM do not match the source of the release.
 
@@ -126,6 +128,8 @@ Android のシリアル番号が含まれることがあります。できるだ
   ファイルの変更や削除、ほかの接続先への通信、登録していない端末の点検
 - 結果が所見を隠したり、PC や端末を実際より安全に見せたりする
 - 所有者の情報が、[README](README.ja.md) の説明を超えて AI クライアントやネットワークに渡る
+- 接続先照合が実際の識別情報を提供したり、IPごとの外部照会や無断のリスト取得を行う。
+  公開リスト更新は別許可のローカルCLIだけで行い、MCPには公開しない
 - 同じ PC のほかのユーザーが、スキャン履歴・ダッシュボード・キャッシュ・ロック用のファイルを使って、所有者のファイルを
   読み書きできる
 - npm パッケージ・ロックした依存パッケージ・SBOM が、そのリリースのソースと一致しない

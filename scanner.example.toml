@@ -129,6 +129,15 @@ max_connections = 2000            # 1..2000
 expose_identifiers_to_mcp = false
 save_details = false              # also needs history.details = true to save processes and destinations
 
+# Opt-in local matching. No observed IP is sent to a service; this does not prove safety.
+# Explicit update-ip-threat-lists is the only public-feed network access, never an MCP tool.
+[ip_threats]
+enabled = false                   # also requires outbound_connections.enabled
+allow_updates = false             # explicit local CLI permission, at least one hour between attempts
+cache_directory = ""             # independent OS state directory; parent must already exist
+max_age_hours = 48                # 1..168, provider publication time; expires at equality
+save_details = false              # additional permission; MCP always keeps real identifiers local
+
 # Read-only, owner-selected process provenance. MCP and CLI default expose anonymous states only.
 [process_review]
 enabled = false

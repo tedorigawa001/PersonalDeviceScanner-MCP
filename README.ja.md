@@ -71,6 +71,7 @@ AI が指定できるのは「どの固定クエリを使うか」「どの許�
 | MCPツール | CLIコマンド | 使うエンジン | 内容 |
 |---|---|---|---|
 | `scanner_status()` | `status` | なし | 設定の有無を表示します。エンジンの動作や安全性は確認しません |
+| `check_connection_destinations()` | `outbound-connections --check-ip-threats` | osqueryi・取得済み公開リスト | MCPは匿名の接続先警告。実情報はローカル限定。外部照会・遮断はしません |
 | `get_scan_progress(scan_id="")` | — | なし | MCPの直近の検査の進捗だけを確認します。キャンセル後も照会できます |
 | `review_processes()` | `review-processes [--json] [--show-details]` | osqueryi・macOS launchctl | 所有者指定のPID・開始時刻から起動元等を確認。MCPは匿名要約、詳細はローカルCLIでの明示表示だけ |
 | `check_clamav_signatures()` | `check-clamav-signatures` | clamscan | 定義の版・作成日時・鮮度と更新手順を確認します。更新・検査は実行しません |
@@ -484,6 +485,41 @@ osqueryの固定列だけを使い、ログ・イベント収集を無効にし�
 権限差・Windows/Linux実機は残ります。[UDP再受入記録](docs/acceptance/outbound-connections-udp-normalization-2026-10-30.json)を参照してください。
 [受入記録](docs/acceptance/outbound-connections-macos-2026-10-30.json)と[設計・検証計画](docs/outbound-connections-design.md)を参照してください。
 
+### 接続先の公開脅威リスト照合
+
+`pc-scanner --config scanner.toml outbound-connections --check-ip-threats [--json]`で、観測した接続先を
+取得済みの公開ネットワークリストと端末内だけで照合します。一致は警告であり、感染・実送信の証明ではありません。
+不一致は安全を意味しません。私有・ローカル・特別用途は対象外、リストの欠落・破損・期限切れは未確認として`partial`になります。
+警告は感染／脆弱性の所見やダッシュボードの深刻度円グラフへ加算しません。
+
+```toml
+[ip_threats]
+enabled = false             # outbound_connections.enabled=trueも必要
+allow_updates = false
+cache_directory = ""       # history.fileとは独立したOSの私有状態領域
+max_age_hours = 48          # 1..168。取得時刻ではなく提供元の公開時刻が基準
+save_details = false
+```
+
+`allow_updates`を有効にしたうえで`pc-scanner --config scanner.toml update-ip-threat-lists`を明示実行すると、
+固定HTTPS取得先のIPv4／IPv6公開リストを更新します。観測やMCP呼出しでは更新・ネットワーク接続を行いません。
+TLS証明書を検証し、環境変数のプロキシ・認証情報を継承せず、読取量・時間と最低1時間の更新試行間隔を制限します。
+更新元の公開IPやアクセス時刻等は提供元へ見えますが、観測した接続先・プロセス情報は送信しません。
+保存先の親フォルダーは存在している必要があります。必要なら、既存の私有ローカルフォルダーの下へ絶対パスで
+`cache_directory`を指定してください。初期実装はPOSIXだけで、安全でない権限・クラウド／ネットワーク保存先・リンク、
+未実装のWindows保存基盤は拒否します。更新失敗時は以前の正常な世代を保持します。
+
+MCPの`check_connection_destinations()`は引数なしで、匿名ラベル・件数・鮮度だけを返します。
+既存の観測ツールの識別情報提供設定が有効でも、IP・port・名前・PID・CIDR・根拠IDを返さず、実情報付き詳細も保存しません。
+CLIだけがローカルで実接続と根拠を表示します。通常履歴は有効時だけ匿名要約を保存します。
+ローカル詳細保存には`history.details`・`outbound_connections.save_details`に加えて`ip_threats.save_details`も必要です。
+ダッシュボードは過去の照合日時・公開日時・期限・未確認事項を表示し、許可した詳細だけに接続先と根拠を載せます。
+静的ページの過去のfresh判定は、現在の鮮度や安全性を保証しません。
+
+データ出典：[Spamhaus Project DROP](https://www.spamhaus.org/blocklists/do-not-route-or-peer/)のIPv4／IPv6リスト。
+[利用条件](https://www.spamhaus.org/blocklists/drop-fair-use-policy/)に従い、公開日付・著作権表示をデータと結果に保持します。
+データ自体は製品に同梱しません。[設計と検証計画](docs/ip-threat-check-design.md)を参照してください。
+
 ### プロセスの起動元・ランタイム実体確認（第1段階）
 
 `pc-scanner --config scanner.toml review-processes --json` は、所有者が
@@ -557,6 +593,7 @@ pc-scanner --config scanner.toml process-review-records prune --expired --dry-ru
 | 項目 | 説明 | 既定値 |
 |---|---|---|
 | `outbound_connections` | 接続観測の許可・観測時間1..60秒・間隔1..10秒・上限1..2000件。MCP提供と詳細保存はそれぞれ明示許可 | 無効 |
+| `ip_threats` | 端末内の接続先照合。更新は別許可のローカルCLI、公開後1..168時間の鮮度制限、詳細保存も追加許可。MCPは匿名 | 無効 |
 | `process_review` | 所有者指定のPID・開始時刻を最大16組。MCPは匿名要約。処理期限1..60秒 | 無効 |
 | `process_review.storage` | CLIの二重許可でだけ保存。私有権限・期限・選択削除を適用し、MCPには非公開 | 無効 |
 | `local.osquery_binary` | osqueryi の絶対パス。空欄なら無効 | 空欄 |

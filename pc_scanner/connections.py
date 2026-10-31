@@ -240,11 +240,13 @@ def order(row):
             row["local_port"], row["first_observed_at"])
 
 
-def observe(scanner, cancel=None, progress=None):
+def observe(scanner, cancel=None, progress=None, check_ip_threats=False):
     settings = scanner.connection_settings
     if not settings["enabled"]:
         raise ScannerError("Outbound connection observation is disabled")
-    if scanner.via == "mcp" and not settings["expose_identifiers_to_mcp"]:
+    if check_ip_threats and not scanner.ip_threat_settings["enabled"]:
+        raise ScannerError("Destination threat-list checks are disabled")
+    if scanner.via == "mcp" and not settings["expose_identifiers_to_mcp"] and not check_ip_threats:
         raise ScannerError("Connection identifiers are not authorized for MCP; owner must enable their disclosure")
     if not scanner._connection_lock.acquire(False):
         raise ScannerError("Connection observation is busy")
@@ -255,7 +257,7 @@ def observe(scanner, cancel=None, progress=None):
     records, excluded, unavailable = {}, Counter(), Counter()
     limits, stop, successes, failures, attempted, skipped = set(), None, 0, 0, 0, 0
     backend = None
-    result_bytes = 2
+    result_bytes = 16384 if check_ip_threats else 2
     def emit(stage):
         if progress:
             progress.update(stage=stage, observed_records=len(records), samples_completed=successes,
@@ -338,7 +340,7 @@ def observe(scanner, cancel=None, progress=None):
                         raise Stopped("connection_limit")
                     row["connection_id"] = secrets.token_hex(8)
                     # Reserve enough for state/time/counter growth of already retained rows.
-                    size = len(json.dumps(row, ensure_ascii=True).encode()) + GROWTH
+                    size = len(json.dumps(row, ensure_ascii=True).encode()) + GROWTH + (2048 if check_ip_threats else 0)
                     if result_bytes + size > 2 * 1024 * 1024:
                         raise Stopped("result_size_limit")
                     result_bytes += size
@@ -374,7 +376,7 @@ def observe(scanner, cancel=None, progress=None):
     status = "partial" if limits else "completed"
     if not successes and stop not in {"cancelled", "timeout"}:
         status = "error"
-    return result("connections", status, data={"observation_id": secrets.token_hex(16), "started_at": started,
+    report = result("connections", status, data={"observation_id": secrets.token_hex(16), "started_at": started,
         "finished_at": now(), "duration_seconds": round(time.monotonic() - begin, 3), "backend": "osquery_fixed_projection",
         "coverage": list(BASE_LIMITS), "sampling": {"planned": planned, "successful": successes, "failed": failures,
             "attempted": attempted, "skipped": skipped, "interval_seconds": settings["interval_seconds"]},
@@ -383,6 +385,11 @@ def observe(scanner, cancel=None, progress=None):
         "connections": rows, "excluded_counts": dict(excluded), "unavailable_counts": dict(unavailable),
         "limitations": sorted(set(BASE_LIMITS) | limits), "stop_reason": stop, "persistence": "not_saved"},
         warnings=["Socket observations only: direction, actual transmissions and safety are unverified; short-lived connections may be missed"])
+    if check_ip_threats:
+        from . import ip_threats
+        ip_threats.enrich(scanner, report, deadline, cancel, progress)
+        report["data"].update(finished_at=now(), duration_seconds=round(time.monotonic() - begin, 3))
+    return report
 
 
 def mcp_bytes(value):

@@ -200,7 +200,7 @@ def scan_body(item: dict, report: dict | None, reason: str) -> str:
         parts.append("<h3>Warnings</h3><ul>" + "".join(f"<li>{esc(shorten(w if isinstance(w, str) else str(w)))}</li>"
                                                      for w in warnings) + "</ul>")
     findings = report.get("findings")
-    if item["operation"] == "observe_outbound_connections":
+    if item["operation"] in {"observe_outbound_connections", "check_connection_destinations"}:
         parts.append(connection_details(report.get("data", {})))
         return "".join(parts)
     if item["operation"] == "discover_lan_devices":
@@ -281,7 +281,7 @@ def latest_runs(entries: list[dict]) -> list[list[tuple[int, dict]]]:
         target = {key: value for key, value in item["target"].items() if key not in PAGING}
         key = (item["operation"], json.dumps(target, sort_keys=True))
         run = latest.get(key)
-        if run and item["operation"] == "observe_outbound_connections":
+        if run and item["operation"] in {"observe_outbound_connections", "check_connection_destinations"}:
             # Re-reading an older observation must not replace the newer observation.
             if datetime.fromisoformat(item["started_at"]) < datetime.fromisoformat(run[-1][1]["started_at"]):
                 continue
@@ -562,6 +562,7 @@ def connection_details(data):
         groups.setdefault(key, []).append(row)
     parts = ['<p>OS-visible socket observations only; direction and actual transmissions are unknown. '
              'Short-lived connections may be missed. No packet contents were collected.</p>']
+    parts.append(destination_threat_summary(data))
     limits = data.get("limitations", [])
     parts.append('<p>Limitations: ' + esc(", ".join(str(v) for v in limits[:64]) if isinstance(limits, list) else "unknown") + '</p>')
     for key in ("sampling", "excluded_counts", "unavailable_counts"):
@@ -574,20 +575,36 @@ def connection_details(data):
         title = str(row.get("pid") or "unknown PID") + " / " + str(row.get("process") or "unknown process")
         body = "".join('<tr>' + ''.join('<td>' + esc(r.get(k) if r.get(k) is not None else "unknown") + '</td>'
             for k in ("remote_ip", "remote_scope", "remote_port", "protocol", "classification", "attribution_quality",
-                      "first_observed_at", "last_observed_at", "sample_count")) + '</tr>' for r in rows)
+                      "first_observed_at", "last_observed_at", "sample_count")) + '<td>' +
+            esc(json.dumps(r.get("threat", {}), ensure_ascii=False)) + '</td></tr>' for r in rows)
         parts.append('<details><summary>' + esc(title) + '</summary><div class="scroll"><table><thead><tr>'
             '<th>Destination</th><th>Scope</th><th>Port</th><th>Protocol</th><th>Class</th><th>Attribution</th>'
-            '<th>First observed</th><th>Last observed</th><th>Samples (not transmissions)</th></tr></thead><tbody>'
+            '<th>First observed</th><th>Last observed</th><th>Samples (not transmissions)</th><th>Destination list evidence</th></tr></thead><tbody>'
             + body + '</tbody></table></div></details>')
     if not groups:
         parts.append('<p>No connections observed. This does not establish absence of traffic or malware.</p>')
     return ''.join(parts)
 
 
+def destination_threat_summary(data):
+    from .ip_threats import summary
+    value = summary(data).get("destination_threats")
+    if value is None:
+        return '<p>Destination threat-list summary unavailable.</p>' if "destination_threats" in data else ""
+    body = '<p>' + esc(value["notice"]) + '</p><p>Historical check (UTC): ' + esc(value["checked_at"]) + ' · Coverage: ' + esc(value["coverage"]) + '</p>'
+    if value["destination_counts"].get("matched"):
+        body = '<p class="notice">Warning: observed destinations match public threat-list networks. Review the local evidence; this is not proof of infection.</p>' + body
+    body += '<p>Unique destinations by state: ' + esc(json.dumps(value["destination_counts"], sort_keys=True)) + '</p>'
+    body += '<p>Matched connection records: ' + str(value["matched_connection_records"]) + '; matched processes: ' + str(value["matched_processes"]) + '; matched records with unverified attribution: ' + str(value["matched_unattributed_records"]) + '</p>'
+    for version, feed in value["feeds"].items():
+        body += '<p>IPv' + version + ' source: ' + esc(feed["source"]) + ' · ' + esc(feed["copyright"]) + ' · Published: ' + esc(feed["published_at"]) + ' · Retrieved: ' + esc(feed["retrieved_at"]) + ' · Expires: ' + esc(feed["expires_at"]) + ' · Freshness at check: ' + esc(feed["freshness"]) + '</p>'
+    return body + '<p>Saved observation, not a current safety verdict. Missing details require explicit local saving permission.</p>'
+
+
 def connection_section(runs):
     for run in runs:
         index, item = run[-1]
-        if item["operation"] != "observe_outbound_connections":
+        if item["operation"] not in {"observe_outbound_connections", "check_connection_destinations"}:
             continue
         value = item.get("connection_observation", {})
         return ('<h2>Connections observed on this PC</h2><p class="quiet">Latest saved observation only, not live traffic. '
@@ -597,7 +614,7 @@ def connection_section(runs):
                 f'Observed records: {esc(value.get("connection_count", "unknown"))} · '
                 f'Processes with start time: {esc(value.get("process_count", "unknown"))} · '
                 f'Observation: {esc(local_time(item))} · Stop reason: {esc(value.get("stop_reason") or "—")}'
-                f'<p>Limitations: {esc(", ".join(value.get("limitations", [])))}</p></div>')
+                f'<p>Limitations: {esc(", ".join(value.get("limitations", [])))}</p>' + destination_threat_summary(item) + '</div>')
     return ""
 
 
@@ -605,7 +622,7 @@ def render(entries: list[dict], loaded: list[tuple[dict | None, str]], meta: dic
     statuses = {status: sum(item["status"] == status for item in entries) for status in sorted(STATUSES)}
     summary = ", ".join(f"{name} {count}" for name, count in statuses.items())
     runs = latest_runs(entries)
-    other_runs = [r for r in runs if r[-1][1]["operation"] not in {"discover_lan_devices", "observe_outbound_connections"}]
+    other_runs = [r for r in runs if r[-1][1]["operation"] not in {"discover_lan_devices", "observe_outbound_connections", "check_connection_destinations"}]
     latest_rows = "".join(latest_row(run) for run in other_runs)
     scans = "".join(
         f'<details class="scan panel" id="scan-{index}"><summary>'

@@ -65,6 +65,9 @@ def main():
     lan_devices.add_argument("--json", action="store_true", help="print the complete LAN observations")
     outbound = commands.add_parser("outbound-connections", help="read OS-visible processes and destinations; no packets or payloads")
     outbound.add_argument("--json", action="store_true", help="print complete socket observations with coverage limitations")
+    outbound.add_argument("--check-ip-threats", action="store_true", help="check cached public threat lists locally; no network lookup")
+    threat_update = commands.add_parser("update-ip-threat-lists", help="explicit local-only public-list download; never sends observed destinations")
+    threat_update.add_argument("--json", action="store_true")
     review = commands.add_parser("review-processes", help="read owner-selected process provenance; anonymous summary by default")
     review.add_argument("--show-details", action="store_true", help="include private process names, PIDs, paths and package metadata locally")
     review.add_argument("--save-details", action="store_true", help="save private details only with process_review.storage.enabled; independent of history settings")
@@ -191,10 +194,13 @@ def main():
         elif args.command != "malware-gaps":
             scanner.via = "cli"
             kwargs = {k: v for k, v in vars(args).items() if k not in {"config", "command", "json", "show_details"}}
-            if args.command in {"malware", "check-clamav-signatures", "lan-devices", "outbound-connections", "review-processes"}:
+            operation = {"lan-devices": "discover_lan_devices", "outbound-connections": "observe_outbound_connections", "review-processes": "review_processes"}.get(args.command, args.command.replace("-", "_"))
+            if args.command == "outbound-connections" and kwargs.pop("check_ip_threats", False):
+                operation = "check_connection_destinations"
+            if args.command in {"malware", "check-clamav-signatures", "lan-devices", "outbound-connections", "review-processes", "update-ip-threat-lists"}:
                 from .progress import CLIProgress
                 with CLIProgress() as display:
-                    report = scanner.invoke({"lan-devices": "discover_lan_devices", "outbound-connections": "observe_outbound_connections", "review-processes": "review_processes"}.get(args.command, args.command.replace("-", "_")),
+                    report = scanner.invoke(operation,
                                             progress=display.progress, cancel=display.cancel, **kwargs)
             else:
                 report = scanner.invoke(args.command.replace("-", "_"), **kwargs)
@@ -242,6 +248,14 @@ def main():
                   row["protocol"], row["classification"], row["attribution_quality"], sep="\t")
         print("Observed records:", data.get("connection_count", "unknown"), "Sampling:", data.get("sampling", {}))
         print("Limitations:", ", ".join(data.get("limitations", [])))
+        if "destination_threats" in data:
+            from .ip_threats import NOTICE
+            print(NOTICE)
+            print("Destination threat-list check:", json.dumps(data["destination_threats"], ensure_ascii=False))
+            for row in data.get("connections", []):
+                assessment = row.get("threat", {})
+                print("Destination check:", row["remote_ip"], row["pid"], row["process"] or "unknown",
+                      assessment.get("state"), assessment.get("reason"), json.dumps(assessment.get("evidence", [])), sep="\t")
         for warning in report["warnings"] + ([report["error"]] if report.get("error") else []):
             print("pc-scanner: " + warning, file=sys.stderr)
     elif args.command == "lan-devices" and not args.json:

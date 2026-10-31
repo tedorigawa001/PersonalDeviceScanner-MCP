@@ -254,7 +254,7 @@ class Store:
             raise OSError("Store permissions or type unavailable")
 
     @contextmanager
-    def open(self, create=False):
+    def open(self, create=False, file_lock=True):
         if os.name != "posix":
             raise OSError("Store backend unavailable")
         self.check()
@@ -303,19 +303,20 @@ class Store:
             self.safe(self.info, True)
             if not local_filesystem(self.fd):
                 raise OSError("Local filesystem could not be verified")
-            import fcntl
-            lockfd = os.open(".lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600, dir_fd=self.fd)
-            self.safe(os.fstat(lockfd))
-            until = min(self.deadline, time.monotonic() + 1)
-            while True:
-                self.check()
-                try:
-                    fcntl.flock(lockfd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                    break
-                except BlockingIOError:
-                    if time.monotonic() >= until:
-                        raise OSError("Store busy") from None
-                    time.sleep(.01)
+            if file_lock:
+                import fcntl
+                lockfd = os.open(".lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600, dir_fd=self.fd)
+                self.safe(os.fstat(lockfd))
+                until = min(self.deadline, time.monotonic() + 1)
+                while True:
+                    self.check()
+                    try:
+                        fcntl.flock(lockfd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        break
+                    except BlockingIOError:
+                        if time.monotonic() >= until:
+                            raise OSError("Store busy") from None
+                        time.sleep(.01)
             self.unchanged()
             yield self
         finally:

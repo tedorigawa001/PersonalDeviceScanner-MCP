@@ -204,6 +204,24 @@ def create_server(scanner: Scanner):
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False,
                                            idempotentHint=False, openWorldHint=False))
+    async def check_connection_destinations(ctx: Context) -> dict:
+        """Observe owner-authorized sockets and check cached public threat lists entirely locally.
+        Anonymous labels, counts, freshness and limitations only: no IPs, PID, process names,
+        ports, CIDRs, reference IDs or paths. No network lookups, updates, payloads or blocking.
+        No match does not prove safety; a match is not proof of infection or actual transmission.
+        No arguments; requires both outbound_connections.enabled and ip_threats.enabled.
+        """
+        try:
+            connections_lock.acquire_nowait()
+        except anyio.WouldBlock:
+            return result("connections", "error", error="Connection observation is busy")
+        try:
+            return await run_engine(ctx, "check_connection_destinations", lock=anyio.Lock(), anonymous_only=True)
+        finally:
+            connections_lock.release()
+
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False,
+                                           idempotentHint=False, openWorldHint=False))
     async def review_processes(ctx: Context) -> dict:
         """Read provenance for owner-configured PID/start-time targets only. No target arguments.
         Returns anonymous labels, runtime categories, verification states and limitations only.

@@ -58,7 +58,8 @@ SOURCES = {"status": "bridge", "inventory": "osquery", "malware": "clamav",
            "check_clamav_signatures": "clamav", "vulnerabilities": "wazuh",
            "android": "adb", "android_check": "adb", "router_check": "router", "router_products": "router",
            "discover_lan_devices": "lan", "observe_outbound_connections": "connections",
-           "review_processes": "process_review"}
+           "review_processes": "process_review", "check_connection_destinations": "connections",
+           "update_ip_threat_lists": "connections"}
 
 # OpenSSL's X509_V_ERR_HOSTNAME_MISMATCH and X509_V_ERR_IP_ADDRESS_MISMATCH.
 WRONG_HOST = {62: "Hostname mismatch: the certificate is not for the host in wazuh.url",
@@ -286,6 +287,7 @@ SETTINGS = {"local": {"osquery_binary", "clamav_binary", "timeout_seconds", "max
             "lan_networks": None,
             "outbound_connections": {"enabled", "duration_seconds", "interval_seconds", "max_connections",
                                      "expose_identifiers_to_mcp", "save_details"},
+            "ip_threats": {"enabled", "allow_updates", "cache_directory", "max_age_hours", "save_details"},
             "process_review": {"enabled", "timeout_seconds", "targets", "storage"}}
 
 
@@ -765,6 +767,8 @@ class Scanner:
         self.config_warnings += lan_warnings
         from . import connections
         self.connection_settings = connections.load(config)
+        from . import ip_threats
+        self.ip_threat_settings = ip_threats.load(config)
         if self.connection_settings["save_details"] and not self.history_details:
             self.config_warnings.append("outbound_connections.save_details has no effect while history.details = false")
         self._connection_lock = threading.Lock()
@@ -834,6 +838,9 @@ class Scanner:
             "android_device_aliases": list(self.android_devices),
             "router_aliases": list(self.routers),
             "outbound_connections_enabled": self.connection_settings["enabled"],
+            "ip_threat_checks_enabled": self.ip_threat_settings["enabled"],
+            "ip_threat_updates_allowed": self.ip_threat_settings["allow_updates"],
+            "ip_threat_cache_backend": "posix" if os.name == "posix" else "unavailable",
             "outbound_connections_mcp_disclosure": self.connection_settings["expose_identifiers_to_mcp"],
             "lan_enabled": self.lan_settings["enabled"],
             "lan_network_aliases": list(self.lan_networks),
@@ -1384,6 +1391,14 @@ class Scanner:
         from . import process_review
         return process_review.review(self, cancel, progress, save_details)
 
+    def check_connection_destinations(self, cancel=None, progress=None, anonymous_only=False) -> dict:
+        from . import connections
+        return connections.observe(self, cancel, progress, check_ip_threats=True)
+
+    def update_ip_threat_lists(self, cancel=None, progress=None) -> dict:
+        from . import ip_threats
+        return ip_threats.update(self, cancel, progress)
+
     def discover_lan_devices(self, network_alias: str, cancel=None, progress=None) -> dict:
         from . import lan
         return lan.discover(self, network_alias, cancel, progress)
@@ -1396,12 +1411,14 @@ class Scanner:
                       "check_clamav_signatures": self.check_clamav_signatures,
                       "discover_lan_devices": self.discover_lan_devices,
                       "observe_outbound_connections": self.observe_outbound_connections,
+                      "check_connection_destinations": self.check_connection_destinations,
+                      "update_ip_threat_lists": self.update_ip_threat_lists,
                       "review_processes": self.review_processes}
         source = SOURCES.get(operation, "bridge")
         started, clock = datetime.now(timezone.utc), time.perf_counter()
         if progress:
             progress.update(stage="preflight" if operation == "malware" else "running")
-            if operation in {"malware", "check_clamav_signatures", "discover_lan_devices", "observe_outbound_connections", "review_processes"}:
+            if operation in {"malware", "check_clamav_signatures", "discover_lan_devices", "observe_outbound_connections", "review_processes", "check_connection_destinations", "update_ip_threat_lists"}:
                 kwargs["progress"] = progress
             else:
                 progress.update(checkpoint="not_applicable")
@@ -1437,21 +1454,26 @@ class Scanner:
                     if operation in {"discover_lan_devices", "observe_outbound_connections"} and progress:
                         progress.update(stage="saving")
                     details = report if self.history_details else None
-                    if operation == "observe_outbound_connections":
+                    if operation in {"observe_outbound_connections", "check_connection_destinations"}:
                         # Destinations show which services were used, so their details need a consent of their own.
                         details = details if self.connection_settings["save_details"] else None
+                        if operation == "check_connection_destinations" and (self.via == "mcp" or kwargs.get("anonymous_only") or not self.ip_threat_settings["save_details"]):
+                            details = None
                         report.setdefault("data", {})["persistence"] = "details_saved" if details else "summary_saved"
                     history.append(self.history_path(), history.entry(
                         operation, kwargs, report, started, time.perf_counter() - clock, self.via),
                         details, self.history_details_mb * 1024 * 1024)
                 except Exception:
                     # Never at the cost of the result: the scan itself already finished.
-                    if operation == "observe_outbound_connections":
+                    if operation in {"observe_outbound_connections", "check_connection_destinations"}:
                         report.setdefault("data", {})["persistence"] = "save_failed"
                     report["warnings"].append("Scan history could not be written; the scan itself is unaffected")
-        if operation in {"observe_outbound_connections", "review_processes"} and progress:
+        if operation in {"observe_outbound_connections", "review_processes", "check_connection_destinations"} and progress:
             progress.update(persistence=report.get("data", {}).get("persistence", "not_saved"))
         if progress:
             progress.finish(report["status"], kwargs.get("cancel"))
             report.setdefault("data", {})["progress"] = progress.snapshot()
+        if operation == "check_connection_destinations" and (self.via == "mcp" or kwargs.get("anonymous_only")):
+            from .ip_threats import anonymous
+            report = anonymous(report)
         return report

@@ -100,8 +100,14 @@ test('the installed package sets itself up on first use and serves MCP on a clea
       await initialize(client);
       const tools = await client.request('tools/list', {});
       assert.deepEqual(tools.result.tools.map((tool) => tool.name).sort(),
-        ['check_android_monitoring_apps', 'check_clamav_signatures', 'check_router', 'collect_android', 'collect_inventory', 'discover_lan_devices', 'get_scan_progress', 'get_vulnerabilities',
+        ['check_android_monitoring_apps', 'check_clamav_signatures', 'check_connection_destinations', 'check_router', 'collect_android', 'collect_inventory', 'discover_lan_devices', 'get_scan_progress', 'get_vulnerabilities',
           'list_malware_gaps', 'observe_outbound_connections', 'rescan_malware_targets', 'review_processes', 'scan_malware', 'scanner_status']);
+      const destinationTool = tools.result.tools.find((tool) => tool.name === 'check_connection_destinations');
+      assert.equal(destinationTool.annotations.readOnlyHint, true);
+      assert.equal(destinationTool.annotations.openWorldHint, false);
+      assert.equal(tools.result.tools.some((tool) => tool.name.includes('update_ip_threat')), false);
+      const destination = await client.request('tools/call', { name: 'check_connection_destinations', arguments: {} });
+      assert.equal(JSON.parse(destination.result.content[0].text).status, 'error'); // disabled: never collects or resolves a cache
       const status = await client.request('tools/call', { name: 'scanner_status', arguments: {} });
       const report = JSON.parse(status.result.content[0].text);
       assert.equal(report.status, 'completed');

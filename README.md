@@ -72,6 +72,7 @@ It cannot supply arbitrary SQL, paths, executables, or connection targets.
 | MCP tool | CLI command | Engine | What it does |
 |---|---|---|---|
 | `scanner_status()` | `status` | none | Shows what is configured. Does not check engines or PC safety |
+| `check_connection_destinations()` | `outbound-connections --check-ip-threats` | osqueryi; downloaded local list | Anonymous MCP destination-list warnings; actual evidence stays local. No network lookup or blocking |
 | `get_scan_progress(scan_id="")` | — | none | Reads recent MCP request progress only, including after cancellation |
 | `review_processes()` | `review-processes [--json] [--show-details]` | osqueryi; macOS launchctl | Owner-selected PID/start-time provenance; anonymous MCP summary, private details only on explicit local CLI display |
 | `check_clamav_signatures()` | `check-clamav-signatures` | clamscan | Reads definition version, date, freshness and update steps; never updates or scans |
@@ -487,6 +488,44 @@ Privilege comparisons and Windows/Linux native acceptance remain unverified; see
 See the [macOS acceptance record](docs/acceptance/outbound-connections-macos-2026-10-30.json).
 See [design and verification plan](docs/outbound-connections-design.md).
 
+### Checking destinations against public threat lists
+
+`pc-scanner --config scanner.toml outbound-connections --check-ip-threats [--json]` checks the observed
+destinations against a previously downloaded public network list entirely on this PC. A match is a warning,
+not proof of infection or actual transmission. No match does not prove safety. Private/local and special-use
+addresses are outside this list's scope; missing, stale or invalid data produces unverified coverage and `partial`.
+These warnings remain separate from malware/vulnerability findings and the dashboard severity chart.
+
+```toml
+[ip_threats]
+enabled = false             # also requires outbound_connections.enabled=true
+allow_updates = false
+cache_directory = ""       # private OS state directory, independent of history.file
+max_age_hours = 48          # 1..168, based on provider publication, not download time
+save_details = false
+```
+
+Enable `allow_updates` and explicitly run `pc-scanner --config scanner.toml update-ip-threat-lists`
+to download the fixed IPv4/IPv6 public feeds. Observation and MCP calls never update or access the network.
+Updates use verified HTTPS, no ambient proxy/credentials, bounded reads and a minimum one-hour attempt interval.
+The provider sees the updater's public source IP and request timing; observed destinations and process data
+are never sent. The cache's parent must already exist; choose an absolute `cache_directory` beneath an
+existing private local parent if needed. POSIX only initially; unsafe permissions, cloud/network storage,
+links and the unimplemented Windows cache backend fail closed. Updates retain the prior generation on failure.
+
+MCP `check_connection_destinations()` takes no arguments and always returns anonymous labels, counts and
+freshness, even if the older observation tool's identifier disclosure is enabled. It never saves real details
+or returns IPs, ports, names, PIDs, CIDRs or listing reference IDs. CLI output contains local evidence.
+Anonymous history summaries are kept only when history is enabled. Local detail saving additionally requires
+`history.details`, `outbound_connections.save_details` and `ip_threats.save_details`; it is never inherited
+from an existing consent alone. The dashboard shows historical check/publication/expiry times and uncertainty,
+with evidence in saved local details only. Static pages do not establish current freshness.
+
+Data attribution: [Spamhaus Project DROP](https://www.spamhaus.org/blocklists/do-not-route-or-peer/),
+IPv4/IPv6 network lists, used under the linked [terms](https://www.spamhaus.org/blocklists/drop-fair-use-policy/).
+Provider copyright and publication dates accompany the data and results. The datasets are not bundled.
+See [design and verification plan](docs/ip-threat-check-design.md).
+
 ### Reviewing process provenance (stage 1)
 
 `pc-scanner --config scanner.toml review-processes --json` checks only owner-configured PID/start-time
@@ -570,6 +609,7 @@ with `neighbor_cache=true` and `mdns=false` by default. See the LAN example abov
 | Setting | Description | Default |
 |---|---|---|
 | `outbound_connections` | Opt-in sampled socket observation; duration 1..60, interval 1..10, max records 1..2000; MCP disclosure and saved details each require explicit permission | disabled |
+| `ip_threats` | Offline destination-list checks; separate local CLI update permission, private cache, publication-age limit 1..168 hours, additional local detail consent; anonymous MCP | disabled |
 | `process_review` | Owner-selected PID/start-time targets, max 16; anonymous MCP summary; timeout 1..60 seconds | disabled |
 | `process_review.storage` | Local CLI double-consent storage, private permissions, expiry and selected deletion; never exposed to MCP | disabled |
 | `local.osquery_binary` | Absolute path to osqueryi. Empty disables it | empty |
