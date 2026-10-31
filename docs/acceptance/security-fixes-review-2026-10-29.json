@@ -162,5 +162,49 @@
     "full_tests_rerun_for_documentation_update": false,
     "product_code_changed": false,
     "commit_or_push_performed": false
+  },
+  "later_ci_follow_up": {
+    "date": "2026-10-31",
+    "scope": "A later intermittent CI failure of a test added in this review, its test-only fix and the next CI run; this section does not change the 2026-10-29 review results",
+    "failure": {
+      "commit": "a9575dd639371255c9e7dff38e01bae9c87596e1",
+      "commit_changes": "Documentation only",
+      "run": 41204160689,
+      "job": "Test (windows-latest, Python 3.11)",
+      "python": "3.11.9",
+      "result": {"jobs": 22, "passed": 21, "failed": 1, "tests": 636, "test_failures": 1, "skipped": 80},
+      "test": "tests.test_lan.LANTests.test_cancel_or_deadline_during_an_os_read_is_not_a_network_change_or_error",
+      "subtest": "at=5, reason=timeout",
+      "assertion": "stop_reason was network_changed instead of timeout",
+      "first_seen": "No earlier failed main run since 3babbb4 involved this test"
+    },
+    "cause": {
+      "summary": "The test's simulated OS read waited with time.sleep only, while check() decides the deadline with time.monotonic. On Windows Python 3.11 time.monotonic advances in coarse ticks (about 15.6 ms), so the read could end while the scan still looked inside its deadline and its error was treated as a network change",
+      "confidence": "inferred from the code, the CI log and Python's documented Windows clocks; supported by a 16 ms coarse-clock simulation, not observed on Windows directly",
+      "product_impact": "None found: run_bounded starts its own deadline on time.monotonic after the remaining time is read and reports a timeout only once that clock passes it, which is never before the scan deadline",
+      "other_pythons": "Python 3.13 and later use a fine-grained monotonic clock on Windows; the 3.14 and 3.15 jobs passed"
+    },
+    "fix": {
+      "commit": "984b6649844879badf57b1952dae42e2470f48c1",
+      "change": "The simulated read now waits until time.monotonic passes its deadline, as run_bounded does; product code unchanged",
+      "tests_test_lan_py_sha256": "2c6a5ac88bbb74d96eac53cebc24e227904c380d97b892ac43de9d8af1ce4af5",
+      "coarse_clock_simulation": {"clock_step_ms": 16, "runs_each": 16, "failed_before_fix": 3, "failed_after_fix": 0},
+      "local_full_tests": {"pythons": ["3.14.10", "3.15.2"], "tests": 636, "failures": 0, "skipped": 17},
+      "real_history_unchanged": true
+    },
+    "ci_run_after_fix": {
+      "commit": "984b6649844879badf57b1952dae42e2470f48c1",
+      "run": 41207809721,
+      "conclusion": "success",
+      "jobs": {"total": 22, "passed": 22},
+      "tests_per_job": 636,
+      "skipped": {"macos": 17, "ubuntu": 18, "windows": 80},
+      "windows_python_3_11": {"python": "3.11.9", "test": "passed"},
+      "not_covered": [
+        "One passing run cannot rule out an intermittent failure; the earlier failure was seen once",
+        "The Windows clock cause is inferred, not observed directly",
+        "The windows_verification items of this review (native Windows machine, WSAEMSGSIZE metadata, multicast interface selection, port 5353 coexistence) remain open"
+      ]
+    }
   }
 }
