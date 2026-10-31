@@ -494,6 +494,7 @@ See [design and verification plan](docs/outbound-connections-design.md).
 destinations against a previously downloaded public network list entirely on this PC. A match is a warning,
 not proof of infection or actual transmission. No match does not prove safety. Private/local and special-use
 addresses are outside this list's scope; missing, stale or invalid data produces unverified coverage and `partial`.
+So do connections the observation had to drop, such as unreadable socket rows or a reached record limit.
 Destinations that matched only an out-of-date list stay unverified, but the CLI, MCP, history and dashboard count
 them separately and prompt you to update the list and check again.
 These warnings remain separate from malware/vulnerability findings and the dashboard severity chart.
@@ -517,7 +518,8 @@ existing private local parent if needed. POSIX only initially; unsafe permission
 links and the unimplemented Windows cache backend fail closed. Updates retain the prior generation on failure.
 
 MCP `check_connection_destinations()` takes no arguments and always returns anonymous labels, counts and
-freshness, even if the older observation tool's identifier disclosure is enabled. It never saves real details
+freshness, plus fixed observation limitation codes and counts that explain a `partial` result,
+even if the older observation tool's identifier disclosure is enabled. It never saves real details
 or returns IPs, ports, names, PIDs, CIDRs or listing reference IDs. CLI output contains local evidence.
 Anonymous history summaries are kept only when history is enabled. Local detail saving additionally requires
 `history.details`, `outbound_connections.save_details` and `ip_threats.save_details`; it is never inherited

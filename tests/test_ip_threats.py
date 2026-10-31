@@ -368,6 +368,30 @@ class CacheTests(unittest.TestCase):
         self.assertIn('destination_threats',anon['data'])
         self.assertTrue(any('Historical match count unavailable' in w for w in anon['warnings']))
 
+    def test_legacy_summary_without_unverified_destinations_has_zero_historical_matches(self):
+        self.write()
+        with patch.object(t,'clock',return_value=NOW):r=self.observe()
+        item=history.entry('check_connection_destinations',{},r,NOW,1,'cli')
+        del item['destination_threats']['historical_match_destinations']
+        parsed=history.parse(json.dumps(item))
+        self.assertEqual(parsed['destination_threats']['historical_match_destinations'],0)
+        self.assertNotIn('Historical match count unavailable',dashboard.destination_threat_summary(parsed))
+
+    def test_dropped_rows_make_coverage_unverified_and_reasons_reach_anonymous_reply(self):
+        self.write()
+        rows=[self.row(),self.row(family='2',remote_address='2606:4700::1')]
+        with patch.object(t,'clock',return_value=NOW):r=self.observe(rows)
+        v=r['data']['destination_threats']
+        self.assertEqual(v['destination_counts'],{'matched':1});self.assertEqual(v['coverage'],'unverified')
+        self.assertEqual(r['status'],'partial')
+        anon=t.anonymous(r)
+        self.assertIn('invalid_rows',anon['data']['observation_limitations'])
+        self.assertEqual(anon['data']['unavailable_counts'].get('invalid_rows'),1)
+        self.assertTrue(any('do not treat this as a negative result' in w for w in anon['warnings']))
+        # Only fixed codes and counts: an unexpected string or key never reaches the reply.
+        r['data']['limitations'].append('8.8.8.8');r['data']['unavailable_counts']['8.8.8.8']=1
+        raw=json.dumps(t.anonymous(r));self.assertNotIn('8.8.8.8',raw);self.assertNotIn('2606:4700::1',raw)
+
     def test_invalid_or_future_attempt_record_resets_without_request(self):
         self.write()
         for raw in [json.dumps({'attempted_at':t.stamp(NOW+timedelta(days=365))}).encode(),b'{broken']:

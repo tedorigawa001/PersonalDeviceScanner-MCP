@@ -186,7 +186,12 @@ def normalize(row, self_ips, broadcasts, sample, stamp):
     if protocol == 17 and ipaddress.ip_address(remote).is_unspecified and number(row["remote_port"], 65535) == 0:
         return None, "destination_unavailable"
     original_version = ipaddress.ip_address(row["remote_address"].split("%", 1)[0]).version
-    if (family == 2) != (original_version == 4):
+    # osquery on macOS reports every AF_INET6 socket as family 10 and prints both endpoints of a dual-stack
+    # socket in IPv4 mode (insi_vflag INI_IPV4) as plain IPv4: the ::ffff: mapped form on other systems.
+    local_raw = row["local_address"]
+    dual_stack_ipv4 = (family == 10 and original_version == 4 and isinstance(local_raw, str)
+                       and ipaddress.ip_address(local_raw.split("%", 1)[0]).version == 4)
+    if (family == 2) != (original_version == 4) and not dual_stack_ipv4:
         raise ValueError
     if ipaddress.ip_address(remote).is_unspecified:
         return None, "destination_unavailable" if protocol == 17 else "listening_or_unconnected"

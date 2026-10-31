@@ -287,6 +287,21 @@ class ConnectionTests(unittest.TestCase):
                 c.normalize(self.row(protocol="17", family="30", local_address="::", remote_address="0.0.0.0",
                                      remote_port="0") | changes, set(), set(), 1, "t")
 
+    def test_macos_dual_stack_socket_in_ipv4_mode_is_an_ipv4_connection(self):
+        # osquery on macOS prints both endpoints of an AF_INET6 socket in IPv4 mode as plain IPv4, with family 10.
+        key, row = c.normalize(self.row(family="10"), set(), set(), 1, "t")[0]
+        self.assertEqual((row["family"], row["remote_ip"], row["classification"]), ("IPv4", "8.8.8.8", "internet_candidate"))
+        listening = self.row(family="10", local_address="0.0.0.0", remote_address="0.0.0.0", remote_port="0", state="LISTEN")
+        self.assertEqual(c.normalize(listening, set(), set(), 1, "t"), (None, "listening_or_unconnected"))
+        # Only both endpoints in plain IPv4 form match that representation; any other mix stays invalid.
+        for changes in ({"local_address": "::"}, {"local_address": "fe80::2%en0"}, {"local_address": None},
+                        {"family": "30"}, {"family": "23"}, {"family": "2", "remote_address": "2606:4700::1"}):
+            with self.subTest(changes=changes), self.assertRaises(ValueError):
+                c.normalize(self.row(family="10") | changes, set(), set(), 1, "t")
+        report = self.observe([self.row(family="10")])
+        self.assertEqual(report["status"], "completed", report)
+        self.assertNotIn("invalid_rows", report["data"]["limitations"])
+
     def test_progress_contains_only_counters_and_persistence(self):
         p = ScanProgress()
         self.observe(progress=p)

@@ -270,7 +270,7 @@
     "progress": "Notification strings and get_scan_progress responses allowlisted; no names/PIDs/addresses/ports/paths/CIDRs or reference IDs",
     "no_network": "Both MCP server and acceptance client denied Python DNS/connect calls; all counters zero; updater/download/history/default-path callbacks also zero",
     "cache": "Content, permissions, owner, size, inode and mtime unchanged; read access time not asserted",
-    "evidence": "Private workspace0700 and files0600; no raw observations, identifying hashes or private paths in this repository record"
+    "evidence": "Private workspace 0700 and files 0600; no raw observations, identifying hashes or private paths in this repository record"
   },
   "remaining": [
     "Normalize or explicitly classify family=10 with IPv4 endpoints on macOS, using verified backend semantics and safe regressions",
@@ -289,5 +289,33 @@
     "ip-mcp-macos-acceptance.py": "197c4572ede557b56be850480b07d115f5e0a1a9ee9b8a5fcbf6f61a35bc5b54"
   },
   "harness_note": "The server harness hash includes the later conditional invalid-row diagnostic hook; the two primary runs did not enable that hook.",
-  "local_evidence": "Actual identifiers and raw diagnostic rows are retained only in the private temporary workspace for follow-up; no automatic retention cleanup is claimed"
+  "local_evidence": "Actual identifiers and raw diagnostic rows are retained only in the private temporary workspace for follow-up; no automatic retention cleanup is claimed",
+  "follow_up_fixes": {
+    "date": "2026-10-31",
+    "base_commit": "7497624ec1d15f214fc7032d280fc545ecdd59da",
+    "backend_semantics": "osquery public macOS source (process_open_descriptors.cpp, identical at tag 5.23.1 and current master) reports every AF_INET6 socket as family 10 and prints both endpoints as IPv4 when insi_vflag has INI_IPV4, the dual-stack IPv4 mode shown as ::ffff: mapped addresses on other systems",
+    "fixes": [
+      "family 10 rows whose local and remote addresses are both plain IPv4 are normalized as IPv4 connections and matched; every other family/address mix is still rejected as invalid_rows",
+      "Destination coverage becomes unverified when the observation dropped or cut off connections (invalid_rows, connection/result-size/read limits, network change, timeout, cancel)",
+      "The anonymous MCP reply adds allowlisted observation limitation codes and invalid_rows/destination_unavailable/attribution_unavailable counts",
+      "Legacy saved summaries without unverified destinations report zero historical matches instead of an unknown count"
+    ],
+    "privacy": "The private diagnostic rows were not read for this fix; synthetic rows and the public osquery source only",
+    "source_sha256": {
+      "pc_scanner/connections.py": "32af7de722cc238c8d09e521047f09d8752794798de73efb97a3180c9c5be465",
+      "pc_scanner/ip_threats.py": "54e7b4fd614a5a299a2f3737575fd09b4303e8de325fe1e79792cc53a3a280bf",
+      "tests/test_connections.py": "6e363cb7d1c3b2f3fff3b91e6d187e265106e705433dee37a11e355347082ae8",
+      "tests/test_ip_threats.py": "63a2c92325a0a4b59b202134f3fc03a0cd0064f5fb69c5380d996a188cab7283"
+    },
+    "verification": {
+      "new_tests": 3,
+      "new_tests_fail_on_base_commit": true,
+      "full_suite": [
+        {"python": "3.14.10", "total": 616, "passed": 609, "skipped": 7, "failures": 0, "errors": 0},
+        {"python": "3.15.2", "total": 616, "passed": 609, "skipped": 7, "failures": 0, "errors": 0}
+      ],
+      "npm": "Not rerun: the tool list and npm launcher are unchanged"
+    },
+    "not_covered": "Not yet re-run on real connections; the two primary runs above used the code before these fixes"
+  }
 }

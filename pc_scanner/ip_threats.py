@@ -26,6 +26,11 @@ STATES = {"matched", "not_listed", "unverified", "not_applicable"}
 NOTICE = "Public threat-list matches are warnings, not proof of infection or transmission. No match does not prove safety."
 HISTORICAL = ("Some destinations matched only an out-of-date public threat list and remain unverified; "
               "update the list locally and check again")
+# Fixed per-reason counts of observed rows that could not be used, safe for the anonymous reply.
+UNAVAILABLE = {"invalid_rows", "destination_unavailable", "attribution_unavailable"}
+# Observation limits under which seen connections were dropped before matching: "none listed" is then incomplete.
+DROPPED = {"invalid_rows", "connection_limit", "result_size_limit", "read_limit", "total_byte_limit",
+           "network_changed", "timeout", "cancelled"}
 HISTORICAL_UNKNOWN = ("Historical match count unavailable in this older saved summary; do not assume zero. "
                       "Update the list locally and check again")
 
@@ -351,13 +356,15 @@ def enrich(scanner, report, deadline, cancel=None, progress=None):
         "matched_connection_records": len(matched),
         "matched_processes": len({(r["pid"], r["process_started_at_epoch"]) for r in matched if r["attribution_quality"] != "unverified"}),
         "matched_unattributed_records": sum(r["attribution_quality"] == "unverified" for r in matched),
-        "coverage": "unverified" if reason or any(f["freshness"] != "fresh" for f in metadata.values()) or not metadata else "checked",
+        "coverage": "unverified" if reason or any(f["freshness"] != "fresh" for f in metadata.values()) or not metadata
+                    or DROPPED & set(data.get("limitations", [])) else "checked",
         "notice": NOTICE}
     data["destination_threats"] = summary
     if counts.get("unverified") or summary["coverage"] == "unverified":
         if report["status"] != "error":
             report["status"] = "partial"
-        report["warnings"].append("Destination threat-list coverage is incomplete; stale, unavailable or unfinished checks are unverified")
+        report["warnings"].append("Destination threat-list coverage is incomplete; stale, unavailable or unfinished checks "
+                                  "and connections the observation dropped are unverified")
     if matched:
         report["warnings"].append("Observed destinations match public threat-list networks; review the local evidence and process attribution")
     if historical:
@@ -376,9 +383,15 @@ def anonymous(report):
         processes.setdefault(key, Counter())[state if state in STATES else "unverified"] += 1
     rows = [{"label": f"P{i:02}", "attribution": "unverified" if key == ("unattributed",) else "os_reported_start_time",
              "connection_states": dict(counts)} for i, (key, counts) in enumerate(processes.items(), 1)]
+    # Fixed codes and counts only, so a partial result explains itself without any identifier.
+    limits = data.get("limitations", [])
+    unavailable = data.get("unavailable_counts", {})
     out = result("connections", report["status"], data={"destination_threats": value,
         "processes": rows[:100], "omitted_process_count": max(0, len(rows) - 100),
         "connection_count": data.get("connection_count", 0), "stop_reason": data.get("stop_reason") if data.get("stop_reason") in c.REASONS else None,
+        "observation_limitations": sorted({v for v in limits if v in set(c.BASE_LIMITS) | c.REASONS}) if isinstance(limits, list) else [],
+        "unavailable_counts": {k: v for k, v in unavailable.items() if k in UNAVAILABLE and type(v) is int and v >= 0}
+                              if isinstance(unavailable, dict) else {},
         "persistence": data.get("persistence", "not_saved")},
         error="Destination check did not complete; check local permissions and configuration" if report.get("error") else None,
         warnings=[NOTICE, "Anonymous summary only; real destinations and process identifiers remain local"])
@@ -408,10 +421,13 @@ def summary(data):
         if sum(clean.values()) != total:
             return {}
         # Matches against an expired list are a subset of the unverified destinations, never a separate total.
-        # Older saved summaries did not record this count. Keep their evidence, without guessing zero.
+        # Older saved summaries did not record this count. Keep their evidence, without guessing zero,
+        # unless no destination was unverified: then none can have matched only an expired list.
         historical = value.get("historical_match_destinations")
         if historical is not None:
             historical = private.integer(historical, clean.get("unverified", 0))
+        elif not clean.get("unverified"):
+            historical = 0
         out = {"checked_at": stamp(checked), "destination_counts": clean, "unique_destinations": total,
                "historical_match_destinations": historical,
                "coverage": private.choice(value["coverage"], {"checked", "unverified"}), "notice": NOTICE,
