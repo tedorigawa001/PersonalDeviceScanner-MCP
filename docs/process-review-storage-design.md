@@ -3,7 +3,8 @@
 状態：初期実装済み（2026-10-31）。macOSの合成データと既存2プロセスで保存・管理・MCP非保存を部分受入。
 Linux arm64コンテナでも実osquery・CLI・MCPとoverlay/tmpfsの保存・管理を部分受入。
 合成ページのリンク移動・詳細開閉と、修正後の詳細JSONの改行表示は所有者が実ブラウザーで確認済み。
-物理Linuxホスト・他構成・新CIは未確認。Windows保存は未対応。
+CI（`a64cffc`、Ubuntu・macOS・Windows）は全ジョブ成功。保存の試験はUbuntu・macOSで全件実行され、Windowsでは保存拒否のためskip。
+物理Linuxホスト・他構成は未確認。Windows保存は未対応。
 [第1段階](process-review-design.md)の収集範囲と匿名MCP応答を維持し、所有者がローカルCLIで保存・閲覧する。
 通常履歴への保存は追加しない。[検証記録](acceptance/process-review-storage-2026-10-31.json)を参照。
 [macOS受入記録](acceptance/process-review-storage-macos-2026-10-31.json)では、実osqueryの親開始時刻`-1`を

@@ -222,5 +222,23 @@
     "date": "2026-10-31",
     "record": "process-review-dashboard-manual-2026-10-31.json",
     "scope": "Owner-confirmed synthetic page link/disclosure interaction and screenshot; formatter-newline fix with regression; owner also confirmed post-fix JSON newline rendering"
+  },
+  "ci_run_after_push": {
+    "date": "2026-10-31",
+    "run_id": 41166255148,
+    "head_sha": "a64cffc",
+    "conclusion": "success",
+    "jobs": {"total": 22, "passed": 22, "failed": 0},
+    "tests_per_job": {
+      "ubuntu-latest": {"python_versions": ["3.11", "3.14", "3.15"], "total": 579, "skipped": 8, "failures": 0, "errors": 0},
+      "macos-latest": {"python_versions": ["3.11", "3.14", "3.15"], "total": 579, "skipped": 7, "failures": 0, "errors": 0},
+      "windows-latest": {"python_versions": ["3.11", "3.14", "3.15"], "total": 579, "skipped": 54, "failures": 0, "errors": 0}
+    },
+    "store_tests": {
+      "ubuntu_and_macos": "36 of 36 passed on each Python, including the /proc/self/mountinfo local-filesystem check on Ubuntu",
+      "windows": "34 skipped as 'Private store backend is POSIX only' (saving is refused on Windows by design); the settings check and the real-MCP test with storage enabled passed"
+    },
+    "npm_jobs": "12 of 12 passed",
+    "remaining": "CI runs synthetic tests on hosted runners only; physical Linux hosts and other distributions/architectures remain unverified, and Windows storage is unsupported."
   }
 }
