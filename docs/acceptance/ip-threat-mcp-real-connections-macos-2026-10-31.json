@@ -316,6 +316,16 @@
       ],
       "npm": "Not rerun: the tool list and npm launcher are unchanged"
     },
-    "not_covered": "Not yet re-run on real connections; the two primary runs above used the code before these fixes"
+    "not_covered": "Not re-run on real connections when these fixes were made; the two primary runs above used the code before them. The later re-run is recorded separately (real_connection_reacceptance)",
+    "real_connection_reacceptance": "ip-threat-cli-mcp-reacceptance-macos-2026-10-31.json",
+    "ci_run_after_push": {
+      "run_id": 41189537952,
+      "commit": "9d03aff",
+      "first_ci_for": "127d8f9",
+      "conclusion": "success",
+      "jobs": {"total": 22, "success": 22, "failure": 0},
+      "tests": "macOS, Ubuntu and Windows on Python 3.11, 3.14 and 3.15 each ran 616 tests without failures (skipped: 7 macOS, 8 Ubuntu, 80 Windows); all npm launcher jobs succeeded",
+      "windows_skips": "Three more than before: the new cache tests, which run only on POSIX"
+    }
   }
 }
