@@ -5,7 +5,7 @@
 
 ## 高
 
-- [ ] **最新2修正のWindows CIを対象SHAで確認する**（2026-10-31：push後の実行でWindowsが失敗、修正済み・再実行待ち）
+- [x] **最新2修正のWindows CIを対象SHAで確認する**（2026-10-31：push後の実行でWindowsが失敗、修正後の再実行で全22ジョブ成功）
   - 現在の対象はプロセス確認 `4c6fb4401c04115685c599e9b239f27625b7abdd` と
     チェックポイント `dac704724c16ef0275a95d0e39cbf956d4b94b13`。両SHAのActions実行は0件、
     GitHubのコミット照会はともに422（No commit found for SHA）。対象はリモート側で見つからず、Windowsの合否は未確認。
@@ -30,6 +30,11 @@
       `\`が二重になるのに、試験が生のパスを探していた。非表示側の確認もWindowsでは空振りしていた。試験だけを直し、製品コードは変更なし。
     - Windowsでの`st_ctime`の食い違いを再現する回帰1件を追加（修正を戻すとCIと同じく「取得不可」になることを確認）。
       Windowsでの成功は、修正をpushした後のCIで確認する。[CI記録](acceptance/windows-ci-latest-fixes-2026-10-31.json)。
+  - 2026-10-31：修正後の`dd1120d`の[CI](https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/runs/41159045122)は22ジョブすべて成功。
+    WindowsのPython 3.11・3.14・3.15で各543件、POSIX専用の20件skip・失敗0。チェックポイントの試験は各23件すべて成功し（skipなし）、
+    `st_ctime`の回帰とプロセス確認のパス確認も成功。Windowsのnpm 4ジョブも成功。
+    CIはホスト型ランナー上の合成試験だけで、実osquery・ClamAVを使うWindows実機受入と、
+    プロセス確認のWindowsファイル読取（第1段階で未実装）は「各OSの実機で受入試験を行う」等で引き続き扱う。
 
 - [ ] **各OSの実機で受入試験を行う**
   - 2026-10-12: macOS 26.7.1 / x86_64 の osquery 5.23.1・ClamAV 1.5.4 を通常ユーザーで試験済み。

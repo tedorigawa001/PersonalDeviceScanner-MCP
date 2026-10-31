@@ -580,5 +580,21 @@
       "real_history_unchanged": true
     },
     "rerun": "Pending: Windows success can only be confirmed by the CI run after this fix is pushed."
+  },
+  "ci_rerun_after_fix": {
+    "date": "2026-10-31",
+    "run_id": 41159045122,
+    "head_sha": "dd1120d",
+    "conclusion": "success",
+    "jobs": {"total": 22, "passed": 22, "failed": 0},
+    "windows_tests": {
+      "python_versions": ["3.11", "3.14", "3.15"],
+      "per_job": {"total": 543, "skipped": 20, "failures": 0, "errors": 0},
+      "skip_reasons": "POSIX-only tests (descriptor-based file reader, permissions, links); no checkpoint test skipped",
+      "checkpoint_tests_passed": "23 of 23 on each Windows Python, including the st_ctime regression",
+      "process_review_path_checks": "test_cli_default_does_not_disclose_private_details and the anonymous response check passed on each Windows Python"
+    },
+    "windows_npm_jobs": "4 of 4 passed",
+    "remaining": "CI covers synthetic tests on hosted runners only; native Windows acceptance with real osquery/ClamAV, and Windows process-review file reading (not implemented in stage 1), remain open."
   }
 }
