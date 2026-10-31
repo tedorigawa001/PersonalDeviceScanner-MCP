@@ -1,8 +1,11 @@
 # プロセス確認のローカル詳細保存・ダッシュボード表示
 
-状態：初期実装済み（2026-10-31）。macOSの合成データで回帰を確認。Windows保存・新CI・各OS実機受入は未確認／未対応。
+状態：初期実装済み（2026-10-31）。macOSの合成データと既存2プロセスで保存・管理・MCP非保存を部分受入。
+実ブラウザー操作、Linux実機・新CIは未確認。Windows保存は未対応。
 [第1段階](process-review-design.md)の収集範囲と匿名MCP応答を維持し、所有者がローカルCLIで保存・閲覧する。
 通常履歴への保存は追加しない。[検証記録](acceptance/process-review-storage-2026-10-31.json)を参照。
+[macOS受入記録](acceptance/process-review-storage-macos-2026-10-31.json)では、実osqueryの親開始時刻`-1`を
+保存時に未取得の`null`に正規化し、確認済みの時刻として扱わない修正も検証した。
 
 ## 目的と対象外
 

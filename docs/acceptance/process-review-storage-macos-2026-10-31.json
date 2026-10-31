@@ -1,0 +1,113 @@
+{
+  "date": "2026-10-31",
+  "status": "macos_partial_acceptance_passed",
+  "target_count": 2,
+  "checks": {
+    "enabled_without_flag_does_not_save": true,
+    "disabled_storage_refuses_save": true,
+    "cli_save_owner_permissions": true,
+    "list_details_require_flag": true,
+    "html_static_disclosures_links_csp_uncertainty": true,
+    "actual_mcp_anonymous_no_store_changes": true,
+    "stale_revision_preserves_record": true,
+    "selected_delete_invalidates_html": true,
+    "unselected_record_unchanged": true,
+    "controlled_clock_expiry_minus_exact_plus_microsecond_and_prune": true,
+    "ordinary_history_not_written": true,
+    "selected_inputs_content_and_modes_unchanged": true,
+    "trial_records_removed": true
+  },
+  "collection_status": "partial",
+  "mcp_status": "partial",
+  "saved_snapshot_status": "partial",
+  "expiry_states": [
+    "active",
+    "expired",
+    "expired"
+  ],
+  "browser": "not_attempted_due_to_existing_file_URL_policy_rejection",
+  "retention_test": "Store clock patched only; operating system clock unchanged; not a natural seven-day wait",
+  "limitations": [
+    "No actual browser rendering, disclosure operation or navigation verified",
+    "Linux native / Windows storage backend / new CI not verified",
+    "Does not prove maliciousness, actual dependency loading, signature trust or absence of malicious behavior",
+    "Controlled expiry supplements real filesystem acceptance; not natural elapsed retention",
+    "Private static HTML copies, backups and already displayed DOM are outside managed deletion"
+  ],
+  "privacy": "Actual identifiers, details, inputs and individual revisions remain private locally; no payload capture or target script execution",
+  "feature": "Private process review storage on existing macOS processes",
+  "base_commit": "fcec05c604a3fa9e017601fa71c0e90f6b517e23",
+  "source_state": "Uncommitted acceptance fix on the base commit",
+  "source_sha256": {
+    "pc_scanner/process_store.py": "a37f1c4723ab4103b79481b7d3c224b4c4e38012881ef995c3f99a5938c2fb0a",
+    "pc_scanner/process_review.py": "db54c16f6207939b5f02b67b0034158267f1ea90fa8168e9e382760641b2c542",
+    "pc_scanner/core.py": "beb792f5baaabeb2858fae98df015931261a52508459010c8e29b544378ef261",
+    "pc_scanner/cli.py": "66a78cd4242a7b1be7ed9ed9e777975f7a611094543e4775ff2e445729b1df4e",
+    "pc_scanner/server.py": "fe51f9ae8057e02dad13884e70b777d28ecea94099798db28235671d6fc528f6",
+    "tests/test_process_store.py": "3bf94fcdf6b37c94f940a19bdf672f4b5406943490c3788ea41d3d48b6a88fdb"
+  },
+  "environment": {
+    "os": "Darwin",
+    "architecture": "arm64",
+    "python": [
+      "3.14.10",
+      "3.15.2"
+    ],
+    "transport": "Actual local MCP SDK stdio; no external LLM service"
+  },
+  "initial_failure": {
+    "symptom": "Explicit CLI save returned save_failed for existing runtime process",
+    "cause": "osquery parent_start_time -1 rejected as invalid count in snapshot projection",
+    "fix": "Normalize only parent_start_time integer/string -1 to null; other negative numeric fields remain rejected",
+    "regression": "Reproduced failure before fix; two new tests pass after fix"
+  },
+  "scope": {
+    "python_3_14": "Two existing processes; CLI save/list/HTML/delete, MCP non-persistence, controlled expiry and pruning",
+    "python_3_15": "Same scope, plus two records with unselected record bytes preserved by selected deletion and strict MCP field allowlist",
+    "inputs": "Only already-running owner-selected processes and selected metadata files; no target scripts executed or dependencies installed",
+    "retention": "Controlled clock in store management only. No operating-system clock change or natural seven-day waiting test",
+    "artifacts": "Dedicated private temporary stores. Trial records and managed pages removed; private raw evidence retained locally with owner-only permissions"
+  },
+  "verification": {
+    "related_tests": {
+      "total": 55,
+      "passed": 55,
+      "skipped": 0
+    },
+    "initial_full_suite_attempts": {
+      "python": [
+        "3.14.10",
+        "3.15.2"
+      ],
+      "total_each": 578,
+      "errors_each": 13,
+      "skipped_each": 7,
+      "cause": "Execution environment denied local loopback bind in existing Wazuh tests; rerun with loopback permission"
+    },
+    "full_suite_rerun": [
+      {
+        "python": "3.14.10",
+        "total": 578,
+        "passed": 571,
+        "skipped": 7,
+        "skip_reason": "Windows-only tests on macOS",
+        "failures": 0,
+        "errors": 0,
+        "seconds": 41.723,
+        "command": "bdo .venv/bin/python -m unittest discover -s tests -q"
+      },
+      {
+        "python": "3.15.2",
+        "total": 578,
+        "passed": 571,
+        "skipped": 7,
+        "skip_reason": "Windows-only tests on macOS",
+        "failures": 0,
+        "errors": 0,
+        "seconds": 41.14,
+        "command": "bdo .venv-dev/bin/python -m unittest discover -s tests -q"
+      }
+    ],
+    "npm": "Not rerun for this acceptance; no launcher change"
+  }
+}

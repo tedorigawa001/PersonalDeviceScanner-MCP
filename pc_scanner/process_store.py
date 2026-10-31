@@ -124,6 +124,10 @@ def detail(kind, obj):
         out = {}
         for k in ("pid", "start_time", "parent", "parent_start_time"):
             v = obj.get(k)
+            # osquery can report -1 for an unavailable parent's start time.
+            # Preserve the lack of evidence rather than treating it as a timestamp.
+            if k == "parent_start_time" and (type(v) is int and v == -1 or v == "-1"):
+                v = None
             out[k] = None if v in (None, "") else integer(int(v) if isinstance(v, str) and v.isascii() and v.isdigit() else v, 253402300799)
         out.update({k: text(obj.get(k), nullable=True) for k in ("path", "name", "parent_path")})
         return out

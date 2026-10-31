@@ -6,6 +6,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import secrets
 from pathlib import Path
 import stat
 import subprocess
@@ -98,6 +99,25 @@ class StoreTests(unittest.TestCase):
         for action in ["list", "prune", "dashboard"]:
             self.assertFalse(self.manage(action)["data"]["store_exists"])
             self.assertFalse(self.folder.exists())
+
+    def test_unavailable_parent_start_time_can_be_saved_without_claiming_a_time(self):
+        for value in (-1, "-1"):
+            with self.subTest(value=value):
+                report = self.report()
+                report["data"]["run_id"] = secrets.token_hex(16)
+                report["data"]["processes"][0]["details"]["process"]["parent_start_time"] = value
+                rid = self.save(report=report)
+                saved = json.loads((self.folder / (rid + ".json")).read_text())
+                self.assertIsNone(saved["snapshot"]["processes"][0]["details"]["process"]["parent_start_time"])
+
+    def test_other_negative_process_fields_still_refused(self):
+        for field, value in (("pid", -1), ("start_time", -1), ("parent", -1), ("parent_start_time", -2)):
+            with self.subTest(field=field):
+                report = self.report()
+                report["data"]["processes"][0]["details"]["process"][field] = value
+                store.save(self.scanner(), report)
+                self.assertEqual(report["data"]["persistence"], "save_failed")
+                self.assertFalse(self.folder.exists())
 
     def test_save_whitelist_permissions_and_no_general_history(self):
         rid = self.save()

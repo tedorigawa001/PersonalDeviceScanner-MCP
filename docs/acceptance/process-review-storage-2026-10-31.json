@@ -170,16 +170,46 @@
     "new_tests": 3,
     "extended_tests": 1,
     "verification": {
-      "python314_full": {"total": 576, "passed": 569, "skipped": 7, "failures": 0, "errors": 0},
-      "python315_full": {"total": 576, "passed": 569, "skipped": 7, "failures": 0, "errors": 0},
-      "npm_python314": {"tests": 26, "pass": 25, "skipped": 1,
-                        "skipped_reason": "the opt-in package end-to-end test installs from PyPI and was not run for this change"},
-      "mutations": {"total": 6, "caught": 6, "cases": [
-        "unrelated files checked as own", "missing parent not handled", "every stop called interrupted",
-        "folder never synced", "folder sync failure propagates", "CLI drops the reason"]},
+      "python314_full": {
+        "total": 576,
+        "passed": 569,
+        "skipped": 7,
+        "failures": 0,
+        "errors": 0
+      },
+      "python315_full": {
+        "total": 576,
+        "passed": 569,
+        "skipped": 7,
+        "failures": 0,
+        "errors": 0
+      },
+      "npm_python314": {
+        "tests": 26,
+        "pass": 25,
+        "skipped": 1,
+        "skipped_reason": "the opt-in package end-to-end test installs from PyPI and was not run for this change"
+      },
+      "mutations": {
+        "total": 6,
+        "caught": 6,
+        "cases": [
+          "unrelated files checked as own",
+          "missing parent not handled",
+          "every stop called interrupted",
+          "folder never synced",
+          "folder sync failure propagates",
+          "CLI drops the reason"
+        ]
+      },
       "real_history_unchanged": true,
       "personal_default_store_not_created": true
     },
     "remaining": "The Linux local-filesystem check (/proc/self/mountinfo) has not run yet; the next CI run is its first execution."
+  },
+  "follow_up_macos_acceptance": {
+    "date": "2026-10-31",
+    "record": "process-review-storage-macos-2026-10-31.json",
+    "scope": "Existing-process CLI storage lifecycle and local MCP anonymity/non-persistence; parent unavailable-start-time save fix; browser still unverified"
   }
 }
