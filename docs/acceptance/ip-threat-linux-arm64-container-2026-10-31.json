@@ -156,9 +156,9 @@
     "npm_rerun": false
   },
   "procedure": [
-    "Reused prior Ubuntu 24.04 arm64 acceptance image with osquery5.23.1, Python3.12.3 and MCP1.30.0; no packages downloaded or image rebuilt",
+    "Reused prior Ubuntu 24.04 arm64 acceptance image with osquery 5.23.1, Python 3.12.3 and MCP 1.30.0; no packages downloaded or image rebuilt",
     "Copied only current Python sources, synthetic tests/harness and previously acquired public feed bundle; no host folders, Docker socket or personal data mounted",
-    "Ran product code as UID10001 with capabilities dropped and no-new-privileges; synthetic peer shared only an internal Docker network, with no published ports",
+    "Ran product code as UID 10001 with capabilities dropped and no-new-privileges; synthetic peer shared only an internal Docker network, with no published ports",
     "Established TCP socket to the synthetic peer without sending/receiving application payload; compared actual osquery PID/local-port/remote-port/protocol and sample deduplication",
     "Replayed the first public feed and failed the second to exercise Linux atomic-store preservation; independently exercised real fixed downloader offline failure; checked current/previous hashes unchanged",
     "Verified successful updater replay and next-request hourly denial in a separate new cache; did not mistake replay for live HTTPS success",
