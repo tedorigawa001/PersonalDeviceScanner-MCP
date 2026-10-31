@@ -7,6 +7,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import stat
 import subprocess
 import sys
 import tempfile
@@ -142,10 +143,16 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(mcp["data"]["persistence"], "not_saved")
 
     def test_interrupted_and_error_results_are_not_saved(self):
-        for reason in ["cancelled", "timeout", "read_limit"]:
+        # Only a cancel or timeout is an interruption; a read limit or engine warning leaves an incomplete result.
+        for reason, state in [("cancelled", "not_saved_interrupted"), ("timeout", "not_saved_interrupted"),
+                              ("read_limit", "not_saved_incomplete"), ("read_limit_or_warning", "not_saved_incomplete")]:
             r = self.report(); r["data"]["stop_reason"] = reason
             store.save(self.scanner(), r)
-            self.assertEqual(r["data"]["persistence"], "not_saved_interrupted")
+            self.assertEqual(r["data"]["persistence"], state)
+            self.assertEqual(review.for_cli(r)["data"]["persistence"], state)
+        cancel = threading.Event(); cancel.set(); r = self.report()
+        store.save(self.scanner(), r, cancel)
+        self.assertEqual(r["data"]["persistence"], "not_saved_interrupted")
         r = self.report();r["status"] = "error"
         store.save(self.scanner(), r)
         self.assertEqual(r["data"]["persistence"], "save_failed")
@@ -306,6 +313,49 @@ class StoreTests(unittest.TestCase):
         self.assertTrue(orphan.exists())
         self.assertEqual(self.manage('prune')['data']['temporary_files_removed'],1)
         self.assertTrue(unrelated.exists());self.assertFalse(orphan.exists())
+
+    def test_unrelated_files_never_block_saving_or_the_page(self):
+        # Finder writes .DS_Store with ordinary permissions if the folder is ever opened.
+        self.save()
+        finder = self.folder / ".DS_Store"; finder.write_bytes(b"x"); finder.chmod(0o644)
+        (self.folder / "notes").mkdir()
+        report = self.report(); report["data"]["run_id"] = "c" * 32
+        self.save(report=report)
+        self.assertEqual(self.manage("dashboard")["status"], "completed")
+        self.assertEqual(self.manage()["data"]["unmanaged_count"], 2)
+        self.assertEqual(finder.read_bytes(), b"x"); self.assertTrue((self.folder / "notes").is_dir())
+
+    def test_missing_parent_is_no_store_and_saving_names_the_cause(self):
+        scanner = self.scanner(directory=str(self.base / "absent" / "records"))
+        self.assertFalse(self.manage(scanner=scanner)["data"]["store_exists"])
+        report = self.report()
+        store.save(scanner, report)
+        self.assertEqual((report["data"]["persistence"], report["data"]["persistence_reason"]),
+                         ("save_failed", "store_parent_missing"))
+        self.assertEqual(review.for_cli(report)["data"]["persistence_reason"], "store_parent_missing")
+        self.assertNotIn(str(self.base), json.dumps(report))
+        self.assertFalse((self.base / "absent").exists())
+
+    def test_publication_and_deletion_sync_the_store_folder(self):
+        real, synced = store.os.fsync, []
+        def folder(fd): return stat.S_ISDIR(os.fstat(fd).st_mode)
+        def fsync(fd):
+            synced.append(folder(fd))
+            return real(fd)
+        with patch.object(store.os, "fsync", fsync):
+            rid = self.save()
+            self.assertTrue(synced[-1], "the folder is synced after the rename")
+            synced.clear()
+            self.manage("delete", record_id=rid, revision=self.manage()["data"]["records"][0]["revision"])
+            self.assertEqual(synced, [True])
+        # A failing folder sync after publication must not turn a saved record into "not saved".
+        def failing(fd):
+            if folder(fd):
+                raise OSError("folder sync unsupported")
+            return real(fd)
+        report = self.report(); report["data"]["run_id"] = "d" * 32
+        with patch.object(store.os, "fsync", failing):
+            self.save(report=report)
 
     def test_duplicate_json_keys_are_invalid(self):
         rid=self.save();p=self.folder/(rid+'.json');raw=p.read_text();p.write_text(raw.replace('"schema":1','"schema":2,"schema":1'))

@@ -159,5 +159,27 @@
     "pc_scanner/server.py": "fe51f9ae8057e02dad13884e70b777d28ecea94099798db28235671d6fc528f6",
     "tests/test_process_store.py": "e317a4b591fcd4c1a74d305e89d6e39eb53b3d6dea42bb146ec55557228b7e28"
   },
-  "push_performed": false
+  "push_performed": false,
+  "review_fixes_2026_10_31": {
+    "changes": [
+      "Strict owner/0600/regular-file checks apply to the store's own files only (records, dashboard HTML/JSON, lock, temporary files). Other entries are counted as unmanaged_count in the list, never read, followed, deleted or included in capacity; previously one 0644 file such as Finder's .DS_Store made every later save and the dashboard fail.",
+      "A missing folder above the store is treated as no store for list/prune/dashboard (previously a generic error); saving creates nothing and returns save_failed with the fixed persistence_reason store_parent_missing, which the anonymous CLI view also shows.",
+      "Stops other than cancel/timeout (read_limit, total_byte_limit, read_limit_or_warning) are not saved and are labelled not_saved_incomplete instead of not_saved_interrupted.",
+      "The store folder is fsynced after publishing a record or page and after deletions; a failing folder sync does not turn a published record into save_failed."
+    ],
+    "new_tests": 3,
+    "extended_tests": 1,
+    "verification": {
+      "python314_full": {"total": 576, "passed": 569, "skipped": 7, "failures": 0, "errors": 0},
+      "python315_full": {"total": 576, "passed": 569, "skipped": 7, "failures": 0, "errors": 0},
+      "npm_python314": {"tests": 26, "pass": 25, "skipped": 1,
+                        "skipped_reason": "the opt-in package end-to-end test installs from PyPI and was not run for this change"},
+      "mutations": {"total": 6, "caught": 6, "cases": [
+        "unrelated files checked as own", "missing parent not handled", "every stop called interrupted",
+        "folder never synced", "folder sync failure propagates", "CLI drops the reason"]},
+      "real_history_unchanged": true,
+      "personal_default_store_not_created": true
+    },
+    "remaining": "The Linux local-filesystem check (/proc/self/mountinfo) has not run yet; the next CI run is its first execution."
+  }
 }

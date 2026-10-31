@@ -542,8 +542,12 @@ third-party sync arrangement can be detected, so the owner must choose an unsync
 
 The CLI's default save response includes only anonymous states, a random record ID and persistence state;
 `--show-details` is needed for actual names/paths. Source, argv, environment, raw engine output and endpoints are
-never saved. Timeout/cancelled collections are not automatically saved; ordinary partial results preserve their
-unconfirmed items. A save failure does not change the collection status and is reported separately as `save_failed`.
+never saved. Timeout/cancelled collections are not automatically saved (`not_saved_interrupted`), nor are results cut
+short by a read limit or engine warning (`not_saved_incomplete`); ordinary partial results preserve their unconfirmed
+items. A save failure does not change the collection status and is reported separately as `save_failed`; a missing
+folder above the store adds `persistence_reason: store_parent_missing` instead of creating it. Files the store does
+not own (for example Finder's `.DS_Store`) are counted as `unmanaged_count` in the list, never read or deleted, and do
+not block saving. Saving and deletion also sync the store folder.
 
 Expiry includes the exact deadline. Management/save/render checks invalidate stale managed HTML, and save/render
 prunes expired JSON. `prune --expired` also cleans safely owned orphan temporary files; `--dry-run` previews record

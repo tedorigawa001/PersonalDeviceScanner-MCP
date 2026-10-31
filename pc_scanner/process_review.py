@@ -324,8 +324,11 @@ def for_cli(report):
     view = for_mcp(report)
     data = report.get("data", {})
     state = data.get("persistence", "not_saved")
-    if state in {"not_saved", "not_saved_interrupted", "details_saved", "save_failed"}:
+    if state in {"not_saved", "not_saved_interrupted", "not_saved_incomplete", "details_saved", "save_failed"}:
         view["data"]["persistence"] = state
+    # A fixed reason the owner can act on; never the path itself.
+    if data.get("persistence_reason") in {"store_parent_missing"}:
+        view["data"]["persistence_reason"] = data["persistence_reason"]
     from .process_store import ID
     rid = data.get("record_id")
     if isinstance(rid, str) and ID.fullmatch(rid):

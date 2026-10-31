@@ -42,6 +42,16 @@ LABELS = {"start_time_matches": "Identity matched before and after review",
           "configured_mismatch": "Launch configuration does not match"}
 
 
+class MissingParent(OSError):
+    """A folder above the store does not exist; it is never created automatically."""
+
+
+def managed(name):
+    """Files this store owns. Anything else in the folder is counted, never read, followed or deleted."""
+    return bool(name in {".lock", "dashboard.html", "dashboard.json"}
+                or (name.endswith(".json") and ID.fullmatch(name[:-5])) or re.fullmatch(r"\.[0-9a-f]{32}\.tmp", name))
+
+
 def load(raw):
     if not isinstance(raw, dict) or set(raw) - DEFAULTS.keys():
         raise core.ScannerError("Invalid process review storage settings")
@@ -259,7 +269,14 @@ class Store:
                 # Known cloud roots are refused without opening/hydrating their contents.
                 if part in {"CloudStorage", "Mobile Documents"} or part.lower().startswith("onedrive") or core.cloud_placeholder(current):
                     raise OSError("Store must be local")
-                fd = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=self.parent)
+                try:
+                    fd = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=self.parent)
+                except FileNotFoundError:
+                    # No store can exist below a missing folder; saving names the cause instead of creating it.
+                    if not create:
+                        yield None
+                        return
+                    raise MissingParent("Store parent folder does not exist") from None
                 info = os.fstat(fd)
                 if info.st_uid not in {0, os.geteuid()} or (info.st_mode & 0o022 and not (info.st_uid == 0 and info.st_mode & stat.S_ISVTX)):
                     os.close(fd)
@@ -353,14 +370,28 @@ class Store:
         if (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns) != (current.st_dev, current.st_ino, current.st_size, current.st_mtime_ns):
             raise OSError("Store file changed")
         os.unlink(name, dir_fd=self.fd)
+        self.sync()
+
+    def sync(self):
+        # Make a rename or deletion itself durable. Best effort: the change is already visible,
+        # so a failure here must not turn a published record into "not saved".
+        try:
+            os.fsync(self.fd)
+        except OSError:
+            pass
 
     def used(self):
+        """Capacity covers the store's own files; an unrelated file (e.g. Finder's .DS_Store) never blocks it."""
         total = 0
         for name in self.names():
-            info = os.stat(name, dir_fd=self.fd, follow_symlinks=False)
-            self.safe(info)
-            total += info.st_size
+            if managed(name):
+                info = os.stat(name, dir_fd=self.fd, follow_symlinks=False)
+                self.safe(info)
+                total += info.st_size
         return total
+
+    def unmanaged(self):
+        return sum(not managed(name) for name in self.names())
 
     def atomic(self, name, data, limit):
         self.unchanged()
@@ -387,6 +418,7 @@ class Store:
             os.replace(temp, name, src_dir_fd=self.fd, dst_dir_fd=self.fd)
             published = True
             # No cancellation/deadline check after publication: a committed record is saved.
+            self.sync()
         finally:
             if not published:
                 try:
@@ -492,8 +524,11 @@ def save(scanner, report, cancel=None):
     if scanner.via != "cli" or not settings(scanner)["enabled"]:
         raise core.ScannerError("Process review detail saving is not authorized")
     data = report["data"]
-    if data.get("stop_reason") or (cancel is not None and cancel.is_set()):
-        data["persistence"] = "not_saved_interrupted"
+    cancelled = cancel is not None and cancel.is_set()
+    if data.get("stop_reason") or cancelled:
+        # A read limit or engine warning is not an interruption, but its result is incomplete, so it is not saved either.
+        data["persistence"] = ("not_saved_interrupted" if cancelled or data.get("stop_reason") in {"cancelled", "timeout"}
+                               else "not_saved_incomplete")
         return
     try:
         snap = snapshot(data, report["status"])
@@ -523,6 +558,10 @@ def save(scanner, report, cancel=None):
                 raise ValueError("invalid time")
             store.atomic(record_id + ".json", encode(obj), JSON_LIMIT)
             data.update(persistence="details_saved", record_id=record_id)
+    except MissingParent:
+        data.update(persistence="save_failed", persistence_reason="store_parent_missing")
+        report["warnings"].append("Process review details were not saved: a folder above the private store does not exist; "
+                                  "create it or set process_review.storage.directory")
     except (OSError, ValueError, TypeError, KeyError, RecursionError, OverflowError):
         data["persistence"] = "save_failed"
         report["warnings"].append("Process review details could not be saved; check the private local store, capacity and permissions")
@@ -600,6 +639,7 @@ def manage(scanner, action, record_id=None, revision=None, show_details=False, d
                 rows.append(row)
             uncertain = any(e["state"] in {"invalid", "unavailable", "duplicate"} for e in entries)
             return core.result("process_review", "partial" if uncertain else "completed", data={
-                "records": rows, "store_exists": True, "latest_uncertain": uncertain})
+                "records": rows, "store_exists": True, "latest_uncertain": uncertain,
+                "unmanaged_count": store.unmanaged()})
     except (OSError, ValueError, TypeError, KeyError, RecursionError, OverflowError):
         raise core.ScannerError("Process review store operation failed; check local permissions, limits and revision") from None
