@@ -103,5 +103,13 @@
     "Local CLI only: the anonymous MCP tool, saved history details and the dashboard were not run against real connections",
     "Linux and Windows real-host acceptance and browser checks remain separate"
   ],
-  "repository_data": "Anonymous counts, public list metadata and hashes, fixed states and code hashes only; no IPs, ports, process names, PIDs, paths or host names"
+  "repository_data": "Anonymous counts, public list metadata and hashes, fixed states and code hashes only; no IPs, ports, process names, PIDs, paths or host names",
+  "ci_run_after_push": {
+    "run_id": 41184068311,
+    "commit": "c31a22c",
+    "conclusion": "success",
+    "jobs": {"total": 22, "success": 22, "failure": 0},
+    "tests": "macOS, Ubuntu and Windows on Python 3.11, 3.14 and 3.15 each ran 611 tests without failures (skipped: 7 macOS, 8 Ubuntu, 77 Windows); all npm launcher jobs succeeded",
+    "scope": "Documentation-only commit; CI confirms the tree, not the real-connection check, which CI does not run"
+  }
 }
