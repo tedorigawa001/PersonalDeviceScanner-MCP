@@ -518,7 +518,7 @@ existing private local parent if needed. POSIX uses owner-only 0700/0600 permiss
 backend requires a local fixed NTFS/ReFS volume and a protected DACL granting access only to the effective
 user and SYSTEM. It pins directory handles, rejects reparse/cloud placeholders and multi-link files,
 and uses handle-bound publication and cross-process locking. Unsafe existing permissions are refused,
-not repaired. Windows native tests are included but CI and real-engine acceptance for this backend remain pending.
+not repaired. Its Windows API tests pass in Windows CI; real-machine acceptance for this backend remains pending.
 Cloud/network storage and unsafe links fail closed. Updates retain the prior generation on failure.
 
 MCP `check_connection_destinations()` takes no arguments and always returns anonymous labels, counts and
