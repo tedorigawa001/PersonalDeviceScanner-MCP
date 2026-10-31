@@ -587,7 +587,7 @@ def connection_details(data):
 
 
 def destination_threat_summary(data):
-    from .ip_threats import summary
+    from .ip_threats import summary, HISTORICAL_UNKNOWN
     value = summary(data).get("destination_threats")
     if value is None:
         return '<p>Destination threat-list summary unavailable.</p>' if "destination_threats" in data else ""
@@ -595,6 +595,8 @@ def destination_threat_summary(data):
     if value["historical_match_destinations"]:
         body = ('<p class="notice">' + str(value["historical_match_destinations"]) + ' destination(s) matched only an out-of-date list '
                 'and remain unverified. Update the list locally and check again.</p>') + body
+    elif value["historical_match_destinations"] is None:
+        body = '<p class="notice">' + esc(HISTORICAL_UNKNOWN) + '</p>' + body
     if value["destination_counts"].get("matched"):
         body = '<p class="notice">Warning: observed destinations match public threat-list networks. Review the local evidence; this is not proof of infection.</p>' + body
     body += '<p>Unique destinations by state: ' + esc(json.dumps(value["destination_counts"], sort_keys=True)) + '</p>'
@@ -609,7 +611,8 @@ def connection_section(runs):
     observed = [run[-1] for run in runs if run[-1][1]["operation"] in {"observe_outbound_connections", "check_connection_destinations"}]
     if not observed:
         return ""
-    index, item = max(observed, key=lambda pair: datetime.fromisoformat(pair[1]["started_at"]).astimezone())
+    # History timestamps have second precision; preserve append order when they tie.
+    index, item = max(observed, key=lambda pair: (datetime.fromisoformat(pair[1]["started_at"]).astimezone(), pair[0]))
     value = item.get("connection_observation", {})
     return ('<h2>Connections observed on this PC</h2><p class="quiet">Latest saved observation only, not live traffic. '
             'Counts are observed records, not sessions or transmissions. History from multiple hosts is unsupported. '

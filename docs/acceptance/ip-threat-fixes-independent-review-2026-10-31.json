@@ -1,0 +1,129 @@
+{
+  "date": "2026-10-31",
+  "feature": "Independent review of destination-check fixes",
+  "status": "additional_findings_fixed_and_verified",
+  "requested_original_fixes_commit": "e2d866d5a322a56257f65908aa2a5156e9a60ca2",
+  "baseline_head": "68637e333ad89ea28cad0d0a15ccecb51999c5d9",
+  "initial_worktree": "Clean; the requested three fixes had already been committed before this review",
+  "source_sha256": {
+    "pc_scanner/ip_threats.py": "552bd085da5aee87e379f8723010d231eb839c982fe4e92e834110803c09f91a",
+    "pc_scanner/dashboard.py": "9d729903dc54e9555532585ac47cfff295051773e09192e2c28e99ca9b8fe1d9",
+    "tests/test_ip_threats.py": "05a711095d6d30a482bd9707d8d1f64ce7e04962208fd7da5b24c6c46890b22d"
+  },
+  "review": {
+    "method": "Independent static read of the committed diff and surrounding history, dashboard and anonymous-projection paths, followed by negative and positive synthetic tests",
+    "original_three": [
+      "Latest connection observation across plain observation and destination-check operations",
+      "Anonymous stale-list historical-match counts without identifier disclosure or double counting",
+      "Invalid/future attempt timestamp reset with no request and an enforced one-hour retry interval"
+    ],
+    "original_regressions_against_pre_fix_code": {
+      "tested_source": "03293f7 (isolated copy)",
+      "tests_run": 3,
+      "all_three_regressions_detected": true,
+      "failed_subcases": 5,
+      "errors": 1
+    },
+    "additional_findings": [
+      {
+        "priority": "P2",
+        "problem": "Requiring historical_match_destinations rejects older valid saved summaries and hides all their destination-list evidence",
+        "reproduced_before_fix": true,
+        "fix": "Absent/null counts remain unknown, retaining the prior counts and freshness; render a fixed unknown-count notice instead of guessing zero",
+        "coverage": [
+          "Saved record parsing and repeated parsing",
+          "Dashboard preserves unverified evidence and warns without exposing destinations",
+          "Anonymous projection preserves counts and fixed warning"
+        ]
+      },
+      {
+        "priority": "P2",
+        "problem": "Second-precision equal timestamps select by operation ordering rather than the latest stored row",
+        "reproduced_before_fix": true,
+        "fix": "Select by timestamp then history index; do not fall back to an earlier completed result when the latest is error",
+        "coverage": [
+          "Both operation orders at equal timestamps",
+          "Latest error selected and link targets that row",
+          "Existing differing-time and reversed-read cases retained"
+        ]
+      }
+    ],
+    "unresolved_actionable_findings": []
+  },
+  "verification": {
+    "new_regression_tests": 2,
+    "red_before_fix": {
+      "tests": 2,
+      "failures": 2
+    },
+    "green_after_fix": {
+      "tests": 2,
+      "passed": 2,
+      "seconds": 0.019
+    },
+    "related_tests": {
+      "total": 131,
+      "passed": 131,
+      "skipped": 0,
+      "seconds": 17.279
+    },
+    "full_suite": [
+      {
+        "python": "3.14.10",
+        "command": "bdo .venv/bin/python -m unittest discover -s tests -q",
+        "total": 613,
+        "passed": 606,
+        "skipped": 7,
+        "skip_reason": "Existing Windows-only tests on macOS",
+        "failures": 0,
+        "errors": 0,
+        "seconds": 50.446
+      },
+      {
+        "python": "3.15.2",
+        "command": "bdo .venv-dev/bin/python -m unittest discover -s tests -q",
+        "total": 613,
+        "passed": 606,
+        "skipped": 7,
+        "skip_reason": "Existing Windows-only tests on macOS",
+        "failures": 0,
+        "errors": 0,
+        "seconds": 49.547
+      }
+    ],
+    "npm": [
+      {
+        "python": "3.14.10",
+        "e2e_enabled": true,
+        "expect_hashed": true,
+        "total": 26,
+        "passed": 26,
+        "skipped": 0,
+        "seconds": 14.818
+      },
+      {
+        "python": "3.15.2",
+        "e2e_enabled": true,
+        "expect_hashed": false,
+        "total": 26,
+        "passed": 26,
+        "skipped": 0,
+        "seconds": 8.662
+      }
+    ]
+  },
+  "privacy": {
+    "personal_connections_collected": false,
+    "owner_cache_or_history_read_or_modified": false,
+    "public_threat_feeds_downloaded": false,
+    "fixtures": "Synthetic rows and explicit temporary stores only; negative regression copy contains public source/test files only",
+    "network": "Only TLS/socket fixture loopback; npm may retrieve public installation dependencies"
+  },
+  "limitations": [
+    "Current patch Windows CI/native tests not run; prior CI results belong to ancestor commits",
+    "No new actual-connection, browser or live updater acceptance",
+    "Existing committed implementation and acceptance records retained; new findings and this review are a separate commit"
+  ],
+  "push_performed": false,
+  "negative_test_cleanup": "Isolated public source and test copies removed; synthetic result summary retained privately"
+}

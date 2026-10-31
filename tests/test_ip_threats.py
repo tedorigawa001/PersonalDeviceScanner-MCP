@@ -349,6 +349,25 @@ class CacheTests(unittest.TestCase):
         dirty=copy.deepcopy(item);dirty['destination_threats']['historical_match_destinations']=3
         self.assertNotIn('destination_threats',history.parse(json.dumps(dirty)))
 
+    def test_legacy_summary_without_historical_count_keeps_evidence_as_unknown(self):
+        self.write()
+        with patch.object(t,'clock',return_value=NOW+timedelta(hours=48)):r=self.observe()
+        item=history.entry('check_connection_destinations',{},r,NOW,1,'cli')
+        del item['destination_threats']['historical_match_destinations']
+        parsed=history.parse(json.dumps(item))
+        self.assertIn('destination_threats',parsed)
+        self.assertEqual(parsed['destination_threats']['destination_counts'],{'unverified':1})
+        self.assertIsNone(parsed['destination_threats']['historical_match_destinations'])
+        self.assertIsNone(history.parse(json.dumps(parsed))['destination_threats']['historical_match_destinations'])
+        html=dashboard.destination_threat_summary(parsed)
+        self.assertIn('Historical match count unavailable',html)
+        self.assertIn('unverified',html)
+        self.assertNotIn('8.8.8.8',html)
+        legacy=copy.deepcopy(r);del legacy['data']['destination_threats']['historical_match_destinations']
+        anon=t.anonymous(legacy)
+        self.assertIn('destination_threats',anon['data'])
+        self.assertTrue(any('Historical match count unavailable' in w for w in anon['warnings']))
+
     def test_invalid_or_future_attempt_record_resets_without_request(self):
         self.write()
         for raw in [json.dumps({'attempted_at':t.stamp(NOW+timedelta(days=365))}).encode(),b'{broken']:
@@ -378,6 +397,17 @@ class DashboardTests(unittest.TestCase):
                     html=dashboard.render(ordered,[(None,'off')]*2,meta)
                     section=html.split('Connections observed on this PC',1)[1].split('</div>',1)[0]
                     self.assertIn('Observed records: 22',section);self.assertNotIn('Observed records: 11',section)
+
+    def test_equal_timestamps_prefer_last_history_entry_even_when_it_failed(self):
+        for newer in ['observe_outbound_connections','check_connection_destinations']:
+            older='check_connection_destinations' if newer=='observe_outbound_connections' else 'observe_outbound_connections'
+            with self.subTest(newer=newer):
+                entries=[self.entry(older,NOW,11),self.entry(newer,NOW,22)]
+                entries[-1]['status']='error'
+                section=dashboard.connection_section(dashboard.latest_runs(entries))
+                self.assertIn('Observed records: 22',section)
+                self.assertIn('href="#scan-1"',section)
+                self.assertNotIn('Observed records: 11',section)
 
 
 class NetworkTests(unittest.TestCase):

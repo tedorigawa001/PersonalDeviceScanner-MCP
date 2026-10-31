@@ -26,6 +26,8 @@ STATES = {"matched", "not_listed", "unverified", "not_applicable"}
 NOTICE = "Public threat-list matches are warnings, not proof of infection or transmission. No match does not prove safety."
 HISTORICAL = ("Some destinations matched only an out-of-date public threat list and remain unverified; "
               "update the list locally and check again")
+HISTORICAL_UNKNOWN = ("Historical match count unavailable in this older saved summary; do not assume zero. "
+                      "Update the list locally and check again")
 
 
 class RateLimited(Exception):
@@ -384,6 +386,8 @@ def anonymous(report):
         out["warnings"].append("Warning: observed destinations match public threat-list networks; review local evidence")
     if value.get("historical_match_destinations"):
         out["warnings"].append(HISTORICAL)
+    elif value and value.get("historical_match_destinations") is None:
+        out["warnings"].append(HISTORICAL_UNKNOWN)
     if value.get("coverage") == "unverified":
         out["warnings"].append("Destination threat-list coverage is unverified; do not treat this as a negative result")
     return out
@@ -404,7 +408,10 @@ def summary(data):
         if sum(clean.values()) != total:
             return {}
         # Matches against an expired list are a subset of the unverified destinations, never a separate total.
-        historical = private.integer(value["historical_match_destinations"], clean.get("unverified", 0))
+        # Older saved summaries did not record this count. Keep their evidence, without guessing zero.
+        historical = value.get("historical_match_destinations")
+        if historical is not None:
+            historical = private.integer(historical, clean.get("unverified", 0))
         out = {"checked_at": stamp(checked), "destination_counts": clean, "unique_destinations": total,
                "historical_match_destinations": historical,
                "coverage": private.choice(value["coverage"], {"checked", "unverified"}), "notice": NOTICE,

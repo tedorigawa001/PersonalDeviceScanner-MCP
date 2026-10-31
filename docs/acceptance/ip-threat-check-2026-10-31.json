@@ -220,5 +220,10 @@
     "record": "ip-threat-real-connections-macos-2026-10-31.json",
     "scope": "Owner-authorized one-time CLI check of real connections against freshly updated lists; anonymous counts only, nothing saved by the check; 36 public destinations, none listed",
     "tested_commit": "e2d866d5a322a56257f65908aa2a5156e9a60ca2"
+  },
+  "follow_up_independent_review": {
+    "date": "2026-10-31",
+    "record": "ip-threat-fixes-independent-review-2026-10-31.json",
+    "scope": "Original three fixes independently verified; legacy-summary compatibility and second-precision ordering additionally fixed; no actual connection collection"
   }
 }
