@@ -1,0 +1,77 @@
+{
+  "date": "2026-10-31",
+  "source_commit": "127d8f94339481ead304948a876f6f7fde698856",
+  "scope": "Independent verification of task 1: socket-family/address normalization; existing fix already committed on arrival",
+  "product_changes": false,
+  "root_cause": "macOS osquery emits family 10 for AF_INET6, but INI_IPV4 selects plain IPv4 formatting for both endpoints",
+  "primary_source": "https://github.com/osquery/osquery/blob/5.23.1/osquery/tables/system/darwin/process_open_descriptors.cpp",
+  "source_lines": {
+    "ipv4_format_selection": [
+      42,
+      48
+    ],
+    "family_mapping": [
+      156,
+      160
+    ]
+  },
+  "review": "family 10 plus both plain IPv4 endpoints accepted; mixed endpoint versions and family 23/30 with IPv4 still rejected; no blanket family validation removal",
+  "regression": {
+    "test": "test_macos_dual_stack_socket_in_ipv4_mode_is_an_ipv4_connection",
+    "baseline": "7497624",
+    "baseline_result": "Expected ValueError reproduced by substituting baseline normalize into current test; one error",
+    "current_connection_suite": {
+      "total": 29,
+      "passed": 29
+    }
+  },
+  "private_replay": {
+    "input": "Previous private diagnostic sample, read locally only",
+    "rows": 6,
+    "invalid_rows": 0,
+    "excluded_self_or_loopback": 4,
+    "excluded_listening_or_unconnected": 2,
+    "retained": 0,
+    "new_observation": false,
+    "identifiers_or_raw_hashes_exported": false,
+    "note": "Initial replay assertion expected four retained IPv4 rows; actual classification correctly excluded four loopback rows. Corrected aggregate assertion passed without product changes."
+  },
+  "full_tests": [
+    {
+      "python": "3.14.10",
+      "total": 616,
+      "passed": 609,
+      "skipped_windows_only": 7,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "python": "3.15.2",
+      "total": 616,
+      "passed": 609,
+      "skipped_windows_only": 7,
+      "failures": 0,
+      "errors": 0
+    }
+  ],
+  "npm": {
+    "python": "3.14.10",
+    "e2e_enabled": true,
+    "total": 26,
+    "passed": 26,
+    "failed": 0,
+    "scope": "Package creation, clean installation and actual MCP stdio"
+  },
+  "execution_limits": "Initial restricted full runs failed with 17 loopback bind permission errors each; npm pack also failed under restrictions. Normal-permission reruns passed.",
+  "not_verified": [
+    "New live CLI/MCP observation after fix",
+    "Windows CI or Windows real engine",
+    "Linux real engine",
+    "Independent full review of other changes bundled in 127d8f9"
+  ],
+  "privacy": "No new socket observation, script execution, payload capture, destination probes or feed updates. Raw diagnostic identifiers remain private and are absent from this record.",
+  "source_sha256": {
+    "pc_scanner/connections.py": "32af7de722cc238c8d09e521047f09d8752794798de73efb97a3180c9c5be465",
+    "tests/test_connections.py": "6e363cb7d1c3b2f3fff3b91e6d187e265106e705433dee37a11e355347082ae8"
+  }
+}
