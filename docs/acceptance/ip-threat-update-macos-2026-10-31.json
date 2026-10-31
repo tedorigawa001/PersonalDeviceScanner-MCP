@@ -1,0 +1,337 @@
+{
+  "date": "2026-10-31",
+  "feature": "Public threat-list update CLI on macOS",
+  "status": "live_update_and_controlled_failure_acceptance_passed",
+  "environment": {
+    "os": "Darwin",
+    "architecture": "arm64",
+    "live_cli_python": "3.14.10",
+    "repeat_cli_python": "3.15.2"
+  },
+  "live_cli": {
+    "exit_code": 0,
+    "seconds": 0.388,
+    "status": "completed",
+    "updated": true,
+    "persistence": "cache_saved",
+    "progress_confirmed_saved": true
+  },
+  "provider_interval": {
+    "previous_public_fetch_at": "2026-10-31T04:35:32.175680+00:00",
+    "live_attempted_at": "2026-10-31T06:03:49.338712+00:00",
+    "prior_interval_seconds": 5297.163032
+  },
+  "repeat_real_cli": {
+    "python": "3.15.2",
+    "exit_code": 2,
+    "seconds": 0.684,
+    "status": "partial",
+    "stop_reason": "rate_limited_no_request_sent",
+    "managed_files_unchanged": true
+  },
+  "feeds": {
+    "4": {
+      "source": "Spamhaus Project DROP",
+      "published_at": "2026-10-31T05:14:02.000000+00:00",
+      "retrieved_at": "2026-10-31T06:03:49.576866+00:00",
+      "expires_at": "2026-11-02T05:14:02.000000+00:00",
+      "freshness": "fresh",
+      "records": 1757,
+      "copyright": "(c) 2026 The Spamhaus Project SLU",
+      "sha256": "e1caa629828c7f44ccf7c63c1ab47915f6ee336c3ee65153b07222d60778c62d",
+      "age_hours_at_retrieval": 0.829882
+    },
+    "6": {
+      "source": "Spamhaus Project DROP",
+      "published_at": "2026-10-30T13:14:02.000000+00:00",
+      "retrieved_at": "2026-10-31T06:03:49.576866+00:00",
+      "expires_at": "2026-11-01T13:14:02.000000+00:00",
+      "freshness": "fresh",
+      "records": 92,
+      "copyright": "(c) 2026 The Spamhaus Project SLU",
+      "sha256": "ad8af2a4b7666455fa0da2b14e21a80fac2df94e5b393522e678bb62d98420ce",
+      "age_hours_at_retrieval": 16.829882
+    }
+  },
+  "freshness_boundary_minus_exact_plus_one_microsecond": {
+    "4": [
+      "fresh",
+      "stale",
+      "stale"
+    ],
+    "6": [
+      "fresh",
+      "stale",
+      "stale"
+    ]
+  },
+  "trials": {
+    "guarded-repeat": {
+      "exit_code": 2,
+      "status": "partial",
+      "updated": false,
+      "stop_reason": "rate_limited_no_request_sent",
+      "persistence": "not_saved",
+      "seconds": 0.199,
+      "audit": {
+        "getaddrinfo_attempts": 0,
+        "connect_attempts": 0,
+        "download_calls": 0,
+        "external_network_allowed": false
+      },
+      "changed_managed_files": [],
+      "old_current_and_previous_retained": true,
+      "lock_reacquired": true,
+      "controlled_clock": false,
+      "download_mode": "normal"
+    },
+    "hour-minus-one-microsecond": {
+      "exit_code": 2,
+      "status": "partial",
+      "updated": false,
+      "stop_reason": "rate_limited_no_request_sent",
+      "persistence": "not_saved",
+      "seconds": 0.092,
+      "audit": {
+        "getaddrinfo_attempts": 0,
+        "connect_attempts": 0,
+        "download_calls": 0,
+        "external_network_allowed": false
+      },
+      "changed_managed_files": [],
+      "old_current_and_previous_retained": true,
+      "lock_reacquired": true,
+      "controlled_clock": true,
+      "download_mode": "normal"
+    },
+    "hour-exact": {
+      "exit_code": 0,
+      "status": "completed",
+      "updated": true,
+      "stop_reason": null,
+      "persistence": "cache_saved",
+      "seconds": 0.203,
+      "audit": {
+        "getaddrinfo_attempts": 0,
+        "connect_attempts": 0,
+        "download_calls": 2,
+        "external_network_allowed": false
+      },
+      "changed_managed_files": [
+        "attempt.json",
+        "current.json",
+        "previous.json"
+      ],
+      "old_current_and_previous_retained": false,
+      "lock_reacquired": true,
+      "controlled_clock": true,
+      "download_mode": "replay"
+    },
+    "hour-plus-one-microsecond": {
+      "exit_code": 0,
+      "status": "completed",
+      "updated": true,
+      "stop_reason": null,
+      "persistence": "cache_saved",
+      "seconds": 0.199,
+      "audit": {
+        "getaddrinfo_attempts": 0,
+        "connect_attempts": 0,
+        "download_calls": 2,
+        "external_network_allowed": false
+      },
+      "changed_managed_files": [
+        "attempt.json",
+        "current.json",
+        "previous.json"
+      ],
+      "old_current_and_previous_retained": false,
+      "lock_reacquired": true,
+      "controlled_clock": true,
+      "download_mode": "replay"
+    },
+    "transport-failure": {
+      "exit_code": 2,
+      "status": "partial",
+      "updated": false,
+      "stop_reason": "cache_or_feed_unavailable",
+      "persistence": "not_saved",
+      "seconds": 0.098,
+      "audit": {
+        "getaddrinfo_attempts": 1,
+        "connect_attempts": 0,
+        "download_calls": 1,
+        "external_network_allowed": false
+      },
+      "changed_managed_files": [
+        "attempt.json"
+      ],
+      "old_current_and_previous_retained": true,
+      "lock_reacquired": true,
+      "controlled_clock": true,
+      "download_mode": "normal"
+    },
+    "malformed-v6": {
+      "exit_code": 2,
+      "status": "partial",
+      "updated": false,
+      "stop_reason": "cache_or_feed_unavailable",
+      "persistence": "not_saved",
+      "seconds": 0.124,
+      "audit": {
+        "getaddrinfo_attempts": 0,
+        "connect_attempts": 0,
+        "download_calls": 2,
+        "external_network_allowed": false
+      },
+      "changed_managed_files": [
+        "attempt.json"
+      ],
+      "old_current_and_previous_retained": true,
+      "lock_reacquired": true,
+      "controlled_clock": true,
+      "download_mode": "validation_failure"
+    },
+    "cancel-between-families": {
+      "exit_code": 2,
+      "status": "partial",
+      "updated": false,
+      "stop_reason": "cancelled",
+      "persistence": "not_saved",
+      "seconds": 0.094,
+      "audit": {
+        "getaddrinfo_attempts": 0,
+        "connect_attempts": 0,
+        "download_calls": 1,
+        "external_network_allowed": false
+      },
+      "changed_managed_files": [
+        "attempt.json"
+      ],
+      "old_current_and_previous_retained": true,
+      "lock_reacquired": true,
+      "controlled_clock": true,
+      "download_mode": "cancelled"
+    },
+    "unsafe-directory": {
+      "exit_code": 2,
+      "status": "partial",
+      "updated": false,
+      "stop_reason": "cache_or_feed_unavailable",
+      "persistence": "not_saved",
+      "seconds": 0.088,
+      "audit": {
+        "getaddrinfo_attempts": 0,
+        "connect_attempts": 0,
+        "download_calls": 0,
+        "external_network_allowed": false
+      },
+      "changed_managed_files": [],
+      "old_current_and_previous_retained": true,
+      "lock_reacquired": true,
+      "controlled_clock": true,
+      "download_mode": "normal"
+    },
+    "stale-replay": {
+      "exit_code": 2,
+      "status": "partial",
+      "updated": true,
+      "stop_reason": null,
+      "persistence": "cache_saved",
+      "seconds": 0.207,
+      "audit": {
+        "getaddrinfo_attempts": 0,
+        "connect_attempts": 0,
+        "download_calls": 2,
+        "external_network_allowed": false
+      },
+      "changed_managed_files": [
+        "attempt.json",
+        "current.json",
+        "previous.json"
+      ],
+      "old_current_and_previous_retained": false,
+      "lock_reacquired": true,
+      "controlled_clock": true,
+      "download_mode": "replay"
+    }
+  },
+  "permissions": {
+    "live_directory": "0700",
+    "live_files": "0600",
+    "unsafe_directory_refused_without_chmod": true,
+    "owner_matches_current_user": true,
+    "regular_owned_single_link_files": true
+  },
+  "preservation": {
+    "live_success_previous_equals_seeded_prior_generation": true,
+    "live_cache_unchanged_by_all_repeat_and_fault_trials": true,
+    "failed_trial_generations_byte_and_mode_unchanged": true,
+    "no_temporary_publication_files_left": true,
+    "locks_reacquired": true
+  },
+  "privacy": {
+    "personal_connections_collected": false,
+    "payloads_captured": false,
+    "listed_destinations_contacted": false,
+    "history_created": false,
+    "live_network_scope": "One GET per fixed official IPv4/IPv6 public feed; no observed identifiers supplied",
+    "supplement_network": "Audit hooks denied DNS/connect before external communication; only transport-failure attempted DNS and it was blocked"
+  },
+  "cleanup": {
+    "live_public_cache_retained_privately": true,
+    "fault_trial_cache_copies_removed": true,
+    "trial_configs_and_outputs_retained_privately": true
+  },
+  "limitations": [
+    "One real updater success on Python 3.14; Python 3.15 checked immediate shared-cache rate limiting only",
+    "Boundary/transport/format/cancel/permission/stale cases are controlled fault trials on cache copies; no OS clock changes or extra external fetches",
+    "No spontaneous provider outage, native resolver/filesystem hang, Linux/Windows, current CI or browser acceptance",
+    "Actual destination observation and matching remain separate owner-authorized work"
+  ],
+  "source_commit": "03293f7163ef61558422acbbd0fb1c1ce50a96e6",
+  "source_sha256": {
+    "pc_scanner/ip_threats.py": "09a896590fb8e2cc574c9e8fb8002be3b3e36bbb15ae0f7978cbcc8443fc6f63",
+    "pc_scanner/cli.py": "214ee72c9e2344bf7f1cdb848a85e8efdb07be73db49b086734485273a0d76c4",
+    "pc_scanner/core.py": "6af88eda97a6ffff722835a7d4d4f57bd5ad0fe3b3bdec53e47e4fe85a7d4344",
+    "pc_scanner/process_store.py": "79651253ba22690ffbc694e89bdb29d9905bd122837275978ffac2cceb6b5c4d",
+    "pc_scanner/progress.py": "9985503e2c7f12566e818b2df1f532a629eaecb351e176e9aa21406041a9730e",
+    "pc_scanner/connections.py": "c2ab8bdcef31170a525937c35363f9b4c0b6d18ac9910f0d55454292c1dbb2d1"
+  },
+  "harness_sha256": {
+    "ip-update-cli-trial.py": "672a5f8b47414ca73f583e34e3d81f7ad776f2503fffa3e78987b8faefabfa30",
+    "ip-update-macos-acceptance.py": "692f5cf15e9a9e249ed87c37fbae14aba36a8fc722b03a84e5072d5d02045039"
+  },
+  "live_completed_at_jst": "2026-10-31T15:03:49.651654+09:00",
+  "verification_notes": {
+    "live": "Normal unmodified CLI on Python 3.14 with real certificate-verified fixed-URL downloads. Separate unmodified Python 3.15 CLI tested immediate repeat against the same cache.",
+    "supplement": "Nine actual CLI-main invocations through an external fault-injection wrapper on disposable cache copies; Python clock function only patched, never OS or monotonic time. Audit hooks block DNS/connect before external communication.",
+    "hour_boundary": "At equality and +1 microsecond, downloads replay the captured live bytes; they are not repeated network requests or natural elapsed-hour tests.",
+    "failure": "Transport failure is injected at DNS audit boundary; malformed-family and cancellation failures use replayed bytes. Not a naturally occurring provider outage.",
+    "cache_read": "Original live current/previous/attempt bytes and modes remain unchanged by repeat and supplementary trials.",
+    "tests": "No product code changed; this acceptance did not rerun the full regression or npm suites. Previous implementation tests remain in ip-threat-check-2026-10-31.json."
+  },
+  "sources": [
+    "https://www.spamhaus.org/drop/drop_v4.json",
+    "https://www.spamhaus.org/drop/drop_v6.json"
+  ],
+  "source_verification": {
+    "worktree_clean_at_acceptance_start": true,
+    "tested_source": "Committed 03293f7; all live and nine CLI trial results completed before the subsequently observed source edits",
+    "last_controlled_trial_output_at_utc": "2026-10-31T06:06:26.119619+00:00",
+    "later_worktree_changes_not_modified_or_reverified_by_this_task": {
+      "pc_scanner/cli.py": {
+        "last_modified_at_utc": "2026-10-31T06:08:27.313202+00:00",
+        "sha256_at_observation": "c423b60a2ce1cdc23b77967f665b66f7bfb44239039424f3ba1eb504f40d3235"
+      },
+      "pc_scanner/ip_threats.py": {
+        "last_modified_at_utc": "2026-10-31T06:08:11.199809+00:00",
+        "sha256_at_observation": "f5df82ee7800443c2355799b5ba8e6e55f3c487c34e0248888601750902f589f"
+      },
+      "pc_scanner/dashboard.py": {
+        "last_modified_at_utc": "2026-10-31T06:08:27.364585+00:00",
+        "sha256_at_observation": "dffd2a1f5dc36725a6a5b2eccf5adbdd4b5df0653c76c9bc30b11b85b60d1320"
+      }
+    }
+  }
+}

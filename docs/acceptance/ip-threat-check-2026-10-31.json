@@ -162,5 +162,11 @@
     "Linux new-cache acceptance, current CI and Windows safe cache backend",
     "Native OS filesystem/resolver blocking is not a demonstrated hard-stop guarantee; TLS header/body stalled-read workers were tested"
   ],
-  "repository_data": "Only public feed metadata/hashes, counts, fixed states and code hashes; no personal identifiers or full datasets"
+  "repository_data": "Only public feed metadata/hashes, counts, fixed states and code hashes; no personal identifiers or full datasets",
+  "follow_up_update_macos": {
+    "date": "2026-10-31",
+    "record": "ip-threat-update-macos-2026-10-31.json",
+    "scope": "Real fixed-URL update CLI, immediate cross-Python rate limiting and private storage; nine isolated no-network fault/boundary trials; no connection observation; later uncommitted source changes are outside this acceptance",
+    "tested_commit": "03293f7163ef61558422acbbd0fb1c1ce50a96e6"
+  }
 }
