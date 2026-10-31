@@ -60,10 +60,15 @@ class ModelTests(unittest.TestCase):
             def read(api,h,n):return api.handles[h][1].read(n)
             def write(api,h,data):api.handles[h][1].write(data)
             def flush(api,h):api.handles[h][1].flush()
-            def remove(api,h):api.handles[h][0].unlink()
+            def release(api,h):
+                # Native calls act on the handle. Windows refuses a path rename/delete of a file Python still has open.
+                p,s=api.handles[h]
+                if s:s.close()
+                api.handles[h]=(p,None);return p
+            def remove(api,h):api.release(h).unlink()
             def rename(api,h,parent,name):
                 if api.fail_publish:raise OSError('Publication failed')
-                p,s=api.handles[h];target=api.handles[parent][0]/name;p.replace(target);api.handles[h]=(target,s)
+                target=api.handles[parent][0]/name;api.release(h).replace(target);api.handles[h]=(target,None)
         self.api=API();self.root=root;self.path=WindowsPath
         self.patchers=[patch.object(w,'Native',return_value=self.api),patch.object(w,'Path',WindowsPath)]
         for p in self.patchers:p.start();self.addCleanup(p.stop)
@@ -157,21 +162,35 @@ class NativeValidationModelTests(unittest.TestCase):
     def test_publication_uses_posix_rename_and_falls_back_only_when_unsupported(self):
         from types import SimpleNamespace
         from pc_scanner import windows_ip_cache as w
+        import ctypes as ct
+        from ctypes import wintypes as wt
         calls=[]
-        def kernel(results):
-            def set_info(handle,kind,buf,size):calls.append((kind,int.from_bytes(bytes(buf)[:4],'little')));return results.pop(0)
-            return SimpleNamespace(SetFileInformationByHandle=set_info)
+        # NTSTATUS values: invalid information class, not supported, access denied.
+        unsupported,missing,denied=0xC0000003-(1<<32),0xC00000BB-(1<<32),0xC0000022-(1<<32)
+        class Rename(ct.Structure):  # FILE_RENAME_INFORMATION; wintypes sizes differ off Windows.
+            _fields_=[("flags",wt.DWORD),("root",wt.HANDLE),("length",wt.DWORD),("name",wt.WCHAR*1)]
+        def ntdll(results):
+            def set_info(handle,status,buf,size,kind):
+                data=bytes(buf)[:size];info=Rename.from_buffer_copy(data[:ct.sizeof(Rename)]);start=Rename.name.offset
+                calls.append((kind,info.flags,info.root,data[start:start+info.length].decode('utf-16-le')))
+                return results.pop(0)
+            return SimpleNamespace(NtSetInformationFile=set_info,RtlNtStatusToDosError={unsupported:87,missing:50,denied:5}.get)
         api=w.Native.__new__(w.Native)
-        # FileRenameInfoEx (22) with REPLACE_IF_EXISTS | POSIX_SEMANTICS; classic FileRenameInfo (3) only if unsupported.
-        for results,error,expected in [([1],0,[(22,3)]),([0,1],87,[(22,3),(3,1)]),([0,1],50,[(22,3),(3,1)])]:
-            calls.clear();api.k=kernel(results)
-            with self.subTest(error=error),patch.object(w.ct,'get_last_error',return_value=error,create=True):api.rename(1,2,'current.json')
+        # Win32 SetFileInformationByHandle resolves a relative name against the current folder: never used here.
+        api.k=SimpleNamespace()
+        posix,classic=(65,3,2,'current.json'),(10,1,2,'current.json')
+        # FileRenameInformationEx (65) with REPLACE_IF_EXISTS | POSIX_SEMANTICS, relative to the pinned folder handle;
+        # classic FileRenameInformation (10) only if unsupported.
+        for results,expected in [([0],[posix]),([unsupported,0],[posix,classic]),([missing,0],[posix,classic])]:
+            calls.clear();api.n=ntdll(results)
+            with self.subTest(results=results):api.rename(1,2,'current.json')
             self.assertEqual(calls,expected)
         # Any other failure, such as access denied, is reported instead of retried with weaker semantics.
-        calls.clear();api.k=kernel([0])
-        with patch.object(w.ct,'get_last_error',return_value=5,create=True),patch.object(w.ct,'WinError',side_effect=OSError,create=True):
-            with self.assertRaises(OSError):api.rename(1,2,'current.json')
-        self.assertEqual(calls,[(22,3)])
+        for results,expected in [([denied],[posix]),([unsupported,denied],[posix,classic])]:
+            calls.clear();api.n=ntdll(results)
+            with self.subTest(results=results),patch.object(w.ct,'WinError',side_effect=lambda code:OSError(code),create=True):
+                with self.assertRaises(OSError) as raised:api.rename(1,2,'current.json')
+            self.assertEqual((raised.exception.args[0],calls),(5,expected))
 
 
 @unittest.skipUnless(__import__('os').name=='nt','Native Windows filesystem/APIs required')
@@ -191,11 +210,25 @@ class NativeWindowsTests(unittest.TestCase):
         with patch.object(t,'clock',return_value=self.now),patch.object(t,'download',side_effect=lambda v,*a:feed(v)):
             return self.scanner.invoke('update_ip_threat_lists',**kwargs)
 
+    def updated(self):
+        result=self.update();self.assertEqual(result['status'],'completed',result);return result
+
+    def test_native_store_publishes_into_pinned_folder_not_current_folder(self):
+        # Direct calls, so a failing native publication shows its Windows error instead of a partial result.
+        import os
+        from pc_scanner.windows_ip_cache import Store
+        outside=Path.cwd()/'current.json';existed=outside.exists()
+        with Store({'directory':str(self.cache),'max_total_mb':32}).open(create=True) as cache:
+            cache.atomic('current.json',b'first',100);cache.atomic('current.json',b'second',100)
+            self.assertEqual(cache.read('current.json',100)[0],b'second')
+        self.assertEqual(sorted(os.listdir(self.cache)),['.lock','current.json'])
+        self.assertEqual(outside.exists(),existed)
+
     def test_native_update_read_private_acl_and_failed_generation_preservation(self):
         from datetime import timedelta
         from tests.test_ip_threats import feed
         from pc_scanner.windows_ip_cache import Native
-        self.assertEqual(self.update()['status'],'completed')
+        self.updated()
         before=(self.cache/'current.json').read_bytes()
         with t.Cache(t.cache_settings(self.scanner)).open(file_lock=False) as cache:
             self.assertEqual(cache.read('current.json',t.BUNDLE_LIMIT)[0],before)
@@ -214,14 +247,14 @@ class NativeWindowsTests(unittest.TestCase):
     def test_native_missing_reader_creates_no_artifacts_and_pinned_parent_cannot_move(self):
         with t.Cache(t.cache_settings(self.scanner)).open(file_lock=False) as cache:self.assertIsNone(cache)
         self.assertFalse(self.cache.exists())
-        self.assertEqual(self.update()['status'],'completed')
+        self.updated()
         with t.Cache(t.cache_settings(self.scanner)).open(file_lock=False):
             with self.assertRaises(OSError):self.cache.rename(self.root/'moved')
         self.cache.rename(self.root/'moved')
 
     def test_native_pinned_ancestors_still_accept_other_programs_saves(self):
         import os
-        self.assertEqual(self.update()['status'],'completed')
+        self.updated()
         draft=self.root/'draft.tmp';draft.write_bytes(b'saved')
         moved=self.root.parent/(self.root.name+'-moved')
         self.addCleanup(lambda:moved.exists() and moved.rename(self.root))
@@ -236,7 +269,7 @@ class NativeWindowsTests(unittest.TestCase):
         import subprocess,sys
         from datetime import timedelta
         from tests.test_ip_threats import feed
-        self.assertEqual(self.update()['status'],'completed');old=(self.cache/'current.json').read_bytes()
+        self.updated();old=(self.cache/'current.json').read_bytes()
         # Another process holds current.json open the way a reader does, with read and delete sharing.
         child=subprocess.Popen([sys.executable,'-u','-c',
             'import sys;from pc_scanner.windows_ip_cache import Native;a=Native();h=a.open(sys.argv[1]);'+
@@ -246,7 +279,7 @@ class NativeWindowsTests(unittest.TestCase):
             self.assertEqual(child.stdout.readline().strip(),'READY')
             later=self.now+timedelta(hours=1)
             with patch.object(t,'clock',return_value=later),patch.object(t,'download',side_effect=lambda v,*a:feed(v,later)):
-                self.assertEqual(self.scanner.invoke('update_ip_threat_lists')['status'],'completed')
+                result=self.scanner.invoke('update_ip_threat_lists');self.assertEqual(result['status'],'completed',result)
             self.assertNotEqual((self.cache/'current.json').read_bytes(),old)
         finally:
             out,err=child.communicate('release\n',timeout=10)
@@ -260,14 +293,14 @@ class NativeWindowsTests(unittest.TestCase):
         self.cache.mkdir()  # Inherited ACL is never silently repaired or accepted.
         with self.assertRaises(OSError):
             with t.Cache(t.cache_settings(self.scanner)).open():pass
-        self.cache.rmdir();self.assertEqual(self.update()['status'],'completed')
+        self.cache.rmdir();self.updated()
         os.link(self.cache/'current.json',self.root/'extra-link')
         with t.Cache(t.cache_settings(self.scanner)).open(file_lock=False) as cache:
             with self.assertRaises(OSError):cache.read('current.json',t.BUNDLE_LIMIT)
 
     def test_native_cross_process_writer_lock_and_recovery(self):
         import subprocess,sys
-        self.assertEqual(self.update()['status'],'completed')
+        self.updated()
         child=subprocess.Popen([sys.executable,'-u','-c',
             'import sys;from pc_scanner.ip_threats import Cache;'+
             'c=Cache({"directory":sys.argv[1],"max_total_mb":32});'+
@@ -284,7 +317,7 @@ class NativeWindowsTests(unittest.TestCase):
 
     def test_native_failed_publish_cleans_temp_and_keeps_current(self):
         from pc_scanner import windows_ip_cache as w
-        self.assertEqual(self.update()['status'],'completed');before=(self.cache/'current.json').read_bytes()
+        self.updated();before=(self.cache/'current.json').read_bytes()
         with t.Cache(t.cache_settings(self.scanner)).open() as cache:
             with patch.object(w.Native,'rename',side_effect=OSError('Injected publish failure')):
                 with self.assertRaises(OSError):cache.atomic('current.json',b'new',1000000)
@@ -301,7 +334,7 @@ class NativeWindowsTests(unittest.TestCase):
     def test_native_cache_matching_projects_anonymous_result_without_lock_creation(self):
         from pc_scanner import connections as c
         from tests.test_connections import Clock
-        self.assertEqual(self.update()['status'],'completed');(self.cache/'.lock').unlink()
+        self.updated();(self.cache/'.lock').unlink()
         self.scanner.via='mcp';self.scanner.connection_settings.update(enabled=True,duration_seconds=1,interval_seconds=1)
         clock=Clock();row={'pid':'42','start_time':'1000','process':'private-test-process','family':'2','protocol':'6',
             'local_address':'192.168.1.2','local_port':'50001','remote_address':'8.8.8.8','remote_port':'443','state':'ESTABLISHED'}

@@ -1,6 +1,6 @@
 {
   "date": "2026-10-31",
-  "status": "implemented_macos_model_verified_windows_native_pending",
+  "status": "windows_ci_failed_on_90957aa_fixes_pending_windows_ci",
   "base_commit": "4a97421418910c32fd4034e74f6de64b8fa53c7f",
   "scope": "Windows destination-list cache only; no general process-store Windows enablement, new dependencies, settings or MCP tools",
   "implementation": {
@@ -120,5 +120,49 @@
       "npm": "Not rerun: the tool list and npm launcher are unchanged"
     },
     "not_covered": "The two new native tests and the changed native calls have not run on Windows; they first run in Windows CI after a push"
+  },
+  "ci_run_after_push": {
+    "date": "2026-10-31",
+    "commit": "90957aaf4f2104f8e9812fc9baf61bb98aa5be2b",
+    "run_id": 41197800633,
+    "conclusion": "failure",
+    "jobs": {"total": 22, "passed": 19, "failed": 3},
+    "failed_jobs": "Test on windows-latest with Python 3.11, 3.14 and 3.15; the Windows npm launcher jobs passed",
+    "windows_tests": {"total": 635, "failures": 8, "errors": 3, "skipped": 80},
+    "failures": [
+      "8 failures: every Windows-only native test whose first cache save returned partial instead of completed",
+      "3 errors: model tests whose test model renamed or deleted files by path while Python still had them open, which Windows refuses (WinError 32)"
+    ],
+    "other_tests": "All other tests passed on Windows, macOS and Ubuntu",
+    "origin": "Both causes were already in ff629e6; this was the first Windows CI run of the cache"
+  },
+  "ci_fixes": {
+    "date": "2026-10-31",
+    "base_commit": "90957aaf4f2104f8e9812fc9baf61bb98aa5be2b",
+    "fixes": [
+      "Publication calls NtSetInformationFile with the pinned cache-folder handle as RootDirectory and a simple file name: FileRenameInformationEx (65) with REPLACE_IF_EXISTS | POSIX_SEMANTICS, and classic FileRenameInformation (10) only when unsupported. Microsoft documents that SetFileInformationByHandle accepts an absolute path or one relative to the process's current directory; in CI the current directory is on drive D: and the cache on drive C:, and a rename cannot change volume",
+      "The test model closes its Python file before renaming or deleting it by path, as Windows requires; native calls act on the handle",
+      "Native tests print the full result when an update is not completed. A new native test publishes directly, so a failure shows the Windows error, and checks that no file appears in the current folder"
+    ],
+    "cause_confidence": "Model errors reproduced on this Mac with simulated Windows file rules: the same 3 errors on 90957aa, none after the fix. The native cause is inferred from Microsoft's documentation and the CI drive layout, because the failing tests did not print the Windows error; the next Windows CI run confirms or refutes it",
+    "references": [
+      "https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_rename_info",
+      "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_rename_information",
+      "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_file_information_class"
+    ],
+    "source_sha256": {
+      "pc_scanner/windows_ip_cache.py": "978c1588ab92b7ad1ef93809672848774617520844a915313ca3eb59d37c6e80",
+      "tests/test_windows_ip_cache.py": "04f4c603ff6415c3842bb0af837b8fd53b133651cfcda184748aa5770cc6a958"
+    },
+    "verification": {
+      "rename_model_test_fails_on_base": true,
+      "full_suite": [
+        {"python": "3.14.10", "total": 636, "passed": 619, "skipped": 17, "failures": 0, "errors": 0},
+        {"python": "3.15.2", "total": 636, "passed": 619, "skipped": 17, "failures": 0, "errors": 0}
+      ],
+      "skip_explanation": "Seven prior Windows-only tests plus ten Windows-cache native tests",
+      "npm": "Not rerun: the tool list and npm launcher are unchanged"
+    },
+    "not_covered": "No native Windows call has passed yet; Windows CI has not run these fixes"
   }
 }

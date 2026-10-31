@@ -74,6 +74,11 @@ class Native:
         }
         for name, (args, returns) in signatures.items():
             f = getattr(self.a, name); f.argtypes, f.restype = args, returns
+        self.n = ct.WinDLL("ntdll")
+        signatures = {"NtSetInformationFile": ([handle, ptr, ptr, dword, ct.c_int], ct.c_long),
+                      "RtlNtStatusToDosError": ([ct.c_long], dword)}
+        for name, (args, returns) in signatures.items():
+            f = getattr(self.n, name); f.argtypes, f.restype = args, returns
         self.user = self.user_sid()
 
     def require(self, value):
@@ -227,6 +232,9 @@ class Native:
     def rename(self, handle, parent, name):
         class Rename(ct.Structure):
             _fields_ = [("flags", wt.DWORD), ("root", wt.HANDLE), ("length", wt.DWORD), ("name", wt.WCHAR * 1)]
+
+        class Status(ct.Structure):
+            _fields_ = [("status", ct.c_void_p), ("information", ct.c_size_t)]
         encoded = name.encode("utf-16-le")
 
         def publish(kind, flags):
@@ -234,16 +242,18 @@ class Native:
             info = Rename.from_buffer(value)
             info.flags, info.root, info.length = flags, parent, len(encoded)
             ct.memmove(ct.addressof(value) + Rename.name.offset, encoded, len(encoded))
-            return self.k.SetFileInformationByHandle(handle, kind, value, len(value))
+            status = self.n.NtSetInformationFile(handle, ct.byref(Status()), value, len(value), kind)
+            return 0 if status >= 0 else self.n.RtlNtStatusToDosError(status)
 
-        # FileRenameInfoEx with REPLACE_IF_EXISTS | POSIX_SEMANTICS replaces a file another process is still
-        # reading, which keeps the old file. Only a system without it falls back to the classic rename.
-        if publish(22, 3):
-            return
-        error = ct.get_last_error()
-        if error not in {1, 50, 87}:
+        # The NT call resolves a simple name against RootDirectory, the pinned cache folder. The Win32
+        # SetFileInformationByHandle resolves a relative name against the process's current folder instead.
+        # FileRenameInformationEx with REPLACE_IF_EXISTS | POSIX_SEMANTICS replaces a file another process is
+        # still reading, which keeps the old file. Only a system without it falls back to the classic rename.
+        error = publish(65, 3)
+        if error in {1, 50, 87}:
+            error = publish(10, 1)
+        if error:
             raise ct.WinError(error)
-        self.require(publish(3, 1))
 
     def remove(self, handle):
         value = ct.c_ubyte(1)
