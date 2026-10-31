@@ -1,0 +1,97 @@
+{
+  "date": "2026-10-31",
+  "feature": "Private process review dashboard manual interaction and JSON formatting",
+  "status": "owner_manual_interactions_and_post_fix_json_formatting_confirmed",
+  "base_commit": "f07854779e3244219c79cadb6022cc6ef6bb812a",
+  "source_state": "Uncommitted JSON formatting fix and regression test",
+  "source_sha256": {
+    "pc_scanner/process_store.py": "d4795dfbc01e187d10b0af7a7269415c827b5d758b245573efec31c281ffc311",
+    "tests/test_process_store.py": "d57022730a392682c6d4f49942491a2c5d4b7a8362e85bda912d7f335e4dc74e"
+  },
+  "fixture": {
+    "synthetic_only": true,
+    "active_runs": 1,
+    "targets": 2,
+    "processes_inspected": false,
+    "real_names_paths_or_connections_collected": false,
+    "external_requests": false
+  },
+  "manual_before_fix": {
+    "performed_by": "Owner using their browser; not automated browser tooling",
+    "confirmed_by_owner": [
+      "Review internal link navigation",
+      "Run and process detail disclosure opening and closing"
+    ],
+    "confirmed_from_owner_screenshot": [
+      "Expanded run and process details",
+      "partial status",
+      "Unconfirmed dependency resolution and process not observed reasons",
+      "Collection/save/expiry timestamps"
+    ],
+    "screenshot_sha256": "a3792f8d436f0dd5c7c5741e727d30750b7deeddbd4e65e4e093a806d32e7f67",
+    "not_verified": [
+      "Browser brand/version and other viewports",
+      "Post-fix visual formatting"
+    ]
+  },
+  "bug": {
+    "symptom": "Pretty-printed JSON line breaks displayed as literal backslash-u000a, producing a long single-line detail",
+    "cause": "Whole formatted JSON passed through generic control-character escaping",
+    "fix": "HTML-escape and sanitize each formatted JSON line, then join using actual formatter newlines; never unescape input-provided control sequences",
+    "regression": "New test failed before fix; passes after fix. HTMLParser extracts preformatted text, JSON roundtrips to the stored snapshot and malicious/control-character values remain safe."
+  },
+  "regenerated_page": {
+    "before_html_sha256": "293ac799854de71f05c9adc9f33cdbd9c218e3cf5f35faf3968fc342f4288929",
+    "after_html_sha256": "6e22be8169a7a82b958d38d53c2cf49d8989a4ad1024b5533fbc42c10589009e",
+    "static_check": "JSON formatter newline present; no literal escaped formatter newline; private 0600 file",
+    "synthetic_only": true
+  },
+  "verification": {
+    "related_tests": {
+      "total": 56,
+      "passed": 56,
+      "skipped": 0,
+      "seconds": 2.328
+    },
+    "full_suite": [
+      {
+        "python": "3.14.10",
+        "command": "bdo .venv/bin/python -m unittest discover -s tests -q",
+        "total": 579,
+        "passed": 572,
+        "skipped": 7,
+        "skip_reason": "Windows-only tests on macOS",
+        "failures": 0,
+        "errors": 0,
+        "seconds": 41.111
+      },
+      {
+        "python": "3.15.2",
+        "command": "bdo .venv-dev/bin/python -m unittest discover -s tests -q",
+        "total": 579,
+        "passed": 572,
+        "skipped": 7,
+        "skip_reason": "Windows-only tests on macOS",
+        "failures": 0,
+        "errors": 0,
+        "seconds": 40.457
+      }
+    ]
+  },
+  "limitations": [
+    "Owner interaction confirmation applies to pre-fix synthetic page",
+    "Tool file URL restriction not bypassed; no alternate serving or browser automation",
+    "No additional Linux/Windows/native browser tests in this change",
+    "Browser brand/version, additional viewports and keyboard accessibility were not verified"
+  ],
+  "manual_after_fix": {
+    "date": "2026-10-31",
+    "performed_by": "Owner using their browser",
+    "evidence": "Owner explicitly confirmed that detail JSON newline rendering was verified",
+    "confirmed": [
+      "Detail JSON formatter line breaks display correctly in the regenerated synthetic dashboard"
+    ],
+    "scope": "Post-fix visual formatting confirmed; link navigation and disclosures were confirmed before the fix",
+    "automated_browser_verification": false
+  }
+}

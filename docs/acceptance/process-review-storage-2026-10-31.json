@@ -217,5 +217,10 @@
     "record": "process-review-storage-linux-arm64-2026-10-31.json",
     "scope": "Ubuntu arm64 container; actual osquery/CLI/MCP; overlay/tmpfs mountinfo check; full suite 578 total, 570 passed, 8 skipped; no product code changes",
     "remaining": "Physical Linux host, other distributions/architectures, browser operation and new CI remain unverified; Windows storage unsupported"
+  },
+  "follow_up_dashboard_manual": {
+    "date": "2026-10-31",
+    "record": "process-review-dashboard-manual-2026-10-31.json",
+    "scope": "Owner-confirmed synthetic page link/disclosure interaction and screenshot; formatter-newline fix with regression; owner also confirmed post-fix JSON newline rendering"
   }
 }

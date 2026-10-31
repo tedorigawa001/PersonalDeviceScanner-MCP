@@ -590,7 +590,9 @@ def render(entries, manifest):
         counts = Counter(p["identity"] for p in snap["processes"])
         parts.append(f'<a href="#record-{rid}">Review {esc(rid)}</a><details id="record-{rid}" class="panel"><summary>{esc(obj["finished_at"])} · {esc(snap["status"])} · {snap["reviewed_count"]}/{snap["target_count"]} targets</summary><p>Collected: {esc(obj["started_at"])} — {esc(obj["finished_at"])}; saved: {esc(obj["saved_at"])}; expires: {esc(entry["expires_at"])}</p><p>Identity states: {esc(dict(counts))}</p>')
         for row in snap["processes"]:
-            parts.append(f'<details><summary>{esc(row["label"])} · {esc(row["runtime"])} · {esc(LABELS[row["identity"]])} · {esc(LABELS[row["launch"]])}</summary><p>Unconfirmed/attention: {esc(", ".join(row["attention"]) or "No flagged attention; safety still unassessed")}</p><p>Owner-selected files are not proven loaded; dependency metadata is not proven resolution.</p><pre>{esc(json.dumps(row["details"], ensure_ascii=False, indent=2))}</pre></details>')
+            # Preserve JSON formatter newlines while escaping every line's untrusted text.
+            details = "\n".join(esc(line) for line in json.dumps(row["details"], ensure_ascii=False, indent=2).split("\n"))
+            parts.append(f'<details><summary>{esc(row["label"])} · {esc(row["runtime"])} · {esc(LABELS[row["identity"]])} · {esc(LABELS[row["launch"]])}</summary><p>Unconfirmed/attention: {esc(", ".join(row["attention"]) or "No flagged attention; safety still unassessed")}</p><p>Owner-selected files are not proven loaded; dependency metadata is not proven resolution.</p><pre>{details}</pre></details>')
         parts.append(f'<p>Limitations: {esc(", ".join(snap["limitations"]))}</p></details>')
     return "".join(parts) + "</main></html>"
 

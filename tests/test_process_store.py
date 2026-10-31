@@ -2,6 +2,7 @@
 import asyncio
 import copy
 from datetime import datetime, timedelta, timezone
+from html.parser import HTMLParser
 import hashlib
 import importlib.util
 import json
@@ -276,6 +277,44 @@ class StoreTests(unittest.TestCase):
         with patch.object(store,'clock',return_value=self.now+timedelta(seconds=2)):self.manage('dashboard')
         page=(self.folder/'dashboard.html').read_text()
         self.assertLess(page.index('id="record-'+first+'"'),page.index('id="record-'+second+'"'))
+
+    def test_detail_json_preserves_formatting_without_restoring_untrusted_controls(self):
+        report = self.report()
+        report["data"]["processes"][0]["details"]["process"]["name"] = (
+            'demo\n\r\t\x1b\u202e</pre><script>alert("demo")</script> literal \\u000a')
+        rid = self.save(report=report)
+        saved = json.loads((self.folder / (rid + ".json")).read_text())
+        self.manage("dashboard")
+        page = (self.folder / "dashboard.html").read_text()
+
+        class PreText(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.in_pre = False
+                self.text = ""
+
+            def handle_starttag(self, tag, attrs):
+                if tag == "pre":
+                    self.in_pre = True
+
+            def handle_endtag(self, tag):
+                if tag == "pre":
+                    self.in_pre = False
+
+            def handle_data(self, data):
+                if self.in_pre:
+                    self.text += data
+
+        parsed = PreText()
+        parsed.feed(page)
+        self.assertIn('\n  "process": {\n', parsed.text)
+        expected = saved["snapshot"]["processes"][0]["details"]
+        self.assertEqual(json.loads(parsed.text), expected)
+        self.assertIn('\\\\u000a', parsed.text)
+        self.assertNotIn("\x1b", page)
+        self.assertNotIn("\u202e", page)
+        self.assertNotIn("<script", page.lower())
+        self.assertIn("&lt;/pre&gt;&lt;script&gt;", page)
 
     def test_permissions_links_fifo_and_cloud_are_refused(self):
         self.save();p=self.folder/(self.manage()['data']['records'][0]['record_id']+'.json')
