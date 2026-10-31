@@ -1,0 +1,107 @@
+{
+  "date": "2026-10-31",
+  "feature": "Local destination threat-list check of real outbound connections on macOS",
+  "status": "real_connection_local_matching_passed_with_limits",
+  "authorization": "The owner requested this one-time check in chat and chose a fresh public-list download one hour after the previous provider request; disclosure was limited to anonymous counts",
+  "tested_commit": "e2d866d5a322a56257f65908aa2a5156e9a60ca2",
+  "worktree_clean": true,
+  "source_sha256": {
+    "pc_scanner/ip_threats.py": "f5df82ee7800443c2355799b5ba8e6e55f3c487c34e0248888601750902f589f",
+    "pc_scanner/connections.py": "c2ab8bdcef31170a525937c35363f9b4c0b6d18ac9910f0d55454292c1dbb2d1",
+    "pc_scanner/core.py": "6af88eda97a6ffff722835a7d4d4f57bd5ad0fe3b3bdec53e47e4fe85a7d4344",
+    "pc_scanner/cli.py": "c423b60a2ce1cdc23b77967f665b66f7bfb44239039424f3ba1eb504f40d3235",
+    "pc_scanner/process_store.py": "79651253ba22690ffbc694e89bdb29d9905bd122837275978ffac2cceb6b5c4d"
+  },
+  "environment": {
+    "os": "Darwin",
+    "architecture": "arm64",
+    "python": "3.14.10",
+    "osquery": "5.23.1",
+    "interface": "Unmodified local CLI"
+  },
+  "configuration": "Temporary settings outside the repository: outbound_connections.enabled, ip_threats.enabled and allow_updates, history disabled, default cache directory. The owner's own settings file was neither read nor changed.",
+  "list_update": {
+    "command": "update-ip-threat-lists",
+    "exit_code": 0,
+    "status": "completed",
+    "persistence": "cache_saved",
+    "attempted_at": "2026-10-31T07:05:24.707732+00:00",
+    "retrieved_at": "2026-10-31T07:05:26.541275+00:00",
+    "seconds_after_previous_provider_request": 3695.369,
+    "requests": "One GET per fixed IPv4/IPv6 URL; no observed identifiers were sent",
+    "cache": "Default per-user state folder, created by this update below an existing parent",
+    "permissions": {"directory": "0700", "files": "0600", "owner_matches_current_user": true},
+    "managed_files": [".lock", "attempt.json", "current.json"],
+    "feeds": {
+      "4": {
+        "source": "Spamhaus Project DROP",
+        "published_at": "2026-10-31T06:14:02.000000+00:00",
+        "expires_at": "2026-11-02T06:14:02.000000+00:00",
+        "freshness": "fresh",
+        "records": 1757,
+        "bytes": 107371,
+        "sha256": "12fb55d2095720b24170d03fbd276ca131e180d37fe981537aa604dc1460c173",
+        "copyright": "(c) 2026 The Spamhaus Project SLU"
+      },
+      "6": {
+        "source": "Spamhaus Project DROP",
+        "published_at": "2026-10-30T13:14:02.000000+00:00",
+        "expires_at": "2026-11-01T13:14:02.000000+00:00",
+        "freshness": "fresh",
+        "records": 92,
+        "bytes": 5981,
+        "sha256": "ad8af2a4b7666455fa0da2b14e21a80fac2df94e5b393522e678bb62d98420ce",
+        "copyright": "(c) 2026 The Spamhaus Project SLU"
+      }
+    }
+  },
+  "check": {
+    "command": "outbound-connections --check-ip-threats --json",
+    "exit_code": 0,
+    "status": "completed",
+    "stop_reason": null,
+    "persistence": "not_saved",
+    "checked_at": "2026-10-31T07:05:45.947755+00:00",
+    "duration_seconds": 10.314,
+    "samples": {"planned": 10, "successful": 10},
+    "connection_records": 81,
+    "attributed_processes": 15,
+    "classification": {"internet_candidate": 81},
+    "unique_destinations": 36,
+    "destination_counts": {"not_listed": 36},
+    "historical_match_destinations": 0,
+    "matched_connection_records": 0,
+    "matched_processes": 0,
+    "matched_unattributed_records": 0,
+    "coverage": "checked",
+    "feed_freshness_at_check": {"4": "fresh", "6": "fresh"},
+    "warnings": ["Socket observations only: direction, actual transmissions and safety are unverified; short-lived connections may be missed",
+                 "Public threat-list matches are warnings, not proof of infection or transmission. No match does not prove safety."],
+    "limitations": ["direction_unknown", "no_byte_counts", "not_a_security_assessment", "observed_only", "os_visible_scope_only",
+                    "process_join_not_atomic", "process_start_resolution_seconds", "short_lived_connections_may_be_missed",
+                    "udp_destinations_may_be_missing"]
+  },
+  "interpretation": "None of the 36 observed public destinations was in the fresh lists. This is a warning check, not a safety verdict.",
+  "privacy": {
+    "connections": "Observed only for this check; the CLI JSON was piped into an anonymous summariser and never written to disk",
+    "identifiers_in_chat_or_record": false,
+    "history_written": false,
+    "history_file_unchanged": true,
+    "cache_unchanged_by_check": true,
+    "observed_destinations_sent_to_services": false,
+    "listed_destinations_contacted": false,
+    "payloads_captured": false
+  },
+  "harness_sha256": {
+    "ip-check.toml": "21c4e98fc2e0799e476940ac84a6b5b2a11bb33d4a4eac8e753bdfa374177836",
+    "ip_summary.py": "4f1ec82db5ab87e45366b58957eb70a5f4bc6d8ef9f066753600e8ed90b7a35e"
+  },
+  "limitations": [
+    "One 10-second observation on one Mac; short-lived connections may be missed",
+    "The lists cover hijacked or criminal-operated network blocks only, not individual malicious hosts or command-and-control servers",
+    "No listed destination was observed, so a real match, its process attribution and the matched warning path remain verified with synthetic data only",
+    "Local CLI only: the anonymous MCP tool, saved history details and the dashboard were not run against real connections",
+    "Linux and Windows real-host acceptance and browser checks remain separate"
+  ],
+  "repository_data": "Anonymous counts, public list metadata and hashes, fixed states and code hashes only; no IPs, ports, process names, PIDs, paths or host names"
+}

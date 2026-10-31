@@ -214,5 +214,11 @@
     "windows_tests": "Python 3.11, 3.14 and 3.15 each ran 611 tests: OK, 77 skipped on Windows; the stalled-download test passed in all three",
     "other_jobs": "macOS and Ubuntu tests and all npm launcher jobs, including Windows, succeeded",
     "not_covered": "CI does not run the live updater, real connection matching, browser views or a Windows cache backend"
+  },
+  "follow_up_real_connections_macos": {
+    "date": "2026-10-31",
+    "record": "ip-threat-real-connections-macos-2026-10-31.json",
+    "scope": "Owner-authorized one-time CLI check of real connections against freshly updated lists; anonymous counts only, nothing saved by the check; 36 public destinations, none listed",
+    "tested_commit": "e2d866d5a322a56257f65908aa2a5156e9a60ca2"
   }
 }
