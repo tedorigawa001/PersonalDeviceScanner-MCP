@@ -1,0 +1,241 @@
+{
+  "date": "2026-10-31",
+  "timezone": "Asia/Tokyo",
+  "feature": "Process provenance and runtime metadata: macOS partial acceptance",
+  "implementation_commit": "d5b37be",
+  "environment": {
+    "os": "macOS",
+    "os_version": "27.2",
+    "architecture": "arm64",
+    "python_versions": [
+      "3.14.10",
+      "3.15.2"
+    ],
+    "mcp_sdk_version": "1.30.0"
+  },
+  "scope": {
+    "real_existing_processes": 2,
+    "runtime_target_count": 1,
+    "other_application_target_count": 1,
+    "inspected_scripts_launched_or_restarted": false,
+    "payload_or_packet_capture": false,
+    "socket_or_destination_queries": false,
+    "external_identifier_queries": false,
+    "external_ai_provider_used": false,
+    "input_files_modified": false,
+    "automatic_start_settings_changed": false,
+    "processes_stopped": false,
+    "private_data_committed": false
+  },
+  "acceptance_outcome": "passed_with_expected_partial_result",
+  "partial_reason": "One declared direct dependency not found in standard ancestor metadata locations; retained as unconfirmed, not classified safe/unused/malicious.",
+  "runs": [
+    {
+      "python": "3.14.10",
+      "date_jst": "2026-10-31",
+      "target_count": 2,
+      "results": {
+        "cli_summary": {
+          "exit_code": 2,
+          "status": "partial",
+          "elapsed_seconds": 1.101,
+          "anonymous_verified": true
+        },
+        "cli_details": {
+          "exit_code": 2,
+          "status": "partial",
+          "elapsed_seconds": 1.117,
+          "anonymous_verified": false,
+          "states": [
+            {
+              "label": "P01",
+              "identity": "start_time_matches",
+              "runtime": "node",
+              "launch": "loaded_job_pid_matches",
+              "script": "owner_selected_file_hashed",
+              "package": "metadata_checked",
+              "attention": [
+                "dependency_resolution_unconfirmed"
+              ]
+            },
+            {
+              "label": "P02",
+              "identity": "start_time_matches",
+              "runtime": "other",
+              "launch": "not_requested",
+              "script": "not_requested",
+              "package": "not_requested",
+              "attention": []
+            }
+          ],
+          "dependency_counts": {
+            "dependency_count": 2,
+            "metadata_found": 1,
+            "not_found": 1,
+            "unavailable": 0
+          }
+        },
+        "cli_stale": {
+          "exit_code": 2,
+          "status": "partial",
+          "elapsed_seconds": 0.326,
+          "anonymous_verified": false
+        },
+        "cli_disabled": {
+          "exit_code": 2,
+          "status": "error",
+          "elapsed_seconds": 0.073,
+          "anonymous_verified": true
+        },
+        "mcp_stdio": {
+          "status": "partial",
+          "elapsed_seconds": 1.079,
+          "anonymous_verified": true,
+          "matches_cli_summary": true,
+          "response_bytes": 1319,
+          "no_target_arguments": true,
+          "read_only_local_annotations": true,
+          "external_ai_provider_used": false
+        }
+      },
+      "input_hashes_and_modes_unchanged": true,
+      "history_directory_not_created": true,
+      "inspected_code_executed": false,
+      "payload_captured": false,
+      "socket_or_endpoint_query_performed": false,
+      "external_identifier_queries": false,
+      "external_ai_provider_used": false,
+      "source_sha256": {
+        "pc_scanner/process_review.py": "bc3dc642d010852181caf81e6ec325d8442d1c5dacd6d5640004632630c704bc",
+        "pc_scanner/core.py": "51afc8bd1f8584ef857ddcf450afe2e4a1fb9e4bd538195c24b771f9873fe527",
+        "pc_scanner/cli.py": "993eb16a7276cf9744f9a3d01739c10f6071346a00885be29b3990f891b0f171",
+        "pc_scanner/server.py": "fe51f9ae8057e02dad13884e70b777d28ecea94099798db28235671d6fc528f6"
+      }
+    },
+    {
+      "python": "3.15.2",
+      "date_jst": "2026-10-31",
+      "target_count": 2,
+      "results": {
+        "cli_summary": {
+          "exit_code": 2,
+          "status": "partial",
+          "elapsed_seconds": 1.012,
+          "anonymous_verified": true
+        },
+        "cli_details": {
+          "exit_code": 2,
+          "status": "partial",
+          "elapsed_seconds": 1.066,
+          "anonymous_verified": false,
+          "states": [
+            {
+              "label": "P01",
+              "identity": "start_time_matches",
+              "runtime": "node",
+              "launch": "loaded_job_pid_matches",
+              "script": "owner_selected_file_hashed",
+              "package": "metadata_checked",
+              "attention": [
+                "dependency_resolution_unconfirmed"
+              ]
+            },
+            {
+              "label": "P02",
+              "identity": "start_time_matches",
+              "runtime": "other",
+              "launch": "not_requested",
+              "script": "not_requested",
+              "package": "not_requested",
+              "attention": []
+            }
+          ],
+          "dependency_counts": {
+            "dependency_count": 2,
+            "metadata_found": 1,
+            "not_found": 1,
+            "unavailable": 0
+          }
+        },
+        "cli_stale": {
+          "exit_code": 2,
+          "status": "partial",
+          "elapsed_seconds": 0.31,
+          "anonymous_verified": false
+        },
+        "cli_disabled": {
+          "exit_code": 2,
+          "status": "error",
+          "elapsed_seconds": 0.07,
+          "anonymous_verified": true
+        },
+        "mcp_stdio": {
+          "status": "partial",
+          "elapsed_seconds": 0.985,
+          "anonymous_verified": true,
+          "matches_cli_summary": true,
+          "response_bytes": 1319,
+          "no_target_arguments": true,
+          "read_only_local_annotations": true,
+          "external_ai_provider_used": false
+        }
+      },
+      "input_hashes_and_modes_unchanged": true,
+      "history_directory_not_created": true,
+      "inspected_code_executed": false,
+      "payload_captured": false,
+      "socket_or_endpoint_query_performed": false,
+      "external_identifier_queries": false,
+      "external_ai_provider_used": false,
+      "source_sha256": {
+        "pc_scanner/process_review.py": "bc3dc642d010852181caf81e6ec325d8442d1c5dacd6d5640004632630c704bc",
+        "pc_scanner/core.py": "51afc8bd1f8584ef857ddcf450afe2e4a1fb9e4bd538195c24b771f9873fe527",
+        "pc_scanner/cli.py": "993eb16a7276cf9744f9a3d01739c10f6071346a00885be29b3990f891b0f171",
+        "pc_scanner/server.py": "fe51f9ae8057e02dad13884e70b777d28ecea94099798db28235671d6fc528f6"
+      }
+    }
+  ],
+  "verified": [
+    "Two existing process identities matched before and after inspection",
+    "Node classification and owner-selected script hash returned locally",
+    "Selected macOS GUI LaunchAgent loaded job PID matched the runtime",
+    "Direct dependency metadata counts: 2 declared, 1 found, 1 not found",
+    "CLI default and MCP responses excluded private detail keys and known identifiers; fixed runtime category words allowed",
+    "CLI --show-details retained actual identifiers only in private local files",
+    "CLI stale-start-time target rejected with partial and no private attribution",
+    "Disabled CLI invocation returned error",
+    "MCP SDK stdio client initialized, listed no-argument read-only/local tool, and called it",
+    "CLI/MCP states and counts agreed after excluding separately generated observation timestamps",
+    "Input hashes and permission modes unchanged; history directory not created",
+    "Private evidence directory 0700, regular evidence/config/report files 0600"
+  ],
+  "regression_recheck": {
+    "command": "bdo .venv/bin/python -m unittest tests.test_process_review -q",
+    "total": 16,
+    "passed": 16,
+    "skipped": 0,
+    "failures": 0,
+    "errors": 0
+  },
+  "test_harness_corrections": [
+    {
+      "issue": "Name-substring privacy check matched the fixed node runtime category",
+      "resolution": "Retained allowlisted key checks and identifier checks; excluded fixed runtime category words from raw substring prohibition. Product code unchanged."
+    },
+    {
+      "issue": "CLI/MCP whole-report equality included independent observed_at timestamps",
+      "resolution": "Compared all remaining fields; excluded only observed_at. Product code unchanged."
+    }
+  ],
+  "limitations": [
+    "This is macOS partial acceptance, not a malware safety assessment",
+    "Selected files do not prove actual runtime module loading",
+    "Missing dependency and nonstandard resolution paths remain unconfirmed",
+    "No source semantic, signature, advisory or endpoint-purpose analysis in this tool acceptance",
+    "Slow/hung filesystem, forced slow-engine timeout and mid-operation cancellation not rechecked against live targets; synthetic cancellation regression passed",
+    "Windows file reader, Linux/Windows startup provenance and native acceptance remain open",
+    "No browser/dashboard acceptance; this stage has no dashboard or built-in report writer",
+    "Full Android/MCP suites were not rerun for this documentation-only acceptance update; implementation record retains preceding 538-test runs"
+  ],
+  "privacy": "Repository record contains aggregate counts, fixed status codes, public runtime versions and repository source hashes only. Actual names, PIDs, source/launch paths, package names, script hashes and local evidence paths are excluded."
+}

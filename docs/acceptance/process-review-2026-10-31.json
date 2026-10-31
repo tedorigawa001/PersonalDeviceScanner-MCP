@@ -120,5 +120,12 @@
     "tests/test_process_review.py": "61507fa72712be101d2627689956fabd104f1784738ecf72bb559b6924edd56b",
     "tests/test_mcp.py": "1a3dc6e8e0460033298a4abd132d7f1c9f8eab9bf0ce5883f68203a8374f8272",
     "npm/test/roundtrip.test.js": "9982230d450a6b27280a777b7b5ece24a121c8ec51a649a7a2dd92a0002a2f98"
+  },
+  "followup_acceptance": {
+    "date": "2026-10-31",
+    "record": "process-review-macos-2026-10-31.json",
+    "scope": "macOS real existing processes; CLI and local MCP stdio on both Python runtimes",
+    "outcome": "passed_with_expected_partial_result",
+    "note": "Historical implementation-only verification scope above is preserved. One dependency remains unconfirmed."
   }
 }
