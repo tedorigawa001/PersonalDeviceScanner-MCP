@@ -5,7 +5,7 @@
   "scope": "Windows destination-list cache only; no general process-store Windows enablement, new dependencies, settings or MCP tools",
   "implementation": {
     "dispatch": "ip_threats.Cache.open uses a dedicated Windows Store; existing POSIX backend unchanged",
-    "storage": "Absolute local drive path, fixed NTFS/ReFS; all ancestors opened with OPEN_REPARSE_POINT and OPEN_NO_RECALL and pinned without delete sharing; read-only ancestors deny write sharing",
+    "storage": "Absolute local drive path, fixed NTFS/ReFS; all ancestors opened with OPEN_REPARSE_POINT and OPEN_NO_RECALL and pinned without delete sharing; write sharing allowed so other programs' saves by rename into those folders keep working (corrected in review_fixes)",
     "privacy": "Protected user+SYSTEM DACL from object creation; effective-token owner check via existing windows_owner, protected/non-null DACL and ordinary trusted-SID ACE allowlist; broad existing ACL refused, never repaired",
     "file_safety": "Reject reparse/offline/recall attributes, directories in file slots, non-disk files, multiple hardlinks; validate handle attributes, ACL and read identity before/after bounded reads",
     "reader": "No cache/parent/lock creation with file_lock=False; no fallback to unsafe path-only or POSIX operations",
@@ -93,5 +93,32 @@
     "https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_rename_info",
     "https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getvolumeinformationbyhandlew",
     "https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew"
-  ]
+  ],
+  "review_fixes": {
+    "date": "2026-10-31",
+    "base_commit": "ff629e6371da72f1f7255c955bf84cce26b0cd0f",
+    "fixes": [
+      "Every pinned folder now allows write sharing but still never delete sharing. Read-only sharing on the ancestors (drive root, Users, home, AppData, Local) would, for up to the 30-second update, make other programs' saves by rename into those folders fail with a sharing violation, because a rename opens its target folder for writing; it would also fail the cache when another program already had one open for writing. Missing delete sharing alone pins the folders against rename or replacement.",
+      "Publication uses FileRenameInfoEx with REPLACE_IF_EXISTS | POSIX_SEMANTICS, so an update can replace current.json or previous.json while another process is reading it; that reader keeps the old generation. Only ERROR_INVALID_FUNCTION/NOT_SUPPORTED/INVALID_PARAMETER falls back to the classic rename, which cannot replace a file with open handles; any other failure is reported."
+    ],
+    "reference": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_rename_information",
+    "source_sha256": {
+      "pc_scanner/windows_ip_cache.py": "c4b237e24a727c57e014ce826362ddc7d8c70278261d13b0740cf9c2b18bb2b2",
+      "tests/test_windows_ip_cache.py": "59f00f969be16c613312a19430fbf363c50e33e1418172d61b84448c7e57b10b"
+    },
+    "tests_added": [
+      "Model (all OS): POSIX rename first, classic rename only when unsupported, other failures reported; fails on the base commit",
+      "Windows only: while the cache is open, another save by rename into a pinned ancestor succeeds and the ancestor itself still cannot be renamed",
+      "Windows only: an update replaces current.json while another process holds it open with read/delete sharing; that process reads the old bytes, which also become previous.json"
+    ],
+    "verification": {
+      "full_suite": [
+        {"python": "3.14.10", "total": 635, "passed": 619, "skipped": 16, "failures": 0, "errors": 0},
+        {"python": "3.15.2", "total": 635, "passed": 619, "skipped": 16, "failures": 0, "errors": 0}
+      ],
+      "skip_explanation": "Seven prior Windows-only tests plus nine Windows-cache native tests",
+      "npm": "Not rerun: the tool list and npm launcher are unchanged"
+    },
+    "not_covered": "The two new native tests and the changed native calls have not run on Windows; they first run in Windows CI after a push"
+  }
 }

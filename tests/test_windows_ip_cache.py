@@ -154,6 +154,25 @@ class NativeValidationModelTests(unittest.TestCase):
                 else:
                     with self.assertRaises(OSError):api.private_acl(1)
 
+    def test_publication_uses_posix_rename_and_falls_back_only_when_unsupported(self):
+        from types import SimpleNamespace
+        from pc_scanner import windows_ip_cache as w
+        calls=[]
+        def kernel(results):
+            def set_info(handle,kind,buf,size):calls.append((kind,int.from_bytes(bytes(buf)[:4],'little')));return results.pop(0)
+            return SimpleNamespace(SetFileInformationByHandle=set_info)
+        api=w.Native.__new__(w.Native)
+        # FileRenameInfoEx (22) with REPLACE_IF_EXISTS | POSIX_SEMANTICS; classic FileRenameInfo (3) only if unsupported.
+        for results,error,expected in [([1],0,[(22,3)]),([0,1],87,[(22,3),(3,1)]),([0,1],50,[(22,3),(3,1)])]:
+            calls.clear();api.k=kernel(results)
+            with self.subTest(error=error),patch.object(w.ct,'get_last_error',return_value=error,create=True):api.rename(1,2,'current.json')
+            self.assertEqual(calls,expected)
+        # Any other failure, such as access denied, is reported instead of retried with weaker semantics.
+        calls.clear();api.k=kernel([0])
+        with patch.object(w.ct,'get_last_error',return_value=5,create=True),patch.object(w.ct,'WinError',side_effect=OSError,create=True):
+            with self.assertRaises(OSError):api.rename(1,2,'current.json')
+        self.assertEqual(calls,[(22,3)])
+
 
 @unittest.skipUnless(__import__('os').name=='nt','Native Windows filesystem/APIs required')
 class NativeWindowsTests(unittest.TestCase):
@@ -183,7 +202,7 @@ class NativeWindowsTests(unittest.TestCase):
         # Native info validates owner + protected DACL and single-link type, not POSIX mode bits.
         api=Native()
         for path in [self.cache,self.cache/'current.json',self.cache/'.lock']:
-            h=api.open_directory(path,final=True) if path.is_dir() else api.open(path)
+            h=api.open_directory(path) if path.is_dir() else api.open(path)
             try:api.info(h,directory=path.is_dir())
             finally:api.close(h)
         with patch.object(t,'clock',return_value=self.now+timedelta(hours=1)),patch.object(t,'download',side_effect=[feed(4),b'broken']):
@@ -199,6 +218,42 @@ class NativeWindowsTests(unittest.TestCase):
         with t.Cache(t.cache_settings(self.scanner)).open(file_lock=False):
             with self.assertRaises(OSError):self.cache.rename(self.root/'moved')
         self.cache.rename(self.root/'moved')
+
+    def test_native_pinned_ancestors_still_accept_other_programs_saves(self):
+        import os
+        self.assertEqual(self.update()['status'],'completed')
+        draft=self.root/'draft.tmp';draft.write_bytes(b'saved')
+        moved=self.root.parent/(self.root.name+'-moved')
+        self.addCleanup(lambda:moved.exists() and moved.rename(self.root))
+        with t.Cache(t.cache_settings(self.scanner)).open():
+            # A save by write-then-rename into a pinned ancestor opens it for writing and must still work...
+            os.replace(draft,self.root/'saved.txt')
+            # ...while the ancestor itself still cannot be renamed or replaced.
+            with self.assertRaises(OSError):self.root.rename(moved)
+        self.assertEqual((self.root/'saved.txt').read_bytes(),b'saved')
+
+    def test_native_update_replaces_current_while_another_process_reads_it(self):
+        import subprocess,sys
+        from datetime import timedelta
+        from tests.test_ip_threats import feed
+        self.assertEqual(self.update()['status'],'completed');old=(self.cache/'current.json').read_bytes()
+        # Another process holds current.json open the way a reader does, with read and delete sharing.
+        child=subprocess.Popen([sys.executable,'-u','-c',
+            'import sys;from pc_scanner.windows_ip_cache import Native;a=Native();h=a.open(sys.argv[1]);'+
+            'print("READY",flush=True);sys.stdin.readline();print(a.read(h,1<<20).hex());a.close(h)',str(self.cache/'current.json')],
+            stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+        try:
+            self.assertEqual(child.stdout.readline().strip(),'READY')
+            later=self.now+timedelta(hours=1)
+            with patch.object(t,'clock',return_value=later),patch.object(t,'download',side_effect=lambda v,*a:feed(v,later)):
+                self.assertEqual(self.scanner.invoke('update_ip_threat_lists')['status'],'completed')
+            self.assertNotEqual((self.cache/'current.json').read_bytes(),old)
+        finally:
+            out,err=child.communicate('release\n',timeout=10)
+        self.assertEqual(child.returncode,0,err)
+        # The reader keeps its consistent old generation, which is also kept as previous.json.
+        self.assertEqual(bytes.fromhex(out.strip()),old)
+        self.assertEqual((self.cache/'previous.json').read_bytes(),old)
 
     def test_native_existing_inherited_dacl_and_hardlinks_fail_closed(self):
         import os

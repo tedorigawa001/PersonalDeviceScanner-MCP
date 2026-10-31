@@ -3,7 +3,7 @@
   "source_commit": "182a9045892c5a4fcf4ff52b4c44f1488afbea2c",
   "status": "linux_generated_html_mac_browser_owner_confirmed",
   "result": {
-    "status": "linux_generation_and_mac_manual_browser_verified",
+    "status": "linux_generation_verified_mac_browser_owner_confirmed",
     "environment": {
       "platform": "Linux-6.10.14-linuxkit-aarch64-with-glibc2.39",
       "python": "3.12.3",
@@ -56,13 +56,13 @@
     "status": "confirmed_by_owner",
     "host": "Mac browser viewing HTML generated in Linux; not a Linux browser test",
     "expected": [
-      "Connections2, processes2, matched destination1, not_listed1",
+      "Connections 2, processes 2, matched destinations 1, not_listed 1",
       "Fresh metadata, checked coverage and synthetic-match warning",
       "Connection-history link navigates to scan-0",
       "Scan details and both process details open and close"
     ],
     "date": "2026-10-31",
-    "evidence": "Owner reported successful display, link navigation, scan details and per-process detail toggles in this conversation; no automated browser interaction or screenshots used",
+    "evidence": "Owner reported successful display, link navigation, scan details and per-process detail toggles during the acceptance check; no automated browser interaction or screenshots used",
     "confirmed": [
       "Display",
       "Connection-history link navigation",
@@ -70,6 +70,7 @@
       "Per-process details open and close"
     ],
     "not_verified": [
+      "Expected counts, fresh metadata, checked coverage and synthetic-match warning: not separately reported by the owner and not recorded in static_checks",
       "Linux-native browser rendering or interaction",
       "Other browsers, viewport sizes and keyboard-only operation",
       "Independent verification of every displayed cell"
@@ -92,5 +93,13 @@
     "pc_scanner/history.py": "dac9bfd6c0ac4f3e130dff76beb05f4ca7ff0b07c3ee5537fa1c717d519440e1",
     "pc_scanner/connections.py": "32af7de722cc238c8d09e521047f09d8752794798de73efb97a3180c9c5be465",
     "pc_scanner/ip_threats.py": "2dbfb34b37761869d847e68c4ae583cdce237bcde9c576407661edf9e6f76cac"
+  },
+  "review_corrections": {
+    "date": "2026-10-31",
+    "changes": [
+      "Result status aligned with the owner-confirmed browser check instead of 'verified'",
+      "Expected display values not in the owner's report listed under not_verified",
+      "Evidence wording no longer refers to a conversation; spacing in expected counts fixed"
+    ]
   }
 }

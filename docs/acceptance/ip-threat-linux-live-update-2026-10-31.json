@@ -147,18 +147,18 @@
     "history_created": false
   },
   "procedure": [
-    "Reused prior Ubuntu24.04 arm64 acceptance image; ran current copied source with Python3.12.3 as UID10001",
+    "Reused prior Ubuntu 24.04 arm64 acceptance image; ran current copied source with Python 3.12.3 as UID 10001",
     "No host folders/socket mounts, published ports, privileged mode or extra capabilities. Only source, harness and already public previous feed bundle copied",
-    "Seeded an older validated public generation using product cache writer; no attempt record reset to circumvent hourly rule. Known preceding acceptance source-IP attempt was 2026-10-31T06:03:49Z, over four hours before current live request",
+    "Seeded an older validated public generation using product cache writer; no attempt record reset to circumvent hourly rule. Latest preceding acceptance attempt from the same network was 2026-10-31T07:05:24Z (macOS real-connection acceptance), about 3 hours 13 minutes before current live request",
     "Invoked actual CLI update-ip-threat-lists --json through runpy wrapper. Wrapper recorded but did not replace downloader/SSL context; only fixed feed urllib.Request URLs and their DNS host permitted",
     "Downloaded IPv4 and IPv6 once each, with default verified TLS and hostname checking. Existing prior generation moved to previous.json",
-    "Immediate repeat returned partial/exit2/rate_limited_no_request_sent with no download or HTTP request. A further guarded repeat verified byte/mode/inode/mtime/size unchanged without additional HTTP requests",
+    "Immediate repeat returned partial/exit 2/rate_limited_no_request_sent with no download or HTTP request. A further guarded repeat verified byte/mode/inode/mtime/size unchanged without additional HTTP requests",
     "Reparsed cached bundle, checked feed hashes, published/retrieved/expiry dates and actual freshness at completion; calculated both expiry boundaries without changing system clock or attempt times",
-    "Checked current-owner0700/0600, collection/history/default-path call counters zero; copied public-only result then removed dedicated container"
+    "Checked current owner and 0700/0600, collection/history/default-path call counters zero; copied public-only result then removed dedicated container"
   ],
   "harness_adjustments": [
-    "Public seed input copied as root0600 was initially unreadable to UID10001; changed only copied public input to0644 before any request. Cache remained0700/0600",
-    "Initial validation incorrectly required exit0 for the expected rate-limited partial result. Live update had succeeded; resumed against saved data and additional guarded no-request call, without re-fetching or reseeding cache"
+    "Public seed input copied as root with mode 0600 was initially unreadable to UID 10001; changed only copied public input to 0644 before any request. Cache remained 0700/0600",
+    "Initial validation incorrectly required exit 0 for the expected rate-limited partial result. Live update had succeeded; resumed against saved data and additional guarded no-request call, without re-fetching or reseeding cache"
   ],
   "verification": {
     "product_changes": false,
@@ -194,5 +194,16 @@
     "acceptance.py": "e99231dddad1e93ce38eeb79536b33d7f96f69485cb85c27c4ed96b9dad10713",
     "resume-validation.py": "5680994968d13364d9ef1e29b21714f93a6d6efc90cf620dfc9be61f4883cb0e",
     "input.tar": "a55bcd5f4e0ab2fa3abf885a92191fee523347b25ed15cccee5bf0dfdd95f13f"
+  },
+  "review_corrections": {
+    "date": "2026-10-31",
+    "changes": [
+      "Preceding attempt corrected from 2026-10-31T06:03:49Z (over four hours) to the later 07:05:24Z recorded in ip-threat-real-connections-macos-2026-10-31.json; the gap is still over the one-hour limit, so the conclusion is unchanged",
+      "Missing spaces between words and numbers fixed; no results changed"
+    ]
+  },
+  "follow_up_browser": {
+    "record": "ip-threat-linux-generated-dashboard-mac-browser-2026-10-31.json",
+    "scope": "Linux-generated synthetic dashboard viewed and operated in a Mac browser by the owner; Linux-native browser interaction still not verified"
   }
 }

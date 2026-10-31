@@ -128,11 +128,11 @@ class Native:
             if not self.k.CreateDirectoryW(str(path), attrs) and ct.get_last_error() != 183:
                 raise ct.WinError(ct.get_last_error())
 
-    def open_directory(self, path, final=False, writable=False):
-        # Ancestors deny write/delete sharing. The private final directory allows concurrent
-        # cache handles but never delete sharing; writers need add-file/delete-child for rename.
-        return self.open(path, CONTROL | 0x81 | (0x42 if writable else 0),
-                         3 if final else 1, 3, directory=True)
+    def open_directory(self, path, writable=False):
+        # No folder on the path allows delete sharing, so none can be renamed or replaced while pinned.
+        # All allow write sharing: other programs' saves by rename open their target folder for writing.
+        # Writers need add-file/delete-child on the final directory for rename.
+        return self.open(path, CONTROL | 0x81 | (0x42 if writable else 0), 3, 3, directory=True)
 
     def open(self, path, access=READ | CONTROL, share=5, disposition=3, directory=False, private=False):
         @contextmanager
@@ -228,11 +228,22 @@ class Native:
         class Rename(ct.Structure):
             _fields_ = [("flags", wt.DWORD), ("root", wt.HANDLE), ("length", wt.DWORD), ("name", wt.WCHAR * 1)]
         encoded = name.encode("utf-16-le")
-        value = ct.create_string_buffer(ct.sizeof(Rename) + len(encoded))
-        info = Rename.from_buffer(value)
-        info.flags, info.root, info.length = 1, parent, len(encoded)
-        ct.memmove(ct.addressof(value) + Rename.name.offset, encoded, len(encoded))
-        self.require(self.k.SetFileInformationByHandle(handle, 3, value, len(value)))
+
+        def publish(kind, flags):
+            value = ct.create_string_buffer(ct.sizeof(Rename) + len(encoded))
+            info = Rename.from_buffer(value)
+            info.flags, info.root, info.length = flags, parent, len(encoded)
+            ct.memmove(ct.addressof(value) + Rename.name.offset, encoded, len(encoded))
+            return self.k.SetFileInformationByHandle(handle, kind, value, len(value))
+
+        # FileRenameInfoEx with REPLACE_IF_EXISTS | POSIX_SEMANTICS replaces a file another process is still
+        # reading, which keeps the old file. Only a system without it falls back to the classic rename.
+        if publish(22, 3):
+            return
+        error = ct.get_last_error()
+        if error not in {1, 50, 87}:
+            raise ct.WinError(error)
+        self.require(publish(3, 1))
 
     def remove(self, handle):
         value = ct.c_ubyte(1)
@@ -272,7 +283,7 @@ class Store:
                     raise OSError("Cloud cache unavailable")
                 final = i == len(parsed.parts) - 1
                 try:
-                    handle = self.api.open_directory(current, final=final, writable=final and file_lock)
+                    handle = self.api.open_directory(current, writable=final and file_lock)
                 except FileNotFoundError:
                     if not final or not create:
                         if not create:
@@ -281,7 +292,7 @@ class Store:
                         from .process_store import MissingParent
                         raise MissingParent("Cache parent missing") from None
                     self.api.create_directory(current)
-                    handle = self.api.open_directory(current, final=final, writable=final and file_lock)
+                    handle = self.api.open_directory(current, writable=final and file_lock)
                 self.handles.append(handle)
                 self.api.info(handle, directory=True, private=final)
                 if i == 0:
