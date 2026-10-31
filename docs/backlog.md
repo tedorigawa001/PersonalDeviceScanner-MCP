@@ -87,6 +87,20 @@
 
 ## 中
 
+- [ ] **接続一覧からプロセスの起動元・ランタイム実体・未確認事項を追えるようにする**（2026-10-31）
+  - 第1段階：`review-processes [--json] [--show-details]` / MCP `review_processes()` を追加。
+    所有者設定のPID・開始時刻で対象を固定し、前後の実体照合、親の観測、Node/Python分類、指定スクリプトのハッシュ、
+    直接依存の標準配置探索、macOSの指定LaunchAgentとロード済みジョブPIDを照合する。
+    MCPとCLI既定は匿名ラベル・状態・注意点だけ。実名・PID・パス・パッケージはCLIの明示表示だけで、履歴には保存しない。
+    [設計](process-review-design.md)。実プロセスの情報はリポジトリへ記録しない。
+  - 残課題：実機受入、Windowsの安全なファイル読取、Linux/Windowsの起動元照合、PnP・NODE_PATH等の依存解決、
+    ソースの静的解析・署名等の根拠統合、ローカル詳細保存・ダッシュボード表示。
+  - 第1段階の回帰16件を追加。Android・MCPを含む全538件はPython 3.14・3.15で各531件成功、Windows専用7件skip。
+    npmの配布物導入・MCP通し試験を含む26件も両Pythonで成功。PID照合・匿名化・最終照合を外す3通りの変更を検出。
+    [検証記録](acceptance/process-review-2026-10-31.json)。実機受入とWindows CIは未実施。
+  - 続いて、同意した観測間の新規接続・自動起動追加・スクリプト変更を比較する。
+    通信先は外部照会しない。通信本文の収集、停止・自動起動解除・依存導入は別の操作とし、この読取ツールには追加しない。
+
 - [ ] **個人PCの外向き通信の観測を追加する**（2026-10-29）
   - [第1段階の設計書](outbound-connections-design.md)に沿って、固定osquery投影による収集・CLI・MCP・履歴・ダッシュボードと回帰試験を追加。
     `outbound-connections [--json]` / `observe_outbound_connections()`。macOSの部分受入は下記、他OSは未確認。

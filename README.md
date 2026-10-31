@@ -73,6 +73,7 @@ It cannot supply arbitrary SQL, paths, executables, or connection targets.
 |---|---|---|---|
 | `scanner_status()` | `status` | none | Shows what is configured. Does not check engines or PC safety |
 | `get_scan_progress(scan_id="")` | — | none | Reads recent MCP request progress only, including after cancellation |
+| `review_processes()` | `review-processes [--json] [--show-details]` | osqueryi; macOS launchctl | Owner-selected PID/start-time provenance; anonymous MCP summary, private details only on explicit local CLI display |
 | `check_clamav_signatures()` | `check-clamav-signatures` | clamscan | Reads definition version, date, freshness and update steps; never updates or scans |
 | `list_malware_gaps(scan_id, ...)` | `malware-gaps <root_alias> [relative_path] --scan GROUP` | none | Lists batch coverage reasons and opaque target IDs; MCP reads only this server's live results, without names |
 | `rescan_malware_targets(scan_id, revision, target_ids)` | `malware <root_alias> [relative_path] --retry GROUP --revision N --target ID` | clamscan | Rescans selected gaps after rechecking the original authorization and limits |
@@ -486,6 +487,25 @@ Privilege comparisons and Windows/Linux native acceptance remain unverified; see
 See the [macOS acceptance record](docs/acceptance/outbound-connections-macos-2026-10-30.json).
 See [design and verification plan](docs/outbound-connections-design.md).
 
+### Reviewing process provenance (stage 1)
+
+`pc-scanner --config scanner.toml review-processes --json` checks only owner-configured PID/start-time
+targets in `[process_review.targets.<alias>]`. Set `[process_review] enabled=true` to opt in; it is off by default.
+Each target needs positive integer `pid` and `start_time` (osquery epoch seconds). Optional absolute
+`script_file`, `package_file` and `launch_file` select local files. See the commented example in
+`scanner.example.toml` and the [design](docs/process-review-design.md).
+
+The CLI defaults to anonymous states, as does MCP `review_processes()` (no arguments). Only the local CLI's
+`--show-details` includes names, PID, paths, hashes and dependency metadata. No details are saved to scan history,
+even with history details enabled. No destination, payload, command line or environment is collected, no code is
+executed, and no external lookup or remediation occurs. File paths and package metadata are untrusted data.
+
+Checks include identity before/after review, observed parent, Node/Python classification, the selected script's
+hash, standard ancestor node_modules metadata, and a selected macOS GUI LaunchAgent's loaded PID.
+Selected files and found metadata do not prove runtime loading or safety. Windows file checks and other OS
+startup mechanisms are not implemented; links, placeholders and unavailable items remain unconfirmed.
+The command/loop budget is 1..60 seconds (default 15); blocked filesystem calls cannot be forcibly interrupted.
+
 ## Configuration reference
 
 LAN: `lan.enabled=false`, `lan.timeout_seconds=15` (1–30), `lan.max_devices=256` (1–512),
@@ -495,6 +515,7 @@ with `neighbor_cache=true` and `mdns=false` by default. See the LAN example abov
 | Setting | Description | Default |
 |---|---|---|
 | `outbound_connections` | Opt-in sampled socket observation; duration 1..60, interval 1..10, max records 1..2000; MCP disclosure and saved details each require explicit permission | disabled |
+| `process_review` | Owner-selected PID/start-time targets, max 16; anonymous MCP summary; timeout 1..60 seconds | disabled |
 | `local.osquery_binary` | Absolute path to osqueryi. Empty disables it | empty |
 | `local.clamav_binary` | Absolute path to clamscan. Empty disables it. `.bat` / `.cmd` files are rejected | empty |
 | `local.timeout_seconds` | Time limit per operation (1–3600 seconds). For ClamAV it covers the folder check and the scan together; Wazuh uses at most 30 seconds | `600` |

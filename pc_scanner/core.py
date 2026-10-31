@@ -57,7 +57,8 @@ MAX_PAGES = 1000000
 SOURCES = {"status": "bridge", "inventory": "osquery", "malware": "clamav",
            "check_clamav_signatures": "clamav", "vulnerabilities": "wazuh",
            "android": "adb", "android_check": "adb", "router_check": "router", "router_products": "router",
-           "discover_lan_devices": "lan", "observe_outbound_connections": "connections"}
+           "discover_lan_devices": "lan", "observe_outbound_connections": "connections",
+           "review_processes": "process_review"}
 
 # OpenSSL's X509_V_ERR_HOSTNAME_MISMATCH and X509_V_ERR_IP_ADDRESS_MISMATCH.
 WRONG_HOST = {62: "Hostname mismatch: the certificate is not for the host in wazuh.url",
@@ -284,7 +285,8 @@ SETTINGS = {"local": {"osquery_binary", "clamav_binary", "timeout_seconds", "max
             "lan": {"enabled", "timeout_seconds", "max_devices", "expose_identifiers_to_mcp"},
             "lan_networks": None,
             "outbound_connections": {"enabled", "duration_seconds", "interval_seconds", "max_connections",
-                                     "expose_identifiers_to_mcp", "save_details"}}
+                                     "expose_identifiers_to_mcp", "save_details"},
+            "process_review": {"enabled", "timeout_seconds", "targets"}}
 
 
 def unknown_settings(config: dict) -> list[str]:
@@ -690,7 +692,7 @@ class Scanner:
         if not all(isinstance(v, dict) for v in (self.local, self.roots, self.wazuh, self.android,
                                                   self.android_devices, self.history_settings,
                                                   self.update_settings, config.get("lan", {}), config.get("lan_networks", {}),
-                                                  config.get("outbound_connections", {}))):
+                                                  config.get("outbound_connections", {}), config.get("process_review", {}))):
             raise ScannerError("Configuration sections must be tables")
         self.config_warnings = unknown_settings(config)
         from . import freshness
@@ -766,6 +768,9 @@ class Scanner:
         if self.connection_settings["save_details"] and not self.history_details:
             self.config_warnings.append("outbound_connections.save_details has no effect while history.details = false")
         self._connection_lock = threading.Lock()
+        from . import process_review
+        self.process_review_settings = process_review.load(config)
+        self._process_review_lock = threading.Lock()
         # Set by the CLI ("cli") or the MCP server ("mcp"); scans are recorded only then.
         self.via = None
         ca_file = self.wazuh.get("ca_file", "")
@@ -1375,6 +1380,10 @@ class Scanner:
         from . import connections
         return connections.observe(self, cancel, progress)
 
+    def review_processes(self, cancel=None, progress=None) -> dict:
+        from . import process_review
+        return process_review.review(self, cancel, progress)
+
     def discover_lan_devices(self, network_alias: str, cancel=None, progress=None) -> dict:
         from . import lan
         return lan.discover(self, network_alias, cancel, progress)
@@ -1386,12 +1395,13 @@ class Scanner:
                       "router_check": self.router_check, "router_products": self.router_products,
                       "check_clamav_signatures": self.check_clamav_signatures,
                       "discover_lan_devices": self.discover_lan_devices,
-                      "observe_outbound_connections": self.observe_outbound_connections}
+                      "observe_outbound_connections": self.observe_outbound_connections,
+                      "review_processes": self.review_processes}
         source = SOURCES.get(operation, "bridge")
         started, clock = datetime.now(timezone.utc), time.perf_counter()
         if progress:
             progress.update(stage="preflight" if operation == "malware" else "running")
-            if operation in {"malware", "check_clamav_signatures", "discover_lan_devices", "observe_outbound_connections"}:
+            if operation in {"malware", "check_clamav_signatures", "discover_lan_devices", "observe_outbound_connections", "review_processes"}:
                 kwargs["progress"] = progress
             else:
                 progress.update(checkpoint="not_applicable")

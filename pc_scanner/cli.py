@@ -64,6 +64,9 @@ def main():
     lan_devices.add_argument("--json", action="store_true", help="print the complete LAN observations")
     outbound = commands.add_parser("outbound-connections", help="read OS-visible processes and destinations; no packets or payloads")
     outbound.add_argument("--json", action="store_true", help="print complete socket observations with coverage limitations")
+    review = commands.add_parser("review-processes", help="read owner-selected process provenance; anonymous summary by default")
+    review.add_argument("--show-details", action="store_true", help="include private process names, PIDs, paths and package metadata locally")
+    review.add_argument("--json", action="store_true", help="print structured process provenance")
     inventory = commands.add_parser("inventory")
     inventory.add_argument("query_id", choices=["os_version", "applications", "listening_ports"])
     inventory.add_argument("--offset", type=int, default=0, help="continue from data.next_offset")
@@ -160,11 +163,11 @@ def main():
                 return
         elif args.command != "malware-gaps":
             scanner.via = "cli"
-            kwargs = {k: v for k, v in vars(args).items() if k not in {"config", "command", "json"}}
-            if args.command in {"malware", "check-clamav-signatures", "lan-devices", "outbound-connections"}:
+            kwargs = {k: v for k, v in vars(args).items() if k not in {"config", "command", "json", "show_details"}}
+            if args.command in {"malware", "check-clamav-signatures", "lan-devices", "outbound-connections", "review-processes"}:
                 from .progress import CLIProgress
                 with CLIProgress() as display:
-                    report = scanner.invoke({"lan-devices": "discover_lan_devices", "outbound-connections": "observe_outbound_connections"}.get(args.command, args.command.replace("-", "_")),
+                    report = scanner.invoke({"lan-devices": "discover_lan_devices", "outbound-connections": "observe_outbound_connections", "review-processes": "review_processes"}.get(args.command, args.command.replace("-", "_")),
                                             progress=display.progress, cancel=display.cancel, **kwargs)
             else:
                 report = scanner.invoke(args.command.replace("-", "_"), **kwargs)
@@ -176,6 +179,9 @@ def main():
         # Exit 2 ("not completed"), never 1, which means "completed with findings".
         report = result("bridge", "error",
                         error=f"Unexpected internal error ({type(exc).__name__}); the operation was not completed")
+    if args.command == "review-processes" and not args.show_details:
+        from .process_review import for_mcp
+        report = for_mcp(report)
     if args.command == "malware-checkpoints" and not args.json:
         data = report.get("data", {})
         print("Status:", report["status"])

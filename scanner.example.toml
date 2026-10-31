@@ -128,3 +128,15 @@ interval_seconds = 1              # 1..10, no greater than duration
 max_connections = 2000            # 1..2000
 expose_identifiers_to_mcp = false
 save_details = false              # also needs history.details = true to save processes and destinations
+
+# Read-only, owner-selected process provenance. MCP and CLI default expose anonymous states only.
+[process_review]
+enabled = false
+timeout_seconds = 15              # 1..60; local filesystem calls themselves may block
+# Replace the following example values yourself, never copy a stale PID/start time.
+# [process_review.targets.example]
+# pid = 12345
+# start_time = 1790000000          # osquery processes.start_time, integer seconds
+# script_file = "/absolute/local/script.js"  # optional owner-selected file; not proof of runtime loading
+# package_file = "/absolute/local/package.json" # optional Node dependency metadata
+# launch_file = "/absolute/local/agent.plist" # optional macOS GUI LaunchAgent

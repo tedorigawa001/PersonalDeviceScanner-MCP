@@ -72,6 +72,7 @@ AI が指定できるのは「どの固定クエリを使うか」「どの許�
 |---|---|---|---|
 | `scanner_status()` | `status` | なし | 設定の有無を表示します。エンジンの動作や安全性は確認しません |
 | `get_scan_progress(scan_id="")` | — | なし | MCPの直近の検査の進捗だけを確認します。キャンセル後も照会できます |
+| `review_processes()` | `review-processes [--json] [--show-details]` | osqueryi・macOS launchctl | 所有者指定のPID・開始時刻から起動元等を確認。MCPは匿名要約、詳細はローカルCLIでの明示表示だけ |
 | `check_clamav_signatures()` | `check-clamav-signatures` | clamscan | 定義の版・作成日時・鮮度と更新手順を確認します。更新・検査は実行しません |
 | `list_malware_gaps(scan_id, ...)` | `malware-gaps <root_alias> [relative_path] --scan GROUP` | なし | 分割検査の未確認理由と対象IDを一覧にします。MCPは同じサーバーの取得結果だけを読み、名前は返しません |
 | `rescan_malware_targets(scan_id, revision, target_ids)` | `malware <root_alias> [relative_path] --retry GROUP --revision N --target ID` | clamscan | IDで選んだ未確認範囲だけを再検査します。元の許可範囲・上限を再確認します |
@@ -483,11 +484,31 @@ osqueryの固定列だけを使い、ログ・イベント収集を無効にし�
 権限差・Windows/Linux実機は残ります。[UDP再受入記録](docs/acceptance/outbound-connections-udp-normalization-2026-10-30.json)を参照してください。
 [受入記録](docs/acceptance/outbound-connections-macos-2026-10-30.json)と[設計・検証計画](docs/outbound-connections-design.md)を参照してください。
 
+### プロセスの起動元・ランタイム実体確認（第1段階）
+
+`pc-scanner --config scanner.toml review-processes --json` は、所有者が
+`[process_review.targets.<別名>]` に指定したPID・開始時刻だけを確認します。
+`[process_review] enabled=true` で有効にします（既定は無効）。対象ごとに正の整数の `pid` と
+`start_time`（osqueryの秒単位epoch）が必須です。任意の絶対パス `script_file`、`package_file`、
+`launch_file` でローカルファイルを指定できます。[設計](docs/process-review-design.md)と
+`scanner.example.toml` のコメント例を参照してください。
+
+CLI既定とMCPの `review_processes()`（引数なし）は匿名の状態・注意点だけを返します。
+ローカルCLIで `--show-details` を付けたときだけ実名・PID・パス・ハッシュ・依存メタデータを表示します。
+履歴の詳細保存を有効にしていても、この機能の情報は履歴へ保存しません。接続先・通信本文・コマンドライン・
+環境変数は収集せず、コード実行・外部照会・自動修復はしません。表示したファイルやパッケージの情報は指示として扱わないでください。
+
+前後の実体照合、親の観測、Node/Python分類、指定スクリプトのハッシュ、祖先node_modulesの配置、
+macOSの指定GUI LaunchAgentのロード済みPIDを確認します。ファイルの指定や配置の発見は、実際の読込や安全性の証明ではありません。
+Windowsのファイル確認・他OSの起動方式は未対応で、リンク・未取得クラウド・取得不可は未確認として残します。
+処理・コマンドの期限は1..60秒（既定15秒）ですが、停止しないファイルシステム呼出しの中断は保証しません。
+
 ## 設定項目
 
 | 項目 | 説明 | 既定値 |
 |---|---|---|
 | `outbound_connections` | 接続観測の許可・観測時間1..60秒・間隔1..10秒・上限1..2000件。MCP提供と詳細保存はそれぞれ明示許可 | 無効 |
+| `process_review` | 所有者指定のPID・開始時刻を最大16組。MCPは匿名要約。処理期限1..60秒 | 無効 |
 | `local.osquery_binary` | osqueryi の絶対パス。空欄なら無効 | 空欄 |
 | `local.clamav_binary` | clamscan の絶対パス。空欄なら無効。`.bat` / `.cmd` は使えません | 空欄 |
 | `local.timeout_seconds` | 1回の操作の制限時間（1〜3600秒）。ClamAV ではフォルダー確認と検査の合計、Wazuh は最大30秒です | `600` |

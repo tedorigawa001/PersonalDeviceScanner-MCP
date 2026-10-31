@@ -202,6 +202,18 @@ def create_server(scanner: Scanner):
         finally:
             connections_lock.release()
 
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False,
+                                           idempotentHint=False, openWorldHint=False))
+    async def review_processes(ctx: Context) -> dict:
+        """Read provenance for owner-configured PID/start-time targets only. No target arguments.
+        Returns anonymous labels, runtime categories, verification states and limitations only.
+        Never returns names, PID, paths, source, launch labels or destinations to the AI service.
+        No code execution, packet collection, DNS, remediation or history reads/writes.
+        Owner-selected script/package files are not proof of the runtime's loaded modules.
+        """
+        from .process_review import for_mcp
+        return for_mcp(await run_engine(ctx, "review_processes"))
+
     @server.tool(annotations=local)
     async def get_scan_progress(scan_id: str = "") -> dict:
         """Read progress only (no names/findings), including after cancellation.
