@@ -1,0 +1,293 @@
+{
+  "date": "2026-10-31",
+  "status": "anonymous_mcp_privacy_verified_observation_partial",
+  "transport": "Actual local MCP Python SDK stdio, no external AI service",
+  "cases": [
+    {
+      "python": "python314",
+      "older_identifier_disclosure_enabled": false,
+      "status": "partial",
+      "elapsed_seconds": 12.895,
+      "connection_records": 174,
+      "attributed_processes": 16,
+      "destination_threats": {
+        "checked_at": "2026-10-31T08:52:03.884804+00:00",
+        "destination_counts": {
+          "not_listed": 36
+        },
+        "unique_destinations": 36,
+        "historical_match_destinations": 0,
+        "coverage": "checked",
+        "notice": "Public threat-list matches are warnings, not proof of infection or transmission. No match does not prove safety.",
+        "matched_connection_records": 0,
+        "matched_processes": 0,
+        "matched_unattributed_records": 0,
+        "feeds": {
+          "4": {
+            "source": "Spamhaus Project DROP",
+            "freshness": "fresh",
+            "published_at": "2026-10-31T05:14:02.000000+00:00",
+            "retrieved_at": "2026-10-31T06:03:49.576866+00:00",
+            "expires_at": "2026-11-02T05:14:02.000000+00:00",
+            "records": 1757,
+            "copyright": "(c) 2026 The Spamhaus Project SLU"
+          },
+          "6": {
+            "source": "Spamhaus Project DROP",
+            "freshness": "fresh",
+            "published_at": "2026-10-30T13:14:02.000000+00:00",
+            "retrieved_at": "2026-10-31T06:03:49.576866+00:00",
+            "expires_at": "2026-11-01T13:14:02.000000+00:00",
+            "records": 92,
+            "copyright": "(c) 2026 The Spamhaus Project SLU"
+          }
+        }
+      },
+      "samples": {
+        "planned": 10,
+        "successful": 10,
+        "failed": 0,
+        "attempted": 10,
+        "skipped": 0,
+        "interval_seconds": 1
+      },
+      "limitations": [
+        "direction_unknown",
+        "invalid_rows",
+        "no_byte_counts",
+        "not_a_security_assessment",
+        "observed_only",
+        "os_visible_scope_only",
+        "process_join_not_atomic",
+        "process_start_resolution_seconds",
+        "short_lived_connections_may_be_missed",
+        "udp_destinations_may_be_missing"
+      ],
+      "stop_reason": null,
+      "counts_match_private_pre_projection_data": true,
+      "progress_messages_anonymous": true,
+      "progress_notification_count": 12,
+      "ping_seconds": 0.008,
+      "persistence": "not_saved",
+      "audit": {
+        "dns_attempts": 0,
+        "connect_attempts": 0,
+        "download_calls": 0,
+        "update_calls": 0,
+        "history_calls": 0,
+        "default_path_calls": 0,
+        "queries": {
+          "addresses": 21,
+          "sockets": 10
+        },
+        "raw_captures": 1
+      },
+      "cache_unchanged": true,
+      "history_absent": true,
+      "private_evidence_permissions": "0700 directory / 0600 files",
+      "unavailable_counts": {
+        "destination_unavailable": 272,
+        "invalid_rows": 45
+      },
+      "anonymous_reply_contains_observation_limitations": false,
+      "response_allowlist": {
+        "text_report_checked": true,
+        "single_text_block": true,
+        "structured_report_present": false,
+        "structured_report_checked": false,
+        "no_extra_meta": true
+      }
+    },
+    {
+      "python": "python315",
+      "older_identifier_disclosure_enabled": true,
+      "status": "partial",
+      "elapsed_seconds": 13.734,
+      "connection_records": 184,
+      "attributed_processes": 16,
+      "destination_threats": {
+        "checked_at": "2026-10-31T08:52:17.946301+00:00",
+        "destination_counts": {
+          "not_listed": 35
+        },
+        "unique_destinations": 35,
+        "historical_match_destinations": 0,
+        "coverage": "checked",
+        "notice": "Public threat-list matches are warnings, not proof of infection or transmission. No match does not prove safety.",
+        "matched_connection_records": 0,
+        "matched_processes": 0,
+        "matched_unattributed_records": 0,
+        "feeds": {
+          "4": {
+            "source": "Spamhaus Project DROP",
+            "freshness": "fresh",
+            "published_at": "2026-10-31T05:14:02.000000+00:00",
+            "retrieved_at": "2026-10-31T06:03:49.576866+00:00",
+            "expires_at": "2026-11-02T05:14:02.000000+00:00",
+            "records": 1757,
+            "copyright": "(c) 2026 The Spamhaus Project SLU"
+          },
+          "6": {
+            "source": "Spamhaus Project DROP",
+            "freshness": "fresh",
+            "published_at": "2026-10-30T13:14:02.000000+00:00",
+            "retrieved_at": "2026-10-31T06:03:49.576866+00:00",
+            "expires_at": "2026-11-01T13:14:02.000000+00:00",
+            "records": 92,
+            "copyright": "(c) 2026 The Spamhaus Project SLU"
+          }
+        }
+      },
+      "samples": {
+        "planned": 10,
+        "successful": 10,
+        "failed": 0,
+        "attempted": 10,
+        "skipped": 0,
+        "interval_seconds": 1
+      },
+      "limitations": [
+        "direction_unknown",
+        "invalid_rows",
+        "no_byte_counts",
+        "not_a_security_assessment",
+        "observed_only",
+        "os_visible_scope_only",
+        "process_join_not_atomic",
+        "process_start_resolution_seconds",
+        "short_lived_connections_may_be_missed",
+        "udp_destinations_may_be_missing"
+      ],
+      "stop_reason": null,
+      "counts_match_private_pre_projection_data": true,
+      "progress_messages_anonymous": true,
+      "progress_notification_count": 12,
+      "ping_seconds": 0.016,
+      "persistence": "not_saved",
+      "audit": {
+        "dns_attempts": 0,
+        "connect_attempts": 0,
+        "download_calls": 0,
+        "update_calls": 0,
+        "history_calls": 0,
+        "default_path_calls": 0,
+        "queries": {
+          "addresses": 21,
+          "sockets": 10
+        },
+        "raw_captures": 1
+      },
+      "cache_unchanged": true,
+      "history_absent": true,
+      "private_evidence_permissions": "0700 directory / 0600 files",
+      "unavailable_counts": {
+        "destination_unavailable": 270,
+        "invalid_rows": 42
+      },
+      "anonymous_reply_contains_observation_limitations": false,
+      "response_allowlist": {
+        "text_report_checked": true,
+        "single_text_block": true,
+        "structured_report_present": false,
+        "structured_report_checked": false,
+        "no_extra_meta": true
+      }
+    }
+  ],
+  "client_network_audit": {
+    "dns_attempts": 0,
+    "connect_attempts": 0
+  },
+  "cache_contents_modes_inode_mtime_and_size_unchanged": true,
+  "personal_identifiers_in_chat_or_repository": false,
+  "raw_observations": "Only private local pre-projection evidence, not product history or MCP replies",
+  "listed_destinations_probed": false,
+  "payloads_collected": false,
+  "live_list_update_performed": false,
+  "limitations": [
+    "Two ten-second observations, not comprehensive traffic or safety verification",
+    "No true malicious-match path proved unless observed; synthetic tests cover matches",
+    "Local SDK client, not a commercial AI client",
+    "History recording disabled; actual detail/dashboard persistence remains a separate acceptance",
+    "Only Python network calls audited; osquery executed fixed socket/interface projections with logging/events/extensions disabled"
+  ],
+  "source_commit": "27410e5df4703d664f4c9c89ab72e69b59045f17",
+  "source_sha256": {
+    "pc_scanner/ip_threats.py": "552bd085da5aee87e379f8723010d231eb839c982fe4e92e834110803c09f91a",
+    "pc_scanner/connections.py": "c2ab8bdcef31170a525937c35363f9b4c0b6d18ac9910f0d55454292c1dbb2d1",
+    "pc_scanner/core.py": "6af88eda97a6ffff722835a7d4d4f57bd5ad0fe3b3bdec53e47e4fe85a7d4344",
+    "pc_scanner/server.py": "2c2c5b06099fa6fc6a2c9f4807f6b3fd51c0482f47e392c27585031f5efc1c87",
+    "pc_scanner/progress.py": "9985503e2c7f12566e818b2df1f532a629eaecb351e176e9aa21406041a9730e",
+    "pc_scanner/process_store.py": "79651253ba22690ffbc694e89bdb29d9905bd122837275978ffac2cceb6b5c4d"
+  },
+  "environment": {
+    "os": "macOS",
+    "mcp_sdk": "1.30.0",
+    "python": [
+      "3.14.10",
+      "3.15.2"
+    ],
+    "osquery": "5.23.1",
+    "client": "Actual local SDK stdio, not an external AI client"
+  },
+  "configuration": {
+    "observations": "Ten seconds per Python, one-second interval; explicit update-acceptance public cache with max_age_hours=48",
+    "history": "Disabled, explicit private must-not-exist file; details flags enabled but no history write allowed",
+    "older_disclosure": "Disabled on Python 3.14; enabled on Python 3.15 to verify it cannot alter the anonymous tool",
+    "updates": "Both public-list updater and release lookup disabled; existing fresh cache reused"
+  },
+  "diagnostic": {
+    "scope": "One additional one-second MCP observation; invalid socket rows retained only privately",
+    "invalid_rows_in_one_sample": 6,
+    "rejection": "connections.normalize line 190: socket-family/address-version mismatch",
+    "aggregate_shapes": [
+      {
+        "socket_family": 10,
+        "local_address_version": 4,
+        "remote_address_version": 4,
+        "protocol": "TCP",
+        "remote_unspecified": false,
+        "remote_port_zero": false,
+        "rows": 4
+      },
+      {
+        "socket_family": 10,
+        "local_address_version": 4,
+        "remote_address_version": 4,
+        "protocol": "TCP",
+        "remote_unspecified": true,
+        "remote_port_zero": true,
+        "rows": 2
+      }
+    ],
+    "interpretation": "Do not silently accept mismatches; OS-query representation/normalization needs separate investigation and synthetic regressions",
+    "sample_counts": "45 and 42 invalid_rows in the ten-second runs count rejected rows over samples, not unique connections",
+    "anonymous_explanation_gap": "Reply retained partial status, but did not include observation limitation/rejection codes. destination_threats.coverage=checked only describes retained-destination list checks, not complete observation coverage."
+  },
+  "privacy_verification": {
+    "reply": "Single text JSON block checked against a strict structured allowlist; no extra metadata or structuredContent was present",
+    "raw_comparison": "Counts recomputed locally from the pre-projection report and compared with anonymous reply",
+    "progress": "Notification strings and get_scan_progress responses allowlisted; no names/PIDs/addresses/ports/paths/CIDRs or reference IDs",
+    "no_network": "Both MCP server and acceptance client denied Python DNS/connect calls; all counters zero; updater/download/history/default-path callbacks also zero",
+    "cache": "Content, permissions, owner, size, inode and mtime unchanged; read access time not asserted",
+    "evidence": "Private workspace0700 and files0600; no raw observations, identifying hashes or private paths in this repository record"
+  },
+  "remaining": [
+    "Normalize or explicitly classify family=10 with IPv4 endpoints on macOS, using verified backend semantics and safe regressions",
+    "Return anonymous observation limitation/rejection codes so partial results have an explanation",
+    "Real malicious-match warning path was not observed; no match does not prove safety",
+    "Actual detail/history/dashboard persistence remains a separate authorized acceptance",
+    "Linux/Windows, commercial MCP clients, native resolver/filesystem stalls and new CI not verified"
+  ],
+  "verification": {
+    "product_code_changes": false,
+    "full_tests_or_npm_rerun": false,
+    "scope": "Real MCP privacy/non-persistence acceptance and one diagnostic sample only"
+  },
+  "harness_sha256_at_recording": {
+    "ip-mcp-acceptance-server.py": "7d60e2cc3241469a985283e6626bee1bec76b1c4e0a709c75e9642e6a47127e2",
+    "ip-mcp-macos-acceptance.py": "197c4572ede557b56be850480b07d115f5e0a1a9ee9b8a5fcbf6f61a35bc5b54"
+  },
+  "harness_note": "The server harness hash includes the later conditional invalid-row diagnostic hook; the two primary runs did not enable that hook.",
+  "local_evidence": "Actual identifiers and raw diagnostic rows are retained only in the private temporary workspace for follow-up; no automatic retention cleanup is claimed"
+}

@@ -30,8 +30,16 @@
     "seconds_after_previous_provider_request": 3695.369,
     "requests": "One GET per fixed IPv4/IPv6 URL; no observed identifiers were sent",
     "cache": "Default per-user state folder, created by this update below an existing parent",
-    "permissions": {"directory": "0700", "files": "0600", "owner_matches_current_user": true},
-    "managed_files": [".lock", "attempt.json", "current.json"],
+    "permissions": {
+      "directory": "0700",
+      "files": "0600",
+      "owner_matches_current_user": true
+    },
+    "managed_files": [
+      ".lock",
+      "attempt.json",
+      "current.json"
+    ],
     "feeds": {
       "4": {
         "source": "Spamhaus Project DROP",
@@ -63,23 +71,43 @@
     "persistence": "not_saved",
     "checked_at": "2026-10-31T07:05:45.947755+00:00",
     "duration_seconds": 10.314,
-    "samples": {"planned": 10, "successful": 10},
+    "samples": {
+      "planned": 10,
+      "successful": 10
+    },
     "connection_records": 81,
     "attributed_processes": 15,
-    "classification": {"internet_candidate": 81},
+    "classification": {
+      "internet_candidate": 81
+    },
     "unique_destinations": 36,
-    "destination_counts": {"not_listed": 36},
+    "destination_counts": {
+      "not_listed": 36
+    },
     "historical_match_destinations": 0,
     "matched_connection_records": 0,
     "matched_processes": 0,
     "matched_unattributed_records": 0,
     "coverage": "checked",
-    "feed_freshness_at_check": {"4": "fresh", "6": "fresh"},
-    "warnings": ["Socket observations only: direction, actual transmissions and safety are unverified; short-lived connections may be missed",
-                 "Public threat-list matches are warnings, not proof of infection or transmission. No match does not prove safety."],
-    "limitations": ["direction_unknown", "no_byte_counts", "not_a_security_assessment", "observed_only", "os_visible_scope_only",
-                    "process_join_not_atomic", "process_start_resolution_seconds", "short_lived_connections_may_be_missed",
-                    "udp_destinations_may_be_missing"]
+    "feed_freshness_at_check": {
+      "4": "fresh",
+      "6": "fresh"
+    },
+    "warnings": [
+      "Socket observations only: direction, actual transmissions and safety are unverified; short-lived connections may be missed",
+      "Public threat-list matches are warnings, not proof of infection or transmission. No match does not prove safety."
+    ],
+    "limitations": [
+      "direction_unknown",
+      "no_byte_counts",
+      "not_a_security_assessment",
+      "observed_only",
+      "os_visible_scope_only",
+      "process_join_not_atomic",
+      "process_start_resolution_seconds",
+      "short_lived_connections_may_be_missed",
+      "udp_destinations_may_be_missing"
+    ]
   },
   "interpretation": "None of the 36 observed public destinations was in the fresh lists. This is a warning check, not a safety verdict.",
   "privacy": {
@@ -108,8 +136,17 @@
     "run_id": 41184068311,
     "commit": "c31a22c",
     "conclusion": "success",
-    "jobs": {"total": 22, "success": 22, "failure": 0},
+    "jobs": {
+      "total": 22,
+      "success": 22,
+      "failure": 0
+    },
     "tests": "macOS, Ubuntu and Windows on Python 3.11, 3.14 and 3.15 each ran 611 tests without failures (skipped: 7 macOS, 8 Ubuntu, 77 Windows); all npm launcher jobs succeeded",
     "scope": "Documentation-only commit; CI confirms the tree, not the real-connection check, which CI does not run"
+  },
+  "follow_up_anonymous_mcp": {
+    "date": "2026-10-31",
+    "record": "ip-threat-mcp-real-connections-macos-2026-10-31.json",
+    "scope": "Actual local SDK stdio on two Python versions: anonymity/non-persistence verified; both observations partial due to invalid_rows; no live updater or detail-history/browser test"
   }
 }
