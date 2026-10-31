@@ -121,7 +121,10 @@ class LANTests(unittest.TestCase):
             cancel.set()
             raise ScannerError("Scan cancelled; engine stopped before completing")
         def expired(cancel, timeout):
-            time.sleep(timeout)
+            # Like run_bounded, time out on the monotonic clock that check() reads. Sleep alone can end a tick early on Windows 3.11.
+            end = time.monotonic() + timeout
+            while time.monotonic() < end:
+                time.sleep(0.01)
             raise ScannerError("Engine timed out; scan was not completed")
         # Calls: ifconfig (authorization), ifconfig (check before the cache), arp, ndp, ifconfig (final check).
         for at, effect, reason, settings in [(5, stopped, "cancelled", {}), (5, lambda cancel, timeout: cancel.set(), "cancelled", {}),
