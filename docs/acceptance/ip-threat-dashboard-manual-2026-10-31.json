@@ -1,0 +1,102 @@
+{
+  "date": "2026-10-31",
+  "confirmation_timezone": "Asia/Tokyo",
+  "feature": "Destination-check dashboard manual acceptance",
+  "status": "owner_manual_confirmation_passed_all_four_synthetic_pages",
+  "source_commit": "9278a02c73f9eb85113e1816d06e1e40fe00e1ba",
+  "source_sha256": {
+    "pc_scanner/dashboard.py": "9d729903dc54e9555532585ac47cfff295051773e09192e2c28e99ca9b8fe1d9",
+    "pc_scanner/ip_threats.py": "552bd085da5aee87e379f8723010d231eb839c982fe4e92e834110803c09f91a",
+    "pc_scanner/history.py": "dac9bfd6c0ac4f3e130dff76beb05f4ca7ff0b07c3ee5537fa1c717d519440e1"
+  },
+  "evidence": {
+    "method": "Owner-operated browser, explicit confirmation in chat; not automated browser interaction",
+    "owner_confirmation": "4ページの表示、リンク移動と詳細の開閉を確認できました。",
+    "fixture_files_unchanged_since_preparation": true,
+    "screenshot_provided_for_this_confirmation": false,
+    "browser_name_and_version": "not supplied"
+  },
+  "fixtures": {
+    "synthetic_only": true,
+    "documentation_IPs_and_invented_matches": true,
+    "invented_provider_dates_explicitly_labeled": true,
+    "public_threat_list_downloaded": false,
+    "personal_connections_collected": false,
+    "real_history_or_cache_used": false,
+    "payloads_captured": false,
+    "listed_destinations_contacted": false,
+    "fixture_html_contains_notice": true,
+    "case_count": 4
+  },
+  "cases": {
+    "matched": {
+      "expected_display": "Warning shows one matched destination, two matched connection records, one process; three records in total",
+      "owner_confirmed_display": true,
+      "owner_confirmed_link_navigation": true,
+      "owner_confirmed_detail_open_and_close": true,
+      "html_sha256": "8b469455dcba2ee1daaf1e60903b22011e9b9c80b9ee788b9b3cce3fae696cc9",
+      "prepared_static_check": {
+        "details_elements": 2,
+        "internal_links": 1,
+        "internal_anchor_targets_valid": true,
+        "external_resources_or_links": 0
+      },
+      "page_permissions": "0600"
+    },
+    "stale": {
+      "expected_display": "One destination matches only an out-of-date list and remains unverified",
+      "owner_confirmed_display": true,
+      "owner_confirmed_link_navigation": true,
+      "owner_confirmed_detail_open_and_close": true,
+      "html_sha256": "ff3fd86ac9e06c6b412dc19cdc08ede5c39131edc207d3504fd686f91e0c757f",
+      "prepared_static_check": {
+        "details_elements": 2,
+        "internal_links": 1,
+        "internal_anchor_targets_valid": true,
+        "external_resources_or_links": 0
+      },
+      "page_permissions": "0600"
+    },
+    "legacy": {
+      "expected_display": "Historical match count unavailable; prior counts and freshness remain visible instead of disappearing or implying zero",
+      "owner_confirmed_display": true,
+      "owner_confirmed_link_navigation": true,
+      "owner_confirmed_detail_open_and_close": true,
+      "html_sha256": "01eb7a8c7ea50a233980a53b0591bcb616cbbc978303beda46fcc8ad0556349e",
+      "prepared_static_check": {
+        "details_elements": 2,
+        "internal_links": 1,
+        "internal_anchor_targets_valid": true,
+        "external_resources_or_links": 0
+      },
+      "page_permissions": "0600"
+    },
+    "same-second": {
+      "expected_display": "Latest observation is error with zero records; it links to the later history row instead of falling back to the older listed result",
+      "owner_confirmed_display": true,
+      "owner_confirmed_link_navigation": true,
+      "owner_confirmed_detail_open_and_close": true,
+      "html_sha256": "14e65ef9155d2a65b79f51c5b937065b8b0487ba1c24a98f97a8bdbdb9bab084",
+      "prepared_static_check": {
+        "details_elements": 3,
+        "internal_links": 1,
+        "internal_anchor_targets_valid": true,
+        "external_resources_or_links": 0
+      },
+      "page_permissions": "0600"
+    }
+  },
+  "verification": {
+    "preparation": "Actual dashboard/history renderer used with synthetic saved reports; local anchor/CSP structure statically checked",
+    "confirmation": "All four displays, link navigation and disclosure open/close confirmed by owner",
+    "this_update": "Documentation and acceptance evidence only; no product code changes, full tests not rerun"
+  },
+  "limitations": [
+    "This validates synthetic browser displays and interactions, not actual malicious destinations or process attribution",
+    "Real-connection anonymous MCP and saved detail/dashboard acceptance remain separate",
+    "Browser version, other viewports, keyboard-only operation and accessibility were not confirmed",
+    "Linux new-cache/native tests, Windows cache backend and current CI remain separate work"
+  ],
+  "local_artifacts": "Synthetic private fixture pages retained locally; paths and raw reports not committed",
+  "commit_or_push_performed": false
+}

@@ -125,5 +125,10 @@
     "Existing committed implementation and acceptance records retained; new findings and this review are a separate commit"
   ],
   "push_performed": false,
-  "negative_test_cleanup": "Isolated public source and test copies removed; synthetic result summary retained privately"
+  "negative_test_cleanup": "Isolated public source and test copies removed; synthetic result summary retained privately",
+  "follow_up_manual_dashboard": {
+    "date": "2026-10-31",
+    "record": "ip-threat-dashboard-manual-2026-10-31.json",
+    "scope": "Owner confirmed display, links and disclosures on four synthetic pages, including legacy unknown counts and same-second latest error selection"
+  }
 }
