@@ -138,6 +138,24 @@ class CheckpointTests(unittest.TestCase):
         self.assertIn("No coverage selection state", json.loads(gaps.stdout)["error"])
         self.assertFalse(self.folder.parent.exists())
 
+    def test_windows_stat_and_fstat_may_report_different_st_ctime(self):
+        # Windows Python 3.12+: os.stat gives the creation time as st_ctime, os.fstat the change time.
+        # Simulated by shifting st_ctime_ns on the path side only.
+        self.seed()
+        entry_stat = checkpoints.entry_stat
+        class Shifted:
+            def __init__(self, info): self.info = info
+            def __getattr__(self, name):
+                return self.info.st_ctime_ns + 1 if name == "st_ctime_ns" else getattr(self.info, name)
+        with patch.object(checkpoints, "entry_stat", lambda *args: Shifted(entry_stat(*args))):
+            # Elsewhere both calls mean the same time, so a difference still marks the entry unavailable.
+            for windows, state in ((False, "unavailable"), (True, "valid")):
+                with self.subTest(windows=windows), patch.object(checkpoints.identity, "__defaults__", (windows,)):
+                    self.assertEqual(self.row()["state"], state)
+            with patch.object(checkpoints.identity, "__defaults__", (True,)):
+                self.assertTrue(self.delete(self.row())["data"]["deleted"])
+        self.assertEqual(list(self.folder.glob("*.json")), [])
+
     def test_other_process_scan_lock_protects_state_and_is_released_after_exit(self):
         path = self.seed(); row = self.row(); ready = self.base / "ready"
         code = ("import sys; from pathlib import Path; from pc_scanner import history; "

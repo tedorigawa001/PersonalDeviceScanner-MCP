@@ -545,5 +545,40 @@
     "Windows process-review file reading/startup provenance (not implemented in stage 1)",
     "Any interpretation of historical baseline as success for the latest changes"
   ],
-  "next_step": "After the owner makes the intended commits available to GitHub under a separate instruction, inspect exact-SHA CI jobs; this task leaves commits local and starts no workflow."
+  "next_step": "After the owner makes the intended commits available to GitHub under a separate instruction, inspect exact-SHA CI jobs; this task leaves commits local and starts no workflow.",
+  "ci_run_after_push": {
+    "date": "2026-10-31",
+    "run_id": 41157966062,
+    "head_sha": "4357956b4e84495eca0d1a59a68ed76fb813a399",
+    "code_identical_to": "dac704724c16ef0275a95d0e39cbf956d4b94b13",
+    "note": "A push runs CI for the pushed head only. 4357956 adds documentation alone on top of dac7047, so its jobs test the code of both fixes.",
+    "conclusion": "failure",
+    "jobs": {"total": 22, "passed": 19, "failed": 3},
+    "failed_jobs": ["Test (windows-latest, Python 3.11)", "Test (windows-latest, Python 3.14)", "Test (windows-latest, Python 3.15)"],
+    "windows_npm_jobs": "4 of 4 passed",
+    "failures": [
+      {
+        "tests": "test_checkpoints: 13 distinct tests on Windows Python 3.14 and 11 on 3.15; all passed on Windows Python 3.11 and on macOS/Linux",
+        "symptom": "Valid checkpoints were listed as unavailable without a revision, so deletion tests raised KeyError; which tests failed differed between jobs.",
+        "cause": "On Windows, CPython 3.12+ os.stat/os.lstat copy the creation time into st_ctime (win32_xstat), while os.fstat reports the change time (_Py_fstat_noraise). The checkpoint identity included st_ctime_ns and compared a path stat with fstat, so it failed whenever a file's change time differed from its creation time.",
+        "product_impact": "Fail-closed: nothing was wrongly deleted, but on Windows with Python 3.12+ checkpoints could not be listed or deleted reliably.",
+        "fix": "identity() leaves st_ctime_ns out on Windows only. The file ID, size, mtime and the content hash in the revision still detect a replaced or changed file; other platforms keep st_ctime_ns."
+      },
+      {
+        "tests": "test_process_review.test_cli_default_does_not_disclose_private_details on all three Windows Pythons",
+        "cause": "The test searched JSON output for the raw temporary path, but JSON doubles Windows backslashes; the matching absence checks (CLI default and anonymous MCP view) therefore passed vacuously on Windows.",
+        "fix": "Tests look for the path as JSON writes it. Product code unchanged."
+      }
+    ],
+    "new_tests": 1,
+    "local_verification": {
+      "python314_full": {"total": 543, "passed": 536, "skipped": 7, "failures": 0, "errors": 0},
+      "python315_full": {"total": 543, "passed": 536, "skipped": 7, "failures": 0, "errors": 0},
+      "npm_python314": {"tests": 26, "pass": 25, "skipped": 1,
+                        "skipped_reason": "the opt-in package end-to-end test installs from PyPI and was not run for this change"},
+      "simulated_windows_ctime_regression": "Shifting st_ctime_ns on the path-stat side only: with the fix the checkpoint lists as valid and deletes; with the fix undone it lists as unavailable, as in CI",
+      "real_history_unchanged": true
+    },
+    "rerun": "Pending: Windows success can only be confirmed by the CI run after this fix is pushed."
+  }
 }

@@ -29,8 +29,10 @@ def check(deadline):
         raise core.ScannerError("Checkpoint management time limit reached; retry locally")
 
 
-def identity(info):
-    return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+def identity(info, windows=os.name == "nt"):
+    # Windows Python 3.12+ fills st_ctime with the creation time in os.stat but the change time in os.fstat,
+    # and both are compared here. The file ID, size, mtime and the hashed content still reveal a swap.
+    return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns) + (() if windows else (info.st_ctime_ns,))
 
 
 def safe_file(info):

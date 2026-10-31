@@ -99,7 +99,9 @@ class ReviewTests(unittest.TestCase):
         scanner.via = "mcp"
         report = p.for_mcp(self.invoke(scanner))
         text = json.dumps(report)
-        for value in ["private-name", "private-alias", "private.job", "private-dependency", str(self.root), "/private/node"]:
+        # The path as JSON writes it: on Windows its backslashes are doubled, so the raw string would never match.
+        root = json.dumps(str(self.root))[1:-1]
+        for value in ["private-name", "private-alias", "private.job", "private-dependency", root, "/private/node"]:
             self.assertNotIn(value, text)
         raw = copy.deepcopy(report)
         raw.update(error="secret-path", warnings=["secret-host"], findings=[{"secret": "secret"}])
@@ -254,7 +256,8 @@ class ReviewTests(unittest.TestCase):
                  patch("sys.stdout", out):
                 try: cli.main()
                 except SystemExit as exc: self.assertEqual(exc.code, 2)
-            self.assertEqual(str(self.root) in out.getvalue(), bool(extra))
+            # The CLI prints JSON, which doubles Windows backslashes; look for the path as it is printed.
+            self.assertEqual(json.dumps(str(self.root), ensure_ascii=False)[1:-1] in out.getvalue(), bool(extra))
 
     def test_cli_default_shows_fixed_errors_and_only_counts_warnings(self):
         from pc_scanner import cli

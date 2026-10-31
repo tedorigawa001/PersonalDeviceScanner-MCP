@@ -5,7 +5,7 @@
 
 ## 高
 
-- [ ] **最新2修正のWindows CIを対象SHAで確認する**（2026-10-31照会：未実行）
+- [ ] **最新2修正のWindows CIを対象SHAで確認する**（2026-10-31：push後の実行でWindowsが失敗、修正済み・再実行待ち）
   - 現在の対象はプロセス確認 `4c6fb4401c04115685c599e9b239f27625b7abdd` と
     チェックポイント `dac704724c16ef0275a95d0e39cbf956d4b94b13`。両SHAのActions実行は0件、
     GitHubのコミット照会はともに422（No commit found for SHA）。対象はリモート側で見つからず、Windowsの合否は未確認。
@@ -18,6 +18,18 @@
   - 今回はpush、CI起動・再実行、Windows VM試験を行っていない。
     [CI照会記録](acceptance/windows-ci-latest-fixes-2026-10-31.json)と各修正の検証記録へ反映済み。
     所有者が別途対象コミットをGitHubに用意した後、同じSHAのジョブ結果で再確認する。
+  - 2026-10-31：push後、[CI](https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/runs/41157966062)が
+    `4357956`（`dac7047`に文書だけを足したコミットで、両修正のコードと同一）で実行され、22ジョブ中19成功・Windowsのテスト3ジョブが失敗。
+    Windowsのnpm 4ジョブは成功。原因は2つ。
+    - チェックポイント（Windows Python 3.14で13件・3.15で11件、3.11は全件成功）：有効な保存状態が「取得不可」になり、削除の試験も失敗。
+      Windows版Python 3.12以降の`os.stat`は`st_ctime`に作成時刻を、`os.fstat`は変更時刻を入れ、
+      同一性の比較がこの2つを突き合わせていた。作成と最後の変更の時刻がずれると不一致になるため、失敗する試験が実行ごとに変わった。
+      誤削除はないが、Windows・Python 3.12以降では一覧・削除が安定しなかった。
+      Windowsだけ同一性から`st_ctime_ns`を外した（ファイルID・サイズ・更新時刻と、リビジョンの内容ハッシュで差し替えは引き続き検出）。
+    - プロセス確認の`test_cli_default_does_not_disclose_private_details`（Windowsの全3 Python）：JSON出力ではWindowsのパスの
+      `\`が二重になるのに、試験が生のパスを探していた。非表示側の確認もWindowsでは空振りしていた。試験だけを直し、製品コードは変更なし。
+    - Windowsでの`st_ctime`の食い違いを再現する回帰1件を追加（修正を戻すとCIと同じく「取得不可」になることを確認）。
+      Windowsでの成功は、修正をpushした後のCIで確認する。[CI記録](acceptance/windows-ci-latest-fixes-2026-10-31.json)。
 
 - [ ] **各OSの実機で受入試験を行う**
   - 2026-10-12: macOS 26.7.1 / x86_64 の osquery 5.23.1・ClamAV 1.5.4 を通常ユーザーで試験済み。
