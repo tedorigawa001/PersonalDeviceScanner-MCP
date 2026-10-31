@@ -195,5 +195,10 @@
     "pc_scanner/dashboard.py": "9d729903dc54e9555532585ac47cfff295051773e09192e2c28e99ca9b8fe1d9",
     "pc_scanner/server.py": "2c2c5b06099fa6fc6a2c9f4807f6b3fd51c0482f47e392c27585031f5efc1c87",
     "pc_scanner/core.py": "6af88eda97a6ffff722835a7d4d4f57bd5ad0fe3b3bdec53e47e4fe85a7d4344"
+  },
+  "follow_up_live_update": {
+    "date": "2026-10-31",
+    "record": "ip-threat-linux-live-update-2026-10-31.json",
+    "scope": "Actual Linux fixed-HTTPS update, TLS verification, hourly no-request denial and freshness boundaries verified separately; original offline/container observation results above unchanged"
   }
 }

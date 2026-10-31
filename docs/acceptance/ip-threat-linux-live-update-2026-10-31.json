@@ -1,0 +1,198 @@
+{
+  "date": "2026-10-31",
+  "source_commit": "ff629e6371da72f1f7255c955bf84cce26b0cd0f",
+  "status": "linux_live_public_feed_update_verified",
+  "scope": "Actual Linux CLI fixed-HTTPS update, hourly no-request denial, publication freshness and private cache generations",
+  "isolation": {
+    "image_id": "sha256:3e1c98126c919e08f2a14906645d63c849612d776f6425c46938c7c9602c5b6c",
+    "mounts": 0,
+    "published_ports": 0,
+    "privileged": false,
+    "cap_drop": [
+      "ALL"
+    ],
+    "security_options": [
+      "no-new-privileges"
+    ],
+    "network": "Dedicated container on bridge; only fixed public feed HTTPS requests allowed by wrapper, no observed targets"
+  },
+  "result": {
+    "status": "passed",
+    "environment": {
+      "platform": "Linux-6.10.14-linuxkit-aarch64-with-glibc2.39",
+      "python": "3.12.3",
+      "uid": 10001
+    },
+    "live_update": {
+      "schema_version": 1,
+      "source": "connections",
+      "status": "completed",
+      "observed_at": "2026-10-31T10:18:46.336960+00:00",
+      "findings": [],
+      "warnings": [
+        "Public threat-list matches are warnings, not proof of infection or transmission. No match does not prove safety."
+      ],
+      "data": {
+        "updated": true,
+        "persistence": "cache_saved",
+        "feeds": {
+          "4": {
+            "source": "Spamhaus Project DROP",
+            "published_at": "2026-10-31T09:44:02.000000+00:00",
+            "retrieved_at": "2026-10-31T10:18:46.022116+00:00",
+            "expires_at": "2026-11-02T09:44:02.000000+00:00",
+            "freshness": "fresh",
+            "records": 1757,
+            "copyright": "(c) 2026 The Spamhaus Project SLU"
+          },
+          "6": {
+            "source": "Spamhaus Project DROP",
+            "published_at": "2026-10-30T13:14:02.000000+00:00",
+            "retrieved_at": "2026-10-31T10:18:46.022116+00:00",
+            "expires_at": "2026-11-01T13:14:02.000000+00:00",
+            "freshness": "fresh",
+            "records": 92,
+            "copyright": "(c) 2026 The Spamhaus Project SLU"
+          }
+        },
+        "progress": {
+          "stage": "completed",
+          "finished": null,
+          "pending": null,
+          "reused": null,
+          "checkpoint": "not_started",
+          "saved_parts": null,
+          "persistence": "cache_saved",
+          "elapsed_seconds": 0.924
+        }
+      }
+    },
+    "first_audit": {
+      "download_versions": [
+        4,
+        6
+      ],
+      "https_requests": [
+        "https://www.spamhaus.org/drop/drop_v4.json",
+        "https://www.spamhaus.org/drop/drop_v6.json"
+      ],
+      "tls_contexts": [
+        {
+          "check_hostname": true,
+          "verify_mode": "CERT_REQUIRED"
+        },
+        {
+          "check_hostname": true,
+          "verify_mode": "CERT_REQUIRED"
+        }
+      ],
+      "collection_calls": 0,
+      "history_calls": 0,
+      "default_path_calls": 0,
+      "elapsed_seconds": 1.034
+    },
+    "hourly_limit": {
+      "updated": false,
+      "persistence": "not_saved",
+      "stop_reason": "rate_limited_no_request_sent",
+      "progress": {
+        "stage": "partial",
+        "finished": null,
+        "pending": null,
+        "reused": null,
+        "checkpoint": "not_started",
+        "saved_parts": null,
+        "persistence": "not_saved",
+        "elapsed_seconds": 0.002
+      }
+    },
+    "second_audit": {
+      "download_versions": [],
+      "https_requests": [],
+      "tls_contexts": [],
+      "collection_calls": 0,
+      "history_calls": 0,
+      "default_path_calls": 0,
+      "elapsed_seconds": 0.054
+    },
+    "cache_permissions": {
+      "directory": "0700",
+      "files": "0600",
+      "current_owner": true
+    },
+    "cache_sha256": {
+      "current.json": "32192b893900dc92a33c94544df73baf34174938d2325e28de065d057d1ba0d1",
+      "previous.json": "3f7c740c58aa80507e78e84260e178e5bc84d3304e580aaacb573fcdb0ef8e51"
+    },
+    "feed_sha256": {
+      "4": "fa3e5a9ad239e9d9537b82a5af7ff836a7195a857074e99e6b85c71ca75456f4",
+      "6": "ad8af2a4b7666455fa0da2b14e21a80fac2df94e5b393522e678bb62d98420ce"
+    },
+    "previous_equals_seeded_public_generation": true,
+    "second_call_cache_unchanged": true,
+    "freshness_boundaries": {
+      "4": {
+        "before_one_microsecond": "fresh",
+        "at_expiry": "stale",
+        "after_one_microsecond": "stale"
+      },
+      "6": {
+        "before_one_microsecond": "fresh",
+        "at_expiry": "stale",
+        "after_one_microsecond": "stale"
+      }
+    },
+    "clock_note": "Boundary calculations only; system clock and hourly attempt record unchanged",
+    "observed_destinations_or_processes": false,
+    "history_created": false
+  },
+  "procedure": [
+    "Reused prior Ubuntu24.04 arm64 acceptance image; ran current copied source with Python3.12.3 as UID10001",
+    "No host folders/socket mounts, published ports, privileged mode or extra capabilities. Only source, harness and already public previous feed bundle copied",
+    "Seeded an older validated public generation using product cache writer; no attempt record reset to circumvent hourly rule. Known preceding acceptance source-IP attempt was 2026-10-31T06:03:49Z, over four hours before current live request",
+    "Invoked actual CLI update-ip-threat-lists --json through runpy wrapper. Wrapper recorded but did not replace downloader/SSL context; only fixed feed urllib.Request URLs and their DNS host permitted",
+    "Downloaded IPv4 and IPv6 once each, with default verified TLS and hostname checking. Existing prior generation moved to previous.json",
+    "Immediate repeat returned partial/exit2/rate_limited_no_request_sent with no download or HTTP request. A further guarded repeat verified byte/mode/inode/mtime/size unchanged without additional HTTP requests",
+    "Reparsed cached bundle, checked feed hashes, published/retrieved/expiry dates and actual freshness at completion; calculated both expiry boundaries without changing system clock or attempt times",
+    "Checked current-owner0700/0600, collection/history/default-path call counters zero; copied public-only result then removed dedicated container"
+  ],
+  "harness_adjustments": [
+    "Public seed input copied as root0600 was initially unreadable to UID10001; changed only copied public input to0644 before any request. Cache remained0700/0600",
+    "Initial validation incorrectly required exit0 for the expected rate-limited partial result. Live update had succeeded; resumed against saved data and additional guarded no-request call, without re-fetching or reseeding cache"
+  ],
+  "verification": {
+    "product_changes": false,
+    "full_suite_rerun": false,
+    "npm_rerun": false,
+    "cli_exits": {
+      "live_success": 0,
+      "rate_limited_partial": 2
+    },
+    "tls": "Both live contexts check_hostname=true and CERT_REQUIRED, no CA bypass or proxy credentials",
+    "actual_https_requests": 2,
+    "payload_or_process_collection": false
+  },
+  "cleanup": {
+    "dedicated_container_removed": true,
+    "container_test_cache_removed": true,
+    "base_image_retained": true,
+    "other_containers_volumes_or_host_settings_modified": false
+  },
+  "remaining": [
+    "Windows CI and real engine acceptance for new Windows cache still pending",
+    "Linux physical host visibility, other CPUs/distributions and browser interaction not verified",
+    "No observed connection, listed destination probing, true malicious match or packet payload capture in this update-only acceptance"
+  ],
+  "source_sha256": {
+    "pc_scanner/ip_threats.py": "2dbfb34b37761869d847e68c4ae583cdce237bcde9c576407661edf9e6f76cac",
+    "pc_scanner/process_store.py": "79651253ba22690ffbc694e89bdb29d9905bd122837275978ffac2cceb6b5c4d",
+    "pc_scanner/cli.py": "c423b60a2ce1cdc23b77967f665b66f7bfb44239039424f3ba1eb504f40d3235",
+    "pc_scanner/core.py": "6af88eda97a6ffff722835a7d4d4f57bd5ad0fe3b3bdec53e47e4fe85a7d4344"
+  },
+  "harness_sha256": {
+    "wrapper.py": "f183b04f8d1dc486ddb41f68dac74169fff0c799f6148e7f1476f3d4b7c8e006",
+    "acceptance.py": "e99231dddad1e93ce38eeb79536b33d7f96f69485cb85c27c4ed96b9dad10713",
+    "resume-validation.py": "5680994968d13364d9ef1e29b21714f93a6d6efc90cf620dfc9be61f4883cb0e",
+    "input.tar": "a55bcd5f4e0ab2fa3abf885a92191fee523347b25ed15cccee5bf0dfdd95f13f"
+  }
+}
