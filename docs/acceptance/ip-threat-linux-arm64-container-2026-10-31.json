@@ -1,0 +1,199 @@
+{
+  "date": "2026-10-31",
+  "source_commit": "0e593e990f82796dc3b47b5406feb32155aadc36",
+  "status": "linux_arm64_container_acceptance_passed_with_limits",
+  "scope": "Destination IP-list feature: Linux cache safety, failed update preservation, actual socket observation, anonymous MCP stdio and consented local detail persistence",
+  "isolation": {
+    "internal_network": true,
+    "containers": [
+      {
+        "role": "observer",
+        "mounts": 0,
+        "privileged": false,
+        "cap_drop": [
+          "ALL"
+        ],
+        "published_ports": 0,
+        "security_options": [
+          "no-new-privileges"
+        ],
+        "image_id": "sha256:3e1c98126c919e08f2a14906645d63c849612d776f6425c46938c7c9602c5b6c"
+      },
+      {
+        "role": "synthetic_peer",
+        "mounts": 0,
+        "privileged": false,
+        "cap_drop": [
+          "ALL"
+        ],
+        "published_ports": 0,
+        "security_options": [
+          "no-new-privileges"
+        ],
+        "image_id": "sha256:3e1c98126c919e08f2a14906645d63c849612d776f6425c46938c7c9602c5b6c"
+      }
+    ]
+  },
+  "result": {
+    "status": "passed",
+    "environment": {
+      "os": "Linux-6.10.14-linuxkit-aarch64-with-glibc2.39",
+      "architecture": "aarch64",
+      "uid": 10001,
+      "python": "3.12.3",
+      "mcp": "1.30.0",
+      "osquery": "osqueryi version 5.23.1"
+    },
+    "checks": {
+      "cache_permissions": {
+        "directory": "0700",
+        "files": "0600",
+        "owner_uid": 10001,
+        "filesystem": "Docker overlay; verified by product safe-store path"
+      },
+      "unsafe_permissions_and_symlink_refused": true,
+      "second_feed_failure": {
+        "status": "partial",
+        "reason": "update_unavailable_or_rate_limited",
+        "current_and_previous_unchanged": true,
+        "transport": "First public feed replayed; second download explicitly failed"
+      },
+      "hourly_limit_after_failure": true,
+      "real_offline_update": {
+        "status": "partial",
+        "reason": "cache_or_feed_unavailable",
+        "seconds": 0.037,
+        "current_and_previous_unchanged": true,
+        "transport": "Actual fixed HTTPS downloader on internal-only Docker network; failed before the 0.5s cancellation timer. Does not prove cancellation latency or successful live download."
+      },
+      "real_cli": {
+        "status": "completed",
+        "connection_records": 1,
+        "peer_exactly_once": true,
+        "pid_port_protocol_matched": true,
+        "samples_per_peer_record": 3,
+        "classification": "private_or_local",
+        "destination_state": "not_applicable",
+        "coverage": "checked",
+        "persistence": "details_saved"
+      },
+      "detail_history_dashboard": {
+        "history_records": 1,
+        "detail_files": 1,
+        "saved_observation_matches": true,
+        "dashboard_static_render": true,
+        "browser_interaction": "Not tested",
+        "details_permission": "Explicit test config history.details, outbound_connections.save_details, ip_threats.save_details all true"
+      },
+      "actual_mcp_stdio": {
+        "status": "completed",
+        "connection_records": 1,
+        "anonymous_field_allowlists": true,
+        "progress_count": 5,
+        "history_absent": true,
+        "peer_observed_before_projection": true,
+        "coverage": "checked",
+        "audit": {
+          "dns_attempts": 0,
+          "connect_attempts": 0,
+          "download_calls": 0,
+          "update_calls": 0,
+          "history_calls": 0,
+          "default_path_calls": 0,
+          "queries": {
+            "addresses": 7,
+            "sockets": 3
+          },
+          "raw_captures": 1
+        },
+        "old_identifier_disclosure_enabled": true,
+        "new_tool_remains_anonymous": true
+      },
+      "all_output_permissions_verified": true,
+      "foreign_owner_refused": true,
+      "strict_anonymous_full_schema_verified": true,
+      "successful_update_replay": {
+        "status": "completed",
+        "persistence": "cache_saved",
+        "both_public_feeds_replayed": true,
+        "hourly_limit": true,
+        "network_download": "Substituted with retained public bodies; not a live HTTPS success"
+      }
+    },
+    "feeds": {
+      "4": {
+        "source": "Spamhaus Project DROP",
+        "published_at": "2026-10-31T05:14:02.000000+00:00",
+        "retrieved_at": "2026-10-31T06:03:49.576866+00:00",
+        "expires_at": "2026-11-02T05:14:02.000000+00:00",
+        "freshness": "fresh",
+        "records": 1757,
+        "copyright": "(c) 2026 The Spamhaus Project SLU"
+      },
+      "6": {
+        "source": "Spamhaus Project DROP",
+        "published_at": "2026-10-30T13:14:02.000000+00:00",
+        "retrieved_at": "2026-10-31T06:03:49.576866+00:00",
+        "expires_at": "2026-11-01T13:14:02.000000+00:00",
+        "freshness": "fresh",
+        "records": 92,
+        "copyright": "(c) 2026 The Spamhaus Project SLU"
+      }
+    },
+    "cache_generations_unchanged": true,
+    "payload_send_or_receive": false,
+    "host_mounts": false,
+    "public_ports": false
+  },
+  "tests": {
+    "command": "python -m unittest tests.test_ip_threats -q",
+    "total": 36,
+    "passed": 36,
+    "skipped": 0,
+    "failures": 0,
+    "errors": 0,
+    "full_suite_rerun": false,
+    "npm_rerun": false
+  },
+  "procedure": [
+    "Reused prior Ubuntu 24.04 arm64 acceptance image with osquery5.23.1, Python3.12.3 and MCP1.30.0; no packages downloaded or image rebuilt",
+    "Copied only current Python sources, synthetic tests/harness and previously acquired public feed bundle; no host folders, Docker socket or personal data mounted",
+    "Ran product code as UID10001 with capabilities dropped and no-new-privileges; synthetic peer shared only an internal Docker network, with no published ports",
+    "Established TCP socket to the synthetic peer without sending/receiving application payload; compared actual osquery PID/local-port/remote-port/protocol and sample deduplication",
+    "Replayed the first public feed and failed the second to exercise Linux atomic-store preservation; independently exercised real fixed downloader offline failure; checked current/previous hashes unchanged",
+    "Verified successful updater replay and next-request hourly denial in a separate new cache; did not mistake replay for live HTTPS success",
+    "Verified actual CLI details persisted only with explicit test permissions; anonymous SDK MCP used separate disabled history and blocked network/update/history callbacks",
+    "Checked generated detail dashboard statically; no browser opened",
+    "Exported aggregate summary only and removed both dedicated containers and internal network"
+  ],
+  "cleanup": {
+    "test_containers_removed": true,
+    "synthetic_peer_connections_and_container_details_removed": true,
+    "test_network_removed": true,
+    "base_image_retained": true,
+    "other_containers_or_volumes_modified": false
+  },
+  "limitations": [
+    "Linux arm64 Ubuntu container on Docker, not physical Linux-host visibility or all distributions/CPUs",
+    "Observed target was a private synthetic peer, so destination state not_applicable is expected; real malicious public destinations were not contacted",
+    "Public-feed successful download was not exercised on Linux. Public bodies were copied/replayed, and actual offline failure returned before cancellation timer",
+    "Anonymous MCP was actual local Python SDK stdio, not a commercial GUI client; old identifier disclosure was enabled to verify new tool remained anonymous",
+    "Browser rendering/interaction not tested; generated HTML and actual saved observations checked statically",
+    "No Windows acceptance or new CI, full Python suite or npm rerun in this acceptance task",
+    "No product code changes; initial harness setup tar ownership/permissions corrected without adding capabilities"
+  ],
+  "harness_sha256": {
+    "acceptance.py": "bc2f68201315c221cf6b1c5b2f1efc9e3d60644d3cc2afacfa08a7fbef49ec36",
+    "mcp-server.py": "0ae1c2cb28497acfd92542031bc5cfee102b8ddc22fd08a05d28b8897b460490",
+    "extra-validation.py": "c47ed5366cfd92caaf1efb28f0849580167bbae52ec2c75007dad458c618000f",
+    "input.tar": "e3d43ccf06898fd3fb756a39cc3379f9731bb81d9fe84171f660ea2a4f1fcd75"
+  },
+  "source_sha256": {
+    "pc_scanner/ip_threats.py": "54e7b4fd614a5a299a2f3737575fd09b4303e8de325fe1e79792cc53a3a280bf",
+    "pc_scanner/connections.py": "32af7de722cc238c8d09e521047f09d8752794798de73efb97a3180c9c5be465",
+    "pc_scanner/history.py": "dac9bfd6c0ac4f3e130dff76beb05f4ca7ff0b07c3ee5537fa1c717d519440e1",
+    "pc_scanner/dashboard.py": "9d729903dc54e9555532585ac47cfff295051773e09192e2c28e99ca9b8fe1d9",
+    "pc_scanner/server.py": "2c2c5b06099fa6fc6a2c9f4807f6b3fd51c0482f47e392c27585031f5efc1c87",
+    "pc_scanner/core.py": "6af88eda97a6ffff722835a7d4d4f57bd5ad0fe3b3bdec53e47e4fe85a7d4344"
+  }
+}
