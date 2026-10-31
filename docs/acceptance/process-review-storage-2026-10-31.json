@@ -1,0 +1,163 @@
+{
+  "date": "2026-10-31",
+  "feature": "Private process review record storage and dedicated dashboard",
+  "status": "initial_implementation_verified_with_limits",
+  "base_commit": "602a881538056d9b5a34fd359dfe601223274a93",
+  "environment": {
+    "os": "macOS",
+    "version": "27.2",
+    "architecture": "arm64",
+    "mcp_sdk": "1.30.0"
+  },
+  "implementation": {
+    "storage_module": "pc_scanner/process_store.py",
+    "cli": [
+      "review-processes --save-details [--show-details] [--json]",
+      "process-review-records list [--show-details] [--json]",
+      "process-review-records dashboard [--no-open]",
+      "process-review-records delete ID --revision TOKEN [--json]",
+      "process-review-records prune --expired [--dry-run] [--json]"
+    ],
+    "permission": "Owner storage.enabled AND local CLI --save-details; independent of history.enabled/details; show-details alone is not save consent.",
+    "mcp": "No new tools/arguments; enabled storage never causes MCP persistence. IDs, names, paths, hashes and record access are omitted.",
+    "store": "POSIX pinned directory descriptors, owner-only 0700 directories / 0600 files, no-follow regular owned single-link files, local-filesystem validation, process/thread lock and atomic publication. Windows storage refused.",
+    "retention": "Default 7 days; expiry at equality; shortening effective immediately on next operation, original expiry never extended. No background cleanup.",
+    "deletion": "Opaque IDs and exact content revision; invalidate private HTML before changes. Expired-record prune also cleans owned orphan temporary files. Dry-run does not delete records but can invalidate stale HTML.",
+    "limits": "2 MiB JSON, 8 MiB HTML, bounded records and combined bytes including temporary files; no unexpired eviction, overwrite on ID collision or automatic save retry.",
+    "states": "Collection status and persistence separate; interrupted results not saved; no unverified identity details saved. Dashboard ordered by collection finish, not delayed save time.",
+    "dashboard": "Dedicated static private page, native disclosures and internal links, CSP hashed CSS, escaped untrusted text; general history/dashboard never auto-loads process records."
+  },
+  "verification": {
+    "new_tests": 30,
+    "related_tests_in_full_suite": 50,
+    "python": [
+      {
+        "version": "3.14.10",
+        "command": "bdo .venv/bin/python -m unittest discover -s tests -q",
+        "total": 573,
+        "passed": 566,
+        "skipped": 7,
+        "skip_reason": "Existing Windows-only tests on macOS",
+        "failures": 0,
+        "errors": 0,
+        "seconds": 41.743
+      },
+      {
+        "version": "3.15.2",
+        "command": "bdo .venv-dev/bin/python -m unittest discover -s tests -q",
+        "total": 573,
+        "passed": 566,
+        "skipped": 7,
+        "skip_reason": "Existing Windows-only tests on macOS",
+        "failures": 0,
+        "errors": 0,
+        "seconds": 41.396
+      }
+    ],
+    "npm": [
+      {
+        "python": "3.14.10",
+        "e2e_enabled": true,
+        "total": 26,
+        "passed": 26,
+        "skipped": 0,
+        "seconds": 7.339
+      },
+      {
+        "python": "3.15.2",
+        "e2e_enabled": true,
+        "total": 26,
+        "passed": 26,
+        "skipped": 0,
+        "seconds": 6.12
+      }
+    ],
+    "scope": [
+      "Double consent and enabled-MCP non-persistence on actual SDK transport",
+      "Explicit temporary directory; resolving personal default during tests raises and fails the test",
+      "Synthetic CLI collector -> save -> list -> dashboard -> revision delete roundtrips",
+      "Expired boundary minus/exact/plus 1 microsecond; retention changes and stale HTML invalidation",
+      "Missing store not created by management; unsafe links/modes/FIFO/cloud/network rejected",
+      "Actual separate-process fcntl contention and recovery",
+      "Pre/post-publication interruption, bounded capacity, ID collision without overwrite, no retry",
+      "Invalid/duplicate/future/schema records, JSON duplicate keys, no fallback to old latest",
+      "HTML escaping, internal links, permissions, collection-time ordering and no duplicate counting",
+      "Save persistence included in final CLI progress"
+    ],
+    "mutations": [
+      {
+        "guard": "expiry_boundary",
+        "detected": true
+      },
+      {
+        "guard": "delete_revision",
+        "detected": true
+      },
+      {
+        "guard": "snapshot_whitelist",
+        "detected": true
+      },
+      {
+        "guard": "mcp_save_attempt",
+        "detected": true
+      },
+      {
+        "guard": "html_expiry_invalidation",
+        "detected": true
+      }
+    ],
+    "static_html": {
+      "fixture": "synthetic only",
+      "records": 1,
+      "native_details_elements": 2,
+      "internal_links_resolve": true,
+      "unsafe_elements_or_event_handlers": false,
+      "csp_style_hash_matches": true,
+      "unconfirmed_origin_text_present": true,
+      "html_permissions": "0600",
+      "actual_browser_operations_verified": false,
+      "browser_blocker": "Browser URL policy rejected file: protocol; no workaround attempted."
+    }
+  },
+  "implementation_findings_fixed": [
+    {
+      "issue": "Saved persistence was not reflected in final CLI progress",
+      "verification": "New assertion failed before core/progress integration and passed after; full final suites passed."
+    },
+    {
+      "issue": "Forced record-ID collision could overwrite existing record",
+      "verification": "Regression forced a collision and failed before immutable-record check; fixed to return save_failed and retain original bytes."
+    },
+    {
+      "issue": "A default-argument mutation did not change the actual wrapper-supplied save flag",
+      "verification": "Discarded non-effective mutation; replaced with a real MCP-save-attempt mutation which the SDK regression detected."
+    }
+  ],
+  "limitations": [
+    "Actual browser display/disclosure/link operation unverified: browser URL policy rejected file protocol. No alternate surface, HTTP serving or policy workaround attempted.",
+    "Windows storage backend unimplemented; new Windows/Linux CI and native acceptance not run. Historical successful CI is not evidence for this worktree.",
+    "Linux local-filesystem recognition implemented but not natively exercised on this Mac.",
+    "Real personal process data not collected or saved in this task; synthetic acceptance only.",
+    "Not every third-party sync arrangement can be detected; owner must choose unsynced local storage.",
+    "Filesystem syscalls may block outside the five-second save budget checks.",
+    "Expired bytes persist until an operation/prune; loaded browser DOM, copies and backups cannot be recalled.",
+    "Unknown/unsafe files in the dedicated store can block operations; they are not silently removed."
+  ],
+  "privacy": {
+    "actual_processes_or_destinations_collected": false,
+    "target_scripts_executed": false,
+    "payload_captured": false,
+    "personal_default_store_resolved_by_tests": false,
+    "real_identifiers_or_source_hashes_in_record": false,
+    "note": "Repository source hashes below identify implementation files only, not inspected personal scripts."
+  },
+  "source_sha256": {
+    "pc_scanner/process_store.py": "2a8286dcbe781e6478d01801b2235968cd79b0777632c7044339d0168f84184f",
+    "pc_scanner/process_review.py": "6457a04b0ff51537877786b0a56e260db594f86bee412fda72090251502334d3",
+    "pc_scanner/core.py": "beb792f5baaabeb2858fae98df015931261a52508459010c8e29b544378ef261",
+    "pc_scanner/cli.py": "66a78cd4242a7b1be7ed9ed9e777975f7a611094543e4775ff2e445729b1df4e",
+    "pc_scanner/server.py": "fe51f9ae8057e02dad13884e70b777d28ecea94099798db28235671d6fc528f6",
+    "tests/test_process_store.py": "e317a4b591fcd4c1a74d305e89d6e39eb53b3d6dea42bb146ec55557228b7e28"
+  },
+  "push_performed": false
+}

@@ -509,6 +509,54 @@ Selected files and found metadata do not prove runtime loading or safety. Window
 startup mechanisms are not implemented; links, placeholders and unavailable items remain unconfirmed.
 The command/loop budget is 1..60 seconds (default 15); blocked filesystem calls cannot be forcibly interrupted.
 
+#### Private local storage and process dashboard
+
+Saving needs **both** `[process_review.storage] enabled=true` and the local CLI's `--save-details`.
+`--show-details` permits terminal display only. General history settings do not grant permission; conversely,
+explicit process-storage consent applies even with `history.enabled=false`. MCP stays anonymous and never saves,
+lists, renders or deletes these records, even when storage is enabled.
+
+```toml
+[process_review.storage]
+enabled = false
+directory = ""       # separate user state folder; does not follow history.file
+retention_days = 7   # 1..30; never extended for an existing record
+max_records = 32     # 1..100
+max_total_mb = 32    # 1..128, includes generated HTML and temporary files
+```
+
+```sh
+pc-scanner --config scanner.toml review-processes --save-details --json
+pc-scanner --config scanner.toml process-review-records list --json
+pc-scanner --config scanner.toml process-review-records dashboard --no-open
+pc-scanner --config scanner.toml process-review-records delete RECORD_ID --revision TOKEN --json
+pc-scanner --config scanner.toml process-review-records prune --expired --dry-run --json
+```
+
+Use a private, local, non-synced directory with an existing parent; path aliases/symlinks are refused.
+The default is the OS user-state location's `process-review` folder, independent of configured `history.file`.
+The parent must already exist. Directories must be owned and 0700, files 0600; unsafe existing permissions are
+refused, not silently changed. Initial storage supports macOS and recognized local Linux filesystems; Windows
+storage is refused. Known cloud roots/placeholders and unverified network filesystems are refused; not every
+third-party sync arrangement can be detected, so the owner must choose an unsynced location.
+
+The CLI's default save response includes only anonymous states, a random record ID and persistence state;
+`--show-details` is needed for actual names/paths. Source, argv, environment, raw engine output and endpoints are
+never saved. Timeout/cancelled collections are not automatically saved; ordinary partial results preserve their
+unconfirmed items. A save failure does not change the collection status and is reported separately as `save_failed`.
+
+Expiry includes the exact deadline. Management/save/render checks invalidate stale managed HTML, and save/render
+prunes expired JSON. `prune --expired` also cleans safely owned orphan temporary files; `--dry-run` previews record
+deletion but can still invalidate stale HTML for privacy. Unexpired records are never automatically evicted.
+Disabled saving still allows explicit local management of existing data. No background expiry job is installed:
+use prune to remove bytes when there are no other operations. An already-open browser, copy or backup cannot be
+recalled. Generated HTML is private too; deletion invalidates it before removing records.
+
+The dedicated dashboard shows collection/save/generation times, expiry, partial/unconfirmed reasons and per-run
+details, with internal links only. It does not merge process identities across runs or count observations as
+vulnerabilities. Ordinary scan history/dashboard never automatically loads this store.
+See the [storage design](docs/process-review-storage-design.md) and [verification](docs/acceptance/process-review-storage-2026-10-31.json).
+
 ## Configuration reference
 
 LAN: `lan.enabled=false`, `lan.timeout_seconds=15` (1–30), `lan.max_devices=256` (1–512),
@@ -519,6 +567,7 @@ with `neighbor_cache=true` and `mdns=false` by default. See the LAN example abov
 |---|---|---|
 | `outbound_connections` | Opt-in sampled socket observation; duration 1..60, interval 1..10, max records 1..2000; MCP disclosure and saved details each require explicit permission | disabled |
 | `process_review` | Owner-selected PID/start-time targets, max 16; anonymous MCP summary; timeout 1..60 seconds | disabled |
+| `process_review.storage` | Local CLI double-consent storage, private permissions, expiry and selected deletion; never exposed to MCP | disabled |
 | `local.osquery_binary` | Absolute path to osqueryi. Empty disables it | empty |
 | `local.clamav_binary` | Absolute path to clamscan. Empty disables it. `.bat` / `.cmd` files are rejected | empty |
 | `local.timeout_seconds` | Time limit per operation (1–3600 seconds). For ClamAV it covers the folder check and the scan together; Wazuh uses at most 30 seconds | `600` |

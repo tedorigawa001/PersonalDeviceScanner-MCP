@@ -505,12 +505,57 @@ macOSの指定GUI LaunchAgentについて、読み込まれたジョブがその
 Windowsのファイル確認・他OSの起動方式は未対応で、リンク・未取得クラウド・取得不可は未確認として残します。
 処理・コマンドの期限は1..60秒（既定15秒）ですが、停止しないファイルシステム呼出しの中断は保証しません。
 
+#### ローカル詳細保存・専用ダッシュボード
+
+保存には **`[process_review.storage] enabled=true` とCLIの `--save-details` の両方**が必要です。
+`--show-details` は表示許可だけで、一般履歴の設定から保存許可を継承しません。
+専用の明示許可があれば `history.enabled=false` でも保存します。MCPは匿名要約のままで、保存設定が有効でも
+この記録を保存・一覧・HTML生成・削除しません。
+
+```toml
+[process_review.storage]
+enabled = false
+directory = ""       # OSのユーザー状態領域内。history.fileには追従しない
+retention_days = 7   # 1..30。既存記録の期限は延長しない
+max_records = 32     # 1..100
+max_total_mb = 32    # 1..128。HTML・一時ファイル等も含む
+```
+
+```sh
+pc-scanner --config scanner.toml review-processes --save-details --json
+pc-scanner --config scanner.toml process-review-records list --json
+pc-scanner --config scanner.toml process-review-records dashboard --no-open
+pc-scanner --config scanner.toml process-review-records delete RECORD_ID --revision TOKEN --json
+pc-scanner --config scanner.toml process-review-records prune --expired --dry-run --json
+```
+
+保存先は親が存在するローカル・非同期の所有者専用領域を選びます。リンクや別名経路は拒否します。
+既定はOSのユーザー状態領域の専用 `process-review` で、設定した `history.file` とは独立です。親は事前に必要です。
+ディレクトリは所有者の0700、ファイルは0600を要求し、既存の広い権限を黙って変更しません。
+初期対応はmacOS・確認できるローカルLinuxファイルシステムで、Windowsの保存は拒否します。
+既知のクラウド領域・未取得属性・確認できないネットワークFSは拒否しますが、全製品の同期設定は検出できません。
+
+保存時のCLI既定出力は匿名要約と不透明な保存ID・保存状態だけです。実名・パスは `--show-details` の明示表示だけです。
+ソース本文・引数・環境変数・生出力・接続先は保存しません。時間切れ・取消後は自動保存せず、通常のpartialは未確認理由を残して保存します。
+保存失敗は収集結果の状態を変えず、別の `save_failed` と固定の警告で知らせます。
+
+期限ちょうどから失効し、管理操作・保存・生成では期限や保持設定の変更を確認して管理HTMLを無効化します。
+保存・生成は期限切れJSONを整理し、`prune --expired` は安全に確認できる孤立一時ファイルも清掃します。
+`--dry-run` は記録削除のプレビューですが、安全のため不整合なHTMLの無効化は行います。期限前の記録は自動で追い出しません。
+保存を無効に戻しても管理CLIで一覧・削除できます。常駐の自動消去はなく、操作しない間に実際の削除が必要ならpruneを実行します。
+表示済みブラウザー・別コピー・バックアップは回収できません。HTMLも実情報の複製として、JSON削除前に無効化します。
+
+専用ページは収集・保存・生成日時、期限、partial・未確認理由と実行ごとの詳細を表示します。リンクはページ内だけです。
+別実行のP01を結合せず、件数を脆弱性へ加算しません。通常の履歴・ダッシュボードはこの保存先を自動で読み込みません。
+[設計](docs/process-review-storage-design.md)・[検証記録](docs/acceptance/process-review-storage-2026-10-31.json)を参照してください。
+
 ## 設定項目
 
 | 項目 | 説明 | 既定値 |
 |---|---|---|
 | `outbound_connections` | 接続観測の許可・観測時間1..60秒・間隔1..10秒・上限1..2000件。MCP提供と詳細保存はそれぞれ明示許可 | 無効 |
 | `process_review` | 所有者指定のPID・開始時刻を最大16組。MCPは匿名要約。処理期限1..60秒 | 無効 |
+| `process_review.storage` | CLIの二重許可でだけ保存。私有権限・期限・選択削除を適用し、MCPには非公開 | 無効 |
 | `local.osquery_binary` | osqueryi の絶対パス。空欄なら無効 | 空欄 |
 | `local.clamav_binary` | clamscan の絶対パス。空欄なら無効。`.bat` / `.cmd` は使えません | 空欄 |
 | `local.timeout_seconds` | 1回の操作の制限時間（1〜3600秒）。ClamAV ではフォルダー確認と検査の合計、Wazuh は最大30秒です | `600` |

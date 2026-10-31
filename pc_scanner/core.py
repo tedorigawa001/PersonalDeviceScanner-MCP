@@ -286,7 +286,7 @@ SETTINGS = {"local": {"osquery_binary", "clamav_binary", "timeout_seconds", "max
             "lan_networks": None,
             "outbound_connections": {"enabled", "duration_seconds", "interval_seconds", "max_connections",
                                      "expose_identifiers_to_mcp", "save_details"},
-            "process_review": {"enabled", "timeout_seconds", "targets"}}
+            "process_review": {"enabled", "timeout_seconds", "targets", "storage"}}
 
 
 def unknown_settings(config: dict) -> list[str]:
@@ -1380,9 +1380,9 @@ class Scanner:
         from . import connections
         return connections.observe(self, cancel, progress)
 
-    def review_processes(self, cancel=None, progress=None) -> dict:
+    def review_processes(self, cancel=None, progress=None, save_details=False) -> dict:
         from . import process_review
-        return process_review.review(self, cancel, progress)
+        return process_review.review(self, cancel, progress, save_details)
 
     def discover_lan_devices(self, network_alias: str, cancel=None, progress=None) -> dict:
         from . import lan
@@ -1449,7 +1449,7 @@ class Scanner:
                     if operation == "observe_outbound_connections":
                         report.setdefault("data", {})["persistence"] = "save_failed"
                     report["warnings"].append("Scan history could not be written; the scan itself is unaffected")
-        if operation == "observe_outbound_connections" and progress:
+        if operation in {"observe_outbound_connections", "review_processes"} and progress:
             progress.update(persistence=report.get("data", {}).get("persistence", "not_saved"))
         if progress:
             progress.finish(report["status"], kwargs.get("cancel"))

@@ -1,8 +1,8 @@
 # プロセス確認のローカル詳細保存・ダッシュボード表示
 
-状態：設計案（2026-10-31）。本書の設定・コマンド・保存機能は**未実装**。
-現行の[第1段階](process-review-design.md)は詳細をメモリー内で扱い、履歴にもダッシュボードにも保存しない。
-本案は、その収集範囲と匿名MCP応答を維持し、所有者がローカルCLIで保存・閲覧する機能を追加する。
+状態：初期実装済み（2026-10-31）。macOSの合成データで回帰を確認。Windows保存・新CI・各OS実機受入は未確認／未対応。
+[第1段階](process-review-design.md)の収集範囲と匿名MCP応答を維持し、所有者がローカルCLIで保存・閲覧する。
+通常履歴への保存は追加しない。[検証記録](acceptance/process-review-storage-2026-10-31.json)を参照。
 
 ## 目的と対象外
 
@@ -27,7 +27,7 @@ MCPは保存ID・保存先・名前・PID・起動設定ラベル・パッケー
 `get_scan_progress` は現行の匿名進捗だけを扱う。保存済みデータをプロセス確認の入力に逆流させない。
 
 ```toml
-# 設計案。現行版へ貼り付けて有効化できる設定ではない。
+# 保存には enabled=true に加えて、CLIの --save-details が必要。
 [process_review.storage]
 enabled = false
 directory = ""       # 空欄はOSの既定ユーザー状態領域内の専用フォルダー
@@ -43,7 +43,7 @@ Windowsへ対応するときは、削除前のファイル同一性確認にチ�
 Windows版Python 3.12以降は `os.stat` と `os.fstat` で `st_ctime` の意味が異なり、
 これを比べた同一性確認がCIで失敗したため（2026-10-31）、新しく別の確認を作らない。
 
-## ローカルCLI案
+## ローカルCLI
 
 | コマンド | 動作と公開範囲 |
 |---|---|
@@ -52,7 +52,7 @@ Windows版Python 3.12以降は `os.stat` と `os.fstat` で `st_ctime` の意味
 | `process-review-records list [--json] [--show-details]` | 既定はID・記録日時・状態・件数・期限・revision。実名・パスは明示表示だけ |
 | `process-review-records dashboard [--no-open]` | 専用の私有HTMLを生成。実情報のローカル表示を許可する操作としてヘルプに明記 |
 | `process-review-records delete ID --revision TOKEN` | 一覧で選んだ1件を再確認して削除。期限前のデータも所有者が選択できる |
-| `process-review-records prune --expired [--dry-run]` | 期限切れの管理対象だけを列挙・削除。指定のない一括削除・force・任意パス指定は提供しない |
+| `process-review-records prune --expired [--dry-run]` | 期限切れの管理対象と、安全に検証した孤立一時ファイルを清掃。dry-runは記録削除をせず、不整合なHTMLの無効化は行う |
 
 管理CLIは保存設定を無効に戻した後も、所有者の明示操作で既存データを一覧・削除できる。
 無効化自体は既存データを削除しない。保存先がなければ一覧・削除・生成で作成しない。

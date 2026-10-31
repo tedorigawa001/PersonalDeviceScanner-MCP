@@ -9,6 +9,7 @@ from pathlib import Path
 import platform
 import plistlib
 import re
+import secrets
 import stat
 import time
 
@@ -51,7 +52,9 @@ def load(config):
         if identity in identities:
             raise core.ScannerError("Duplicate process review identity")
         identities.add(identity)
-    return {"enabled": enabled, "timeout_seconds": timeout, "targets": targets}
+    from . import process_store
+    return {"enabled": enabled, "timeout_seconds": timeout, "targets": targets,
+            "storage": process_store.load(raw.get("storage", {}))}
 
 
 def read_file(path, deadline, cancel):
@@ -202,12 +205,15 @@ def launch_details(path, row, target, deadline, cancel):
             "label": core.clean_text(label) if isinstance(label, str) else None}
 
 
-def review(scanner, cancel=None, progress=None):
+def review(scanner, cancel=None, progress=None, save_details=False):
     settings = scanner.process_review_settings
     if not settings["enabled"]:
         raise core.ScannerError("Process review is disabled")
+    if type(save_details) is not bool or (save_details and (scanner.via != "cli" or not settings["storage"]["enabled"])):
+        raise core.ScannerError("Process review detail saving is not authorized")
     if not scanner._process_review_lock.acquire(False):
         raise core.ScannerError("Process review is busy")
+    started_at, run_id = now(), secrets.token_hex(16)
     deadline = time.monotonic() + settings["timeout_seconds"]
     # current is the target still being checked; a stop marks only it, never one that passed its final check.
     rows, stop, current = [], None, None
@@ -285,13 +291,20 @@ def review(scanner, cancel=None, progress=None):
             current["details"] = {}
     finally:
         scanner._process_review_lock.release()
-    data = {"checked_at": now(), "target_count": len(settings["targets"]), "reviewed_count": len(rows),
+    data = {"checked_at": now(), "started_at": started_at, "finished_at": now(), "run_id": run_id,
+            "target_count": len(settings["targets"]), "reviewed_count": len(rows),
             "processes": rows, "attention_counts": dict(Counter(a for r in rows for a in r["attention"])),
             "limitations": LIMITS, "stop_reason": stop, "persistence": "not_saved"}
     report = core.result("process_review", "partial" if stop or any(r["attention"] for r in rows) else "completed", data=data)
     # An allowed launch mismatch/unverified result is explicitly incomplete, not a success claim.
     if any(r["launch"] not in {"not_requested", "loaded_job_pid_matches"} for r in rows):
         report["status"] = "partial"
+    if save_details:
+        from . import process_store
+        if progress and not data["stop_reason"] and not (cancel is not None and cancel.is_set()):
+            progress.update(stage="saving", persistence="not_saved")
+            progress.set_deadline(time.monotonic() + 5)
+        process_store.save(scanner, report, cancel)
     return for_mcp(report) if scanner.via == "mcp" else report
 
 
@@ -303,7 +316,21 @@ ERRORS = frozenset({
     "process_review needs a boolean enabled and timeout_seconds 1..60",
     "process_review.targets must contain at most 16 owner-selected targets", "Invalid process review target settings",
     "Process review targets need positive integer pid and start_time",
-    "Process review files must be absolute paths without parent traversal", "Duplicate process review identity"})
+    "Process review files must be absolute paths without parent traversal", "Duplicate process review identity",
+    "Invalid process review storage settings", "Process review detail saving is not authorized"})
+
+
+def for_cli(report):
+    view = for_mcp(report)
+    data = report.get("data", {})
+    state = data.get("persistence", "not_saved")
+    if state in {"not_saved", "not_saved_interrupted", "details_saved", "save_failed"}:
+        view["data"]["persistence"] = state
+    from .process_store import ID
+    rid = data.get("record_id")
+    if isinstance(rid, str) and ID.fullmatch(rid):
+        view["data"]["record_id"] = rid
+    return view
 
 
 def for_mcp(report):

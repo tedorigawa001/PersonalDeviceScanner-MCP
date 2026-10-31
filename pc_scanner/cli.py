@@ -2,6 +2,7 @@ import argparse
 import json
 import sys
 import webbrowser
+from pathlib import Path
 
 from .core import Scanner, ScannerError, result, stop_engines_on_terminate
 
@@ -66,7 +67,23 @@ def main():
     outbound.add_argument("--json", action="store_true", help="print complete socket observations with coverage limitations")
     review = commands.add_parser("review-processes", help="read owner-selected process provenance; anonymous summary by default")
     review.add_argument("--show-details", action="store_true", help="include private process names, PIDs, paths and package metadata locally")
+    review.add_argument("--save-details", action="store_true", help="save private details only with process_review.storage.enabled; independent of history settings")
     review.add_argument("--json", action="store_true", help="print structured process provenance")
+    records = commands.add_parser("process-review-records", help="local-only private record management; never available to MCP")
+    record_actions = records.add_subparsers(dest="record_action", required=True)
+    listing = record_actions.add_parser("list")
+    listing.add_argument("--show-details", action="store_true")
+    listing.add_argument("--json", action="store_true")
+    removal = record_actions.add_parser("delete")
+    removal.add_argument("record_id")
+    removal.add_argument("--revision", required=True)
+    removal.add_argument("--json", action="store_true")
+    prune = record_actions.add_parser("prune")
+    prune.add_argument("--expired", action="store_true", required=True)
+    prune.add_argument("--dry-run", action="store_true", help="preview record deletions; stale managed HTML may still be invalidated")
+    prune.add_argument("--json", action="store_true")
+    page = record_actions.add_parser("dashboard", help="generate a local page containing private names and paths")
+    page.add_argument("--no-open", action="store_true")
     inventory = commands.add_parser("inventory")
     inventory.add_argument("query_id", choices=["os_version", "applications", "listening_ports"])
     inventory.add_argument("--offset", type=int, default=0, help="continue from data.next_offset")
@@ -130,6 +147,14 @@ def main():
         if args.command == "dashboard":
             write_dashboard(scanner, args.limit, not args.no_open)
             return
+        if args.command == "process-review-records":
+            from . import process_store
+            scanner.via = "cli"
+            report = process_store.manage(scanner, args.record_action, record_id=getattr(args, "record_id", None),
+                revision=getattr(args, "revision", None), show_details=getattr(args, "show_details", False),
+                dry_run=getattr(args, "dry_run", False))
+            if args.record_action == "dashboard" and report.get("data", {}).get("page") and not args.no_open:
+                webbrowser.open(Path(report["data"]["page"]).as_uri())
         if args.command == "malware-gaps":
             from . import coverage, malware_batch
             ledger = malware_batch.read_coverage(scanner, args.root_alias, args.relative_path)
@@ -150,7 +175,9 @@ def main():
                     print(row["target_id"], "; ".join(coverage.LABELS[r] for r in row["reasons"]), row["eligibility"].replace("_", " "),
                           row.get("relative_path", ""))
                 return
-        if args.command == "malware-checkpoints":
+        if args.command == "process-review-records":
+            pass
+        elif args.command == "malware-checkpoints":
             from . import checkpoints
             scanner.via = "cli"
             report = (checkpoints.list_checkpoints(scanner, args.show_paths) if args.checkpoint_action == "list"
@@ -180,9 +207,9 @@ def main():
         report = result("bridge", "error",
                         error=f"Unexpected internal error ({type(exc).__name__}); the operation was not completed")
     if args.command == "review-processes" and not args.show_details:
-        from .process_review import for_mcp
+        from .process_review import for_cli
         omitted = len(report.get("warnings", []))
-        report = for_mcp(report)
+        report = for_cli(report)
         if omitted:
             # Only the count: warning texts can quote configured names, which the anonymous view never shows.
             print(f"pc-scanner: {omitted} warning(s) omitted from the anonymous view; "

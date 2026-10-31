@@ -140,3 +140,12 @@ timeout_seconds = 15              # 1..60; local filesystem calls themselves may
 # script_file = "/absolute/local/script.js"  # optional owner-selected file; not proof of runtime loading
 # package_file = "/absolute/local/package.json" # optional Node dependency metadata
 # launch_file = "/absolute/local/agent.plist" # optional macOS GUI LaunchAgent
+
+# Local CLI only. Both enabled=true and review-processes --save-details are required.
+# Independent of history.enabled/details; MCP never saves or reads this store.
+[process_review.storage]
+enabled = false
+directory = ""                   # separate OS user state store; NOT beside history.file
+retention_days = 7                # 1..30; expiry cleanup happens on management/save, not in background
+max_records = 32                 # 1..100; no automatic eviction of unexpired records
+max_total_mb = 32                # 1..128, including JSON, HTML, metadata and temporary files
