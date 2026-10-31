@@ -1,6 +1,7 @@
 """Opt-in, offline destination checks; only the separate local updater accesses a fixed public feed."""
 from __future__ import annotations
 
+from contextlib import contextmanager
 import base64
 from collections import Counter
 from datetime import datetime, timedelta, timezone
@@ -74,11 +75,21 @@ def cache_settings(scanner):
 
 
 class Cache(private.Store):
-    """Reuse pinned POSIX ownership/link/filesystem validation. Windows fails closed."""
+    """Select pinned POSIX storage or the dedicated owner-private Windows cache."""
     def __init__(self, settings, cancel=None, deadline=None):
         super().__init__(settings, cancel)
         if deadline is not None:
             self.deadline = deadline
+
+    @contextmanager
+    def open(self, create=False, file_lock=True):
+        if os.name == "nt":
+            from .windows_ip_cache import Store
+            with Store(self.settings, self.cancel, self.deadline).open(create, file_lock) as cache:
+                yield cache
+        else:
+            with super().open(create, file_lock) as cache:
+                yield cache
 
     def used(self):
         total = 0

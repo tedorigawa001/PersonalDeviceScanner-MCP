@@ -1,0 +1,97 @@
+{
+  "date": "2026-10-31",
+  "status": "implemented_macos_model_verified_windows_native_pending",
+  "base_commit": "4a97421418910c32fd4034e74f6de64b8fa53c7f",
+  "scope": "Windows destination-list cache only; no general process-store Windows enablement, new dependencies, settings or MCP tools",
+  "implementation": {
+    "dispatch": "ip_threats.Cache.open uses a dedicated Windows Store; existing POSIX backend unchanged",
+    "storage": "Absolute local drive path, fixed NTFS/ReFS; all ancestors opened with OPEN_REPARSE_POINT and OPEN_NO_RECALL and pinned without delete sharing; read-only ancestors deny write sharing",
+    "privacy": "Protected user+SYSTEM DACL from object creation; effective-token owner check via existing windows_owner, protected/non-null DACL and ordinary trusted-SID ACE allowlist; broad existing ACL refused, never repaired",
+    "file_safety": "Reject reparse/offline/recall attributes, directories in file slots, non-disk files, multiple hardlinks; validate handle attributes, ACL and read identity before/after bounded reads",
+    "reader": "No cache/parent/lock creation with file_lock=False; no fallback to unsafe path-only or POSIX operations",
+    "writer": "Process mutex and LockFileEx; exclusive private temp creation, flush, handle-bound rename relative to pinned directory; handle-bound deletion on abort; current/previous/attempt JSON are the only publication targets",
+    "failure": "Cancelled/failed unpublished writes retain prior file; no deadline check converts successful rename to not-saved; update hourly/generation logic unchanged"
+  },
+  "verification": {
+    "red_green": [
+      {
+        "test": "DispatchTests.test_windows_uses_safe_backend_with_read_only_options_and_deadline",
+        "red": "Failed import before Windows backend existed",
+        "green": "Passed with settings/deadline/read-only options forwarded"
+      },
+      {
+        "test": "ModelTests.test_lockfile_cannot_be_replaced_by_publication",
+        "red": "Failed because atomic accepted .lock",
+        "green": "Passed after publication allowlist excluded lock/temp names"
+      }
+    ],
+    "new_tests": {
+      "total": 16,
+      "passed_on_mac": 9,
+      "windows_native_skipped_on_mac": 7,
+      "model_scope": "Portable state machine and API-response validation models; not execution of real Win32 APIs"
+    },
+    "full_tests": [
+      {
+        "python": "3.14.10",
+        "total": 632,
+        "passed": 618,
+        "skipped": 14,
+        "failures": 0,
+        "errors": 0
+      },
+      {
+        "python": "3.15.2",
+        "total": 632,
+        "passed": 618,
+        "skipped": 14,
+        "failures": 0,
+        "errors": 0
+      }
+    ],
+    "skip_explanation": "Seven prior Windows-only tests plus seven new Windows-cache native tests",
+    "npm": [
+      {
+        "python": "3.14.10",
+        "total": 26,
+        "passed": 26,
+        "e2e": true
+      },
+      {
+        "python": "3.15.2",
+        "total": 26,
+        "passed": 26,
+        "e2e": true
+      }
+    ],
+    "final_note": "Only the Cache class docstring was clarified after the final full/npm runs; executable statements unchanged"
+  },
+  "windows_native_tests_added": [
+    "Actual updater replay, safe DACL read, failed-generation preservation and hourly limit",
+    "Noncreating reader and pinned parent rename refusal",
+    "Inherited broad DACL refusal and hardlink rejection",
+    "Cross-process writer lock and recovery",
+    "Injected native publication failure leaves current and cleans temp",
+    "Protected but Everyone-accessible DACL refusal",
+    "Real native cache read with synthetic socket matching and anonymous projection, no lock/history creation"
+  ],
+  "remaining": [
+    "Windows CI not run; no push",
+    "Native Windows NTFS/ReFS DACL/handle sharing/rename/lock compatibility not established on this Mac",
+    "Actual junctions/cloud placeholders/foreign-owner manipulations and stalled filesystem APIs need Windows acceptance",
+    "Cancellation/deadline checks occur between synchronous native calls and cannot interrupt an OS filesystem stall",
+    "Real Windows osquery/CLI/MCP updater/network acceptance not run; new native tests use synthetic feeds/sockets",
+    "Power-loss durability and all filesystem/security-product configurations not verified"
+  ],
+  "privacy": "No real owner connections, scripts, credentials, OS ACLs or default cache modified; local synthetic tests only",
+  "source_sha256": {
+    "pc_scanner/ip_threats.py": "2dbfb34b37761869d847e68c4ae583cdce237bcde9c576407661edf9e6f76cac",
+    "pc_scanner/windows_ip_cache.py": "adaad2a271a167da8384c126f33852d558372cbf75f061de27c56e5da0cf5d45",
+    "tests/test_windows_ip_cache.py": "fd1964d7ca27e60526a1b02369c7161903cdf09e25d69abe15381d4197fc6c1e"
+  },
+  "official_references": [
+    "https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_rename_info",
+    "https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getvolumeinformationbyhandlew",
+    "https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew"
+  ]
+}
