@@ -496,12 +496,15 @@ Each target needs positive integer `pid` and `start_time` (osquery epoch seconds
 `scanner.example.toml` and the [design](docs/process-review-design.md).
 
 The CLI defaults to anonymous states, as does MCP `review_processes()` (no arguments). Only the local CLI's
-`--show-details` includes names, PID, paths, hashes and dependency metadata. No details are saved to scan history,
+`--show-details` includes names, PID, paths, hashes and dependency metadata. Fixed setup errors (disabled, no targets,
+busy, invalid settings, osquery missing) are shown as they are; other error texts are replaced, and the CLI default
+only says on stderr how many warnings it left out. No details are saved to scan history,
 even with history details enabled. No destination, payload, command line or environment is collected, no code is
 executed, and no external lookup or remediation occurs. File paths and package metadata are untrusted data.
 
 Checks include identity before/after review, observed parent, Node/Python classification, the selected script's
-hash, standard ancestor node_modules metadata, and a selected macOS GUI LaunchAgent's loaded PID.
+hash, standard ancestor node_modules metadata, and whether a selected macOS GUI LaunchAgent's loaded job came from
+that plist with the same program, script and PID.
 Selected files and found metadata do not prove runtime loading or safety. Windows file checks and other OS
 startup mechanisms are not implemented; links, placeholders and unavailable items remain unconfirmed.
 The command/loop budget is 1..60 seconds (default 15); blocked filesystem calls cannot be forcibly interrupted.

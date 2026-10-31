@@ -181,7 +181,12 @@ def main():
                         error=f"Unexpected internal error ({type(exc).__name__}); the operation was not completed")
     if args.command == "review-processes" and not args.show_details:
         from .process_review import for_mcp
+        omitted = len(report.get("warnings", []))
         report = for_mcp(report)
+        if omitted:
+            # Only the count: warning texts can quote configured names, which the anonymous view never shows.
+            print(f"pc-scanner: {omitted} warning(s) omitted from the anonymous view; "
+                  "run with --show-details to read them locally", file=sys.stderr)
     if args.command == "malware-checkpoints" and not args.json:
         data = report.get("data", {})
         print("Status:", report["status"])

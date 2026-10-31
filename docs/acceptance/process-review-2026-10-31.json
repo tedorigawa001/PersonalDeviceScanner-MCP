@@ -127,5 +127,140 @@
     "scope": "macOS real existing processes; CLI and local MCP stdio on both Python runtimes",
     "outcome": "passed_with_expected_partial_result",
     "note": "Historical implementation-only verification scope above is preserved. One dependency remains unconfirmed."
+  },
+  "review_fixes_2026_10_31": {
+    "changes": [
+      "A cancel or timeout marks only the target still being checked as not_rechecked; a target that already passed its final identity check keeps its result.",
+      "loaded_job_pid_matches now requires launchctl print's top-level path to equal the selected plist, program to equal the process path, the loaded arguments to contain the selected script, and the PID to match. A shared label with the same PID, or a plist edited after loading, stays configured_match_unverified.",
+      "MCP and the CLI default pass through an allowlist of fixed error texts (disabled, no targets, busy, invalid settings, osquery missing) that contain no identifiers; other errors stay replaced. The CLI default prints only the number of omitted warnings to stderr.",
+      "Tests enable history in a temporary file instead of patching history.append to raise, which invoke turned into a warning that the anonymous view then dropped; adding review_processes to the saved operations previously passed all 16 tests."
+    ],
+    "new_tests": 4,
+    "launchctl_format_check": "Field names and indentation (top-level path, program, pid and an arguments block) checked against running Apple system agents on this Mac; no user-specific job values recorded.",
+    "verification": {
+      "python314_full": {
+        "total": 542,
+        "passed": 535,
+        "skipped": 7,
+        "failures": 0,
+        "errors": 0
+      },
+      "python315_full": {
+        "total": 542,
+        "passed": 535,
+        "skipped": 7,
+        "failures": 0,
+        "errors": 0
+      },
+      "process_review_tests": 20,
+      "npm_python314": {
+        "tests": 26,
+        "pass": 25,
+        "skipped": 1,
+        "skipped_reason": "the opt-in package end-to-end test installs from PyPI and was not run for this change"
+      },
+      "mutations": {
+        "total": 7,
+        "caught": 7,
+        "cases": [
+          "stop marks the last row",
+          "launch match by label and PID only",
+          "loaded arguments ignored",
+          "nested pid accepted",
+          "operation saved to history",
+          "all errors replaced by generic text",
+          "CLI omitted-warning count removed"
+        ]
+      },
+      "real_history_unchanged": true
+    },
+    "real_target_recheck": "The launch match in process-review-macos-2026-10-31.json predates the stricter check. Every same-instance follow-up in process-review-stop-macos-2026-10-31.json, run on these fixes (pinned process_review.py and cli.py hashes), returned loaded_job_pid_matches on the real target."
+  },
+  "precommit_re_review": {
+    "date": "2026-10-31",
+    "review_result": "No additional actionable correctness or privacy regression found in the supplied changes. No product code changed during this re-review.",
+    "platform_scope": "macOS local tests; Windows CI/native acceptance not run",
+    "combined_worktree_full": [
+      {
+        "python": "3.14.10",
+        "total": 542,
+        "passed": 535,
+        "skipped": 7,
+        "failures": 0,
+        "errors": 0,
+        "seconds": 40.618
+      },
+      {
+        "python": "3.15.2",
+        "total": 542,
+        "passed": 535,
+        "skipped": 7,
+        "failures": 0,
+        "errors": 0,
+        "seconds": 40.816
+      }
+    ],
+    "skip_reason": "Existing Windows-only tests",
+    "npm_e2e": [
+      {
+        "python": "3.14.10",
+        "total": 26,
+        "passed": 26,
+        "skipped": 0,
+        "scope": "combined worktree"
+      },
+      {
+        "python": "3.15.2",
+        "total": 26,
+        "passed": 26,
+        "skipped": 0,
+        "scope": "combined worktree"
+      }
+    ],
+    "targeted_regressions": {
+      "command": "bdo .venv/bin/python -m unittest tests.test_process_review tests.test_checkpoints tests.test_coverage -q",
+      "total": 82,
+      "passed": 82,
+      "skipped": 0
+    },
+    "test_data": "Synthetic fixtures and temporary stores; no real process/connection or personal checkpoint collection.",
+    "review_scope": [
+      "Current-target-only stop invalidation, including between-target cancellation",
+      "Loaded LaunchAgent source/program/script/PID exact matching and nested field rejection",
+      "Anonymous allowlisted errors and warning counts",
+      "Real temporary history non-persistence regression checks"
+    ],
+    "isolated_process_commit_full": [
+      {
+        "python": "3.14.10",
+        "total": 540,
+        "passed": 533,
+        "skipped": 7,
+        "failures": 0,
+        "errors": 0,
+        "seconds": 38.629
+      },
+      {
+        "python": "3.15.2",
+        "total": 540,
+        "passed": 533,
+        "skipped": 7,
+        "failures": 0,
+        "errors": 0,
+        "seconds": 38.605
+      }
+    ],
+    "isolated_npm_e2e": {
+      "python": "3.14.10",
+      "total": 26,
+      "passed": 26,
+      "skipped": 0
+    },
+    "isolation": "Exported Git index contains process-review changes and excludes checkpoint changes; imports checked to originate from export.",
+    "source_sha256": {
+      "pc_scanner/process_review.py": "d49d21d1a16df08db6ae361bbcf49d1388bb03064e0456ef6ba230f583634665",
+      "pc_scanner/cli.py": "48883bb4a0e5e81ce34f80dfe2845f7901a2a7f56d4653710046101cbda1a624",
+      "tests/test_process_review.py": "52b44ff7231e54f40a156db519344ad05fe2284c8190fd89331a29ab46d6f402"
+    }
   }
 }

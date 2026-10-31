@@ -186,8 +186,16 @@ def launch_details(path, row, target, deadline, cancel):
         code, output, _ = core.run_bounded(["/bin/launchctl", "print", f"gui/{os.getuid()}/{label}"],
             max(.001, min(2, deadline - time.monotonic())), 128 * 1024, cancel)
         check(deadline, cancel)
-        pids = re.findall(r"^\s*pid = ([0-9]{1,10})\s*$", output, re.M)
-        if code == 0 and len(pids) == 1 and int(pids[0]) == target["pid"]:
+        # Top-level fields only (nested blocks are indented deeper). The loaded job itself must come from this
+        # plist with the same program and script; a shared label or a plist edited after loading is not enough.
+        loaded = {}
+        for key, value in re.findall(r"^\t(path|program|pid) = (.*)$", output, re.M):
+            loaded.setdefault(key, []).append(value)
+        blocks = re.findall(r"^\targuments = \{\n((?:\t\t.*\n)*)\t\}$", output, re.M)
+        loaded_args = [a[2:] for a in blocks[0].splitlines()] if len(blocks) == 1 else []
+        if (code == 0 and loaded.get("pid") == [str(target["pid"])] and loaded.get("path") == [str(Path(path))]
+                and loaded.get("program") == [row.get("path")]
+                and (not target.get("script_file") or target["script_file"] in loaded_args[1:])):
             state = "loaded_job_pid_matches"
     return {**info, "state": state, "run_at_load": obj.get("RunAtLoad") is True,
             "keep_alive_configured": bool(obj.get("KeepAlive")),
@@ -201,7 +209,8 @@ def review(scanner, cancel=None, progress=None):
     if not scanner._process_review_lock.acquire(False):
         raise core.ScannerError("Process review is busy")
     deadline = time.monotonic() + settings["timeout_seconds"]
-    rows, stop = [], None
+    # current is the target still being checked; a stop marks only it, never one that passed its final check.
+    rows, stop, current = [], None, None
     try:
         if progress:
             progress.set_deadline(deadline)
@@ -211,15 +220,16 @@ def review(scanner, cancel=None, progress=None):
         backend = Backend(scanner, deadline, cancel)
         for index, target in enumerate(settings["targets"].values(), 1):
             check(deadline, cancel)
-            item = {"label": f"P{index:02}", "identity": "unavailable", "runtime": "unknown",
-                    "launch": "not_requested", "script": "not_requested", "package": "not_requested",
-                    "attention": [], "details": {}}
+            current = item = {"label": f"P{index:02}", "identity": "unavailable", "runtime": "unknown",
+                              "launch": "not_requested", "script": "not_requested", "package": "not_requested",
+                              "attention": [], "details": {}}
             rows.append(item)
             try:
                 row = metadata(backend, target)
                 if row is None:
                     item["identity"] = "not_observed"
                     item["attention"].append("process_not_observed")
+                    current = None
                     continue
                 item["identity"] = "start_time_matches"
                 item["details"]["process"] = {k: core.clean_text(v, 4096) if isinstance(v, str) else v
@@ -260,6 +270,7 @@ def review(scanner, cancel=None, progress=None):
                 # Do not retain a stale attribution when the final identity check failed.
                 item["details"] = {}
                 item["launch"] = item["script"] = item["package"] = "unavailable"
+            current = None
             if progress:
                 progress.update(stage="running")
         check(deadline, cancel)
@@ -267,11 +278,11 @@ def review(scanner, cancel=None, progress=None):
             stop = "read_limit_or_warning"
     except Stopped as exc:
         stop = exc.reason
-        if rows:
-            rows[-1]["identity"] = "not_rechecked"
-            rows[-1]["launch"] = "unavailable"
-            rows[-1]["attention"].append("interrupted_before_final_identity_check")
-            rows[-1]["details"] = {}
+        if current is not None:
+            current["identity"] = "not_rechecked"
+            current["launch"] = "unavailable"
+            current["attention"].append("interrupted_before_final_identity_check")
+            current["details"] = {}
     finally:
         scanner._process_review_lock.release()
     data = {"checked_at": now(), "target_count": len(settings["targets"]), "reviewed_count": len(rows),
@@ -284,12 +295,25 @@ def review(scanner, cancel=None, progress=None):
     return for_mcp(report) if scanner.via == "mcp" else report
 
 
+# Fixed texts the owner can act on; none quotes a configured name, path or value. Any other error is replaced.
+ERRORS = frozenset({
+    "Process review is disabled", "Process review is busy",
+    "No owner-selected process review targets configured", "osquery_binary is not configured or not installed",
+    "Configuration sections must be tables", "process_review must be a table",
+    "process_review needs a boolean enabled and timeout_seconds 1..60",
+    "process_review.targets must contain at most 16 owner-selected targets", "Invalid process review target settings",
+    "Process review targets need positive integer pid and start_time",
+    "Process review files must be absolute paths without parent traversal", "Duplicate process review identity"})
+
+
 def for_mcp(report):
     """Build a fresh allowlisted view, including on errors. Never copy diagnostics or config warnings."""
     data = report.get("data", {})
     keys = ("label", "identity", "runtime", "launch", "script", "package", "attention")
+    error = report.get("error")
     return core.result("process_review", report.get("status", "error"),
-        **({"error": "Process review could not complete; check local configuration"} if report.get("error") else {}),
+        **({"error": error if error in ERRORS else "Process review could not complete; check local configuration"}
+           if error else {}),
         data={"target_count": data.get("target_count", 0), "reviewed_count": data.get("reviewed_count", 0),
               "processes": [{k: row[k] for k in keys} for row in data.get("processes", [])],
               "attention_counts": data.get("attention_counts", {}), "limitations": LIMITS,

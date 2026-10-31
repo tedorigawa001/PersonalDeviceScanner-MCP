@@ -33,37 +33,46 @@ class ReviewTests(unittest.TestCase):
                        "package_file": str(self.package), "launch_file": str(self.launch)}
         self.row = {"pid": "42", "start_time": "1000", "path": "/private/node", "name": "private-name",
                     "parent": "1", "parent_path": "/private/parent", "parent_start_time": "10"}
-        self.history = patch("pc_scanner.history.append", side_effect=AssertionError("history must not be written"))
-        self.history.start()
-        self.addCleanup(self.history.stop)
+        # Enabled but in this temporary folder, never the owner's real history: any save would appear here.
+        self.history_file = self.root / "history.jsonl"
+        # The loaded job as `launchctl print` shows it: one tab for top-level fields, two inside blocks.
+        self.job = (f"\tpath = {self.launch}\n\tprogram = /private/node\n\tpid = 42\n"
+                    f"\targuments = {{\n\t\t/private/node\n\t\t{self.script}\n\t}}\n")
 
     def scanner(self, target=None, **settings):
-        return Scanner({"history": {"enabled": True, "details": True}, "process_review": {
+        return Scanner({"history": {"enabled": True, "details": True, "file": str(self.history_file)}, "process_review": {
             "enabled": True, "targets": {"private-alias": self.target if target is None else target}, **settings}})
 
-    def invoke(self, scanner=None, rows=None, **kwargs):
+    def invoke(self, scanner=None, rows=None, query=None, **kwargs):
         scanner = scanner or self.scanner()
         with patch.object(p.Backend, "__init__", return_value=None), \
              patch.object(p.Backend, "limits", set(), create=True), \
-             patch.object(p.Backend, "query", return_value=[self.row] if rows is None else rows), \
+             patch.object(p.Backend, "query", return_value=[self.row] if rows is None else rows, side_effect=query), \
              patch.object(p.platform, "system", return_value="Darwin"), \
-             patch("pc_scanner.core.run_bounded", return_value=(0, " pid = 42\n", "")):
+             patch("pc_scanner.core.run_bounded", return_value=(0, self.job, "")):
             return scanner.invoke("review_processes", **kwargs)
 
     def test_disabled_and_empty_do_not_start_engine(self):
         with patch.object(p, "Backend", side_effect=AssertionError("must not start")):
-            self.assertEqual(Scanner({}).invoke("review_processes")["status"], "error")
-            self.assertEqual(self.scanner(targets={}).invoke("review_processes")["status"], "error")
+            for scanner, error in ((Scanner({}), "Process review is disabled"),
+                                   (self.scanner(targets={}), "No owner-selected process review targets configured")):
+                report = scanner.invoke("review_processes")
+                self.assertEqual(report["status"], "error")
+                # Fixed texts the owner can act on survive the anonymous view.
+                self.assertEqual(p.for_mcp(report)["error"], error)
 
     def test_settings_and_duplicate_identity_are_rejected(self):
         for settings in [{"enabled": "yes"}, {"timeout_seconds": True}, {"timeout_seconds": 61},
                          {"targets": []}, {"targets": {"a": {"pid": "42", "start_time": 1000}}},
                          {"targets": {"a": {**self.target, "script_file": "/a/../b"}}},
                          {"targets": {"a": self.target, "b": self.target}}]:
-            with self.subTest(settings=settings), self.assertRaises(ScannerError):
-                self.scanner(**settings)
-        with self.assertRaises(ScannerError):
+            with self.subTest(settings=settings):
+                with self.assertRaises(ScannerError) as caught:
+                    self.scanner(**settings)
+                self.assertIn(str(caught.exception), p.ERRORS)
+        with self.assertRaises(ScannerError) as caught:
             Scanner({"process_review": 7})
+        self.assertIn(str(caught.exception), p.ERRORS)
 
     def test_pid_reuse_and_exit_never_read_files(self):
         for rows in [[], [{**self.row, "start_time": "1001"}], [{**self.row, "pid": "43"}]]:
@@ -112,9 +121,40 @@ class ReviewTests(unittest.TestCase):
         scanner = self.scanner()
         scanner._process_review_lock.acquire()
         try:
-            self.assertIn("busy", self.invoke(scanner)["error"])
+            self.assertEqual(p.for_mcp(self.invoke(scanner))["error"], "Process review is busy")
         finally:
             scanner._process_review_lock.release()
+
+    def test_a_stop_marks_only_the_target_still_being_checked(self):
+        # Query 2 is the first target's final check; query 1 is followed by reading its script.
+        for stop_after, first, expected in ((2, {"pid": 42, "start_time": 1000}, "start_time_matches"),
+                                            (1, {"pid": 42, "start_time": 1000, "script_file": str(self.script)},
+                                             "not_rechecked")):
+            cancel, calls = threading.Event(), []
+            def query(sql, calls=calls, cancel=cancel, stop_after=stop_after):
+                calls.append(sql)
+                if len(calls) == stop_after:
+                    cancel.set()
+                return [self.row] if "p.pid = 42 " in sql else [{**self.row, "pid": "43", "start_time": "2000"}]
+            scanner = self.scanner(targets={"a": first, "b": {"pid": 43, "start_time": 2000}})
+            with self.subTest(stop_after=stop_after):
+                report = self.invoke(scanner, query=query, cancel=cancel)
+                row = report["data"]["processes"][0]
+                self.assertEqual((report["data"]["stop_reason"], report["data"]["reviewed_count"]), ("cancelled", 1))
+                self.assertEqual(row["identity"], expected)
+                self.assertEqual(bool(row["details"]), expected == "start_time_matches")
+                self.assertEqual("interrupted_before_final_identity_check" in row["attention"], expected == "not_rechecked")
+
+    def test_history_is_never_written_through_cli_or_mcp(self):
+        for via in ("cli", "mcp"):
+            scanner = self.scanner()
+            scanner.via = via
+            with self.subTest(via=via):
+                report = self.invoke(scanner)
+                # A failed save would only add a warning, so check both the warning and the file.
+                self.assertEqual(report["warnings"], [])
+                self.assertEqual(report["data"]["persistence"], "not_saved")
+                self.assertFalse(self.history_file.exists())
 
     @unittest.skipUnless(os.name == "posix", "POSIX descriptor-based file reader")
     def test_links_fifo_cloud_and_oversized_files_are_never_read(self):
@@ -168,6 +208,24 @@ class ReviewTests(unittest.TestCase):
             info = p.launch_details(self.launch, self.row, self.target, time.monotonic()+2, None)
         self.assertEqual(info["state"], "configured_match_unverified")
 
+    @unittest.skipUnless(os.name == "posix", "POSIX descriptor-based file reader")
+    def test_loaded_job_must_come_from_the_selected_plist(self):
+        # The same label and PID are not enough: another source plist, program or script stays unverified.
+        for old, new in ((f"path = {self.launch}", "path = /other/private-job.plist"),
+                         ("program = /private/node", "program = /other/node"),
+                         (f"\t\t{self.script}\n", "\t\t/other/script.js\n"),
+                         ("\tpid = 42\n", "\tpid = 43\n"),
+                         ("\tpid = 42\n", "\tspawn = {\n\t\tpid = 42\n\t}\n"),
+                         ("\tpid = 42\n", "\tpid = 42\n\tpid = 42\n")):
+            with self.subTest(changed=new), patch.object(p.platform, "system", return_value="Darwin"), \
+                 patch("pc_scanner.core.run_bounded", return_value=(0, self.job.replace(old, new), "")):
+                info = p.launch_details(self.launch, self.row, self.target, time.monotonic() + 2, None)
+                self.assertEqual(info["state"], "configured_match_unverified")
+        with patch.object(p.platform, "system", return_value="Darwin"), \
+             patch("pc_scanner.core.run_bounded", return_value=(0, self.job, "")):
+            info = p.launch_details(self.launch, self.row, self.target, time.monotonic() + 2, None)
+        self.assertEqual(info["state"], "loaded_job_pid_matches")
+
     def test_identity_changed_after_inspection_clears_attribution(self):
         calls = 0
         def metadata(*args):
@@ -197,6 +255,26 @@ class ReviewTests(unittest.TestCase):
                 try: cli.main()
                 except SystemExit as exc: self.assertEqual(exc.code, 2)
             self.assertEqual(str(self.root) in out.getvalue(), bool(extra))
+
+    def test_cli_default_shows_fixed_errors_and_only_counts_warnings(self):
+        from pc_scanner import cli
+        from io import StringIO
+        class Output(StringIO):
+            def reconfigure(self, **kwargs): pass
+        # A misspelt setting: the cause stays readable without leaving the anonymous view.
+        scanner = Scanner({"history": {"enabled": False}, "process_review": {"enable": True}})
+        for extra in [[], ["--show-details"]]:
+            out, err = Output(), Output()
+            with self.subTest(extra=extra), patch.object(sys, "argv", ["pc-scanner", "review-processes", "--json", *extra]), \
+                 patch.object(Scanner, "load", return_value=scanner), patch("sys.stdout", out), patch("sys.stderr", err):
+                with self.assertRaises(SystemExit):
+                    cli.main()
+                report = json.loads(out.getvalue())
+                self.assertEqual(report["error"], "Process review is disabled")
+                self.assertEqual(bool(report["warnings"]), bool(extra))
+                self.assertEqual("1 warning(s) omitted" in err.getvalue(), not extra)
+                if not extra:
+                    self.assertNotIn("process_review.enable", out.getvalue() + err.getvalue())
 
     @unittest.skipUnless(importlib.util.find_spec("mcp"), "agent extra not installed")
     def test_real_mcp_transport_returns_only_anonymous_summary(self):
