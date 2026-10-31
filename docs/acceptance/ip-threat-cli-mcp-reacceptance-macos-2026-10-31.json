@@ -1,0 +1,434 @@
+{
+  "date": "2026-10-31",
+  "source_commit": "196785fa2e8c1c289bf0b3fbbf054de56be949d3",
+  "product_fix_commit": "127d8f9",
+  "status": "real_cli_and_anonymous_mcp_reacceptance_passed_with_limits",
+  "environment": {
+    "os": "macOS",
+    "osquery": "5.23.1",
+    "mcp_sdk": "1.30.0",
+    "python": [
+      "3.14.10",
+      "3.15.2"
+    ]
+  },
+  "mcp_cases": [
+    {
+      "python": "python314",
+      "older_identifier_disclosure_enabled": false,
+      "status": "completed",
+      "elapsed_seconds": 10.591,
+      "connection_records": 162,
+      "attributed_processes": 20,
+      "destination_threats": {
+        "checked_at": "2026-10-31T09:29:00.497741+00:00",
+        "destination_counts": {
+          "not_listed": 41
+        },
+        "unique_destinations": 41,
+        "historical_match_destinations": 0,
+        "coverage": "checked",
+        "notice": "Public threat-list matches are warnings, not proof of infection or transmission. No match does not prove safety.",
+        "matched_connection_records": 0,
+        "matched_processes": 0,
+        "matched_unattributed_records": 0,
+        "feeds": {
+          "4": {
+            "source": "Spamhaus Project DROP",
+            "freshness": "fresh",
+            "published_at": "2026-10-31T05:14:02.000000+00:00",
+            "retrieved_at": "2026-10-31T06:03:49.576866+00:00",
+            "expires_at": "2026-11-02T05:14:02.000000+00:00",
+            "records": 1757,
+            "copyright": "(c) 2026 The Spamhaus Project SLU"
+          },
+          "6": {
+            "source": "Spamhaus Project DROP",
+            "freshness": "fresh",
+            "published_at": "2026-10-30T13:14:02.000000+00:00",
+            "retrieved_at": "2026-10-31T06:03:49.576866+00:00",
+            "expires_at": "2026-11-01T13:14:02.000000+00:00",
+            "records": 92,
+            "copyright": "(c) 2026 The Spamhaus Project SLU"
+          }
+        }
+      },
+      "samples": {
+        "planned": 10,
+        "successful": 10,
+        "failed": 0,
+        "attempted": 10,
+        "skipped": 0,
+        "interval_seconds": 1
+      },
+      "limitations": [
+        "direction_unknown",
+        "no_byte_counts",
+        "not_a_security_assessment",
+        "observed_only",
+        "os_visible_scope_only",
+        "process_join_not_atomic",
+        "process_start_resolution_seconds",
+        "short_lived_connections_may_be_missed",
+        "udp_destinations_may_be_missing"
+      ],
+      "stop_reason": null,
+      "strict_anonymous_reply_allowlist": true,
+      "observation_limitations": [
+        "direction_unknown",
+        "no_byte_counts",
+        "not_a_security_assessment",
+        "observed_only",
+        "os_visible_scope_only",
+        "process_join_not_atomic",
+        "process_start_resolution_seconds",
+        "short_lived_connections_may_be_missed",
+        "udp_destinations_may_be_missing"
+      ],
+      "unavailable_counts": {
+        "destination_unavailable": 240
+      },
+      "counts_match_private_pre_projection_data": true,
+      "progress_messages_anonymous": true,
+      "progress_notification_count": 12,
+      "ping_seconds": 0.011,
+      "persistence": "not_saved",
+      "audit": {
+        "dns_attempts": 0,
+        "connect_attempts": 0,
+        "download_calls": 0,
+        "update_calls": 0,
+        "history_calls": 0,
+        "default_path_calls": 0,
+        "queries": {
+          "addresses": 21,
+          "sockets": 10
+        },
+        "raw_captures": 1
+      },
+      "cache_unchanged": true,
+      "history_absent": true,
+      "private_evidence_permissions": "0700 directory / 0600 files"
+    },
+    {
+      "python": "python315",
+      "older_identifier_disclosure_enabled": true,
+      "status": "completed",
+      "elapsed_seconds": 10.823,
+      "connection_records": 158,
+      "attributed_processes": 18,
+      "destination_threats": {
+        "checked_at": "2026-10-31T09:29:11.292180+00:00",
+        "destination_counts": {
+          "not_listed": 40
+        },
+        "unique_destinations": 40,
+        "historical_match_destinations": 0,
+        "coverage": "checked",
+        "notice": "Public threat-list matches are warnings, not proof of infection or transmission. No match does not prove safety.",
+        "matched_connection_records": 0,
+        "matched_processes": 0,
+        "matched_unattributed_records": 0,
+        "feeds": {
+          "4": {
+            "source": "Spamhaus Project DROP",
+            "freshness": "fresh",
+            "published_at": "2026-10-31T05:14:02.000000+00:00",
+            "retrieved_at": "2026-10-31T06:03:49.576866+00:00",
+            "expires_at": "2026-11-02T05:14:02.000000+00:00",
+            "records": 1757,
+            "copyright": "(c) 2026 The Spamhaus Project SLU"
+          },
+          "6": {
+            "source": "Spamhaus Project DROP",
+            "freshness": "fresh",
+            "published_at": "2026-10-30T13:14:02.000000+00:00",
+            "retrieved_at": "2026-10-31T06:03:49.576866+00:00",
+            "expires_at": "2026-11-01T13:14:02.000000+00:00",
+            "records": 92,
+            "copyright": "(c) 2026 The Spamhaus Project SLU"
+          }
+        }
+      },
+      "samples": {
+        "planned": 10,
+        "successful": 10,
+        "failed": 0,
+        "attempted": 10,
+        "skipped": 0,
+        "interval_seconds": 1
+      },
+      "limitations": [
+        "direction_unknown",
+        "no_byte_counts",
+        "not_a_security_assessment",
+        "observed_only",
+        "os_visible_scope_only",
+        "process_join_not_atomic",
+        "process_start_resolution_seconds",
+        "short_lived_connections_may_be_missed",
+        "udp_destinations_may_be_missing"
+      ],
+      "stop_reason": null,
+      "strict_anonymous_reply_allowlist": true,
+      "observation_limitations": [
+        "direction_unknown",
+        "no_byte_counts",
+        "not_a_security_assessment",
+        "observed_only",
+        "os_visible_scope_only",
+        "process_join_not_atomic",
+        "process_start_resolution_seconds",
+        "short_lived_connections_may_be_missed",
+        "udp_destinations_may_be_missing"
+      ],
+      "unavailable_counts": {
+        "destination_unavailable": 242
+      },
+      "counts_match_private_pre_projection_data": true,
+      "progress_messages_anonymous": true,
+      "progress_notification_count": 12,
+      "ping_seconds": 0.01,
+      "persistence": "not_saved",
+      "audit": {
+        "dns_attempts": 0,
+        "connect_attempts": 0,
+        "download_calls": 0,
+        "update_calls": 0,
+        "history_calls": 0,
+        "default_path_calls": 0,
+        "queries": {
+          "addresses": 21,
+          "sockets": 10
+        },
+        "raw_captures": 1
+      },
+      "cache_unchanged": true,
+      "history_absent": true,
+      "private_evidence_permissions": "0700 directory / 0600 files"
+    }
+  ],
+  "limited_mcp": {
+    "python": "limited",
+    "older_identifier_disclosure_enabled": false,
+    "status": "partial",
+    "elapsed_seconds": 1.337,
+    "connection_records": 1,
+    "attributed_processes": 1,
+    "destination_threats": {
+      "checked_at": "2026-10-31T09:29:23.315743+00:00",
+      "destination_counts": {
+        "not_listed": 1
+      },
+      "unique_destinations": 1,
+      "historical_match_destinations": 0,
+      "coverage": "unverified",
+      "notice": "Public threat-list matches are warnings, not proof of infection or transmission. No match does not prove safety.",
+      "matched_connection_records": 0,
+      "matched_processes": 0,
+      "matched_unattributed_records": 0,
+      "feeds": {
+        "4": {
+          "source": "Spamhaus Project DROP",
+          "freshness": "fresh",
+          "published_at": "2026-10-31T05:14:02.000000+00:00",
+          "retrieved_at": "2026-10-31T06:03:49.576866+00:00",
+          "expires_at": "2026-11-02T05:14:02.000000+00:00",
+          "records": 1757,
+          "copyright": "(c) 2026 The Spamhaus Project SLU"
+        },
+        "6": {
+          "source": "Spamhaus Project DROP",
+          "freshness": "fresh",
+          "published_at": "2026-10-30T13:14:02.000000+00:00",
+          "retrieved_at": "2026-10-31T06:03:49.576866+00:00",
+          "expires_at": "2026-11-01T13:14:02.000000+00:00",
+          "records": 92,
+          "copyright": "(c) 2026 The Spamhaus Project SLU"
+        }
+      }
+    },
+    "samples": {
+      "planned": 10,
+      "successful": 1,
+      "failed": 0,
+      "attempted": 1,
+      "skipped": 0,
+      "interval_seconds": 1
+    },
+    "limitations": [
+      "connection_limit",
+      "direction_unknown",
+      "no_byte_counts",
+      "not_a_security_assessment",
+      "observed_only",
+      "os_visible_scope_only",
+      "process_join_not_atomic",
+      "process_start_resolution_seconds",
+      "short_lived_connections_may_be_missed",
+      "udp_destinations_may_be_missing"
+    ],
+    "stop_reason": "connection_limit",
+    "strict_anonymous_reply_allowlist": true,
+    "observation_limitations": [
+      "connection_limit",
+      "direction_unknown",
+      "no_byte_counts",
+      "not_a_security_assessment",
+      "observed_only",
+      "os_visible_scope_only",
+      "process_join_not_atomic",
+      "process_start_resolution_seconds",
+      "short_lived_connections_may_be_missed",
+      "udp_destinations_may_be_missing"
+    ],
+    "unavailable_counts": {
+      "destination_unavailable": 5
+    },
+    "counts_match_private_pre_projection_data": true,
+    "progress_messages_anonymous": true,
+    "progress_notification_count": 2,
+    "ping_seconds": 0.003,
+    "persistence": "not_saved",
+    "audit": {
+      "dns_attempts": 0,
+      "connect_attempts": 0,
+      "download_calls": 0,
+      "update_calls": 0,
+      "history_calls": 0,
+      "default_path_calls": 0,
+      "queries": {
+        "addresses": 2,
+        "sockets": 1
+      },
+      "raw_captures": 1
+    },
+    "cache_unchanged": true,
+    "history_absent": true,
+    "private_evidence_permissions": "0700 directory / 0600 files"
+  },
+  "cli": {
+    "status": "completed",
+    "exit_code": 0,
+    "connection_count": 174,
+    "process_count": 24,
+    "sampling": {
+      "planned": 10,
+      "successful": 10,
+      "failed": 0,
+      "attempted": 10,
+      "skipped": 0,
+      "interval_seconds": 1
+    },
+    "limitations": [
+      "direction_unknown",
+      "no_byte_counts",
+      "not_a_security_assessment",
+      "observed_only",
+      "os_visible_scope_only",
+      "process_join_not_atomic",
+      "process_start_resolution_seconds",
+      "short_lived_connections_may_be_missed",
+      "udp_destinations_may_be_missing"
+    ],
+    "unavailable_counts": {
+      "destination_unavailable": 240
+    },
+    "destination_threats": {
+      "checked_at": "2026-10-31T09:29:33.891459+00:00",
+      "feeds": {
+        "4": {
+          "source": "Spamhaus Project DROP",
+          "published_at": "2026-10-31T05:14:02.000000+00:00",
+          "retrieved_at": "2026-10-31T06:03:49.576866+00:00",
+          "expires_at": "2026-11-02T05:14:02.000000+00:00",
+          "freshness": "fresh",
+          "records": 1757,
+          "copyright": "(c) 2026 The Spamhaus Project SLU"
+        },
+        "6": {
+          "source": "Spamhaus Project DROP",
+          "published_at": "2026-10-30T13:14:02.000000+00:00",
+          "retrieved_at": "2026-10-31T06:03:49.576866+00:00",
+          "expires_at": "2026-11-01T13:14:02.000000+00:00",
+          "freshness": "fresh",
+          "records": 92,
+          "copyright": "(c) 2026 The Spamhaus Project SLU"
+        }
+      },
+      "destination_counts": {
+        "not_listed": 45
+      },
+      "unique_destinations": 45,
+      "historical_match_destinations": 0,
+      "matched_connection_records": 0,
+      "matched_processes": 0,
+      "matched_unattributed_records": 0,
+      "coverage": "checked",
+      "notice": "Public threat-list matches are warnings, not proof of infection or transmission. No match does not prove safety."
+    },
+    "audit": {
+      "dns_attempts": 0,
+      "connect_attempts": 0,
+      "download_calls": 0,
+      "update_calls": 0,
+      "history_calls": 0,
+      "default_path_calls": 0,
+      "queries": {
+        "addresses": 21,
+        "sockets": 10
+      },
+      "raw_captures": 0
+    },
+    "history_absent": true,
+    "cache_unchanged": true
+  },
+  "interpretation": {
+    "normalization": "No invalid_rows in either ten-second MCP observation or ten-second CLI observation; completed and retained-destination coverage checked",
+    "partial_case": "Separate private configuration max_connections=1 produced partial, stop_reason=connection_limit, observation_limitations including connection_limit, coverage=unverified and fixed-code unavailable_counts",
+    "counts": "Counts are snapshots/retained records; unavailable_counts sum unusable rows across samples, not unique connections. Observations ran at different times, so totals need not agree.",
+    "safety": "No listed destinations seen; no match does not prove safety. OS-visible snapshots do not prove actual outbound transmission."
+  },
+  "privacy": {
+    "local_client": "Actual local SDK stdio, no external AI client",
+    "reply": "Strict field allowlists for JSON report, process labels and feed metadata; exactly one text block and no annotations/metadata/structuredContent",
+    "comparison": "Recomputed local pre-projection counts, checked projected limitation codes and unavailable counts match raw report",
+    "progress": "Notification messages and get_scan_progress allowlisted; anonymous in all MCP cases",
+    "old_identifier_gate": "False on 3.14, true on 3.15; new tool remained anonymous; old observe tool rejected before collection when disabled",
+    "raw_data": "Actual CLI output, pre-projection records and stderr retained only in private local temporary workspace; no raw identifiers, paths or raw observation hashes in repository",
+    "permissions": "All private directories0700 and files0600, current owner verified",
+    "payloads_collected": false,
+    "destination_probes": false,
+    "reverse_dns": false
+  },
+  "side_effects": {
+    "history": "Disabled; explicit test path absent; details flags enabled, no history write callback",
+    "cache": "Existing fresh acceptance cache reused, contents/mode/owner/inode/mtime/size unchanged; atime not asserted",
+    "network": "Client/server Python DNS and connect calls denied, counters zero; updater/download callbacks zero. Native osquery limited to fixed interface/socket queries with events/logging/extensions disabled.",
+    "live_feed_update": false,
+    "owner_configuration_changed": false
+  },
+  "verification": {
+    "product_changes": false,
+    "full_tests_rerun": false,
+    "npm_rerun": false,
+    "scope": "Real CLI/MCP acceptance only; prior full-suite results retained separately"
+  },
+  "remaining": [
+    "Authorized real detail-history/dashboard persistence acceptance",
+    "Linux new feature acceptance and Windows safe cache foundation",
+    "Real listed-destination match not observed; warning cases remain synthetic",
+    "Commercial MCP clients and all possible observation rejection reasons not covered"
+  ],
+  "source_sha256": {
+    "pc_scanner/connections.py": "32af7de722cc238c8d09e521047f09d8752794798de73efb97a3180c9c5be465",
+    "pc_scanner/ip_threats.py": "54e7b4fd614a5a299a2f3737575fd09b4303e8de325fe1e79792cc53a3a280bf",
+    "pc_scanner/server.py": "2c2c5b06099fa6fc6a2c9f4807f6b3fd51c0482f47e392c27585031f5efc1c87",
+    "pc_scanner/core.py": "6af88eda97a6ffff722835a7d4d4f57bd5ad0fe3b3bdec53e47e4fe85a7d4344"
+  },
+  "harness_sha256": {
+    "ip-recheck-client.py": "9d39db82b2d32eeb89db158cd152ad84319ae310d59697055690d9f3220f2150",
+    "ip-recheck-server.py": "3ce85a14c77b9e2bf829f9332e99ac8ccf73b4106cd588a601e02aa94bcef188",
+    "ip-recheck-extras.py": "b1bc2f3cd300e6398e19886f9cc42949bd2ee22b23643aefb0cecb5c008e292f"
+  }
+}

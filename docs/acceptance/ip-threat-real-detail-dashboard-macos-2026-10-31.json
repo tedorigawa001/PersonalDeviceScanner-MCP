@@ -1,0 +1,119 @@
+{
+  "date": "2026-10-31",
+  "source_commit": "196785fa2e8c1c289bf0b3fbbf054de56be949d3",
+  "status": "local_detail_storage_and_browser_manual_acceptance_verified",
+  "consent": "Owner requested real detail-history/dashboard acceptance; explicit isolated history/details/save_details enabled; owner configuration unchanged",
+  "result": {
+    "status": "completed",
+    "connection_records": 163,
+    "process_count": 16,
+    "destination_threats": {
+      "checked_at": "2026-10-31T09:31:55.604762+00:00",
+      "feeds": {
+        "4": {
+          "source": "Spamhaus Project DROP",
+          "published_at": "2026-10-31T05:14:02.000000+00:00",
+          "retrieved_at": "2026-10-31T06:03:49.576866+00:00",
+          "expires_at": "2026-11-02T05:14:02.000000+00:00",
+          "freshness": "fresh",
+          "records": 1757,
+          "copyright": "(c) 2026 The Spamhaus Project SLU"
+        },
+        "6": {
+          "source": "Spamhaus Project DROP",
+          "published_at": "2026-10-30T13:14:02.000000+00:00",
+          "retrieved_at": "2026-10-31T06:03:49.576866+00:00",
+          "expires_at": "2026-11-01T13:14:02.000000+00:00",
+          "freshness": "fresh",
+          "records": 92,
+          "copyright": "(c) 2026 The Spamhaus Project SLU"
+        }
+      },
+      "destination_counts": {
+        "not_listed": 41
+      },
+      "unique_destinations": 41,
+      "historical_match_destinations": 0,
+      "matched_connection_records": 0,
+      "matched_processes": 0,
+      "matched_unattributed_records": 0,
+      "coverage": "checked",
+      "notice": "Public threat-list matches are warnings, not proof of infection or transmission. No match does not prove safety."
+    },
+    "unavailable_counts": {
+      "destination_unavailable": 258
+    },
+    "history_entries": 1,
+    "detail_files": 1,
+    "stored_observation_matches_cli_except_final_progress": true,
+    "private_permissions_verified": true,
+    "history_summary_has_no_connection_rows": true,
+    "html_details_count": 17,
+    "internal_link_count": 1,
+    "all_links_resolve": true,
+    "no_external_resources_or_scripts": true,
+    "all_retained_destinations_and_processes_rendered": true,
+    "cache_unchanged": true,
+    "scan_audit": {
+      "dns_attempts": 0,
+      "connect_attempts": 0,
+      "download_calls": 0,
+      "update_calls": 0,
+      "history_calls": 1,
+      "default_path_calls": 0,
+      "queries": {
+        "addresses": 21,
+        "sockets": 10
+      },
+      "raw_captures": 0
+    },
+    "dashboard_audit": {
+      "dns_attempts": 0,
+      "connect_attempts": 0,
+      "download_calls": 0,
+      "update_calls": 0,
+      "history_calls": 0,
+      "default_path_calls": 0,
+      "queries": {
+        "addresses": 0,
+        "sockets": 0
+      },
+      "raw_captures": 0
+    },
+    "browser_manual_confirmation": "confirmed_by_owner"
+  },
+  "privacy": "Real identifiers and private HTML retained locally only, no payload collection or destination probes; report includes aggregate counts and public feed metadata only",
+  "permissions": "Private directory tree0700/files0600; current owner checked",
+  "persistence": "Product history writer used, one append. Full observation equals saved detail except progress snapshot finalized after history save. No default history accessed.",
+  "cache_verification": "Compared to prior pre-reacceptance cache snapshot: content/mode/inode/mtime unchanged; read atime excluded",
+  "browser_manual_checks": {
+    "status": "confirmed_by_owner",
+    "date": "2026-10-31",
+    "evidence": "Owner reported successful checks in this conversation; no automated browser interaction or screenshots used",
+    "confirmed_items": [
+      "Connection counts, freshness and coverage displayed",
+      "List link navigates to scan history",
+      "Scan details open and close",
+      "Per-process details open and close"
+    ],
+    "not_individually_confirmed": [
+      "Every destination/port/protocol/evidence cell",
+      "Other browsers, viewport sizes and keyboard-only operation"
+    ]
+  },
+  "verification_limits": [
+    "Browser display and interactions confirmed by owner report; not independently browser-automated",
+    "No product code change; full suite not rerun",
+    "Actual malicious match not seen",
+    "MCP anonymous/nonpersistence tested separately in preceding reacceptance, not rerun with this history enabled"
+  ],
+  "harness_notes": [
+    "Validator import path corrected without recollecting",
+    "Equality assertion refined to exclude final progress snapshot, which is added after persistence by core.invoke; observation and persistence fields match"
+  ],
+  "source_sha256": {
+    "pc_scanner/history.py": "dac9bfd6c0ac4f3e130dff76beb05f4ca7ff0b07c3ee5537fa1c717d519440e1",
+    "pc_scanner/dashboard.py": "9d729903dc54e9555532585ac47cfff295051773e09192e2c28e99ca9b8fe1d9",
+    "pc_scanner/core.py": "6af88eda97a6ffff722835a7d4d4f57bd5ad0fe3b3bdec53e47e4fe85a7d4344"
+  }
+}
