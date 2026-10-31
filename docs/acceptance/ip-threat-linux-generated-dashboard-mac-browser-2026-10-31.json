@@ -1,0 +1,96 @@
+{
+  "date": "2026-10-31",
+  "source_commit": "182a9045892c5a4fcf4ff52b4c44f1488afbea2c",
+  "status": "linux_generated_html_mac_browser_owner_confirmed",
+  "result": {
+    "status": "linux_generation_and_mac_manual_browser_verified",
+    "environment": {
+      "platform": "Linux-6.10.14-linuxkit-aarch64-with-glibc2.39",
+      "python": "3.12.3",
+      "uid": 10001
+    },
+    "fixture": {
+      "synthetic_only": true,
+      "connection_records": 2,
+      "processes": 2,
+      "unique_destinations": 2,
+      "matched_destinations": 1,
+      "not_listed_destinations": 1,
+      "matched_connections": 1,
+      "matched_processes": 1,
+      "feed_freshness_at_check": "fresh",
+      "coverage": "checked",
+      "status": "completed",
+      "vulnerability_findings": 0
+    },
+    "static_checks": {
+      "details_elements": 3,
+      "internal_links": 1,
+      "all_links_resolve": true,
+      "external_resources_or_scripts": false,
+      "fixture_processes_rendered": true,
+      "private_permissions": true
+    },
+    "product_html_sha256": "492ca811ae29ad5d3b1b58f05ec35697ad7a1a01360ec6a2c5eeed1847d747be",
+    "display_html_sha256": "652b9ca340353fd8e0a5e2fb74e4522b1dea2e39854dd6faf7ecf5518088dfab",
+    "display_change": "Constant synthetic-data banner inserted after body; product content otherwise unchanged",
+    "privacy": "Only synthetic socket rows and synthetic feed fixture. No actual osquery collection or live HTTP request."
+  },
+  "isolation": {
+    "network": "none",
+    "mounts": 0,
+    "published_ports": 0,
+    "cap_drop": [
+      "ALL"
+    ],
+    "privileged": false,
+    "image": "sha256:3e1c98126c919e08f2a14906645d63c849612d776f6425c46938c7c9602c5b6c"
+  },
+  "mac_copy": {
+    "html_hashes_match_linux": true,
+    "directory_mode": "0700",
+    "html_mode": "0600",
+    "synthetic_only": true
+  },
+  "manual_browser": {
+    "status": "confirmed_by_owner",
+    "host": "Mac browser viewing HTML generated in Linux; not a Linux browser test",
+    "expected": [
+      "Connections2, processes2, matched destination1, not_listed1",
+      "Fresh metadata, checked coverage and synthetic-match warning",
+      "Connection-history link navigates to scan-0",
+      "Scan details and both process details open and close"
+    ],
+    "date": "2026-10-31",
+    "evidence": "Owner reported successful display, link navigation, scan details and per-process detail toggles in this conversation; no automated browser interaction or screenshots used",
+    "confirmed": [
+      "Display",
+      "Connection-history link navigation",
+      "Scan details open and close",
+      "Per-process details open and close"
+    ],
+    "not_verified": [
+      "Linux-native browser rendering or interaction",
+      "Other browsers, viewport sizes and keyboard-only operation",
+      "Independent verification of every displayed cell"
+    ]
+  },
+  "cleanup": {
+    "generation_container_removed": true,
+    "mac_synthetic_html_retained_for_manual_check": true,
+    "other_containers_modified": false
+  },
+  "limitations": [
+    "No actual owner connections or live network/feed request",
+    "Browser rendering and interactions confirmed by owner report on Mac, not independently browser-automated",
+    "Constant synthetic-data banner inserted in Linux display copy; original product HTML hash retained separately",
+    "No product changes or full-suite rerun"
+  ],
+  "harness_sha256": "51389b02bc2941d0c631e4b7a239e80a066fe2d8620da3e9f24acb52ae8e2a39",
+  "source_sha256": {
+    "pc_scanner/dashboard.py": "9d729903dc54e9555532585ac47cfff295051773e09192e2c28e99ca9b8fe1d9",
+    "pc_scanner/history.py": "dac9bfd6c0ac4f3e130dff76beb05f4ca7ff0b07c3ee5537fa1c717d519440e1",
+    "pc_scanner/connections.py": "32af7de722cc238c8d09e521047f09d8752794798de73efb97a3180c9c5be465",
+    "pc_scanner/ip_threats.py": "2dbfb34b37761869d847e68c4ae583cdce237bcde9c576407661edf9e6f76cac"
+  }
+}
