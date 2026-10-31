@@ -7,14 +7,15 @@
   "primary_source": "https://github.com/osquery/osquery/blob/5.23.1/osquery/tables/system/darwin/process_open_descriptors.cpp",
   "source_lines": {
     "ipv4_format_selection": [
-      42,
-      48
+      46,
+      52
     ],
     "family_mapping": [
-      156,
-      160
+      167,
+      172
     ]
   },
+  "source_lines_note": "Lines at tag 5.23.1: the local (46) and remote (52) INI_IPV4 checks, and the family 2/10 mapping (167-172). Corrected on 2026-10-31 from 42/48 and 156/160, which pointed at unrelated lines.",
   "review": "family 10 plus both plain IPv4 endpoints accepted; mixed endpoint versions and family 23/30 with IPv4 still rejected; no blanket family validation removal",
   "regression": {
     "test": "test_macos_dual_stack_socket_in_ipv4_mode_is_an_ipv4_connection",

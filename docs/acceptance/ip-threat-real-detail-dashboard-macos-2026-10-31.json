@@ -83,7 +83,7 @@
     "browser_manual_confirmation": "confirmed_by_owner"
   },
   "privacy": "Real identifiers and private HTML retained locally only, no payload collection or destination probes; report includes aggregate counts and public feed metadata only",
-  "permissions": "Private directory tree0700/files0600; current owner checked",
+  "permissions": "Private directory tree 0700 / files 0600; current owner checked",
   "persistence": "Product history writer used, one append. Full observation equals saved detail except progress snapshot finalized after history save. No default history accessed.",
   "cache_verification": "Compared to prior pre-reacceptance cache snapshot: content/mode/inode/mtime unchanged; read atime excluded",
   "browser_manual_checks": {

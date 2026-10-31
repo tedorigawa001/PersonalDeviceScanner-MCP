@@ -396,7 +396,7 @@
     "progress": "Notification messages and get_scan_progress allowlisted; anonymous in all MCP cases",
     "old_identifier_gate": "False on 3.14, true on 3.15; new tool remained anonymous; old observe tool rejected before collection when disabled",
     "raw_data": "Actual CLI output, pre-projection records and stderr retained only in private local temporary workspace; no raw identifiers, paths or raw observation hashes in repository",
-    "permissions": "All private directories0700 and files0600, current owner verified",
+    "permissions": "All private directories 0700 and files 0600, current owner verified",
     "payloads_collected": false,
     "destination_probes": false,
     "reverse_dns": false
