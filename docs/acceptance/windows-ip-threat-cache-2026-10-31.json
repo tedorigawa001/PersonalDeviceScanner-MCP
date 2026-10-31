@@ -1,6 +1,6 @@
 {
   "date": "2026-10-31",
-  "status": "windows_ci_failed_on_90957aa_fixes_pending_windows_ci",
+  "status": "windows_ci_passed_on_12976dc_real_windows_acceptance_pending",
   "base_commit": "4a97421418910c32fd4034e74f6de64b8fa53c7f",
   "scope": "Windows destination-list cache only; no general process-store Windows enablement, new dependencies, settings or MCP tools",
   "implementation": {
@@ -76,8 +76,8 @@
     "Real native cache read with synthetic socket matching and anonymous projection, no lock/history creation"
   ],
   "remaining": [
-    "Windows CI not run; no push",
-    "Native Windows NTFS/ReFS DACL/handle sharing/rename/lock compatibility not established on this Mac",
+    "Windows CI passed on 12976dc after the first run failed (see ci_run_after_push, ci_fixes and ci_run_after_fix); no real Windows machine acceptance",
+    "Native NTFS DACL/handle sharing/rename/lock behaviour covered only by the Windows CI tests on GitHub's runner; ReFS and other Windows versions not verified",
     "Actual junctions/cloud placeholders/foreign-owner manipulations and stalled filesystem APIs need Windows acceptance",
     "Cancellation/deadline checks occur between synchronous native calls and cannot interrupt an OS filesystem stall",
     "Real Windows osquery/CLI/MCP updater/network acceptance not run; new native tests use synthetic feeds/sockets",
@@ -163,6 +163,22 @@
       "skip_explanation": "Seven prior Windows-only tests plus ten Windows-cache native tests",
       "npm": "Not rerun: the tool list and npm launcher are unchanged"
     },
-    "not_covered": "No native Windows call has passed yet; Windows CI has not run these fixes"
+    "not_covered": "Not run on Windows when recorded; Windows CI later passed (see ci_run_after_fix)"
+  },
+  "ci_run_after_fix": {
+    "date": "2026-10-31",
+    "commit": "12976dc74fd1d2aaf2d5cd81afd4e9b5c9218605",
+    "run_id": 41199052546,
+    "conclusion": "success",
+    "jobs": {"total": 22, "passed": 22},
+    "tests": [
+      {"os": "windows-latest", "pythons": ["3.11", "3.14", "3.15"], "total": 636, "skipped": 80, "failures": 0, "errors": 0},
+      {"os": "ubuntu-latest", "pythons": ["3.11", "3.14", "3.15"], "total": 636, "skipped": 18, "failures": 0, "errors": 0},
+      {"os": "macos-latest", "pythons": ["3.11", "3.14", "3.15"], "total": 636, "skipped": 17, "failures": 0, "errors": 0}
+    ],
+    "windows_cache_native_tests": "All 10 ran and passed in each Windows job, including an update while another process reads current.json, another program's save into a pinned ancestor, and direct publication with no file in the current folder; skipped on macOS and Ubuntu as intended",
+    "cause_confirmed": "The native saves that failed on 90957aa pass after only the publication call changed in product code, confirming the relative-name cause",
+    "npm_and_build": "npm launcher jobs on all three OSes and the distribution build passed",
+    "not_covered": "Real Windows machine acceptance (osquery engine, CLI/anonymous MCP, live download), ReFS, cloud placeholders, junction/foreign-owner manipulation and stalled filesystem APIs"
   }
 }
