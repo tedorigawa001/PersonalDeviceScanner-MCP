@@ -205,5 +205,14 @@
     "cause": "Windows does not wake a cut-off TLS read, so the request worker ends at its socket timeout (budget + 1, about 1.25 seconds here); the test waited only 1 second. The existing Wazuh stalled-request tests already allow for this. Production downloads cannot reach this on Windows, where the cache backend fails closed before any request.",
     "fix": "Test only: wait up to 3 seconds for the worker on Windows (1 second elsewhere) and assert on every OS that the caller is released within 1 second",
     "local_verification": "macOS NetworkTests pass on Python 3.14.10 and 3.15.2. A synthetic loopback simulation with the cut-off disabled released the caller in 0.11-0.26 seconds and ended the worker 1.01-1.17 seconds later, reproducing the CI failure and fitting the new Windows wait. Windows itself is verified only by the next CI run."
+  },
+  "ci_rerun_after_fix": {
+    "run_id": 41180045390,
+    "commit": "1bba35f",
+    "conclusion": "success",
+    "jobs": {"total": 22, "success": 22, "failure": 0},
+    "windows_tests": "Python 3.11, 3.14 and 3.15 each ran 611 tests: OK, 77 skipped on Windows; the stalled-download test passed in all three",
+    "other_jobs": "macOS and Ubuntu tests and all npm launcher jobs, including Windows, succeeded",
+    "not_covered": "CI does not run the live updater, real connection matching, browser views or a Windows cache backend"
   }
 }
