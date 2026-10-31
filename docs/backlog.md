@@ -5,6 +5,20 @@
 
 ## 高
 
+- [ ] **最新2修正のWindows CIを対象SHAで確認する**（2026-10-31照会：未実行）
+  - 現在の対象はプロセス確認 `4c6fb4401c04115685c599e9b239f27625b7abdd` と
+    チェックポイント `dac704724c16ef0275a95d0e39cbf956d4b94b13`。両SHAのActions実行は0件、
+    GitHubのコミット照会はともに422（No commit found for SHA）。対象はリモート側で見つからず、Windowsの合否は未確認。
+  - 現在のremote mainは `a62bca5b694bb965b066cb55bacfd25e4e64eb70`。
+    2026-10-29の[直近の既存CI](https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/runs/40799277599)は成功し、
+    WindowsのPython 3ジョブ・npm 4ジョブも成功しているが、過去の祖先コミットの結果であり最新修正の成功とは扱わない。
+  - 現在のCI設定ではWindows計7ジョブを予定しているが、設定の存在は実行の証拠ではない。
+    最新修正のWindows所有者・削除・再解析ポイント、全Python・MCP、npm導入・ハッシュ検証の結果は引き続き未確認。
+    プロセス確認のWindowsファイル読取・起動元対応は第1段階で未実装のまま。
+  - 今回はpush、CI起動・再実行、Windows VM試験を行っていない。
+    [CI照会記録](acceptance/windows-ci-latest-fixes-2026-10-31.json)と各修正の検証記録へ反映済み。
+    所有者が別途対象コミットをGitHubに用意した後、同じSHAのジョブ結果で再確認する。
+
 - [ ] **各OSの実機で受入試験を行う**
   - 2026-10-12: macOS 26.7.1 / x86_64 の osquery 5.23.1・ClamAV 1.5.4 を通常ユーザーで試験済み。
     [受入試験記録](acceptance/macos-x86_64-2026-10-12.json)に結果を保存。OS・アプリ・待受ポート、日本語ファイル、

@@ -249,5 +249,15 @@
       "tests/test_checkpoints.py": "c9a53af947e1819f500fff6b823ba634c8eec101777b2cfac502dd9cc7e438cc"
     },
     "process_review_commit": "4c6fb44"
+  },
+  "windows_ci_inspection_2026_10_31": {
+    "record": "windows-ci-latest-fixes-2026-10-31.json",
+    "target_sha": "dac704724c16ef0275a95d0e39cbf956d4b94b13",
+    "execution": "not_run_for_target_sha",
+    "conclusion": null,
+    "exact_sha_runs": 0,
+    "remote_commit_lookup_http_status": 422,
+    "historical_success_is_target_evidence": false,
+    "push_or_workflow_trigger_performed": false
   }
 }

@@ -262,5 +262,15 @@
       "pc_scanner/cli.py": "48883bb4a0e5e81ce34f80dfe2845f7901a2a7f56d4653710046101cbda1a624",
       "tests/test_process_review.py": "52b44ff7231e54f40a156db519344ad05fe2284c8190fd89331a29ab46d6f402"
     }
+  },
+  "windows_ci_inspection_2026_10_31": {
+    "record": "windows-ci-latest-fixes-2026-10-31.json",
+    "target_sha": "4c6fb4401c04115685c599e9b239f27625b7abdd",
+    "execution": "not_run_for_target_sha",
+    "conclusion": null,
+    "exact_sha_runs": 0,
+    "remote_commit_lookup_http_status": 422,
+    "historical_success_is_target_evidence": false,
+    "push_or_workflow_trigger_performed": false
   }
 }

@@ -1,0 +1,549 @@
+{
+  "verification_date": "2026-10-31",
+  "timezone": "Asia/Tokyo",
+  "checked_at_utc": "2026-10-31T01:46:43.497809+00:00",
+  "repository": "tedorigawa001/PersonalDeviceScanner-MCP",
+  "task": "Inspect Windows CI for latest two local implementation commits without pushing or triggering workflows",
+  "result": "inspection_completed_latest_commits_not_run",
+  "targets": [
+    {
+      "sha": "4c6fb4401c04115685c599e9b239f27625b7abdd",
+      "subject": "Tighten process provenance checks and preserve completed reviews",
+      "remote_commit_lookup": {
+        "http_status": 422,
+        "message": "No commit found for SHA"
+      },
+      "actions_query": {
+        "endpoint": "https://api.github.com/repos/tedorigawa001/PersonalDeviceScanner-MCP/actions/runs?head_sha=4c6fb4401c04115685c599e9b239f27625b7abdd&per_page=100",
+        "event_filter": null,
+        "total_count": 0,
+        "runs": []
+      },
+      "windows_ci_execution": "not_run_for_target_sha",
+      "windows_ci_conclusion": null,
+      "interpretation": "No exact-SHA runs; commit not available in this remote repository at inspection. Neither pass nor failure.",
+      "expected_windows_python_jobs": [
+        "3.11",
+        "3.14",
+        "3.15"
+      ],
+      "expected_windows_npm_jobs": [
+        {
+          "python": "3.11",
+          "node": "22"
+        },
+        {
+          "python": "3.14",
+          "node": "22"
+        },
+        {
+          "python": "3.14",
+          "node": "24"
+        },
+        {
+          "python": "3.15",
+          "node": "26"
+        }
+      ],
+      "expected_windows_job_count": 7,
+      "expected_job_results_available": 0,
+      "matches_precommit_review_source_hashes": true
+    },
+    {
+      "sha": "dac704724c16ef0275a95d0e39cbf956d4b94b13",
+      "subject": "Avoid holding scan locks during checkpoint listing",
+      "remote_commit_lookup": {
+        "http_status": 422,
+        "message": "No commit found for SHA"
+      },
+      "actions_query": {
+        "endpoint": "https://api.github.com/repos/tedorigawa001/PersonalDeviceScanner-MCP/actions/runs?head_sha=dac704724c16ef0275a95d0e39cbf956d4b94b13&per_page=100",
+        "event_filter": null,
+        "total_count": 0,
+        "runs": []
+      },
+      "windows_ci_execution": "not_run_for_target_sha",
+      "windows_ci_conclusion": null,
+      "interpretation": "No exact-SHA runs; commit not available in this remote repository at inspection. Neither pass nor failure.",
+      "expected_windows_python_jobs": [
+        "3.11",
+        "3.14",
+        "3.15"
+      ],
+      "expected_windows_npm_jobs": [
+        {
+          "python": "3.11",
+          "node": "22"
+        },
+        {
+          "python": "3.14",
+          "node": "22"
+        },
+        {
+          "python": "3.14",
+          "node": "24"
+        },
+        {
+          "python": "3.15",
+          "node": "26"
+        }
+      ],
+      "expected_windows_job_count": 7,
+      "expected_job_results_available": 0,
+      "matches_precommit_review_source_hashes": true
+    }
+  ],
+  "remote_main": {
+    "sha": "a62bca5b694bb965b066cb55bacfd25e4e64eb70",
+    "is_local_head_ancestor": true
+  },
+  "latest_existing_ci": {
+    "head_sha": "a62bca5b694bb965b066cb55bacfd25e4e64eb70",
+    "run_id": 40799277599,
+    "url": "https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/runs/40799277599",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at_utc": "2026-10-29T01:15:13Z",
+    "created_at_jst": "2026-10-29T10:15:13+09:00",
+    "total_jobs": 22,
+    "windows_job_count": 7,
+    "windows_jobs": [
+      {
+        "id": 123203202802,
+        "name": "Test (windows-latest, Python 3.15)",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/runs/40799277599/job/123203202802",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install with the agent extra",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Require the MCP SDK so MCP tests are not skipped",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify ownership with real Windows security descriptors",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run tests",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 123203202882,
+        "name": "npm launcher (windows-latest, Python 3.15, Node 26)",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/runs/40799277599/job/123203202882",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Test the launcher, then pack, install and serve MCP from the package",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 123203202916,
+        "name": "npm launcher (windows-latest, Python 3.14, Node 24)",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/runs/40799277599/job/123203202916",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Test the launcher, then pack, install and serve MCP from the package",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 123203202944,
+        "name": "Test (windows-latest, Python 3.14)",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/runs/40799277599/job/123203202944",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install with the agent extra",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Require the MCP SDK so MCP tests are not skipped",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify ownership with real Windows security descriptors",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run tests",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 123203202971,
+        "name": "Test (windows-latest, Python 3.11)",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/runs/40799277599/job/123203202971",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install with the agent extra",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Require the MCP SDK so MCP tests are not skipped",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify ownership with real Windows security descriptors",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run tests",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 123203202990,
+        "name": "npm launcher (windows-latest, Python 3.14, Node 22)",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/runs/40799277599/job/123203202990",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Test the launcher, then pack, install and serve MCP from the package",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 123203203030,
+        "name": "npm launcher (windows-latest, Python 3.11, Node 22)",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/runs/40799277599/job/123203203030",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Test the launcher, then pack, install and serve MCP from the package",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      }
+    ],
+    "applies_to_target_commits": false,
+    "interpretation": "Historical ancestor baseline only; cannot validate changes in the latest two commits."
+  },
+  "workflow_configuration": {
+    "file": ".github/workflows/ci.yml",
+    "sha256": "faf57ee2283cc3ba9cafa9d0857e232e6a184d001a70de7079bd9e8540dca84a",
+    "configured_triggers": [
+      "push to main",
+      "pull_request",
+      "workflow_dispatch"
+    ],
+    "configured_windows_scope": [
+      "Agent extra installation and pip check",
+      "MCP SDK presence check",
+      "Real Windows security descriptor tests",
+      "Full Python unittest suite",
+      "npm pack/install/MCP stdio and hash-check tests in configured matrix"
+    ],
+    "configuration_is_not_execution_evidence": true
+  },
+  "read_methods": {
+    "github_connector": "Returned Unknown tool; no useful repository/run data obtained",
+    "github_cli": "Read-only REST GET; first network-restricted attempt failed, allowed-network queries succeeded",
+    "commit_runs": "Repository Actions endpoint with exact head_sha, all events, count zero; no pages omitted",
+    "commit_presence": "Commit REST lookup returned HTTP 422 No commit found for SHA for both targets",
+    "baseline_jobs": "One page of 22 jobs; total_count equals returned list length; Windows jobs/steps inspected"
+  },
+  "not_performed": [
+    "git push",
+    "workflow_dispatch",
+    "workflow or job rerun",
+    "commit creation",
+    "Windows VM tests",
+    "new local runtime/full-suite tests"
+  ],
+  "unverified": [
+    "Windows CI outcomes for both exact target SHAs",
+    "Native Windows osquery/ClamAV acceptance",
+    "Native Windows checkpoint delete handles, owner checks and reparse-point behavior for latest changes",
+    "Windows process-review file reading/startup provenance (not implemented in stage 1)",
+    "Any interpretation of historical baseline as success for the latest changes"
+  ],
+  "next_step": "After the owner makes the intended commits available to GitHub under a separate instruction, inspect exact-SHA CI jobs; this task leaves commits local and starts no workflow."
+}
