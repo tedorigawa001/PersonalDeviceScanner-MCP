@@ -405,10 +405,14 @@ class NetworkTests(unittest.TestCase):
                         if timer:timer.start()
                         # This test fixture expects Content-Length even for GET; production GETs do not add it.
                         def request(url,headers):return Request(url,headers={**headers,'Content-Length':'0'})
+                        started=time.monotonic()
                         with patch.object(t,'URLS',{4:server.url}),patch.object(t.ssl,'create_default_context',return_value=context),patch.object(t,'Request',side_effect=request):
                             with self.assertRaises(ScannerError):t.download(4,time.monotonic()+.25,cancel)
+                        # The caller is released promptly on every OS.
+                        self.assertLess(time.monotonic()-started,1)
                         if timer:timer.join()
-                        until=time.monotonic()+1
+                        # Windows does not wake a cut-off read; the request ends at its socket timeout (budget + 1).
+                        until=time.monotonic()+(3 if os.name=='nt' else 1)
                         while time.monotonic()<until and any(v.name=='public threat list-request' and v.ident not in before for v in threading.enumerate()):time.sleep(.01)
                         self.assertFalse(any(v.name=='public threat list-request' and v.ident not in before for v in threading.enumerate()))
 

@@ -194,5 +194,16 @@
       "data": "Synthetic destinations and temporary caches only; no owner connections, real cache or real history"
     },
     "not_covered": "The macOS update CLI acceptance above tested 03293f7, before these fixes"
+  },
+  "ci_run_after_push": {
+    "run_id": 41179511315,
+    "commit": "e2d866d",
+    "conclusion": "failure",
+    "jobs": {"total": 22, "success": 19, "failure": 3},
+    "failed_jobs": ["Test (windows-latest, Python 3.11)", "Test (windows-latest, Python 3.14)", "Test (windows-latest, Python 3.15)"],
+    "failing_test": "NetworkTests.test_real_tls_header_and_body_stalls_cancel_deadline_and_end_worker, all four header/cancel/deadline subtests; 611 tests, 77 skipped on Windows",
+    "cause": "Windows does not wake a cut-off TLS read, so the request worker ends at its socket timeout (budget + 1, about 1.25 seconds here); the test waited only 1 second. The existing Wazuh stalled-request tests already allow for this. Production downloads cannot reach this on Windows, where the cache backend fails closed before any request.",
+    "fix": "Test only: wait up to 3 seconds for the worker on Windows (1 second elsewhere) and assert on every OS that the caller is released within 1 second",
+    "local_verification": "macOS NetworkTests pass on Python 3.14.10 and 3.15.2. A synthetic loopback simulation with the cut-off disabled released the caller in 0.11-0.26 seconds and ended the worker 1.01-1.17 seconds later, reproducing the CI failure and fitting the new Windows wait. Windows itself is verified only by the next CI run."
   }
 }
