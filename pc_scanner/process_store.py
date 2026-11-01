@@ -267,7 +267,8 @@ class Store:
         if os.name != "posix":
             raise OSError("Store backend unavailable")
         self.check()
-        if not _lock.acquire(False):
+        # Process review, threat cache and signature store share this; another thread's short use is waited out.
+        if not _lock.acquire(timeout=max(0.0, self.deadline - time.monotonic())):
             raise OSError("Store busy")
         lockfd = None
         try:

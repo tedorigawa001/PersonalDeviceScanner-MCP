@@ -14,7 +14,7 @@ import unittest
 from unittest.mock import patch
 from datetime import datetime, timezone
 
-from pc_scanner import core, history, signature_update as update
+from pc_scanner import core, history, process_store, signature_update as update
 
 
 @unittest.skipUnless(os.name == "posix" and os.geteuid() != 0, "non-root POSIX private updater")
@@ -137,6 +137,30 @@ class UpdateTests(unittest.TestCase):
                 self.assertNotEqual(old_path, new.local["clamav_database_directory"])
         self.assertNotIn("clamav_database_directory", scanner.local)
 
+    def test_simultaneous_starts_wait_briefly_and_hash_outside_the_publication_lock(self):
+        self.do_update()
+        real, results = update.digest_directory, []
+        def slow(*args, **kwargs):
+            # Fails when the hash runs inside the publication lock; waits out the other start's short section.
+            with history.locked(self.root / "publish"):
+                pass
+            time.sleep(0.2)
+            return real(*args, **kwargs)
+        def check():
+            results.append(self.scanner().invoke("check_clamav_signatures"))
+        with patch("pc_scanner.core.clamav_signatures", return_value=self.signatures), \
+                patch("pc_scanner.signature_update.digest_directory", side_effect=slow):
+            first, second = threading.Thread(target=check), threading.Thread(target=check)
+            with history.locked(self.root / "publish"):  # a publication is switching the reference
+                first.start()
+                time.sleep(0.1)
+            with process_store._lock:  # another thread is using a private store
+                second.start()
+                time.sleep(0.1)
+            first.join()
+            second.join()
+        self.assertEqual([r["status"] for r in results], ["completed"] * 2, results)
+
     def test_update_lock_is_cross_process_and_released(self):
         self.do_update()
         script = "from pathlib import Path; from pc_scanner import history; import sys;\nwith history.locked(Path(sys.argv[1]), attempts=1):\n print('ready', flush=True); sys.stdin.read(1)"
@@ -171,6 +195,17 @@ class UpdateTests(unittest.TestCase):
             new = self.scanner().invoke("malware", root_alias="test", resume=True)
         self.assertEqual(new["data"]["batch"]["reused"], 0, new)
         self.assertEqual(new["data"]["engine_counts"]["scanned"], 1)
+
+    def test_unreadable_reference_after_scan_is_unknown_not_newer(self):
+        self.do_update()
+        def corrupting(argv, *args, **kwargs):
+            (self.root / "current.json").write_text("{")
+            return self.engine(argv, *args, **kwargs)
+        with patch("pc_scanner.core.clamav_signatures", return_value=self.signatures), patch("pc_scanner.core.run_bounded", side_effect=corrupting):
+            report = self.scanner().invoke("malware", root_alias="test")
+        self.assertIsNone(report["data"]["definition_generation"]["newer_generation_available"], report)
+        self.assertFalse(any("New definitions were published" in w for w in report["warnings"]))
+        self.assertTrue(any("could not be confirmed" in w for w in report["warnings"]))
 
     def test_untrusted_paths_permissions_and_contents_are_refused(self):
         self.do_update()
@@ -275,6 +310,17 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual(report["data"]["update_status"], "unknown")
         self.assertIsNone(report["data"]["published"])
         self.assertEqual(update.read_json(self.root / "current.json")["versions"]["daily.cvd"], 2)
+        self.allow_next()
+        self.version = 3
+        def interrupted(path, obj):
+            original(path, obj)
+            if path.name == "current.json":
+                self.cancel.set()  # Ctrl-C while the new reference is being made durable
+                raise OSError("synthetic durability failure after replace")
+        with patch.object(update, "write_json", side_effect=interrupted):
+            report = self.do_update()
+        self.assertEqual((report["data"]["update_status"], report["data"]["published"]), ("unknown", None), report)
+        self.assertEqual(update.read_json(self.root / "current.json")["versions"]["daily.cvd"], 3)
 
     def test_real_updater_child_is_reaped_on_timeout_and_cancel(self):
         self.do_update()
@@ -370,3 +416,44 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(proc.returncode, 2, proc.stderr)
             report = json.loads(proc.stdout)
             self.assertEqual(report["data"]["update_status"], "failed")
+
+
+class ExplicitDatabaseChangeTests(unittest.TestCase):
+    """Normal scans with an explicit database folder; runs on every OS."""
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        base = Path(temp.name).resolve()
+        self.db, inputs = base / "db", base / "inputs"
+        self.db.mkdir()
+        inputs.mkdir()
+        for name in ("main.cvd", "daily.cvd", "bytecode.cvd", "custom.ndb"):
+            (self.db / name).write_text("synthetic " + name)
+        (inputs / "a.txt").write_text("harmless synthetic file")
+        self.config = {"local": {"clamav_binary": sys.executable, "clamav_database_directory": str(self.db)},
+                       "scan_roots": {"test": str(inputs)},
+                       "history": {"file": str(base / "history" / "history.jsonl")}}
+        self.calls = []
+        self.enterContext(patch("pc_scanner.core.clamav_signatures", return_value={
+            "engine": "1.5.4", "version": 1, "built_at": datetime.now(timezone.utc)}))
+
+    def engine(self, argv, *args, **kwargs):
+        self.calls.append(argv)
+        return 0, "Scanned files: 1\nInfected files: 0\n", ""
+
+    def scan(self, engine=None, **kwargs):
+        with patch("pc_scanner.core.run_bounded", side_effect=engine or self.engine):
+            return core.Scanner(self.config).invoke("malware", root_alias="test", **kwargs)
+
+    def test_unchanged_custom_database_is_not_a_definition_change(self):
+        self.assertEqual(self.scan()["status"], "completed")
+        self.assertEqual(self.scan(batch=True)["status"], "completed")
+        calls = len(self.calls)
+        resumed = self.scan(batch=True, resume=True)
+        self.assertEqual((resumed["status"], resumed["data"]["batch"]["reused"], len(self.calls)), ("completed", 1, calls), resumed)
+        def changing(argv, *args, **kwargs):
+            (self.db / "custom.ndb").write_text("changed custom signatures")
+            return self.engine(argv, *args, **kwargs)
+        changed = self.scan(engine=changing)
+        self.assertEqual(changed["status"], "partial")
+        self.assertTrue(changed["data"]["definitions_changed"])

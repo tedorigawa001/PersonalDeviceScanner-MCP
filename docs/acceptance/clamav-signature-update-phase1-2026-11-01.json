@@ -80,6 +80,33 @@
     "same-user processes are outside the private store ownership trust boundary",
     "external OS updates cannot be locked by this app; pre/post checks are not immutable generation guarantees"
   ],
-  "commit_created": false,
-  "push_performed": false
+  "review_fixes": {
+    "date": "2026-11-01",
+    "reviewed_commit": "008d57f73def26244606afab1703541891220e36",
+    "found_with": "Synthetic databases, a mocked engine and threads on scratch copies of c7945a0 and 008d57f; no personal folders, real updates or downloads",
+    "fixed": [
+      {
+        "issue": "An unchanged custom database file in an explicit database folder made every ordinary scan partial and batch evidence never reusable",
+        "reproduced": "c7945a0: completed and resume reused 3 targets; 008d57f: partial and resume rescanned all 3 every time",
+        "fix": "Change detection identifies every database entry (custom ones included, updater bookkeeping excluded); the grouping manifest stays official-only"
+      },
+      {
+        "issue": "Two scans or checks starting together failed immediately",
+        "reproduced": "The second of two simultaneous checks returned 'Operation could not complete'",
+        "fix": "The publication lock covers only the reference read, lease and switch, with the normal short wait; hashing and fsync run outside it; the shared private-store thread lock waits within the store deadline"
+      },
+      {
+        "issue": "Cancellation or timeout during an uncertain reference replacement reported cancelled and published=false",
+        "reproduced": "Ctrl-C during the durability step reported cancelled/published false while the reference already named the new generation",
+        "fix": "An unknown publication stays unknown with published=null"
+      },
+      {
+        "issue": "An unreadable reference after a scan was reported as newer definitions",
+        "fix": "newer_generation_available is null with a separate could-not-confirm warning"
+      }
+    ],
+    "regressions": "3 added and 1 extended; six mutations removing the fixes were each detected"
+  },
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false
 }

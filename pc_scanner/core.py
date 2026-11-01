@@ -993,15 +993,18 @@ class Scanner:
             with pin(self, cancel) as scanner:
                 report = scanner.malware(root_alias, relative_path, cancel, batch, resume, progress, retry, revision, target_ids)
                 self._coverage_snapshot = getattr(scanner, "_coverage_snapshot", None)
-                from .signature_update import read_json
+                from .signature_update import pointer
                 try:
-                    current = read_json(Path(self.signature_update_settings["directory"]) / "current.json")
+                    latest = pointer(Path(self.signature_update_settings["directory"]))
                 except (OSError, ValueError):
-                    current = None
-                newer = not current or current.get("content") != scanner._signature_generation["content"]
+                    latest = None
+                # An unreadable reference is unknown, not evidence that newer definitions exist.
+                newer = None if latest is None else latest["content"] != scanner._signature_generation["content"]
                 report["data"]["definition_generation"] = {"content": scanner._signature_generation["content"],
                                                             "newer_generation_available": newer}
-                if newer:
+                if newer is None:
+                    report["warnings"].append("The current private definition generation could not be confirmed after this scan")
+                elif newer:
                     report["warnings"].append("New definitions were published during this scan; resume to recheck with the new generation")
                 return report
         return self._malware_operation(root_alias, relative_path, cancel, batch, resume, progress, retry, revision, target_ids)
@@ -1072,11 +1075,11 @@ class Scanner:
         return with_advice(report)
 
     def _malware(self, *args, **kwargs):
-        from .malware_group import database_manifest
+        from .malware_group import database_state
         explicit = bool(self.local.get("clamav_database_directory"))
-        before = database_manifest(self) if explicit else None
+        before = database_state(self) if explicit else None
         report = self._malware_engine(*args, **kwargs)
-        if explicit and (before is None or before != database_manifest(self)):
+        if explicit and (before is None or before != database_state(self)):
             from . import coverage
             report["status"] = "partial" if report["status"] != "error" else "error"
             report["data"]["definitions_changed"] = True

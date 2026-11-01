@@ -133,16 +133,26 @@ def digest_directory(path, deadline, cancel=None):
     return dict(content=hashlib.sha256(json.dumps(hashes, sort_keys=True).encode()).hexdigest(), versions=versions)
 
 
-def current(path, deadline, cancel=None):
+def pointer(path):
+    """The published reference only; contents are verified separately."""
     obj = read_json(path / "current.json")
     if obj is None:
         return None
     if not isinstance(obj, dict) or set(obj) != {"generation", "content", "versions"} or not GEN.fullmatch(str(obj["generation"])):
         raise OSError("Invalid current generation")
+    return obj
+
+
+def verify(path, obj, deadline, cancel=None):
     actual = digest_directory(path / obj["generation"], deadline, cancel)
     if actual != {k: obj[k] for k in ("content", "versions")}:
         raise OSError("Current generation changed")
     return obj
+
+
+def current(path, deadline, cancel=None):
+    obj = pointer(path)
+    return None if obj is None else verify(path, obj, deadline, cancel)
 
 
 @contextmanager
@@ -162,13 +172,16 @@ def pin(scanner, cancel=None):
     """Pin one generation on a scanner copy; caller's mutable configuration is untouched."""
     deadline = time.monotonic() + scanner.timeout
     with root(scanner) as path:
-        with history.locked(path / "publish", attempts=1):
-            obj = current(path, deadline, cancel)
+        # Keep the publication lock short (reference and lease only) so simultaneous starts wait instead of failing.
+        with history.locked(path / "publish"):
+            obj = pointer(path)
             if obj is None:
                 raise core.ScannerError("Private signature store has no published generation")
             lease = generation_lease(path / (obj["generation"] + ".lease"))
             lease.__enter__()
         try:
+            # The lease keeps this generation; hashing it no longer blocks other scans or publication.
+            verify(path, obj, deadline, cancel)
             local = copy.copy(scanner)
             local.local = dict(scanner.local, clamav_database_directory=str(path / obj["generation"]))
             local._signature_generation = obj
@@ -285,17 +298,18 @@ def update(scanner, cancel=None, progress=None):
                 generation = secrets.token_hex(16)
                 if progress:
                     progress.update(stage="publishing")
-                with history.locked(path / "publish", attempts=1):
+                # Flush before taking the publication lock; scans waiting to start only wait for the switch itself.
+                for file in candidate.iterdir():
+                    fd = os.open(file, os.O_RDONLY | os.O_NOFOLLOW)
+                    try:
+                        os.fsync(fd)
+                    finally:
+                        os.close(fd)
+                sync_dir(candidate)
+                with history.locked(path / "publish"):
                     core.check_cancel(cancel)
                     if time.monotonic() >= deadline:
                         raise core.ScannerError("Signature update timed out")
-                    for file in candidate.iterdir():
-                        fd = os.open(file, os.O_RDONLY | os.O_NOFOLLOW)
-                        try:
-                            os.fsync(fd)
-                        finally:
-                            os.close(fd)
-                    sync_dir(candidate)
                     os.rename(candidate, path / generation)
                     sync_dir(path)
                     # Once this write starts, cancellation cannot roll back an already published generation.
@@ -318,7 +332,8 @@ def update(scanner, cancel=None, progress=None):
     except history.Busy:
         data["update_status"] = "busy"
     except (core.ScannerError, OSError, ValueError, KeyError, TypeError):
-        if published:
+        # An uncertain pointer replacement stays unknown even if cancellation or the deadline arrives meanwhile.
+        if published or data["update_status"] == "unknown":
             data["update_status"] = "unknown"
         elif cancel is not None and cancel.is_set():
             data["update_status"] = "cancelled"
