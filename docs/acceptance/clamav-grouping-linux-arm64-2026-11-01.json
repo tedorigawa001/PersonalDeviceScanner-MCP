@@ -950,6 +950,19 @@
     "existing_personal_history_checkpoint_or_acl_changed": false,
     "host_engine_or_definitions_updated": false
   },
+  "review_fixes": {
+    "date": "2026-11-01",
+    "reviewed_commit": "25b372958e58dce3e272d5cde4ca88cba6240b3a",
+    "fixed": [
+      {
+        "issue": "Grouping stayed enabled on Darwin x86_64 although every macOS grouping acceptance ran on arm64",
+        "fix": "Grouping is enabled only for Darwin arm64 and Linux aarch64 with ClamAV 1.5.4; Intel Macs use individual targets"
+      }
+    ],
+    "linux_aarch64_profile_changed": false,
+    "native_linux_rerun": false,
+    "provenance_note": "copied_python_sha256 for pc_scanner/malware_group.py identifies the accepted 25b3729 source, not the review-fixed file"
+  },
   "commit_performed_during_recording": false,
   "push_performed_during_recording": false
 }

@@ -12,7 +12,7 @@ max_signature_age_days = 7
 # Optional explicit database directory, shared by checks and all scans. Empty uses ClamAV defaults.
 clamav_database_directory = ""
 # Opt-in: group small regular files for batches. Requires the explicit database directory above.
-# Accepted: macOS / Linux aarch64 ClamAV 1.5.4 with official daily/main/bytecode databases. Other profiles use single targets.
+# Accepted: macOS arm64 / Linux aarch64 ClamAV 1.5.4 with official daily/main/bytecode databases. Other profiles use single targets.
 batch_group_small_files = false
 
 [history]

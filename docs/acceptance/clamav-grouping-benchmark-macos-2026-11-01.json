@@ -420,7 +420,7 @@
     "product_code_changed": false,
     "full_regression_suite_rerun": false,
     "reason_no_full_suite": "Acceptance and documentation only; no product implementation changes in this task",
-    "push_performed": false,
+    "push_performed_during_recording": false,
     "private_raw_results_and_synthetic_checkpoints_retained_locally": true
   },
   "remaining": [
