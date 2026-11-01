@@ -24,7 +24,7 @@
       "max_age_days": 7,
       "freshness": "fresh"
     },
-    "independent_check": "Normal clamscan --version and scanner check-clamav-signatures both reported engine1.5.4/database28170; freshness check exited0/completed",
+    "independent_check": "Normal clamscan --version and scanner check-clamav-signatures both reported engine 1.5.4 / database 28170; freshness check exited 0 / completed",
     "built_at_timezone": "UTC; 2026-10-31T06:24:42+00:00 is 2026-10-31 15:24:42 JST",
     "mcp_update_feature_implemented": false
   },
@@ -38,7 +38,7 @@
     "included_in_updated_definition_totals": false
   },
   "updated_definition_rescan": {
-    "method": "Real local ClamAV, resumable batch CLI; each execution limited to3600s, no target deletion/quarantine",
+    "method": "Real local ClamAV, resumable batch CLI; each execution limited to 3600 s, no target deletion/quarantine",
     "attempts": [
       {
         "attempt": 1,
@@ -145,7 +145,7 @@
         "not_reached": 57
       },
       "reason_counts_overlap": true,
-      "overlap_explanation": "One scope has both engine_error and file_size_limit; 57 not_reached +1 cancelled +3 depth-limit +1 size/error scope =62 unique scopes",
+      "overlap_explanation": "One scope has both engine_error and file_size_limit; 57 not_reached + 1 cancelled + 3 depth-limit + 1 size/error scope = 62 unique scopes",
       "size_limit_finding": "Heuristics.Limits.Exceeded.MaxFileSize; kind scan_limit, not malware",
       "scope_details_available_locally": true,
       "scope_names_paths_or_opaque_ids_in_record": false,
@@ -168,7 +168,7 @@
     "last_cli_stage": "cancelled",
     "saved_parts": 1578,
     "last_attempt_reused_parts": 1365,
-    "checkpoint_permission": "Current-owner directory0700/files0600 verified",
+    "checkpoint_permission": "Current-owner directory 0700 / files 0600 verified",
     "resume_requires_revalidation": "Reuse only when target metadata, engine, definition and settings context still qualify; later changes can require rescan"
   },
   "privacy_and_cloud": {
