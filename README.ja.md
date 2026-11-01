@@ -1229,7 +1229,12 @@ Windows（PowerShell）：
 - Linux arm64コンテナの受入試験（2026-10-19）：Ubuntu 24.04上で実osquery 5.23.1・ClamAV 1.5.4を一般ユーザーで実行。
   ホストのマウント・実行時ネットワークなしで、インベントリ、EICAR、日本語名、リンク、深度・サイズ・権限制限、定義の鮮度、
   実CLIとMCP stdioの進捗・キャンセルを確認しました（[記録](docs/acceptance/linux-arm64-container-2026-10-19.json)）。
-  確認範囲はコンテナ内であり、物理Linuxホストや他ディストリビューション、Linux側freshclam更新は未確認です。
+  確認範囲はコンテナ内であり、物理Linuxホストや他ディストリビューションは未確認です。その後、2026-11-01にLinux aarch64の
+  Dockerで専用保存先のfreshclam更新・復旧・整理を確認しました（[記録](docs/acceptance/clamav-signature-update-linux-2026-11-01.json)）。
+- Linux x86_64コンテナの受入試験（2026-11-01、arm64のMac上でエミュレーション）：Python 3.14.10／Node.js 24はハッシュ必須のロック、
+  Python 3.15.2／Node.js 26はハッシュなしで同じ版を導入。CLIの新規導入、実stdio MCP、npmパッケージからの初回導入、
+  ClamAV 1.4.6でのEICAR検査が成功し、全テストは各700件成功・34件スキップ、npm通し試験は各26件すべて成功しました
+  （[記録](docs/acceptance/linux-runtime-cli-mcp-npm-2026-11-01.json)）。Linux aarch64でのPython 3.14／3.15とnpmは未確認です。
 - 実際のエンジンでの検出精度や、各 OS での動作は保証していません。配布前に、各 OS の実機での受入試験が必要です。
 
 ## 関連ドキュメント・ライセンス

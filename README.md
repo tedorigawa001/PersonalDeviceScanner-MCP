@@ -1275,7 +1275,14 @@ Windows (PowerShell):
 - Linux arm64 container acceptance (2026-10-19): actual osquery 5.23.1 and ClamAV 1.5.4 on Ubuntu 24.04, as an unprivileged
   user, with no host mounts or runtime network. Inventory, EICAR, Japanese names, links, depth/size/permission limits,
   signature age, real CLI and MCP stdio progress/cancellation passed ([record](docs/acceptance/linux-arm64-container-2026-10-19.json)).
-  This covers the container, not a physical Linux host or other distributions; Linux freshclam updating was not exercised.
+  This covers the container, not a physical Linux host or other distributions. A later Linux aarch64 Docker run
+  (2026-11-01) exercised private-store freshclam updating, recovery and cleanup
+  ([record](docs/acceptance/clamav-signature-update-linux-2026-11-01.json)).
+- Linux x86_64 container acceptance (2026-11-01, under emulation on an arm64 Mac): Python 3.14.10/Node.js 24 with the
+  hash-required lock and Python 3.15.2/Node.js 26 with the same versions without hashes. A fresh CLI install, real
+  stdio MCP, first-use setup from the npm tarball and a ClamAV 1.4.6 EICAR scan passed; full tests passed 700 with
+  34 skipped and npm end-to-end tests 26/26 on each ([record](docs/acceptance/linux-runtime-cli-mcp-npm-2026-11-01.json)).
+  Python 3.14/3.15 and npm on Linux aarch64 remain to be accepted.
 - Detection accuracy with real engines and behavior on each OS are not guaranteed. Acceptance testing on real machines for each OS is required before distribution.
 
 ## Related documents and license
