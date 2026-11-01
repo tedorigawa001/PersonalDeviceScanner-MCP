@@ -1,0 +1,265 @@
+{
+  "date": "2026-11-02",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "linux_aarch64_runtime_cli_mcp_npm_acceptance",
+  "status": "passed for the recorded aarch64 matrix",
+  "source_commit": "3554dee0a69ea88017fbc63612e9f4c74f9a1c16",
+  "source_provenance": "git archive HEAD; archive PAX comment verified",
+  "runtime_source_or_dependencies_changed": false,
+  "environment": {
+    "host": "this Mac Docker Desktop",
+    "platform": "linux/arm64, native aarch64",
+    "distribution": "Ubuntu 24.04 ClamAV base; Python and Node runtimes copied from official bookworm images",
+    "mounts": [],
+    "published_ports": [],
+    "execution_uid_gid": "10001:10001",
+    "capabilities_dropped": [
+      "ALL"
+    ],
+    "security_options": [
+      "no-new-privileges"
+    ],
+    "init": true,
+    "memory_per_container_bytes": 2684354560,
+    "cpus_per_container": 2,
+    "pids_limit": 256,
+    "network": "public package setup only; disconnected after npm tests; full Python tests used local loopback",
+    "test_helpers": "packaging 26.3 in separate test-only target"
+  },
+  "setup_resolution": "Node 26 initially lacked libatomic.so.1 in the Ubuntu base. Copied libatomic from the same official Node image into the acceptance image and registered it with ldconfig; rebuilt both images before acceptance. No repository source, dependency pin or runtime policy changed.",
+  "dependency_profile": {
+    "file": "profiles/linux-x86_64-cp314/requirements-agent.lock",
+    "sha256": "bd378f1a355082e1c5de5ff888521dd8639bd38234683da3aab615c7e09d7a14",
+    "pinned_packages": 29,
+    "package_versions": {
+      "annotated-types": "0.8.0",
+      "anyio": "4.15.1",
+      "attrs": "26.1.0",
+      "certifi": "2026.10.19",
+      "cffi": "2.1.1",
+      "click": "8.5.0",
+      "cryptography": "50.0.2",
+      "h11": "0.16.0",
+      "httpcore": "1.0.9",
+      "httpx": "0.28.1",
+      "httpx-sse": "0.4.3",
+      "idna": "3.20",
+      "jsonschema": "4.26.0",
+      "jsonschema-specifications": "2025.9.1",
+      "mcp": "1.30.0",
+      "pycparser": "3.11",
+      "pydantic": "2.14.1",
+      "pydantic-core": "2.50.1",
+      "pydantic-settings": "2.15.0",
+      "pyjwt": "2.15.1",
+      "python-dotenv": "1.2.4",
+      "python-multipart": "0.0.32",
+      "referencing": "0.37.0",
+      "rpds-py": "2026.9.1",
+      "sse-starlette": "3.5.0",
+      "starlette": "1.7.0",
+      "typing-extensions": "4.16.0",
+      "typing-inspection": "0.4.4",
+      "uvicorn": "0.54.0"
+    },
+    "all_installed_profile_versions_match": true,
+    "pip_check": "passed in installed CLI and npm-created venv for both runtimes",
+    "binary_wheels_only_for_profile_dependencies": true,
+    "tls_verification_disabled": false,
+    "hash_policy": "No bundled aarch64 profile for either Python minor. Existing fixed versions used without x86_64 wheel hashes; versions-only launcher warning verified; no hash enforcement claimed; no profile or SBOM regenerated."
+  },
+  "matrix": [
+    {
+      "environment": {
+        "python": "3.14.10",
+        "architecture": "aarch64",
+        "hashed": false,
+        "lock": "profiles/linux-x86_64-cp314/requirements-agent.lock",
+        "lock_sha256": "bd378f1a355082e1c5de5ff888521dd8639bd38234683da3aab615c7e09d7a14",
+        "node": "v24.22.2",
+        "npm": "11.19.1",
+        "clamav": "ClamAV 1.5.4"
+      },
+      "image": "sha256:a5fa4cf14141b58972fab0d3346fee79ab95651f559fccf0590a119293e44834",
+      "installed_module_from_venv": true,
+      "all_profile_versions_match": true,
+      "cli": {
+        "status": "completed",
+        "scanned": 3,
+        "infected": 1,
+        "errors": 0,
+        "exit": 1
+      },
+      "cli_grouping": {
+        "schema": 1,
+        "mode": "enabled",
+        "engine_starts": 1,
+        "committed_jobs": 1,
+        "fallback_targets": 0,
+        "active_targets": 0
+      },
+      "mcp_installed_cli": {
+        "initialized": true,
+        "tools": 15,
+        "signature_check": "fresh",
+        "scan": {
+          "status": "completed",
+          "scanned": 3,
+          "infected": 1,
+          "errors": 0
+        }
+      },
+      "npm_first_use": {
+        "initialized": true,
+        "tools": 15,
+        "signature_check": "fresh",
+        "scan": {
+          "status": "completed",
+          "scanned": 3,
+          "infected": 1,
+          "errors": 0
+        }
+      },
+      "npm_environment": {
+        "python": "3.14.10",
+        "executable": "/opt/accept-python/bin/python3.14",
+        "lock": "profiles/linux-x86_64-cp314/requirements-agent.lock",
+        "hashed": false
+      },
+      "npm_cache_reused_without_setup": true,
+      "python_tests": {
+        "total": 734,
+        "passed": 700,
+        "skipped": 34,
+        "failures": 0,
+        "errors": 0,
+        "seconds": 99.298
+      },
+      "npm_tests": {
+        "total": 26,
+        "passed": 26,
+        "skipped": 0,
+        "failures": 0,
+        "opt_in_e2e_enabled": true
+      }
+    },
+    {
+      "environment": {
+        "python": "3.15.2",
+        "architecture": "aarch64",
+        "hashed": false,
+        "lock": "profiles/linux-x86_64-cp314/requirements-agent.lock",
+        "lock_sha256": "bd378f1a355082e1c5de5ff888521dd8639bd38234683da3aab615c7e09d7a14",
+        "node": "v26.13.0",
+        "npm": "11.20.0",
+        "clamav": "ClamAV 1.5.4"
+      },
+      "image": "sha256:fbb1f452c0c824212eba8b5ebe6284fa201ee465fad2e5c56844adcde499a748",
+      "installed_module_from_venv": true,
+      "all_profile_versions_match": true,
+      "cli": {
+        "status": "completed",
+        "scanned": 3,
+        "infected": 1,
+        "errors": 0,
+        "exit": 1
+      },
+      "cli_grouping": {
+        "schema": 1,
+        "mode": "enabled",
+        "engine_starts": 1,
+        "committed_jobs": 1,
+        "fallback_targets": 0,
+        "active_targets": 0
+      },
+      "mcp_installed_cli": {
+        "initialized": true,
+        "tools": 15,
+        "signature_check": "fresh",
+        "scan": {
+          "status": "completed",
+          "scanned": 3,
+          "infected": 1,
+          "errors": 0
+        }
+      },
+      "npm_first_use": {
+        "initialized": true,
+        "tools": 15,
+        "signature_check": "fresh",
+        "scan": {
+          "status": "completed",
+          "scanned": 3,
+          "infected": 1,
+          "errors": 0
+        }
+      },
+      "npm_environment": {
+        "python": "3.15.2",
+        "executable": "/opt/accept-python/bin/python3.15",
+        "lock": "profiles/linux-x86_64-cp314/requirements-agent.lock",
+        "hashed": false
+      },
+      "npm_cache_reused_without_setup": true,
+      "python_tests": {
+        "total": 734,
+        "passed": 700,
+        "skipped": 34,
+        "failures": 0,
+        "errors": 0,
+        "seconds": 97.903
+      },
+      "npm_tests": {
+        "total": 26,
+        "passed": 26,
+        "skipped": 0,
+        "failures": 0,
+        "opt_in_e2e_enabled": true
+      }
+    }
+  ],
+  "native_cases": {
+    "engine": "real /usr/bin/clamscan 1.5.4",
+    "definitions": "Only existing public main.cvd, daily.cld and bytecode.cvd copied from the prior local build context; no waiting store or provider state copied",
+    "daily_version": 28170,
+    "built_at": "2026-10-31T06:24:42+00:00",
+    "freshness": "fresh, max_age_days=7",
+    "definition_limit": "Existing assembled daily.cld; no fresh download or new publisher-signature verification",
+    "synthetic_inputs": "two harmless text files and one standard EICAR marker",
+    "all_three_scan_paths": "CLI batch, installed CLI real stdio MCP batch, npm first-use real stdio MCP batch; completed 3 scanned / 1 intentional EICAR detection / 0 errors; grouping enabled and exactly 1 engine start asserted for each",
+    "npm_initial_setup": "npm pack and local tarball installation; initially absent cache; explicit absolute Python override in both ARM environments",
+    "npm_reuse": "second MCP connection reused environment without setup output and checked real signature freshness",
+    "mcp_management_tools": "update and maintenance tools absent",
+    "external_ai_client_used": false
+  },
+  "verification": {
+    "python_command": "agent-venv/bin/python -m unittest discover -s tests -v",
+    "npm_command": "PC_SCANNER_NPM_E2E=1 PC_SCANNER_NPM_EXPECT_HASHED=0 PC_SCANNER_NPM_AUTO_DISCOVER=0 npm test",
+    "android_and_mcp_tests_included": true,
+    "skip_reasons": "17 Windows native API, 16 macOS ACL, 1 case-sensitivity-dependent test in each runtime",
+    "static_checks": [
+      "JSON parsing and local acceptance links",
+      "git diff --check"
+    ]
+  },
+  "preservation_and_cleanup": {
+    "personal_folders_mounted": false,
+    "personal_files_scanned": false,
+    "host_credentials_copied": false,
+    "host_definitions_written": false,
+    "definition_update_requested": false,
+    "waiting_container": "pc-scanner-signature-linux-acceptance remained stopped; never started, execed, modified or copied from",
+    "waiting_store_or_deadline_changed": false,
+    "new_containers_stopped_and_removed": true,
+    "synthetic_inputs_removed_with_containers": true,
+    "runtime_images_retained_locally": true,
+    "sanitized_results_and_logs_retained_privately": true
+  },
+  "limitations_and_remaining": [
+    "aarch64 hash profiles remain absent; versions-only installation is not hash verification",
+    "New-runtime acceptance covers grouped scans, not a new real freshclam update/recovery cycle; earlier Python 3.12 native update/recovery remains separately recorded",
+    "No different-definition-version update, real provider-wait expiry or actual provider communication-failure retry",
+    "No Windows CI/real engine or external AI client acceptance"
+  ],
+  "push_performed": false
+}

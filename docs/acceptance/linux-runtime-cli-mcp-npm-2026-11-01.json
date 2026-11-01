@@ -102,12 +102,13 @@
     "sanitized_results_and_logs_retained_privately": true
   },
   "limitations_and_remaining": [
-    "x86_64 Docker under translation only; aarch64 Python 3.14/3.15 and npm remain separate acceptance targets",
+    "This historical matrix covers x86_64 Docker under translation only; aarch64 Python 3.14/3.15 and npm accepted separately in the linked follow-up",
     "cp315 installs fixed versions without bundled matching wheel hashes; no new profile or SBOM generated",
     "ClamAV 1.4.6 ordinary scans only in this matrix; ClamAV 1.5.4 grouping/update/recovery acceptance is recorded separately",
     "no different-version definition update, real provider-wait expiry or freshclam communication-failure retry",
     "no Windows CI, Windows real engine or external AI client acceptance"
   ],
+  "follow_up_aarch64_acceptance": "linux-aarch64-runtime-cli-mcp-npm-2026-11-02.json",
   "commit_created_during_recording": false,
   "push_performed_during_recording": false
 }
