@@ -50,8 +50,9 @@
     "commit_created_during_recording": false,
     "push_performed_during_recording": false
   },
+  "native_storage_acceptance": "clamav-provider-sync-native-macos-2026-11-01.json",
   "remaining": [
-    "native recovery acceptance using the new synchronization journal after real freshclam failure and storage recovery",
+    "real freshclam communication-failure retry acceptance after natural provider wait expiry; native storage-failure recovery has separate passing evidence",
     "legacy stores with missing or ambiguous synchronization sources require owner investigation rather than forced recovery",
     "Linux/Windows native acceptance and Windows CI",
     "different official definition-version update after natural expiry and native resume invalidation"

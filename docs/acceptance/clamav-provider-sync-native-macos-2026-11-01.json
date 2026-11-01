@@ -1,0 +1,75 @@
+{
+  "date": "2026-11-01",
+  "kind": "native_macos_storage_failure_and_recovery_acceptance",
+  "source_commit": "ff4d615",
+  "runtime_fix_commit": "b6b2980",
+  "design": "../clamav-signature-update-design.md",
+  "fix_verification": "clamav-provider-sync-fix-2026-11-01.json",
+  "status": "passed for native storage failure, blocked recovery and storage-restored resave",
+  "scope": {
+    "entrypoint": "real owner CLI subprocesses; no monkeypatching in native acceptance",
+    "platform": "this Mac, Python 3.15.2",
+    "engine": "installed clamscan 1.5.4",
+    "definitions": "byte-identical private copies of previously verified official main 63, daily 28171 and bytecode 339; generation hashes rechecked",
+    "store": "new dedicated private acceptance store, separate from OS and prior real-update acceptance stores",
+    "provider_source": "read-only copy of actual OS freshclam.dat; raw content remains local",
+    "old_canonical": "distinct synthetic older provider bytes, never passed to freshclam",
+    "attempt_state": "synthetic pending attempt and pending synchronization journal with exact staging ID",
+    "deadline": "new short local fixture deadline; real wall-clock passage; no system-clock mocks or real provider-wait changes",
+    "personal_files_used": false,
+    "administrator_credentials_handled": false,
+    "freshclam_network_execution": false
+  },
+  "native_failure": {
+    "method": "set macOS UF_IMMUTABLE on only the test provider.dat",
+    "python_chflags_used": true,
+    "attribute_value": 2,
+    "direct_replace_probe": "actual os.replace refused by the kernel",
+    "errno": 1,
+    "mocked_filesystem_error": false,
+    "flag_cleanup": "finally block cleared the attribute; absence rechecked before successful recovery"
+  },
+  "cases": {
+    "before_deadline": "CLI returned partial/recovered=false; pending retained",
+    "after_deadline_while_save_blocked": "CLI recovery returned error; attempt.pending=true and provider-sync.status=pending remained",
+    "old_canonical_not_accepted": "old canonical bytes remained, new source bytes remained in the protected stage, and pending was not cleared",
+    "repeat_while_save_blocked": "second real CLI recovery also refused",
+    "failed_save_temp_cleanup": "no provider replacement temporary file remained",
+    "current_definition_check_while_blocked": "real check-clamav-signatures completed with fresh definitions",
+    "storage_restoration": "remove immutable attribute on the test canonical file only",
+    "after_storage_restoration": "CLI re-saved staging bytes, fsynced and verified the canonical hash, recorded synced, then returned recovered=true",
+    "deadline_preservation": "saved deadline unchanged after both failed and successful recovery",
+    "current_generation_preservation": "current.json bytes unchanged throughout",
+    "selected_stage_cleanup": "recovered staging directory deleted by owner CLI; confirmed canonical wait bytes retained",
+    "real_clamav_after_recovery": {"status": "completed", "synthetic_files": 2, "scanned": 2, "infected": 0, "errors": 0, "engine_calls": 1}
+  },
+  "preservation": {
+    "os_standard_definitions": "file set, SHA-256, uid/gid, mode, size, inode, mtime and ctime unchanged",
+    "previous_real_update_store": "top-level files and hashes/metadata unchanged, including saved real deadline and reference",
+    "atime_compared": false,
+    "private_store_guards": "actual descriptor owner/mode/ACL checks passed; directories 0700 and files 0600",
+    "raw_evidence": "private local acceptance folder; raw provider bytes and reports not committed",
+    "immutable_attribute_left_behind": false,
+    "acceptance_scan_process_left_running": false
+  },
+  "regressions": {
+    "command": ".venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
+    "total": 57,
+    "passed": 57,
+    "skipped": 0,
+    "seconds": 6.554,
+    "includes": "signature status, SDK MCP checks, private updates and maintenance regressions",
+    "full_suite_rerun": false,
+    "reason": "runtime files unchanged from b6b2980; ff4d615 changes documentation only; this task performs native acceptance and documentation updates"
+  },
+  "limitations": [
+    "not an actual freshclam communication failure or an attempt to trigger a provider rate limit",
+    "short deadlines and initial pending state are explicit fixtures, not evidence that a real 24-hour/provider wait can be shortened",
+    "no new definition download or different-version publication",
+    "no additional claim about power-loss durability or all filesystem failure types",
+    "Linux, Windows and freshclam retry after a real provider wait remain separate acceptance tasks"
+  ],
+  "runtime_source_changed": false,
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false
+}
