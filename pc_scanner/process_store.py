@@ -5,7 +5,6 @@ import base64
 from collections import Counter
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
-import errno
 import hashlib
 import html
 import json

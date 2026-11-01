@@ -2,7 +2,8 @@
   "date": "2026-11-01",
   "outcome": "fixed",
   "base_commit": "b105f73e0b3b20c7beaf559878ca063e47848cba",
-  "source_state": "Uncommitted candidate on this base; this record does not identify the candidate by base revision alone",
+  "implementation_commit": "7f1069490993917f42816ebd1e7d793cc4a639f0",
+  "source_state": "Implemented on base_commit and committed as implementation_commit; the next commit only removes an unused import and updates this record",
   "finding": {
     "affected_boundary": "macOS scan-history and batch-checkpoint storage accepted allow ACL entries in spite of 0600/0700 mode bits",
     "pre_fix_reproduction": "Native chmod +a on disposable synthetic history, detail, lock, directory and checkpoint fixtures showed accepted payload writes/reads, rotation and checkpoint availability under explicit/inherited allow ACLs",
@@ -147,7 +148,5 @@
     "Windows-native/CI and Linux-native additional acceptance not run for this change",
     "Complete protection against hostile ancestor-directory replacement is outside this ACL-focused change",
     "Existing real-world ACLs were not audited, removed or repaired; any already disclosed copies cannot be recalled"
-  ],
-  "commit_performed": false,
-  "push_performed": false
+  ]
 }
