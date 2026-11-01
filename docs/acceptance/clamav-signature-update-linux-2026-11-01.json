@@ -123,11 +123,12 @@
     "sanitized_results_and_logs_retained_locally": true
   },
   "privacy": {"personal_folders_mounted": false, "personal_inputs_used": false, "host_definitions_or_wait_state_modified": false, "host_environment_or_credentials_copied": false},
+  "runtime_follow_up": "linux-runtime-cli-mcp-npm-2026-11-01.json",
   "remaining": [
     "real different-content official definition update and native resume invalidation after natural wait expiry",
     "actual freshclam communication-failure retry and provider-specific waits",
     "other Linux CPUs, distributions and physical hosts",
-    "Linux current locked-runtime setup and npm acceptance",
+    "aarch64 current-runtime/npm acceptance; subsequent x86_64 Python 3.14/3.15 and npm acceptance is linked separately",
     "Windows backend, Windows CI and real Windows acceptance"
   ],
   "commit_created_during_recording": false,

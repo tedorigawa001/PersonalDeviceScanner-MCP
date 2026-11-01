@@ -1,0 +1,113 @@
+{
+  "date": "2026-11-01",
+  "kind": "fresh_linux_runtime_cli_mcp_npm_acceptance",
+  "status": "passed for the recorded x86_64 matrix",
+  "source_commit": "ab875ac1e08be77a5a42bc206c875cd6c4c55bde",
+  "source_provenance": "git archive HEAD; commit confirmed from the archive PAX comment",
+  "runtime_source_or_dependencies_changed": false,
+  "environment": {
+    "host": "this Mac Docker Desktop",
+    "platform": "linux/amd64, x86_64 runtime under translation on the arm64 Mac",
+    "distribution": "Debian bookworm",
+    "mounts": [],
+    "published_ports": [],
+    "execution_uid_gid": "10001:10001",
+    "capabilities_dropped": ["ALL"],
+    "security_options": ["no-new-privileges"],
+    "init": true,
+    "memory_per_container_bytes": 2684354560,
+    "cpus_per_container": 2,
+    "pids_limit": 256,
+    "network": "enabled for official image, apt and dependency setup; disconnected after npm end-to-end setup; full Python tests completed with loopback available",
+    "image_setup": "official Python and Node images; apt ClamAV/procps/CA certificates; service startup disabled by policy-rc.d; no privileged container or host source mount",
+    "test_helpers": "packaging 26.3 installed separately into a test-only target directory; not added to agent runtime dependencies"
+  },
+  "dependency_profile": {
+    "file": "profiles/linux-x86_64-cp314/requirements-agent.lock",
+    "sha256": "bd378f1a355082e1c5de5ff888521dd8639bd38234683da3aab615c7e09d7a14",
+    "pinned_packages": 29,
+    "all_installed_profile_versions_match": true,
+    "selected_versions": {"mcp": "1.30.0", "certifi": "2026.10.19", "cryptography": "50.0.2", "anyio": "4.15.1", "pydantic": "2.14.1"},
+    "pip_check": "passed after CLI install and in the npm-created environment",
+    "tls_verification_disabled": false,
+    "binary_wheels_only_for_profile_dependencies": true,
+    "python_3_14": "same OS/CPU/Python minor as the bundled lock; --require-hashes enforced",
+    "python_3_15": "no bundled cp315 hash profile; same fixed versions installed without the cp314 wheel hashes, following the existing documented launcher policy"
+  },
+  "matrix": [
+    {
+      "python": "3.14.10",
+      "node": "v24.22.2",
+      "npm": "11.19.1",
+      "image": "sha256:79ff8cd739bad8bd730603c5863808d59750620d799c04860ee79a91a90a58a1",
+      "official_parent_tags": ["python:3.14-bookworm", "node:24-bookworm"],
+      "cli_initial_install": "fresh venv; hash-required profile installation; local project wheel installed; imported from installed venv site-packages outside the source directory",
+      "npm_initial_install": "npm pack, local tarball install, initially absent application cache, automatic CPython discovery",
+      "npm_selected_environment": {"python": "3.14.10", "lock": "profiles/linux-x86_64-cp314/requirements-agent.lock", "hashed": true},
+      "tampered_lock_refused": true,
+      "python_tests": {"total": 734, "passed": 700, "skipped": 34, "failures": 0, "errors": 0, "seconds": 183.468},
+      "npm_tests": {"total": 26, "passed": 26, "skipped": 0, "failures": 0, "opt_in_e2e_enabled": true, "seconds": 41.608}
+    },
+    {
+      "python": "3.15.2",
+      "node": "v26.13.0",
+      "npm": "11.20.0",
+      "image": "sha256:2a1c219cf46fabf2c7bafaf96d02a1519bbad2746418447ba4245d1ddef0b520",
+      "official_parent_tags": ["python:3.15-bookworm", "node:26-bookworm"],
+      "cli_initial_install": "fresh venv; fixed profile versions installed; local project wheel installed; imported from installed venv site-packages outside the source directory",
+      "npm_initial_install": "npm pack, local tarball install, initially absent application cache, explicit absolute CPython 3.15 interpreter",
+      "npm_selected_environment": {"python": "3.15.2", "lock": "profiles/linux-x86_64-cp314/requirements-agent.lock", "hashed": false},
+      "versions_only_warning_confirmed": true,
+      "cp315_hash_enforcement_claimed": false,
+      "python_tests": {"total": 734, "passed": 700, "skipped": 34, "failures": 0, "errors": 0, "seconds": 175.781},
+      "npm_tests": {"total": 26, "passed": 26, "skipped": 0, "failures": 0, "opt_in_e2e_enabled": true, "seconds": 27.046}
+    }
+  ],
+  "native_scan_cases_each_matrix_entry": {
+    "engine": "real /usr/bin/clamscan 1.4.6 from Debian packages",
+    "definitions": "only public main.cvd, daily.cld and bytecode.cvd copied read-only from the existing Mac installation into the image; no provider.dat/freshclam.dat or saved wait state copied",
+    "definition_daily_version": 28170,
+    "definition_built_at": "2026-10-31T06:24:42+00:00",
+    "definition_freshness": "fresh at max_age_days=7",
+    "definition_limit": "daily.cld is an existing locally assembled database; no new publisher-signature verification or definition update is claimed",
+    "synthetic_inputs": "two harmless text files and exactly one standard EICAR test marker",
+    "installed_cli": {"status": "completed", "scanned": 3, "infected": 1, "errors": 0, "expected_exit": 1},
+    "installed_cli_stdio_mcp": {"initialized": true, "signature_check": "fresh", "status": "completed", "scanned": 3, "infected": 1, "errors": 0},
+    "npm_first_use_stdio_mcp": {"initialized": true, "signature_check": "fresh", "status": "completed", "scanned": 3, "infected": 1, "errors": 0},
+    "findings_explanation": "one intentional EICAR test detection only, not a finding in personal files",
+    "npm_reuse": "second connection reused the environment without setup output and read the real signature status",
+    "stdout_clean": "npm end-to-end JSON-RPC assertions passed; setup output stayed on stderr",
+    "update_and_maintenance_tools_not_exposed_through_mcp": true,
+    "external_ai_client_used": false
+  },
+  "verification": {
+    "python_command": "agent-venv/bin/python -m unittest discover -s tests -v",
+    "npm_command": "PC_SCANNER_NPM_E2E=1 npm test; EXPECT_HASHED/AUTO_DISCOVER enabled for 3.14",
+    "android_and_mcp_tests_included": true,
+    "skip_reasons": "17 Windows native API tests, 16 macOS ACL tests and 1 filesystem case-sensitivity-dependent test per matrix entry",
+    "npm_e2e_checks": ["packed file set", "fresh setup and clean stdio MCP", "hash-required profile selection and bad-hash refusal on 3.14", "isolated Python imports", "environment reuse", "SIGTERM child cleanup"],
+    "static_checks": ["acceptance JSON and relative local links", "git diff --check"]
+  },
+  "preservation_and_cleanup": {
+    "personal_folders_mounted": false,
+    "personal_files_scanned": false,
+    "host_environment_or_credentials_copied": false,
+    "definition_update_requested": false,
+    "host_definitions_written": false,
+    "waiting_container": "pc-scanner-signature-linux-acceptance remained stopped; never started, execed or copied from",
+    "waiting_store_or_deadline_changed": false,
+    "new_containers_stopped_and_removed": true,
+    "synthetic_inputs_removed_with_new_containers": true,
+    "runtime_images_retained_locally": true,
+    "sanitized_results_and_logs_retained_privately": true
+  },
+  "limitations_and_remaining": [
+    "x86_64 Docker under translation only; aarch64 Python 3.14/3.15 and npm remain separate acceptance targets",
+    "cp315 installs fixed versions without bundled matching wheel hashes; no new profile or SBOM generated",
+    "ClamAV 1.4.6 ordinary scans only in this matrix; ClamAV 1.5.4 grouping/update/recovery acceptance is recorded separately",
+    "no different-version definition update, real provider-wait expiry or freshclam communication-failure retry",
+    "no Windows CI, Windows real engine or external AI client acceptance"
+  ],
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false
+}
