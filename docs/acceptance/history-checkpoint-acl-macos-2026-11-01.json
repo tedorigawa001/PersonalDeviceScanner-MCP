@@ -1,0 +1,153 @@
+{
+  "date": "2026-11-01",
+  "outcome": "fixed",
+  "base_commit": "b105f73e0b3b20c7beaf559878ca063e47848cba",
+  "source_state": "Uncommitted candidate on this base; this record does not identify the candidate by base revision alone",
+  "finding": {
+    "affected_boundary": "macOS scan-history and batch-checkpoint storage accepted allow ACL entries in spite of 0600/0700 mode bits",
+    "pre_fix_reproduction": "Native chmod +a on disposable synthetic history, detail, lock, directory and checkpoint fixtures showed accepted payload writes/reads, rotation and checkpoint availability under explicit/inherited allow ACLs",
+    "security_invariant": "Reject allow or unverified ACLs before using the affected file/directory; do not remove ACLs or silently overwrite/delete unsafe regular records",
+    "threat_limit": "Grant-based access depends on directory traversal and effective OS permissions. A separate foreign UID read was not attempted; proof uses native ACLs and the concrete storage acceptance boundary."
+  },
+  "policy": {
+    "allow_entries": "Refused conservatively, including inherited and owner-specific allow entries",
+    "deny_only": "Accepted if the native query succeeds and other existing checks pass",
+    "query_failure": "Refused; missing/deny-only ACL and failed inspection are not treated alike",
+    "automatic_acl_stripping": false,
+    "actual_user_storage_or_permissions_changed": false,
+    "history_error": "Existing scan-history warning; scan result remains unchanged",
+    "checkpoint_error": "Unavailable/nondeletable or existing permission/invalid-state error; no unsafe state reuse",
+    "read_only_behavior": "ACL reads do not chmod data. An unavailable lock may still fall back to an independently validated safe history read."
+  },
+  "implementation": {
+    "shared_helper": "pc_scanner/posix_acl.py extracts the existing process-store predicate; adds pathname metadata query for directory/replace-target preflight; Darwin EINVAL terminates ACL enumeration, other unexpected results refuse access",
+    "enforcement": [
+      "History opener checks parent directory before opening and actual descriptor before returning",
+      "Locks checked before locking",
+      "Current and rotated summaries checked on Darwin regardless of mode bits, before detail writes or rotation",
+      "Detail directory/file reads and writes guarded; unsafe older regular details block retention rather than being silently deleted",
+      "Atomic replacement checks parent, existing regular target and new descriptor; rechecks before publication; no unsafe existing regular target silently replaced",
+      "Batch checkpoint directory and its parent guarded; local manager revalidates directory/file descriptors before listing/deletion"
+    ],
+    "compatibility": [
+      "Absent and deny-only ACLs",
+      "Existing POSIX mode correction on writes",
+      "Safe read fallback when lock is unavailable",
+      "Write-only files, owner-only create/search directories, bytes path input",
+      "Windows owner/hardlink protections and platform-specific behavior preserved"
+    ],
+    "native_open_note": "On this Mac O_EVTONLY still required read-data permission. Folder/existing-target preflight therefore uses ACL metadata pathname query with surrounding identity checks, and actual file opens retain descriptor ACL validation.",
+    "not_a_redesign": "Existing path-based directory handling remains; this does not promise race-free protection against every hostile ancestor swap or same-owner concurrent ACL change."
+  },
+  "validation": {
+    "syntax": "AST parsing of all changed Python source/tests passed",
+    "native_acl_regressions": {
+      "file": "tests/test_history_acl.py",
+      "total": 15,
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "cases": [
+        "Inherited allow before new history/detail creation; ACL remains unchanged",
+        "Explicit allow on current/rotated 0600 summaries before rotation",
+        "Non-mutating read refusal",
+        "Unsafe lock write refusal and safe-read fallback without bypass",
+        "Explicit allow detail file/folder read/write refusal",
+        "Inherited allow blocks dashboard/cache atomic writes before payload",
+        "Checkpoint allow file unavailable and selection deletion refused",
+        "Checkpoint allow folder blocks creation/listing",
+        "Inherited deny-only legitimate history/detail/checkpoint controls",
+        "Unsafe atomic target retained unchanged",
+        "Unsafe old details not removed by retention",
+        "Native invalid-fd ACL query fails closed",
+        "Write-only/create-only/search-only legitimate controls",
+        "Scan remains completed with existing history-write warning on ACL refusal",
+        "Bytes input path accepts safe data and refuses allow ACL"
+      ]
+    },
+    "focused_existing_and_new_tests": {
+      "command": "bdo proxy .venv-dev/bin/python -m unittest tests.test_history_acl tests.test_history tests.test_checkpoints tests.test_process_store tests.test_dashboard tests.test_windows_owner -q",
+      "total": 153,
+      "passed": 150,
+      "skipped": 3,
+      "failed": 0
+    },
+    "full_suites": [
+      {
+        "python": "3.14.10",
+        "total": 690,
+        "passed": 673,
+        "skipped": 17,
+        "failed": 0,
+        "errors": 0,
+        "seconds": 56.079,
+        "command": "bdo proxy .venv/bin/python -m unittest discover -s tests -v"
+      },
+      {
+        "python": "3.15.2",
+        "total": 690,
+        "passed": 673,
+        "skipped": 17,
+        "failed": 0,
+        "errors": 0,
+        "seconds": 55.581,
+        "command": "bdo proxy .venv-dev/bin/python -m unittest discover -s tests -v"
+      }
+    ],
+    "full_suite_scope": "Includes Android and MCP SDK tests; 17 native Windows-only tests skipped on this Mac in each full run",
+    "npm": {
+      "command": "npm test with PC_SCANNER_NPM_E2E=1, explicit CPython 3.14 and temporary npm/pip caches",
+      "total": 26,
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "scope": "Pack/install distribution including new shared Python module, isolated first-use setup and local MCP round trip"
+    },
+    "independent_review": {
+      "read_only_investigation": true,
+      "read_only_candidate_review": true,
+      "confirmed_compatibility_findings": "Read-only opens added permissions requirements for write-only files and create/search-only directories; reproduced then fixed with metadata-only ACL preflight and native regression coverage",
+      "cycles": 1
+    },
+    "intermediate_failures": "Before the fix, native malicious cases reproduced. Intermediate candidates exposed permission, bytes-path and Windows-mock compatibility issues and a file-test double missing fileno; all resolved before final runs."
+  },
+  "original_issue_no_longer_reproduces": "Final native tests refuse inherited/explicit allow ACLs at the affected storage boundaries before sensitive payload write/read, rotation/replacement/retention or checkpoint deletion; unsafe existing bytes and ACLs remain intact",
+  "legitimate_behavior_preserved": "Deny-only ACL stores, existing read/write/rotation/locking, mode correction, non-mutating reads and permission-limited safe inputs pass native controls and focused/full regression suites",
+  "references": [
+    {
+      "url": "https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/acl_get_entry.3.html",
+      "purpose": "Darwin ACL entry success and end/error return contract"
+    },
+    {
+      "url": "https://github.com/apple-oss-distributions/Libc/blob/main/posix1e/acl_entry.c",
+      "purpose": "Confirm end-of-iteration EINVAL behavior; not copied into project code"
+    }
+  ],
+  "privacy": {
+    "inputs": "Disposable synthetic temporary stores only",
+    "real_user_history_cache_or_checkpoints_accessed": false,
+    "real_names_paths_connections_or_credentials_in_record": false,
+    "acl_changes": "Native chmod +a only inside the synthetic test fixtures; no administrative authentication used",
+    "network": "No personal data sent; npm dependency installation and local test servers only"
+  },
+  "changed_files": [
+    "pc_scanner/posix_acl.py",
+    "pc_scanner/history.py",
+    "pc_scanner/process_store.py",
+    "pc_scanner/malware_batch.py",
+    "pc_scanner/checkpoints.py",
+    "tests/test_history_acl.py",
+    "tests/test_dashboard.py",
+    "README.md",
+    "README.ja.md",
+    "docs/backlog.md",
+    "docs/acceptance/history-checkpoint-acl-macos-2026-11-01.json"
+  ],
+  "remaining": [
+    "Windows-native/CI and Linux-native additional acceptance not run for this change",
+    "Complete protection against hostile ancestor-directory replacement is outside this ACL-focused change",
+    "Existing real-world ACLs were not audited, removed or repaired; any already disclosed copies cannot be recalled"
+  ],
+  "commit_performed": false,
+  "push_performed": false
+}

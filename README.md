@@ -742,7 +742,12 @@ TIME                 VIA  OPERATION      SOURCE         STATUS     FINDINGS    S
   files, `.1` included, are kept readable only by you (0600, also when one already existed with wider permissions). A
   history file must be a regular file of yours with no other name (hard link), and the lock file and details folder must be
   yours; anything else, or a link in their place, is refused. Keep the history in a folder only you can write to, as the
-  default is: the protection is the file mode, and on macOS an ACL inherited from the folder is not removed. On Windows
+  default is. On macOS, allow ACL entries (including inherited or owner-specific entries) or failed ACL checks
+  refuse access to history, rotated history, details, locks and checkpoints. Deny-only ACLs remain usable. ACLs are
+  never stripped automatically: choose a private local folder or have its ACL reviewed by the owner. Unsafe existing
+  regular files are preserved rather than replaced or removed by rotation/retention. A history-write failure adds a
+  warning without changing the scan result; an unsafe checkpoint prevents reuse. Read paths do not change permissions.
+  This also protects the shared atomic dashboard writer and engine-release cache. On Windows
   opened files are checked against the effective token's user SID; Administrators ownership is accepted only when
   elevated and it is the token's default owner. Foreign ownership, hard links and failed ownership checks are refused
   for history, locks, kept details and engine release information. Keep them in a folder other users cannot write to

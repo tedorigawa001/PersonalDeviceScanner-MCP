@@ -19,6 +19,7 @@ import threading
 import time
 
 from . import core, history
+from .posix_acl import acl_allows
 
 DEFAULTS = dict(enabled=False, directory="", retention_days=7, max_records=32, max_total_mb=32)
 ID = re.compile(r"[0-9a-f]{32}\Z")
@@ -237,34 +238,6 @@ def local_filesystem(fd):
         return bool(types) and types <= {"ext2", "ext3", "ext4", "xfs", "btrfs", "tmpfs", "ramfs", "overlay", "zfs", "f2fs", "bcachefs"}
     return False
 
-
-def acl_allows(fd):
-    """Whether a macOS ACL on fd allows anything; such entries apply regardless of the 0600/0700 mode.
-
-    A folder's inheritable entry is copied to new records, so others could read them. Linux needs no check:
-    its ACL entries are limited by the group mode bits, which the store requires to be 0.
-    """
-    if sys.platform != "darwin":
-        return False
-    import ctypes as c
-    lib = c.CDLL(None, use_errno=True)
-    lib.acl_get_fd_np.argtypes, lib.acl_get_fd_np.restype = [c.c_int, c.c_int], c.c_void_p
-    lib.acl_get_entry.argtypes = [c.c_void_p, c.c_int, c.POINTER(c.c_void_p)]
-    lib.acl_get_tag_type.argtypes = [c.c_void_p, c.POINTER(c.c_int)]
-    lib.acl_free.argtypes = [c.c_void_p]
-    # Darwin SDK sys/acl.h: ACL_TYPE_EXTENDED = 0x100, ACL_FIRST_ENTRY = 0, ACL_NEXT_ENTRY = -1, ACL_EXTENDED_DENY = 2.
-    acl = lib.acl_get_fd_np(fd, 0x100)
-    if not acl:
-        return c.get_errno() != errno.ENOENT
-    try:
-        entry, tag, index = c.c_void_p(), c.c_int(), 0
-        while lib.acl_get_entry(acl, index, c.byref(entry)) == 0:
-            if lib.acl_get_tag_type(entry, c.byref(tag)) != 0 or tag.value != 2:
-                return True
-            index = -1
-        return False
-    finally:
-        lib.acl_free(acl)
 
 
 class Store:

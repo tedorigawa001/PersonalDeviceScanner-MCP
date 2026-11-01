@@ -40,6 +40,9 @@ class FullDisk:
     def __exit__(self, *exc):
         self.file.close()
 
+    def fileno(self):
+        return self.file.fileno()
+
     def write(self, data):
         raise OSError("No space left on device")
 

@@ -16,6 +16,7 @@ import platform
 import re
 import secrets
 import stat
+import sys
 import threading
 import time
 from collections import deque
@@ -106,6 +107,61 @@ def owned(fd: int, info=None) -> bool:
     return (info or os.fstat(fd)).st_uid == os.geteuid()
 
 
+def require_private_acl(fd: int) -> None:
+    """Non-mutating: permit absent/deny-only Darwin ACLs, reject allow or unknown ACLs."""
+    if os.name == "nt":
+        return
+    from .posix_acl import acl_allows
+    try:
+        unsafe = acl_allows(fd)
+    except (OSError, AttributeError):
+        raise OSError("Storage ACL could not be checked") from None
+    if unsafe:
+        raise OSError("Storage ACL allows access; choose a private local folder")
+
+
+def directory_acl(path: Path) -> None:
+    """Check a storage directory before creating or opening sensitive children.
+
+    Pathname metadata queries preserve search-only directories: even O_EVTONLY
+    requires read-data permission on some Darwin versions. Identity is checked
+    around the query; the actual file descriptor is checked again by the opener.
+    """
+    if os.name == "nt" or sys.platform != "darwin":
+        return
+    from .posix_acl import acl_allows_path
+    before = path.stat()
+    try:
+        unsafe = acl_allows_path(path)
+    except (OSError, AttributeError):
+        raise OSError("Storage directory ACL could not be checked") from None
+    after = path.stat()
+    if (not stat.S_ISDIR(after.st_mode) or (before.st_dev, before.st_ino, before.st_mode)
+            != (after.st_dev, after.st_ino, after.st_mode) or unsafe):
+        raise OSError("Storage directory ACL allows access or could not be verified")
+
+
+def existing_acl(path: Path) -> None:
+    """Preserve unsafe existing regular files instead of silently replacing their ACLs."""
+    if os.name == "nt" or sys.platform != "darwin":
+        return
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        return
+    # Atomic replacement has always replaced links without following them; retain that contract.
+    if not stat.S_ISREG(info.st_mode):
+        return
+    from .posix_acl import acl_allows_path
+    try:
+        unsafe = acl_allows_path(path)
+    except (OSError, AttributeError):
+        raise OSError("Storage file ACL could not be checked") from None
+    after = path.lstat()
+    if ((after.st_dev, after.st_ino, after.st_mode) != (info.st_dev, info.st_ino, info.st_mode) or unsafe):
+        raise OSError("Storage file ACL allows access or changed during validation")
+
+
 class Busy(OSError):
     """Another process held the lock for the whole wait."""
 
@@ -113,12 +169,14 @@ class Busy(OSError):
 @contextlib.contextmanager
 def locked(path: Path, check_wait=None, attempts=LOCK_ATTEMPTS):
     """Held across processes: a CLI and MCP servers that both find the file full must not rotate it twice."""
+    directory_acl(path.parent)
     fd = os.open(lock_file(path), os.O_RDWR | os.O_CREAT | NO_FOLLOW, 0o600)
     try:
         info = os.fstat(fd)
         # Another user's lock file could be held forever to stop the history being written.
         if not stat.S_ISREG(info.st_mode) or not owned(fd, info) or info.st_nlink != 1:
             raise OSError("The history lock file is not this user's regular file")
+        require_private_acl(fd)
         for attempt in range(attempts):
             if check_wait is not None:
                 check_wait()
@@ -152,13 +210,17 @@ def opener(name, flags: int) -> int:
     Through open(), Python owns the descriptor and closes it if anything fails, so no failed write
     leaves a file that Windows cannot remove.
     """
+    if os.name != "nt" and sys.platform == "darwin":
+        directory_acl(Path(os.fsdecode(name)).parent)
     fd = os.open(name, flags | NO_FOLLOW | NO_WAIT, 0o600)
-    if os.name == "nt":
-        try:
+    try:
+        if os.name == "nt":
             private(fd)
-        except BaseException:
-            os.close(fd)
-            raise
+        else:
+            require_private_acl(fd)
+    except BaseException:
+        os.close(fd)
+        raise
     return fd
 
 
@@ -177,11 +239,13 @@ def private(fd: int) -> None:
     if info.st_nlink != 1:
         raise OSError("The history file has other names (hard links)")
     if os.name != "nt":
+        require_private_acl(fd)
         if info.st_mode & 0o077:
             os.fchmod(fd, 0o600)
 
 
 def make_private(name: Path) -> None:
+    directory_acl(name.parent)
     fd = os.open(name, os.O_RDONLY | NO_FOLLOW | NO_WAIT)
     try:
         private(fd)
@@ -194,11 +258,16 @@ def replace_private(path: Path, data: bytes) -> None:
 
     The new file gets a fresh name, so a link put in the old one's place is replaced, never written through.
     """
+    directory_acl(path.parent)
+    existing_acl(path)
     temp = path.with_name(f".{path.name}.{secrets.token_hex(4)}.tmp")
     f = open(temp, "xb", opener=opener)  # if this fails, nothing of ours was created
     try:
         with f:
+            require_private_acl(f.fileno())
             f.write(data)
+        directory_acl(path.parent)
+        existing_acl(path)
         os.replace(temp, path)
     except BaseException:
         temp.unlink(missing_ok=True)
@@ -291,9 +360,11 @@ def grouping_fields(data):
 
 def save_details(path: Path, report: dict, max_bytes: int) -> str:
     """Keeps a full result, then removes the oldest ones until all fit in max_bytes; the newest always stays."""
+    directory_acl(path.parent)
     folder = details_folder(path)
     folder.mkdir(exist_ok=True, mode=0o700)
     info = folder.lstat()
+    directory_acl(folder)
     if os.name == "nt":
         from .windows_owner import owns_directory
         ours = owns_directory(folder)
@@ -307,6 +378,7 @@ def save_details(path: Path, report: dict, max_bytes: int) -> str:
     for child in folder.iterdir():
         if child.suffix == ".json" and DETAILS_ID.fullmatch(child.stem):
             try:
+                existing_acl(child)
                 kept.append((child.name, child.lstat().st_size, child))
             except FileNotFoundError:
                 continue
@@ -373,17 +445,19 @@ def append(path: Path, record: dict, details: dict | None = None, details_bytes:
     with _lock:
         path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         with locked(path):
-            if details is not None:
-                record = {**record, "details": save_details(path, details, details_bytes)}
-            line = (json.dumps(record, ensure_ascii=False) + "\n").encode("utf-8")
             # The older file is never opened for writing, so it and the file about to become it are checked here.
             for name in (older(path), path):
                 try:
                     info = name.lstat()
                 except FileNotFoundError:
                     continue
-                if stat.S_ISREG(info.st_mode) and (os.name == "nt" or info.st_mode & 0o077):
-                    make_private(name)
+                if stat.S_ISREG(info.st_mode):
+                    existing_acl(name)
+                    if os.name == "nt" or info.st_mode & 0o077:
+                        make_private(name)
+            if details is not None:
+                record = {**record, "details": save_details(path, details, details_bytes)}
+            line = (json.dumps(record, ensure_ascii=False) + "\n").encode("utf-8")
             try:
                 if path.lstat().st_size >= FILE_BYTES:
                     os.replace(path, older(path))

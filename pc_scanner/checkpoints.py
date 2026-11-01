@@ -60,6 +60,7 @@ def store(scanner):
         if os.name != "nt":
             fd = os.open(folder, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | history.NO_FOLLOW | history.NO_WAIT)
             current = os.fstat(fd)
+            history.require_private_acl(fd)
             if (current.st_dev, current.st_ino) != (info.st_dev, info.st_ino) or not history.owned(fd, current):
                 raise OSError("Checkpoint directory changed")
         yield folder, fd, info
@@ -69,6 +70,7 @@ def store(scanner):
 
 
 def unchanged_directory(folder, info):
+    history.directory_acl(folder)
     current = folder.lstat()
     if (core.is_link(folder) or not stat.S_ISDIR(current.st_mode)
             or (current.st_dev, current.st_ino) != (info.st_dev, info.st_ino)):
@@ -107,6 +109,7 @@ def opened(folder, dirfd, name, deadline, delete=False):
         fd = os.open(name, os.O_RDONLY | history.NO_FOLLOW | history.NO_WAIT, dir_fd=dirfd)
     try:
         info = os.fstat(fd)
+        history.require_private_acl(fd)
         safe_file(info)
         if identity(before) != identity(info) or not history.owned(fd, info):
             raise OSError("Checkpoint changed or belongs to another user")
@@ -121,6 +124,7 @@ def opened(folder, dirfd, name, deadline, delete=False):
         raw = b"".join(chunks)
         if len(raw) > batch.MAX_STATE_BYTES or identity(os.fstat(fd)) != identity(info):
             raise OSError("Checkpoint changed or exceeds the read limit")
+        history.require_private_acl(fd)
         token = hashlib.sha256(repr(identity(info)).encode() + b"\0" + raw).hexdigest()
         yield fd, info, raw, token
     finally:
