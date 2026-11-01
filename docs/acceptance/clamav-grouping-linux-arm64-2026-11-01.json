@@ -950,6 +950,6 @@
     "existing_personal_history_checkpoint_or_acl_changed": false,
     "host_engine_or_definitions_updated": false
   },
-  "commit_performed": false,
-  "push_performed": false
+  "commit_performed_during_recording": false,
+  "push_performed_during_recording": false
 }

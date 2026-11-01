@@ -194,8 +194,8 @@
     "Owner-deferred OneDrive real-placeholder acceptance",
     "Mixed real-provider directory and additional provider-state acceptance before default-enable decision"
   ],
-  "commit_performed": false,
-  "push_performed": false,
+  "commit_performed_during_recording": false,
+  "push_performed_during_recording": false,
   "cleanup": {
     "synthetic_local_inputs_removed": true,
     "real_icloud_target_untouched": true,

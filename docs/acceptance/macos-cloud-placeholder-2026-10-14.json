@@ -8,19 +8,16 @@
     "flags": 1073741920,
     "dataless": true,
     "allocated_blocks": 0,
-    "size": 2279307,
-    "mtime_ns": 1752313755000000000,
-    "inode": 11709252
+    "size_range": "nonempty, between 1 MiB and 4 MiB"
   },
   "metadata_after": {
     "flags": 1073741920,
     "dataless": true,
     "allocated_blocks": 0,
-    "size": 2279307,
-    "mtime_ns": 1752313755000000000,
-    "inode": 11709252
+    "size_range": "nonempty, between 1 MiB and 4 MiB"
   },
   "metadata_unchanged": true,
+  "exact_size_inode_and_raw_timestamps_withheld_from_public_record": true,
   "status": "partial",
   "scan_started": false,
   "cloud_excluded_count": 1,
