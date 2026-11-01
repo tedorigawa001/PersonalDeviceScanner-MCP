@@ -224,4 +224,5 @@ Android・MCPを含む全テストを実行し、Macの実freshclam・ClamAVで�
 Linuxは個人フォルダーをマウントしないDockerで、WindowsはCIと実Windows環境の受入を区別する。
 外部サービス側の失敗はローカルの制御した代役でも再現し、実サービスを過剰に呼び出して障害を起こさない。
 第1段階の検証結果は[実装検証記録](acceptance/clamav-signature-update-phase1-2026-11-01.json)に記載する。
-自動更新設定は変更していない。Macの実更新受入は上記の初回取得までで、異なる版の更新やLinux／Windows受入は残る。
+自動更新設定は変更していない。Mac・Linux Dockerの実更新受入は初回取得までで、
+異なる版の更新、他のLinux環境・Windowsの受入は残る。
