@@ -1,0 +1,112 @@
+{
+  "date": "2026-11-01",
+  "kind": "native_macos_acceptance_with_explicit_remaining_checks",
+  "source_commit": "900bedb",
+  "design": "../clamav-signature-update-design.md",
+  "scope": {
+    "engines": "installed freshclam, sigtool and clamscan 1.5.4",
+    "python": "3.15.2",
+    "store": "dedicated private local test store; not the OS service database",
+    "inputs": "128 harmless synthetic text files; one later changed to different harmless text",
+    "personal_files_scanned": false,
+    "cloud_files_downloaded": false,
+    "administrator_credentials_handled": false,
+    "privilege_elevation_performed": false,
+    "os_service_configuration_modified": false,
+    "push_performed": false
+  },
+  "real_official_update": {
+    "entrypoint": "owner CLI update-clamav-signatures",
+    "network_attempts_requested_by_test": 1,
+    "initial_store_empty": true,
+    "status": "completed",
+    "update_status": "updated",
+    "published": true,
+    "previous_preserved": false,
+    "elapsed_seconds": 16.307,
+    "observed_at": "2026-11-01T09:10:54.700434+00:00",
+    "versions": {"main.cvd": 63, "daily.cvd": 28171, "bytecode.cvd": 339},
+    "daily_built_at": "2026-11-01T06:27:34+00:00",
+    "freshness": "fresh",
+    "max_age_days": 7,
+    "publication_checked": "current reference exists and content manifest matches the published generation; pending=false; successful staging removed",
+    "signature_verification": {
+      "main.cvd": {"sigtool_exit": 0, "digital_signature_present": true, "verification_ok": true},
+      "daily.cvd": {"sigtool_exit": 0, "digital_signature_present": true, "verification_ok": true},
+      "bytecode.cvd": {"sigtool_exit": 0, "digital_signature_present": true, "verification_ok": true}
+    },
+    "engine_load": "the production updater loaded the candidate through real clamscan before publication",
+    "permissions": {
+      "directories": "0700, current effective user owner",
+      "database_and_metadata_files": "0600, current effective user owner, regular files with one link",
+      "acl_checks": "actual macOS private-store descriptor guards passed",
+      "evidence": "raw reports and test scripts retained locally with 0600 under a 0700 acceptance folder"
+    }
+  },
+  "read_only_checks": {
+    "cli": "completed, version 28171, fresh, update_performed=false, private_owner_cli",
+    "local_sdk_mcp": "real SDK memory session and real clamscan; completed/fresh; private store path absent from output; updater absent from tool list",
+    "remote_ai_client_used": false
+  },
+  "scans_and_resume": [
+    {"case": "initial native grouped scan", "status": "completed", "targets": 128, "reused": 0, "engine_calls": 2, "scanned": 128, "infected": 0, "errors": 0, "seconds": 12.557},
+    {"case": "unchanged resume", "status": "completed", "targets": 128, "reused": 128, "engine_calls": 0, "scanned": 128, "infected": 0, "errors": 0, "seconds": 0.271},
+    {"case": "private daily.cvd mtime changed by 1ms, bytes unchanged", "status": "completed", "targets": 128, "reused": 128, "engine_calls": 0, "scanned": 128, "infected": 0, "errors": 0, "seconds": 0.236},
+    {"case": "synthetic obsolete checkpoint context", "status": "completed", "targets": 128, "reused": 0, "engine_calls": 2, "scanned": 128, "infected": 0, "errors": 0, "seconds": 10.591}
+  ],
+  "obsolete_context_fixture": {
+    "method": "only the test checkpoint context digest was replaced with a synthetic obsolete value, then the real CLI resumed against the real definitions",
+    "result": "all 128 targets re-inspected; final total remains 128, not the sum of previous scans",
+    "limit": "this is not an actual transition between two different official definition versions"
+  },
+  "update_request_during_real_scan": {
+    "entrypoint": "unmodified owner CLI update-clamav-signatures",
+    "overlap_confirmed": "result timestamp is within the native scan start/end interval; progress showed scanning",
+    "status": "partial",
+    "update_status": "rate_limited",
+    "published": false,
+    "previous_preserved": true,
+    "current_reference_unchanged": true,
+    "retry_interval_bypassed": false,
+    "next_attempt_at": "2026-11-02T09:10:38.398596+00:00",
+    "additional_network_download_started": false
+  },
+  "controlled_same_content_publication_during_real_scan": {
+    "fixture": "an exact copy of the verified official CVDs in another private generation; no download or clock/cooldown changes",
+    "publication": "test harness used the existing publication lock and durable current-reference writer to switch to the verified copy while real clamscan was running",
+    "not_a_second_freshclam_update": true,
+    "old_generation_shared_lease_confirmed": "a separate process could not take an exclusive lock",
+    "publication_before_scan_completed": true,
+    "native_scan_calls": 2,
+    "native_engine_arguments_all_reference_original_generation": true,
+    "old_generation_retained": true,
+    "scan_status": "completed",
+    "scan_counts": {"scanned": 128, "infected": 0, "errors": 0},
+    "next_resume": {"status": "completed", "reused": 128, "engine_calls": 0, "scanned": 128},
+    "limit": "the production updater returns unchanged for identical bytes; this controlled pointer-switch fixture verifies pinning without claiming an actual different-content updater publication"
+  },
+  "system_database_preservation": {
+    "verified_before_and_after_all_cases": true,
+    "unchanged": ["file set", "SHA-256 contents", "size", "mode", "uid/gid", "inode", "mtime_ns", "ctime_ns"],
+    "atime_compared": false,
+    "writes_to_system_database": false
+  },
+  "regressions": {
+    "command": ".venv-dev/bin/python -m unittest discover -s tests -p test_signature_update.py -q",
+    "total": 22,
+    "passed": 22,
+    "skipped": 0,
+    "seconds": 3.649,
+    "full_suite_rerun": false,
+    "reason": "acceptance used the existing committed implementation; only repository documentation changed"
+  },
+  "harness_note": "The controlled-publication scan re-inspected all 128 scopes in two calls after a harmless target change. An initial fixture assertion assuming 127 reused scopes was corrected to the observed grouped behavior; runtime source was not changed.",
+  "remaining": [
+    "a real different-content official update publishing during a running scan, after the retry interval naturally expires",
+    "native resume invalidation following that actual different-version update (obsolete-context fixture is separate)",
+    "real freshclam unchanged check after the retry interval; no forced early request",
+    "native network/validation-failure recovery and retention/deletion CLI acceptance",
+    "OS automatic-service configuration acceptance; Linux and Windows acceptance"
+  ],
+  "cleanup": "no acceptance processes remain; private test definitions, cooldown state, synthetic files and evidence are retained locally for follow-up; no ordinary OS definitions or personal files were changed"
+}
