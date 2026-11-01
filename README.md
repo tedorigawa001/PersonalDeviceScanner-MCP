@@ -1282,7 +1282,9 @@ Windows (PowerShell):
   hash-required lock and Python 3.15.2/Node.js 26 with the same versions without hashes. A fresh CLI install, real
   stdio MCP, first-use setup from the npm tarball and a ClamAV 1.4.6 EICAR scan passed; full tests passed 700 with
   34 skipped and npm end-to-end tests 26/26 on each ([record](docs/acceptance/linux-runtime-cli-mcp-npm-2026-11-01.json)).
-  Python 3.14/3.15 and npm on Linux aarch64 remain to be accepted.
+  Linux aarch64 (Ubuntu 24.04, ClamAV 1.5.4) followed on 2026-11-02 with the same Python/Node.js pairs, including grouped
+  scans ([record](docs/acceptance/linux-aarch64-runtime-cli-mcp-npm-2026-11-02.json)). There is no aarch64 hash lock yet,
+  so it installs the same versions without hash checks; that is not hash verification.
 - Detection accuracy with real engines and behavior on each OS are not guaranteed. Acceptance testing on real machines for each OS is required before distribution.
 
 ## Related documents and license

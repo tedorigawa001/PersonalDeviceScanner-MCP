@@ -1234,7 +1234,10 @@ Windows（PowerShell）：
 - Linux x86_64コンテナの受入試験（2026-11-01、arm64のMac上でエミュレーション）：Python 3.14.10／Node.js 24はハッシュ必須のロック、
   Python 3.15.2／Node.js 26はハッシュなしで同じ版を導入。CLIの新規導入、実stdio MCP、npmパッケージからの初回導入、
   ClamAV 1.4.6でのEICAR検査が成功し、全テストは各700件成功・34件スキップ、npm通し試験は各26件すべて成功しました
-  （[記録](docs/acceptance/linux-runtime-cli-mcp-npm-2026-11-01.json)）。Linux aarch64でのPython 3.14／3.15とnpmは未確認です。
+  （[記録](docs/acceptance/linux-runtime-cli-mcp-npm-2026-11-01.json)）。
+  2026-11-02にはLinux aarch64（Ubuntu 24.04・ClamAV 1.5.4）でも同じPython／Node.jsの組み合わせとまとめ検査を確認しました
+  （[記録](docs/acceptance/linux-aarch64-runtime-cli-mcp-npm-2026-11-02.json)）。aarch64用のハッシュ付きロックはまだないため、
+  同じ版をハッシュなしで導入しており、ハッシュ検証ではありません。
 - 実際のエンジンでの検出精度や、各 OS での動作は保証していません。配布前に、各 OS の実機での受入試験が必要です。
 
 ## 関連ドキュメント・ライセンス

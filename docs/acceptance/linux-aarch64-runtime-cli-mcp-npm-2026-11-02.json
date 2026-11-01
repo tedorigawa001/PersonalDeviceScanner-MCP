@@ -235,6 +235,8 @@
   "verification": {
     "python_command": "agent-venv/bin/python -m unittest discover -s tests -v",
     "npm_command": "PC_SCANNER_NPM_E2E=1 PC_SCANNER_NPM_EXPECT_HASHED=0 PC_SCANNER_NPM_AUTO_DISCOVER=0 npm test",
+    "tampered_lock_refusal_exercised": false,
+    "tampered_lock_note": "The npm end-to-end test runs the bad-hash refusal only for hash-checked installs; both aarch64 environments were versions-only, so the 26 passes do not include it",
     "android_and_mcp_tests_included": true,
     "skip_reasons": "17 Windows native API, 16 macOS ACL, 1 case-sensitivity-dependent test in each runtime",
     "static_checks": [
@@ -261,5 +263,6 @@
     "No different-definition-version update, real provider-wait expiry or actual provider communication-failure retry",
     "No Windows CI/real engine or external AI client acceptance"
   ],
-  "push_performed": false
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false
 }
