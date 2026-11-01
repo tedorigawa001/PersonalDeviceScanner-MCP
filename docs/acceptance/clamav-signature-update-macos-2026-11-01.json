@@ -13,7 +13,7 @@
     "administrator_credentials_handled": false,
     "privilege_elevation_performed": false,
     "os_service_configuration_modified": false,
-    "push_performed": false
+    "push_performed_during_recording": false
   },
   "real_official_update": {
     "entrypoint": "owner CLI update-clamav-signatures",

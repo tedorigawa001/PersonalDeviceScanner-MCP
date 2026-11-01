@@ -140,7 +140,8 @@ def inventory(path, deadline):
             row["revision"] = hashlib.sha256(json.dumps(metadata).encode()).hexdigest()
             row["bytes"] = sum(r[1][5] for r in metadata if stat.S_ISREG(r[1][2]))
             row["reason"] = "current" if row["current"] else "pending_recovery" if state and state["pending"] and row["kind"] == "stage" else "last_previous" if current and name in previous and len(previous) == 1 else None
-            if row["kind"] == "generation":
+            # Scans lease only the current generation, which is protected anyway; probing it would fail their start.
+            if row["kind"] == "generation" and not row["current"]:
                 try:
                     with exclusive_lease(path / (name + ".lease")):
                         row["in_use"] = False
@@ -226,12 +227,16 @@ def manage(scanner, action, entry_id=None, revision=None, not_before=None):
                 if info["entries"] and any(r["reason"] == "unavailable" for r in info["entries"]):
                     raise core.ScannerError("Unverified signature entries require owner investigation")
                 update.current(path, deadline)  # Do not silently promote an orphan or accept a corrupt active generation.
-                legacy = [path / r["id"] / "db" / "freshclam.dat" for r in info["entries"] if r["kind"] == "stage"]
-                legacy = [f for f in legacy if f.exists() or f.is_symlink()]
-                if len(legacy) > 1:
-                    raise core.ScannerError("Ambiguous provider wait state; preserve stages for investigation")
-                if legacy:
-                    preserve_provider(path, legacy[0].parent)
+                provider = path / "provider.dat"
+                # provider.dat is refreshed after every freshclam run, failures included, so it supersedes stage copies.
+                # Only stages from before it existed carry the sole wait state.
+                if not (provider.exists() or provider.is_symlink()):
+                    legacy = [path / r["id"] / "db" / "freshclam.dat" for r in info["entries"] if r["kind"] == "stage"]
+                    legacy = [f for f in legacy if f.exists() or f.is_symlink()]
+                    if len(legacy) > 1:
+                        raise core.ScannerError("Ambiguous provider wait state; preserve stages for investigation")
+                    if legacy:
+                        preserve_provider(path, legacy[0].parent)
                 update.write_json(path / "attempt.json", {"pending": False, "next_attempt": until})
                 return core.result("clamav", "completed", data={"recovered": True, "next_attempt_at": until,
                                    "provider_state_preserved": (path / "provider.dat").exists(), "update_performed": False})
@@ -242,8 +247,13 @@ def manage(scanner, action, entry_id=None, revision=None, not_before=None):
                 raise core.ScannerError("Selected entry is protected: " + row["reason"])
             update.current(path, deadline)
             if row["kind"] == "generation":
-                with exclusive_lease(path / (entry_id + ".lease")):
+                lease = path / (entry_id + ".lease")
+                with exclusive_lease(lease):
                     remove_tree(path / entry_id, revision, deadline)
+                    # IDs are never reused and only the current generation is ever leased, so nothing can lock
+                    # this file again; removing it keeps the store under the inventory limit.
+                    lease.unlink()
+                update.sync_dir(path)
             else:
                 remove_tree(path / entry_id, revision, deadline)
             return core.result("clamav", "completed", data={"deleted": entry_id, "update_performed": False})

@@ -74,8 +74,8 @@
     "previous_native_acceptance_store_recovered_or_deleted": false,
     "live_freshclam_executed": false,
     "dependencies_changed": false,
-    "commit_created": false,
-    "push_performed": false
+    "commit_created_during_recording": false,
+    "push_performed_during_recording": false
   },
   "remaining": [
     "native macOS/Linux failed-update recovery and selected cleanup acceptance with real freshclam state",
@@ -84,5 +84,29 @@
     "automatic retention policy and hard disk quotas",
     "MCP explicit updater; maintenance stays local CLI only",
     "unknown files, invalid storage or ambiguous provider state require owner investigation rather than force deletion"
-  ]
+  ],
+  "review_fixes": {
+    "date": "2026-11-01",
+    "reviewed_commit": "129f038d7d3360cae50594fc35063eef9199bfcd",
+    "found_with": "Synthetic stores and a mocked freshclam on a scratch copy of 129f038; no downloads",
+    "fixed": [
+      {
+        "issue": "Two failed updates left two stages with freshclam.dat; recovery refused them as ambiguous while both stages were protected as pending_recovery, so neither recovery nor deletion could proceed",
+        "reproduced": "Failure, recovery, failure, then recover returned 'Ambiguous provider wait state'; both stages showed deletable=false with pending_recovery",
+        "fix": "provider.dat, refreshed after every freshclam run including failures, is authoritative; stage copies are used only when it is absent (legacy stages), where ambiguity still fails closed"
+      },
+      {
+        "issue": "Listing probed the current generation with an exclusive lease, so a scan or check starting at that moment failed",
+        "reproduced": "check_clamav_signatures during the probe returned 'Operation could not complete'",
+        "fix": "Only non-current generations are probed; scans lease only the current generation, which is protected anyway"
+      },
+      {
+        "issue": "Deleting a generation left its .lease file, which counts toward the 128-entry inventory limit",
+        "reproduced": "After deletion the generation folder was gone and its .lease file remained",
+        "fix": "The lease file is removed while its exclusive lease is held; generation IDs are never reused"
+      }
+    ],
+    "regressions": "2 added and 1 extended; three mutations removing the fixes were each detected",
+    "test_flake_fixed": "An existing recovery test passed a microsecond ISO round trip of the float deadline, which lands below it in about 14% of cases and is rightly refused; recovery tests now use minimum_not_before (rounded up to whole seconds), as owners are told to"
+  }
 }

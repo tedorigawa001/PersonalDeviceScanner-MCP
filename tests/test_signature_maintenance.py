@@ -67,12 +67,25 @@ class MaintenanceTests(unittest.TestCase):
         result = maintenance.manage(self.scanner, "delete", self.removable, entry["revision"])
         self.assertEqual(result["status"], "completed")
         self.assertFalse((self.root / self.removable).exists())
+        self.assertFalse((self.root / (self.removable + ".lease")).exists())  # never accumulates toward the limit
         for name, data in before.items():
             self.assertEqual((self.root / name).read_bytes(), data)
         self.assertEqual(self.entry(self.previous)["reason"], "last_previous")
         row = self.entry(self.previous)
         with self.assertRaises(core.ScannerError):
             maintenance.manage(self.scanner, "delete", self.previous, row["revision"])
+
+    def test_listing_never_exclusively_locks_the_current_generation(self):
+        real, locked = maintenance.exclusive_lease, []
+        def recording(path):
+            locked.append(path.name)
+            return real(path)
+        with patch.object(maintenance, "exclusive_lease", side_effect=recording):
+            row = self.entry(self.active)
+        # A scan starting now takes a shared lease on the current generation; an exclusive probe would fail it.
+        self.assertNotIn(self.active + ".lease", locked)
+        self.assertIn(self.previous + ".lease", locked)
+        self.assertEqual(row["reason"], "current")
 
     def test_current_last_previous_forged_id_and_stale_revision_are_refused(self):
         for name, rev in ((self.active, self.entry(self.active)["revision"]), ("../outside", "0" * 64),
@@ -251,14 +264,45 @@ class MaintenanceTests(unittest.TestCase):
             self.assertEqual((self.root / "provider.dat").read_bytes(), b"provider wait must survive")
             stage = next(self.root.glob("stage-*"))
             self.assertEqual((stage / "db/main.cvd").stat().st_mode & 0o777, 0o600)
-            with patch("pc_scanner.signature_maintenance.time.time", return_value=state["next_attempt"] + 1):
-                result = maintenance.manage(self.scanner, "recover", revision=self.listing()["recovery_revision"],
-                    not_before=datetime.fromtimestamp(state["next_attempt"], timezone.utc).isoformat())
+            # minimum_not_before is rounded up to whole seconds; a microsecond ISO round trip of the float
+            # deadline can land just below it and is then rightly refused as shortening the wait.
+            with patch("pc_scanner.signature_maintenance.time.time", return_value=state["next_attempt"] + 2):
+                info = self.listing()
+                result = maintenance.manage(self.scanner, "recover", revision=info["recovery_revision"],
+                    not_before=info["minimum_not_before"])
                 self.assertEqual(result["status"], "completed")
                 row = next(r for r in self.listing()["entries"] if r["kind"] == "stage")
                 maintenance.manage(self.scanner, "delete", row["id"], row["revision"])
                 self.assertEqual(update.update(self.scanner)["status"], "error")
                 self.assertTrue(update.read_json(self.root / "attempt.json")["pending"])
+
+    def test_second_failure_recovers_from_preserved_provider_state(self):
+        row = self.entry(self.removable)
+        maintenance.manage(self.scanner, "delete", self.removable, row["revision"])
+        runs = []
+        def engine(argv, *args, **kwargs):
+            db = Path(next(a for a in argv if a.startswith("--datadir=")).split("=", 1)[1])
+            runs.append(db)
+            history.replace_private(db / "freshclam.dat", b"provider wait %d" % len(runs))
+            return 1, "", "synthetic network failure"
+        def fail():
+            # Stands in for the retry interval having passed.
+            update.write_json(self.root / "attempt.json", {"pending": False, "next_attempt": time.time() - 1})
+            with patch("pc_scanner.signature_update.executable", side_effect=lambda x: x), patch("pc_scanner.core.run_bounded", side_effect=engine), patch("pc_scanner.signature_update.shutil.disk_usage", return_value=SimpleNamespace(free=10*update.MAX_BYTES)):
+                self.assertEqual(update.update(self.scanner)["status"], "error")
+        def recover():
+            state = update.read_json(self.root / "attempt.json")
+            with patch("pc_scanner.signature_maintenance.time.time", return_value=state["next_attempt"] + 2):
+                info = self.listing()
+                return maintenance.manage(self.scanner, "recover", revision=info["recovery_revision"],
+                    not_before=info["minimum_not_before"])
+        fail()
+        self.assertEqual(recover()["status"], "completed")
+        fail()  # the first failed stage was kept
+        self.assertEqual(recover()["status"], "completed")
+        self.assertEqual((self.root / "provider.dat").read_bytes(), b"provider wait 2")
+        stages = [r for r in self.listing()["entries"] if r["kind"] == "stage"]
+        self.assertEqual([r["deletable"] for r in stages], [True, True])
 
     def test_ambiguous_provider_stages_and_changed_recovery_revision_fail_closed(self):
         self.stage()
