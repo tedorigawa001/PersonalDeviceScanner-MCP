@@ -1,0 +1,88 @@
+{
+  "date": "2026-11-01",
+  "kind": "implementation_regression_verification",
+  "feature": "owner CLI ClamAV signature recovery and selected generation cleanup",
+  "design": "../clamav-signature-update-design.md",
+  "commands": [
+    "clamav-signature-store list",
+    "clamav-signature-store recover --revision REVISION --not-before TIMEZONE_TIMESTAMP",
+    "clamav-signature-store delete ENTRY_ID --revision REVISION"
+  ],
+  "contracts": {
+    "cli_only": true,
+    "mcp_dispatch_added": false,
+    "network_downloads_by_maintenance": false,
+    "administrator_credentials": false,
+    "arbitrary_paths_or_force_delete": false,
+    "recovery": [
+      "requires unchanged inventory/wait/current/provider revision",
+      "owner acknowledges provider instructions through an explicit timezone timestamp",
+      "cannot shorten the saved wait; extensions persist even before expiry",
+      "one microsecond before expiry refuses recovery; exact expiry permits it",
+      "validates current generation if present; no promotion of orphan or staging data",
+      "persists legacy freshclam.dat before clearing pending; ambiguous multiple sources are refused",
+      "updater saves provider state after success or failure and restores it before the next freshclam invocation"
+    ],
+    "cleanup": [
+      "single managed generation or stage ID with metadata revision",
+      "refuses current generation, in-use generation and the last previous generation",
+      "refuses unrecovered pending stages",
+      "shares the cross-process updater lock; takes an exclusive generation lease before deleting",
+      "does not hold publication lock during hashing or deletion, so current generation readers can start",
+      "metadata-only bounded preflight: at most 128 entries, depth 3, 30-second preflight budget",
+      "descriptor-relative deletion without following links; refuses nonprivate ownership/mode/ACL, hardlinks, placeholders and unknown entries",
+      "never deletes attempt.json, provider.dat, current.json or lease files",
+      "I/O failure or interruption can leave partial deletion; list again and inspect remaining entries"
+    ],
+    "storage": "existing POSIX private-store checks; macOS allow ACLs refused; Windows management remains disabled",
+    "capacity": "four generation/stage slots remain; owner-selected cleanup reclaims slots while retaining current and one previous generation",
+    "provider_wait_limit": "binary freshclam state is preserved, not independently parsed; longer provider instructions must be acknowledged by the owner; native freshclam still interprets its state"
+  },
+  "new_regressions": {
+    "total": 14,
+    "passed": 14,
+    "cases": [
+      "inventory and selected deletion preserve current reference and wait state",
+      "current/last previous generations, forged IDs and stale revisions refused",
+      "real separate-process shared lease blocks deletion until its holder exits",
+      "active updater lock blocks maintenance",
+      "pending stages protected; early recovery and stale recovery revisions refused",
+      "deadline extension persists and cannot subsequently be shortened",
+      "expiry boundary preserves provider state before deleting a recovered stage",
+      "symlink/hardlink/unsafe mode and simulated dataless metadata block deletion without touching an outside file",
+      "MCP/internal unknown operation cannot dispatch maintenance",
+      "invalid timestamps and corrupt active definitions cannot clear pending",
+      "real CLI inventory prints IDs without store paths",
+      "real CLI recovery and selected stage deletion round trip",
+      "provider state survives updater failure, recovery, stage deletion and the next updater call; known partially downloaded CVD permissions normalized safely",
+      "ambiguous provider sources and changed recovery state fail closed"
+    ],
+    "fixtures": "private temporary synthetic CVD-header files and opaque synthetic provider bytes; no real update or provider rate-limit reset",
+    "cloud_case": "simulated SF_DATALESS in stat metadata; no actual cloud item opened"
+  },
+  "verification": {
+    "python_3_15": {"version": "3.15.2", "command": ".venv-dev/bin/python -m unittest discover -s tests -v", "total": 728, "passed": 711, "skipped": 17, "failures": 0, "errors": 0, "seconds": 88.792},
+    "python_3_14": {"version": "3.14.10", "command": ".venv/bin/python -m unittest discover -s tests -v", "total": 728, "passed": 711, "skipped": 17, "failures": 0, "errors": 0, "seconds": 88.903},
+    "android_and_mcp_tests_included": true,
+    "skip_reason": "17 Windows-only native API tests on macOS; not Windows CI or Windows acceptance",
+    "npm": {"command": "PC_SCANNER_NPM_E2E=1 npm test", "total": 26, "passed": 26, "skipped": 0, "failures": 0, "includes": "packed distribution, first-use setup and stdio MCP round trip"},
+    "static": ["Python AST parse", "default-disabled scanner.example.toml loads without unknown-key warnings", "git diff --check", "acceptance JSON and local documentation links"]
+  },
+  "privacy_and_side_effects": {
+    "personal_files_used": false,
+    "os_standard_definitions_modified": false,
+    "previous_native_acceptance_store_recovered_or_deleted": false,
+    "live_freshclam_executed": false,
+    "dependencies_changed": false,
+    "commit_created": false,
+    "push_performed": false
+  },
+  "remaining": [
+    "native macOS/Linux failed-update recovery and selected cleanup acceptance with real freshclam state",
+    "different official definition-version publication and native resume invalidation after the natural wait",
+    "Windows backend, Windows CI and real Windows acceptance",
+    "automatic retention policy and hard disk quotas",
+    "MCP explicit updater; maintenance stays local CLI only",
+    "unknown files, invalid storage or ambiguous provider state require owner investigation rather than force deletion"
+  ]
+}

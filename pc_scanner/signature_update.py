@@ -271,7 +271,15 @@ def update(scanner, cancel=None, progress=None):
             history.replace_private(config, b"DatabaseMirror database.clamav.net\nScriptedUpdates no\nTestDatabases yes\nBytecode yes\nMaxAttempts 1\nConnectTimeout 30\nReceiveTimeout 120\n")
             if progress:
                 progress.update(stage="running", checkpoint="not_applicable")
-            run([freshclam, "--config-file=" + str(config), "--datadir=" + str(db)])
+            from . import signature_maintenance
+            provider = path / "provider.dat"
+            if provider.exists() or provider.is_symlink():
+                history.replace_private(db / "freshclam.dat", signature_maintenance.provider_bytes(provider))
+            try:
+                run([freshclam, "--config-file=" + str(config), "--datadir=" + str(db)])
+            finally:
+                # Provider cooldown survives errors, recovery, stage deletion and the next freshclam invocation.
+                signature_maintenance.preserve_provider(path, db)
             if progress:
                 progress.update(stage="validating")
             # Move only the required databases to a private candidate. Bookkeeping stays in the unpublished stage.

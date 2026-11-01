@@ -61,6 +61,15 @@ def main():
     commands.add_parser("status")
     commands.add_parser("check-clamav-signatures", help="read definition freshness and update steps; never updates")
     commands.add_parser("update-clamav-signatures", help="owner-only explicit freshclam update into enabled private CVD generations; no elevation")
+    signatures = commands.add_parser("clamav-signature-store", help="owner-only private generation listing, recovery and selected deletion; never MCP")
+    signature_actions = signatures.add_subparsers(dest="signature_action", required=True)
+    signature_actions.add_parser("list")
+    recovery = signature_actions.add_parser("recover")
+    recovery.add_argument("--revision", required=True)
+    recovery.add_argument("--not-before", required=True, help="timezone timestamp acknowledging all provider waits; cannot shorten the persisted deadline")
+    deletion = signature_actions.add_parser("delete")
+    deletion.add_argument("entry_id")
+    deletion.add_argument("--revision", required=True)
     lan_devices = commands.add_parser("lan-devices", help="observe devices on an owner-authorized LAN; names, IPs and MACs are included")
     lan_devices.add_argument("network_alias")
     lan_devices.add_argument("--json", action="store_true", help="print the complete LAN observations")
@@ -159,6 +168,11 @@ def main():
                 report = signature_update.update(scanner, display.cancel, display.progress)
                 display.progress.finish(report["status"], display.cancel)
                 report["data"]["progress"] = display.progress.snapshot()
+        if args.command == "clamav-signature-store":
+            from . import signature_maintenance
+            scanner.via = "cli"
+            report = signature_maintenance.manage(scanner, args.signature_action, getattr(args, "entry_id", None),
+                getattr(args, "revision", None), getattr(args, "not_before", None))
         if args.command == "process-review-records":
             from . import process_store
             scanner.via = "cli"
@@ -187,7 +201,7 @@ def main():
                     print(row["target_id"], "; ".join(coverage.LABELS[r] for r in row["reasons"]), row["eligibility"].replace("_", " "),
                           row.get("relative_path", ""))
                 return
-        if args.command in {"process-review-records", "update-clamav-signatures"}:
+        if args.command in {"process-review-records", "update-clamav-signatures", "clamav-signature-store"}:
             pass
         elif args.command == "malware-checkpoints":
             from . import checkpoints

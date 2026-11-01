@@ -419,15 +419,23 @@ Resume rechecks old completion evidence after a content change. Byte-identical c
 changes in private generations do not invalidate it. Other processes under the same account can still modify
 the store; this is protection from other users, not a boundary against same-user malware.
 
-Phase-one limits: a conservative 24-hour interval; failed/interrupted attempts block further downloads
-until owner recovery; up to four retained generations/failed stages, with no automatic deletion or recovery CLI.
-Because nothing is deleted, the fourth published generation is the last: the next attempt stops with a capacity
-error, sooner if failed stages remain. Manual deletion is not a supported recovery; return to OS-managed updates or
-start a new private directory as described below.
-After a failure, stop all scanners/updaters and preserve the store for investigation. Do not clear cooldown files
-to force retries. For a fresh store, use another owner-configured private directory only after the provider's
-wait interval is known to have elapsed; do not point at an OS-managed database. Windows support, native update
-acceptance, retention/recovery CLI and MCP writes remain pending. See the
+The conservative 24-hour interval remains enforced; failed/interrupted attempts block downloads until explicit
+owner recovery. Use `pc-scanner --config scanner.toml clamav-signature-store list` for JSON entries and revisions.
+After investigating the failure and all provider wait instructions, use `clamav-signature-store recover
+--revision RECOVERY_REVISION --not-before '2026-11-03T12:00:00+00:00'` with your actual deadline.
+The timestamp must include a timezone, must not precede the persisted deadline, and must have elapsed before recovery.
+`minimum_not_before` in the listing gives the local minimum; a longer provider wait takes precedence. Extending the
+deadline persists immediately, even when recovery must wait. Recovery does not download or publish definitions.
+Opaque freshclam wait state is retained as private `provider.dat` and restored on the next update.
+
+To reclaim a selected entry, list again and run `clamav-signature-store delete ENTRY_ID --revision ENTRY_REVISION`.
+Current/in-use generations, the last previous generation, unrecovered failed stages, changed revisions and unsafe
+storage are refused. There is no arbitrary path or force-delete option. At most four generations/failed stages are
+retained; use selected cleanup before reaching this limit. No automatic deletion or disk quota is implemented.
+Deletion may be partial after an I/O failure; list again to inspect the remainder. Invalid permissions, unknown
+files or ambiguous provider state require owner investigation; never clear wait files to force a retry.
+These maintenance commands are local CLI only, without administrator credentials or MCP dispatch.
+Windows support, native recovery/cleanup acceptance and MCP writes remain pending. See the
 [operational design](docs/clamav-signature-update-design.md).
 
 ### Checking for engine updates
