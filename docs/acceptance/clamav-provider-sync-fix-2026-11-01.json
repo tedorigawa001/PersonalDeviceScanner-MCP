@@ -1,0 +1,59 @@
+{
+  "date": "2026-11-01",
+  "kind": "bug_fix_and_regression_verification",
+  "base_commit": "2d7e26a",
+  "finding": "Recovery could clear pending using stale provider.dat after saving the new provider state failed",
+  "original_reproduction": "clamav-signature-maintenance-macos-2026-11-01.json",
+  "root_cause": "Canonical file existence was treated as proof that the current failed invocation had durably synchronized its provider state",
+  "fix": {
+    "journal": "private provider-sync.json, written atomically with file and directory fsync",
+    "before_freshclam": "write pending synchronization with the exact staging ID before executing the updater",
+    "after_freshclam": "on success or error, save provider state, fsync it, compare its hash with the staging source, then durably record synced plus the hash",
+    "recovery_pending_sync": "re-save from the exact protected staging source; failure leaves attempt.pending=true",
+    "recovery_synced": "check canonical bytes against the recorded hash before allowing recovery",
+    "missing_source": "never accept an old canonical file when the pending source is missing",
+    "no_provider_data": "explicit synced null hash only when both source and canonical are absent; not conflated with stale canonical data",
+    "revision": "include synchronization evidence in the recovery revision",
+    "legacy": "without per-invocation evidence, re-save a single unambiguous source; canonical existence alone and multiple ambiguous sources cannot clear pending",
+    "deadline_changes": "none; persisted deadlines and owner extension rules remain enforced",
+    "definition_generation_changes": "none; synchronization concerns provider wait state only",
+    "mcp_changes": "none; updater and maintenance remain owner CLI only"
+  },
+  "new_regressions": {
+    "total": 4,
+    "passed": 4,
+    "cases": [
+      "previous synced old canonical, new failed attempt and pre-save persistence failure: recovery blocked while persistence still fails; retry durably saves the new bytes before clearing pending",
+      "provider file replacement followed by durability failure: observable new bytes alone do not permit recovery; retry must complete synchronization",
+      "missing pending source and confirmed-hash mismatch: recovery refused and pending retained",
+      "legacy canonical alone refused; single unambiguous legacy staging source can be re-saved safely"
+    ],
+    "red_green": "the original persistence-failure test failed before the implementation because recovery did not raise; it passed after the fix",
+    "mutation": "removing the pre-invocation pending marker caused the stale-previous-sync regression to fail as expected",
+    "fault_injection": "private synthetic stores, fake updater failure and controlled persistence errors; no real provider traffic or cooldown override"
+  },
+  "verification": {
+    "python_3_15": {"version": "3.15.2", "command": ".venv-dev/bin/python -m unittest discover -s tests -v", "total": 734, "passed": 717, "skipped": 17, "failures": 0, "errors": 0, "seconds": 90.343},
+    "python_3_14": {"version": "3.14.10", "command": ".venv/bin/python -m unittest discover -s tests -v", "total": 734, "passed": 717, "skipped": 17, "failures": 0, "errors": 0, "seconds": 91.405},
+    "android_and_mcp_tests_included": true,
+    "windows": "17 native Windows API tests skipped on macOS; no Windows CI or real Windows acceptance",
+    "npm": {"command": "PC_SCANNER_NPM_E2E=1 npm test", "total": 26, "passed": 26, "skipped": 0, "failures": 0, "includes": "packed distribution, initial setup and stdio MCP round trip"},
+    "static_checks": ["Python syntax", "acceptance JSON and local links", "git diff --check"]
+  },
+  "privacy_and_scope": {
+    "personal_files_used": false,
+    "live_freshclam_executed": false,
+    "os_definition_store_modified": false,
+    "prior_native_acceptance_store_or_wait_modified": false,
+    "administrator_credentials_handled": false,
+    "dependencies_changed": false,
+    "commit_created": false,
+    "push_performed": false
+  },
+  "remaining": [
+    "native recovery acceptance using the new synchronization journal after real freshclam failure and storage recovery",
+    "legacy stores with missing or ambiguous synchronization sources require owner investigation rather than forced recovery",
+    "Linux/Windows native acceptance and Windows CI",
+    "different official definition-version update after natural expiry and native resume invalidation"
+  ]
+}

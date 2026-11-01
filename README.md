@@ -427,6 +427,10 @@ The timestamp must include a timezone, must not precede the persisted deadline, 
 `minimum_not_before` in the listing gives the local minimum; a longer provider wait takes precedence. Extending the
 deadline persists immediately, even when recovery must wait. Recovery does not download or publish definitions.
 Opaque freshclam wait state is retained as private `provider.dat` and restored on the next update.
+Each invocation records pending synchronization before freshclam starts; durable state and a matching hash are
+required before recovery can clear the failed-attempt flag. An interrupted save is retried from that invocation's
+protected staging directory. If copying or verification still fails, recovery remains blocked. Legacy stores without
+this evidence need a single unambiguous staging source; an old `provider.dat` alone is not sufficient.
 
 To reclaim a selected entry, list again and run `clamav-signature-store delete ENTRY_ID --revision ENTRY_REVISION`.
 Current/in-use generations, the last previous generation, unrecovered failed stages, changed revisions and unsafe

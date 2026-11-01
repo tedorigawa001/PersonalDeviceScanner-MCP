@@ -275,11 +275,12 @@ def update(scanner, cancel=None, progress=None):
             provider = path / "provider.dat"
             if provider.exists() or provider.is_symlink():
                 history.replace_private(db / "freshclam.dat", signature_maintenance.provider_bytes(provider))
+            signature_maintenance.begin_provider_sync(path, stage.name)
             try:
                 run([freshclam, "--config-file=" + str(config), "--datadir=" + str(db)])
             finally:
                 # Provider cooldown survives errors, recovery, stage deletion and the next freshclam invocation.
-                signature_maintenance.preserve_provider(path, db)
+                signature_maintenance.finish_provider_sync(path, stage.name)
             if progress:
                 progress.update(stage="validating")
             # Move only the required databases to a private candidate. Bookkeeping stays in the unpublished stage.

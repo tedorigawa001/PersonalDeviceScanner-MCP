@@ -65,6 +65,63 @@ def preserve_provider(root, db):
         update.sync_dir(root)
 
 
+def provider_sync(path):
+    obj = update.read_json(path / "provider-sync.json")
+    if obj is not None and (not isinstance(obj, dict) or set(obj) != {"stage", "status", "provider_hash"}
+            or not isinstance(obj["stage"], str) or not re.fullmatch(r"stage-[0-9a-f]{32}", obj["stage"])
+            or obj["status"] not in {"pending", "synced"}
+            or (obj["provider_hash"] is not None and (not isinstance(obj["provider_hash"], str) or not REV.fullmatch(obj["provider_hash"])))
+            or (obj["status"] == "pending" and obj["provider_hash"] is not None)):
+        raise OSError("Invalid provider synchronization evidence")
+    return obj
+
+
+def begin_provider_sync(path, stage):
+    # Must be durable before freshclam starts, so an interrupted/failed copy cannot look like an older success.
+    update.write_json(path / "provider-sync.json", {"stage": stage, "status": "pending", "provider_hash": None})
+
+
+def finish_provider_sync(path, stage):
+    db = path / stage / "db"
+    update.private_dir(path / stage)
+    update.private_dir(db)
+    source, canonical = db / "freshclam.dat", path / "provider.dat"
+    expected = hashlib.sha256(provider_bytes(source, normalize=True)).hexdigest() if source.exists() or source.is_symlink() else None
+    if expected is None and (canonical.exists() or canonical.is_symlink()):
+        raise OSError("Provider source is missing; old canonical state is not evidence of synchronization")
+    preserve_provider(path, db)
+    actual = hashlib.sha256(provider_bytes(canonical)).hexdigest() if canonical.exists() or canonical.is_symlink() else None
+    if actual != expected:
+        raise OSError("Provider synchronization could not be verified")
+    update.write_json(path / "provider-sync.json", {"stage": stage, "status": "synced", "provider_hash": actual})
+
+
+def recover_provider(path, entries):
+    sync = provider_sync(path)
+    if sync is not None:
+        if sync["status"] == "pending":
+            # The exact attempted stage survives and remains protected until this durable copy succeeds.
+            if not any(r["id"] == sync["stage"] for r in entries):
+                raise OSError("Pending provider synchronization stage unavailable")
+            finish_provider_sync(path, sync["stage"])
+            sync = provider_sync(path)
+        file = path / "provider.dat"
+        actual = hashlib.sha256(provider_bytes(file)).hexdigest() if file.exists() or file.is_symlink() else None
+        if actual != sync["provider_hash"]:
+            raise OSError("Provider canonical state no longer matches synchronization evidence")
+        return
+    # Legacy stores have no per-attempt evidence: canonical existence alone is insufficient.
+    sources = [r["id"] for r in entries if r["kind"] == "stage" and (
+        (path / r["id"] / "db/freshclam.dat").exists() or (path / r["id"] / "db/freshclam.dat").is_symlink())]
+    if len(sources) > 1:
+        raise core.ScannerError("Ambiguous provider wait state; preserve stages for investigation")
+    if sources:
+        begin_provider_sync(path, sources[0])
+        finish_provider_sync(path, sources[0])
+    elif (path / "provider.dat").exists() or (path / "provider.dat").is_symlink():
+        raise OSError("Legacy canonical wait state lacks synchronization evidence")
+
+
 def identity(info):
     return [info.st_dev, info.st_ino, info.st_mode, info.st_uid, info.st_nlink,
             info.st_size, info.st_mtime_ns, info.st_ctime_ns]
@@ -153,11 +210,13 @@ def inventory(path, deadline):
             row["reason"] = "unavailable"
         rows.append(row)
     provider = path / "provider.dat"
-    token = [state, current, rows, hashlib.sha256(provider_bytes(provider)).hexdigest() if provider.exists() or provider.is_symlink() else None]
+    sync = provider_sync(path)
+    token = [state, current, rows, sync, hashlib.sha256(provider_bytes(provider)).hexdigest() if provider.exists() or provider.is_symlink() else None]
     revision = hashlib.sha256(json.dumps(token, sort_keys=True).encode()).hexdigest()
     return dict(entries=rows, attempt=state, recovery_revision=revision,
                 next_attempt_at=state["next_attempt"] if state else None,
                 minimum_not_before=datetime.fromtimestamp(math.ceil(state["next_attempt"]), timezone.utc).isoformat() if state else None,
+                provider_sync=sync,
                 waiting=bool(state and time.time() < state["next_attempt"]))
 
 
@@ -227,16 +286,7 @@ def manage(scanner, action, entry_id=None, revision=None, not_before=None):
                 if info["entries"] and any(r["reason"] == "unavailable" for r in info["entries"]):
                     raise core.ScannerError("Unverified signature entries require owner investigation")
                 update.current(path, deadline)  # Do not silently promote an orphan or accept a corrupt active generation.
-                provider = path / "provider.dat"
-                # provider.dat is refreshed after every freshclam run, failures included, so it supersedes stage copies.
-                # Only stages from before it existed carry the sole wait state.
-                if not (provider.exists() or provider.is_symlink()):
-                    legacy = [path / r["id"] / "db" / "freshclam.dat" for r in info["entries"] if r["kind"] == "stage"]
-                    legacy = [f for f in legacy if f.exists() or f.is_symlink()]
-                    if len(legacy) > 1:
-                        raise core.ScannerError("Ambiguous provider wait state; preserve stages for investigation")
-                    if legacy:
-                        preserve_provider(path, legacy[0].parent)
+                recover_provider(path, info["entries"])
                 update.write_json(path / "attempt.json", {"pending": False, "next_attempt": until})
                 return core.result("clamav", "completed", data={"recovered": True, "next_attempt_at": until,
                                    "provider_state_preserved": (path / "provider.dat").exists(), "update_performed": False})

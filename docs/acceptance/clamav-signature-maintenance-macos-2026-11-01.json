@@ -1,0 +1,102 @@
+{
+  "date": "2026-11-01",
+  "kind": "native_macos_cli_acceptance_and_independent_review",
+  "overall": "normal acceptance cases passed; provider persistence failure was reproduced at this revision and subsequently fixed in the linked verification record",
+  "source_commit": "2d7e26a",
+  "reviewed_range": "129f038..2d7e26a",
+  "design": "../clamav-signature-update-design.md",
+  "review": {
+    "working_tree_at_start": "clean; additional fixes already committed",
+    "confirmed_changes": [
+      "authoritative provider.dat permits recovery with multiple older stage copies",
+      "inventory no longer attempts an exclusive lease on the current generation",
+      "selected generation deletion also removes its obsolete lease file"
+    ],
+    "focused_tests": {"command": ".venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q", "total": 53, "passed": 53, "seconds": 6.523}
+  },
+  "scope": {
+    "platform": "this Mac, owner account, Python 3.15.2",
+    "engine": "real clamscan 1.5.4; verified official main 63 / daily 28171 / bytecode 339 copied from the prior private acceptance generation",
+    "definition_signature_basis": "byte-identical copies of CVDs verified by real sigtool in the previous native update acceptance; generation hashes checked while preparing the fixtures",
+    "stores": "separate private generation-protection and recovery stores, neither an OS-managed directory",
+    "inputs": "128 harmless synthetic text files only",
+    "failure_state": "synthetic pending records and short local test deadlines; actual opaque freshclam.dat copied read-only from the OS store",
+    "failure_state_limit": "not real freshclam network failures; no downloads, no service outage induced, no system clock changes",
+    "existing_real_update_wait_modified": false,
+    "original_protection_store_wait_modified_by_recovery": false,
+    "administrator_credentials_handled": false
+  },
+  "generation_protection": {
+    "real_owner_cli_used": true,
+    "procedure": "real grouped scan pins generation A; controlled same-content reference switches to B while the scan runs; native CLI lists and attempts selected deletion",
+    "controlled_publication_limit": "local fixture switch, not another freshclam update or a different definition version",
+    "current_generation_delete": "refused",
+    "in_use_previous_generation_delete": "refused while the real scanner held its shared lease",
+    "selected_unused_generation_delete": "completed; only the selected directory and its lease disappeared",
+    "selected_deletion_preserves_wait_and_other_generations": true,
+    "all_real_engine_arguments_used_generation_A": true,
+    "real_scan": {"status": "completed", "scanned": 128, "infected": 0, "errors": 0, "engine_calls": 2},
+    "last_previous_generation_delete_after_scan": "refused",
+    "real_check_clamav_signatures": "completed; maintenance listing did not prevent the current generation check"
+  },
+  "recovery_and_stage_cleanup": {
+    "separate_recovery_store": true,
+    "short_deadline_fixture_initialization": "fresh recovery fixture only; never overwrite or shorten the generation-protection store or prior real-update store deadline",
+    "synthetic_failed_attempts": 2,
+    "unrecovered_stage_deletion": "refused",
+    "early_recovery": "refused with pending retained",
+    "deadline_extension": "persisted",
+    "subsequent_shortening": "refused; extension retained",
+    "wait_method": "actual wall-clock passage with bounded sleeps; no time mocks in native cases",
+    "recovery_after_expiry": "completed twice",
+    "retained_two_stages_with_authoritative_provider": "second recovery completed despite two older stage copies",
+    "selected_stage_deletions": 2,
+    "provider_state_hash_unchanged": true,
+    "saved_deadline_unchanged_by_deletion": true,
+    "final_pending": false,
+    "real_freshclam_invoked": false
+  },
+  "preservation": {
+    "system_definition_store": "file set, SHA-256, owner, mode, size, inode, mtime and ctime unchanged",
+    "prior_real_update_acceptance_store": "top-level file set, hashes and the same metadata unchanged, including real cooldown and current-reference files",
+    "atime_compared": false,
+    "private_mode_owner_acl_guards": "actual macOS guards passed; directories 0700 and files 0600",
+    "personal_files_or_cloud_content_scanned": false,
+    "acceptance_processes_remaining": false
+  },
+  "additional_unresolved_finding": {
+    "priority": "P2",
+    "title": "Recovery can clear pending using stale provider.dat after provider persistence fails",
+    "source": "pc_scanner/signature_maintenance.py:231-240",
+    "reproduction": "in a separate synthetic store, preserve an old provider.dat; fake an updater failure that writes newer stage freshclam.dat; inject OSError in preserve_provider; after the saved wait expires, recover",
+    "observed": {"update_status": "error", "recovery_status": "completed", "pending_cleared": true, "stale_provider_retained": true, "newer_stage_state_exists": true},
+    "impact": "existence of provider.dat does not prove it was refreshed for the failed attempt; newer provider wait state may not be forwarded to the next update",
+    "actual_provider_limit_violation_demonstrated": false,
+    "network_or_real_wait_overrides_in_reproduction": false,
+    "test_only_clock_mock": "used only in the isolated synthetic review reproduction, not the native CLI cases or real acceptance stores",
+    "status": "reproduced at 2d7e26a; subsequently fixed with per-attempt synchronization evidence and verified staging resave",
+    "resolution_record": "clamav-provider-sync-fix-2026-11-01.json",
+    "next_action": "track confirmed provider persistence per attempt, or fail closed/reconcile newer staging state before clearing pending; add a persistence-failure regression"
+  },
+  "verification": {
+    "python_3_15": {"version": "3.15.2", "total": 730, "passed": 713, "skipped": 17, "failures": 0, "errors": 0, "seconds": 89.368},
+    "python_3_14": {"version": "3.14.10", "total": 730, "passed": 713, "skipped": 17, "failures": 0, "errors": 0, "seconds": 90.338},
+    "commands": [".venv-dev/bin/python -m unittest discover -s tests -v", ".venv/bin/python -m unittest discover -s tests -v"],
+    "android_and_mcp_included": true,
+    "skip_reason": "Windows-only native API tests; Windows CI and Windows acceptance not performed",
+    "new_finding_covered_by_existing_suite": false,
+    "npm_rerun": false,
+    "static_checks": ["acceptance JSON and relative documentation links", "git diff --check"]
+  },
+  "harness_notes": "Preliminary synthetic fixture setup was split into independent protection/recovery stores to avoid replacing even a synthetic existing future deadline; a quoting error in the local helper was corrected before recovery cases were run. No runtime source was changed.",
+  "remaining": [
+    "native recovery acceptance with the new per-attempt synchronization evidence",
+    "real freshclam communication/persistence failure and retry acceptance after natural provider wait expiry",
+    "different-content official update and native resume invalidation",
+    "Linux and Windows acceptance"
+  ],
+  "cleanup": "private test stores, cooldown data, synthetic fixtures and raw reports retained locally; no active acceptance scanner remains",
+  "runtime_source_changed": false,
+  "commit_created": false,
+  "push_performed": false
+}

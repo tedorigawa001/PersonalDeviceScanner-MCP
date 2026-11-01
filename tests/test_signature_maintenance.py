@@ -1,5 +1,6 @@
 """Owner maintenance contracts using synthetic stores only; never contact providers."""
 import copy
+import hashlib
 from datetime import datetime, timezone
 import json
 import os
@@ -303,6 +304,87 @@ class MaintenanceTests(unittest.TestCase):
         self.assertEqual((self.root / "provider.dat").read_bytes(), b"provider wait 2")
         stages = [r for r in self.listing()["entries"] if r["kind"] == "stage"]
         self.assertEqual([r["deletable"] for r in stages], [True, True])
+
+    def test_provider_persistence_failure_never_recovers_with_stale_canonical_state(self):
+        history.replace_private(self.root / "provider.dat", b"older provider wait")
+        # A previous successful sync must never serve as evidence for the next failed attempt.
+        update.write_json(self.root / "provider-sync.json", {"stage": "stage-" + secrets.token_hex(16),
+            "status": "synced", "provider_hash": hashlib.sha256(b"older provider wait").hexdigest()})
+        update.write_json(self.root / "attempt.json", {"pending": False, "next_attempt": time.time() - 1})
+        def engine(argv, *args, **kwargs):
+            db = Path(next(a for a in argv if a.startswith("--datadir=")).split("=", 1)[1])
+            history.replace_private(db / "freshclam.dat", b"newer provider wait")
+            return 1, "", "synthetic provider failure"
+        with patch("pc_scanner.signature_update.executable", side_effect=lambda x: x), patch("pc_scanner.core.run_bounded", side_effect=engine), patch("pc_scanner.signature_update.shutil.disk_usage", return_value=SimpleNamespace(free=10*update.MAX_BYTES)), patch.object(maintenance, "preserve_provider", side_effect=OSError("synthetic disk failure")):
+            self.assertEqual(update.update(self.scanner)["status"], "error")
+        state = update.read_json(self.root / "attempt.json")
+        with patch("pc_scanner.signature_maintenance.time.time", return_value=state["next_attempt"] + 2):
+            info = self.listing()
+            with patch.object(maintenance, "preserve_provider", side_effect=OSError("disk still unavailable")):
+                with self.assertRaises(core.ScannerError):
+                    maintenance.manage(self.scanner, "recover", revision=info["recovery_revision"], not_before=info["minimum_not_before"])
+            self.assertTrue(update.read_json(self.root / "attempt.json")["pending"])
+            self.assertEqual((self.root / "provider.dat").read_bytes(), b"older provider wait")
+            info = self.listing()
+            recovered = maintenance.manage(self.scanner, "recover", revision=info["recovery_revision"], not_before=info["minimum_not_before"])
+            self.assertEqual(recovered["status"], "completed")
+        self.assertEqual((self.root / "provider.dat").read_bytes(), b"newer provider wait")
+        self.assertFalse(update.read_json(self.root / "attempt.json")["pending"])
+
+    def test_provider_replace_then_durability_failure_keeps_recovery_blocked_until_retry(self):
+        history.replace_private(self.root / "provider.dat", b"old wait")
+        update.write_json(self.root / "attempt.json", {"pending": False, "next_attempt": time.time()-1})
+        def engine(argv, *args, **kwargs):
+            db = Path(next(a for a in argv if a.startswith("--datadir=")).split("=",1)[1])
+            history.replace_private(db / "freshclam.dat", b"new wait")
+            return 1, "", "synthetic error"
+        real = history.replace_private
+        def broken(path, data):
+            real(path, data)
+            if path == self.root / "provider.dat":
+                raise OSError("synthetic durability failure after replacement")
+        with patch("pc_scanner.signature_update.executable", side_effect=lambda x:x), patch("pc_scanner.core.run_bounded", side_effect=engine), patch("pc_scanner.signature_update.shutil.disk_usage", return_value=SimpleNamespace(free=10*update.MAX_BYTES)), patch.object(history, "replace_private", side_effect=broken):
+            self.assertEqual(update.update(self.scanner)["status"], "error")
+        self.assertEqual((self.root / "provider.dat").read_bytes(), b"new wait")
+        self.assertEqual(maintenance.provider_sync(self.root)["status"], "pending")
+        state = update.read_json(self.root / "attempt.json")
+        with patch("pc_scanner.signature_maintenance.time.time", return_value=state["next_attempt"]+2):
+            info = self.listing()
+            with patch.object(history, "replace_private", side_effect=broken), self.assertRaises(core.ScannerError):
+                maintenance.manage(self.scanner,"recover",revision=info["recovery_revision"],not_before=info["minimum_not_before"])
+            self.assertTrue(update.read_json(self.root / "attempt.json")["pending"])
+            info = self.listing()
+            self.assertEqual(maintenance.manage(self.scanner,"recover",revision=info["recovery_revision"],not_before=info["minimum_not_before"])["status"],"completed")
+
+    def test_pending_sync_missing_source_and_synced_hash_mismatch_refuse_recovery(self):
+        stage = self.stage()
+        history.replace_private(self.root / "provider.dat", b"old canonical")
+        update.write_json(self.root / "attempt.json", {"pending":True,"next_attempt":time.time()-5})
+        maintenance.begin_provider_sync(self.root,stage)
+        (self.root / stage / "db/freshclam.dat").unlink()
+        info = self.listing()
+        with self.assertRaises(core.ScannerError):
+            maintenance.manage(self.scanner,"recover",revision=info["recovery_revision"],not_before=info["minimum_not_before"])
+        self.assertTrue(update.read_json(self.root / "attempt.json")["pending"])
+        history.replace_private(self.root / stage / "db/freshclam.dat",b"new canonical")
+        maintenance.finish_provider_sync(self.root,stage)
+        history.replace_private(self.root / "provider.dat",b"corrupt or stale canonical")
+        info = self.listing()
+        with self.assertRaises(core.ScannerError):
+            maintenance.manage(self.scanner,"recover",revision=info["recovery_revision"],not_before=info["minimum_not_before"])
+        self.assertTrue(update.read_json(self.root / "attempt.json")["pending"])
+
+    def test_legacy_canonical_alone_is_not_proof_but_single_stage_can_be_resaved(self):
+        history.replace_private(self.root / "provider.dat", b"legacy old wait")
+        update.write_json(self.root / "attempt.json", {"pending":True,"next_attempt":time.time()-5})
+        info = self.listing()
+        with self.assertRaises(core.ScannerError):
+            maintenance.manage(self.scanner,"recover",revision=info["recovery_revision"],not_before=info["minimum_not_before"])
+        stage=self.stage()
+        expected=(self.root/stage/"db/freshclam.dat").read_bytes()
+        info=self.listing()
+        self.assertEqual(maintenance.manage(self.scanner,"recover",revision=info["recovery_revision"],not_before=info["minimum_not_before"])["status"],"completed")
+        self.assertEqual((self.root/"provider.dat").read_bytes(),expected)
 
     def test_ambiguous_provider_stages_and_changed_recovery_revision_fail_closed(self):
         self.stage()
