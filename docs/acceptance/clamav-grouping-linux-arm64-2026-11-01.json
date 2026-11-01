@@ -1,0 +1,955 @@
+{
+  "date": "2026-11-01",
+  "status": "linux_aarch64_grouping_and_storage_compatibility_accepted",
+  "recording_base_commit": "fee94f04497f74f5ff267b7506710a03c6440cf9",
+  "source_identity": "Uncommitted Linux profile addition on this base. Actual copied Python source SHA256 values below match the final runtime candidate; base SHA alone is not the candidate identity.",
+  "authorized_scope": "This Mac Docker, new synthetic data and public source/definitions only; no personal folders mounted, scanned or read",
+  "implementation": {
+    "change": "Allow ClamAV 1.5.4 grouping on Linux aarch64 in addition to existing macOS profile",
+    "default_enabled": false,
+    "still_legacy": [
+      "Linux CPUs other than aarch64",
+      "Windows",
+      "Unknown or other engine versions",
+      "Missing/unverified explicit definition identity"
+    ],
+    "regression": "GroupProfileTests.test_only_accepted_engine_os_and_architecture_profiles_enable_grouping; initially failed for Linux aarch64, passed after the profile change",
+    "storage_implementation_changed": false,
+    "storage_validation": "Existing ACL-shared implementation from fee94f0 verified without weakening ownership/mode checks"
+  },
+  "environment": {
+    "image_id": "sha256:3e1c98126c919e08f2a14906645d63c849612d776f6425c46938c7c9602c5b6c",
+    "container_id": "b2f7536804e862ff9663b37fae94e35b8ea9b02ebcf037ce8ec48b8ac010c2c6",
+    "distribution": "Ubuntu 24.04",
+    "platform": "Linux-6.10.14-linuxkit-aarch64-with-glibc2.39",
+    "architecture": "aarch64",
+    "python": "3.12.3",
+    "mcp": "1.30.0",
+    "uid": 10001,
+    "gid": 10001,
+    "secondary_uid_for_synthetic_read_probe": 10002,
+    "network": "none",
+    "mounts": [],
+    "published_ports": [],
+    "privileged": false,
+    "capabilities_dropped": [
+      "ALL"
+    ],
+    "security_options": [
+      "no-new-privileges"
+    ],
+    "init": true,
+    "memory_bytes": 2684354560,
+    "cpu_limit": 2.0,
+    "pids_limit": 256,
+    "dependency_setup": "Existing image runtime reused. packaging 26.3 public pure-Python module copied from existing development installation into isolated test-only PYTHONPATH; no package download or image rebuild.",
+    "dependency_scope_limit": "Current locked agent dependencies were not freshly installed on Linux; Python 3.14/3.15 Linux and Linux npm roundtrip not revalidated in this image."
+  },
+  "definitions": {
+    "source": "Only main.cvd, daily.cld and bytecode.cvd copied from existing normal ClamAV database, without mounting its folder or running freshclam",
+    "files": [
+      {
+        "name": "bytecode.cvd",
+        "bytes": 281702,
+        "sha256": "6d4aa01f219e988060fc419f495d07f27e0cdf1a2cccc065971da922c76f7ffb"
+      },
+      {
+        "name": "daily.cld",
+        "bytes": 86446080,
+        "sha256": "c6f090fa3e0f065b31a4a03c2f024b5a5a8ba3844f11ad0406e0f23b01caef54"
+      },
+      {
+        "name": "main.cvd",
+        "bytes": 89072577,
+        "sha256": "0b2182d229f46981ec8f535382222f7c9dfdd656b250ad47988b910a8d302365"
+      }
+    ],
+    "checks": "Copied SHA256 values match source files; production definition manifest stayed identical throughout the native cases; real ClamAV accepted the database",
+    "stamp": {
+      "engine": "1.5.4",
+      "version": 28170,
+      "built_at": "2026-10-31T06:24:42+00:00",
+      "freshness": "fresh"
+    },
+    "cld_limit": "Locally assembled daily.cld was reused from the existing normal installation; no separate publisher-signature validation for the CLD was established in this task."
+  },
+  "native_fixture": {
+    "files": 130,
+    "content": "129 small synthetic text files plus one standard EICAR marker",
+    "personal_inputs": false,
+    "cloud_placeholders": false,
+    "grouping_plan": [
+      64,
+      64,
+      2
+    ],
+    "modified_before_cancel": 128,
+    "cancel_trigger": "One second into the second real grouped scan, after the first 64 changed targets committed",
+    "no_output_or_profile_mocks": "Production profile gate and engine results were not replaced. A measurement wrapper called the real bounded runner and set its real cancellation Event."
+  },
+  "native_cases": {
+    "initial": {
+      "status": "completed",
+      "counts": {
+        "scanned": 130,
+        "infected": 1,
+        "errors": 0
+      },
+      "batch": {
+        "finished": 130,
+        "pending": 0,
+        "reused": 0,
+        "grouping": {
+          "schema": 1,
+          "mode": "enabled",
+          "engine_starts": 3,
+          "committed_jobs": 3,
+          "fallback_targets": 0,
+          "active_targets": 0
+        }
+      },
+      "coverage_reasons": {},
+      "unresolved": 0,
+      "findings": [
+        {
+          "kind": "malware",
+          "signature": "Eicar-Test-Signature",
+          "retained": false
+        }
+      ]
+    },
+    "unchanged_resume": {
+      "status": "completed",
+      "counts": {
+        "scanned": 130,
+        "infected": 1,
+        "errors": 0
+      },
+      "batch": {
+        "finished": 130,
+        "pending": 0,
+        "reused": 130,
+        "grouping": {
+          "schema": 1,
+          "mode": "enabled",
+          "engine_starts": 0,
+          "committed_jobs": 0,
+          "fallback_targets": 0,
+          "active_targets": 0
+        }
+      },
+      "coverage_reasons": {},
+      "unresolved": 0,
+      "findings": [
+        {
+          "kind": "malware",
+          "signature": "Eicar-Test-Signature",
+          "retained": true
+        }
+      ]
+    },
+    "cancel": {
+      "status": "partial",
+      "counts": {
+        "scanned": null,
+        "infected": null,
+        "errors": null
+      },
+      "batch": {
+        "finished": 64,
+        "pending": 66,
+        "reused": 0,
+        "grouping": {
+          "schema": 1,
+          "mode": "enabled",
+          "engine_starts": 2,
+          "committed_jobs": 1,
+          "fallback_targets": 0,
+          "active_targets": 0
+        }
+      },
+      "coverage_reasons": {
+        "group_result_unconfirmed": 64,
+        "not_reached": 2
+      },
+      "unresolved": 66,
+      "findings": [
+        {
+          "kind": "malware",
+          "signature": "Eicar-Test-Signature",
+          "retained": true
+        }
+      ],
+      "saved": true,
+      "children_reaped_and_lock_released": true
+    },
+    "resume_after_cancel": {
+      "status": "completed",
+      "counts": {
+        "scanned": 130,
+        "infected": 1,
+        "errors": 0
+      },
+      "batch": {
+        "finished": 130,
+        "pending": 0,
+        "reused": 66,
+        "grouping": {
+          "schema": 1,
+          "mode": "enabled",
+          "engine_starts": 1,
+          "committed_jobs": 1,
+          "fallback_targets": 0,
+          "active_targets": 0
+        }
+      },
+      "coverage_reasons": {},
+      "unresolved": 0,
+      "findings": [
+        {
+          "kind": "malware",
+          "signature": "Eicar-Test-Signature",
+          "retained": true
+        }
+      ]
+    },
+    "mcp_changed_resume": {
+      "status": "completed",
+      "counts": {
+        "scanned": 130,
+        "infected": 1,
+        "errors": 0
+      },
+      "batch": {
+        "finished": 130,
+        "pending": 0,
+        "reused": 128,
+        "grouping": {
+          "schema": 1,
+          "mode": "enabled",
+          "engine_starts": 1,
+          "committed_jobs": 1,
+          "fallback_targets": 0,
+          "active_targets": 0
+        }
+      },
+      "coverage_reasons": {},
+      "unresolved": 0,
+      "findings": [
+        {
+          "kind": "malware",
+          "signature": "Eicar-Test-Signature",
+          "retained": true
+        }
+      ]
+    },
+    "mcp_unchanged_resume": {
+      "status": "completed",
+      "counts": {
+        "scanned": 130,
+        "infected": 1,
+        "errors": 0
+      },
+      "batch": {
+        "finished": 130,
+        "pending": 0,
+        "reused": 130,
+        "grouping": {
+          "schema": 1,
+          "mode": "enabled",
+          "engine_starts": 0,
+          "committed_jobs": 0,
+          "fallback_targets": 0,
+          "active_targets": 0
+        }
+      },
+      "coverage_reasons": {},
+      "unresolved": 0,
+      "findings": [
+        {
+          "kind": "malware",
+          "signature": "Eicar-Test-Signature",
+          "retained": true
+        }
+      ]
+    }
+  },
+  "mcp_progress": {
+    "messages": 8,
+    "group_counter_seen": true
+  },
+  "native_assertions": {
+    "all_passed": true,
+    "same_definition_manifest": true,
+    "known_engine_children_remaining": 0,
+    "checkpoint_lock_reacquired_after_cancel_and_resume": true,
+    "no_double_count": "All completed final snapshots remain scanned=130 / infected=1 / errors=0; prior snapshots are not summed",
+    "eicar_explanation": "Exactly one deliberately generated test marker; not a detection in personal files",
+    "mcp_transport": "Actual v1 SDK in-memory client/server session; no external AI service and no network listener"
+  },
+  "storage": {
+    "history_entries": 6,
+    "detail_readback": true,
+    "rotation": true,
+    "dashboard_saved": true,
+    "release_cache_read_replace": true,
+    "checkpoint_list_and_validation": true,
+    "file_mode": "0600",
+    "directory_mode": "0700",
+    "default_posix_acl_inherited_and_masked": true,
+    "write_correction_updates_acl_mask_to_none": true,
+    "shared_process_store_default_acl_works": true,
+    "default_acl_checkpoint_save_list": true,
+    "unsafe_checkpoint_directory_rejected": true,
+    "restored_mode": "0700",
+    "posix_acl": "Real libacl default ACL with synthetic named UID 10002 was inherited; new private files and directories retained mask::--- with 0600/0700. Existing 0640 file was corrected to 0600 and masked permissions.",
+    "foreign_uid_probe": {
+      "foreign_uid": 10002,
+      "synthetic_private_history_read_denied": true
+    },
+    "probe_parent_mode": "0711 intentionally permits traversal by the second UID; private file denial is not merely caused by an inaccessible ancestor",
+    "macos_api_on_linux": "Darwin ACL API path remains inactive; Linux uses existing mode/owner policy and POSIX ACL masks",
+    "summary_detail_cache_dashboard_checkpoint": "Actual local filesystem read/write/replace/rotation and checkpoint inventory/validation all passed"
+  },
+  "verification": {
+    "linux_full_suite": {
+      "python": "3.12.3",
+      "total": 691,
+      "passed": 657,
+      "skipped": 34,
+      "failed": 0,
+      "errors": 0,
+      "seconds": 60.818,
+      "skipped_cases": [
+        [
+          "test_checkpoint_folder_is_recognised_in_any_letter_case",
+          "this file system distinguishes letter case"
+        ],
+        [
+          "test_acl_query_failure_is_not_treated_as_private",
+          "Native macOS extended ACLs"
+        ],
+        [
+          "test_allow_file_is_not_read_and_read_does_not_change_mode",
+          "Native macOS extended ACLs"
+        ],
+        [
+          "test_allow_on_0600_current_and_rotated_files_is_refused_before_rotation",
+          "Native macOS extended ACLs"
+        ],
+        [
+          "test_atomic_dashboard_and_cache_writes_refuse_inheritable_allow",
+          "Native macOS extended ACLs"
+        ],
+        [
+          "test_bytes_path_opener_preserves_safe_reads_and_rejects_allow_acl",
+          "Native macOS extended ACLs"
+        ],
+        [
+          "test_checkpoint_allow_file_is_unavailable_and_cannot_be_deleted",
+          "Native macOS extended ACLs"
+        ],
+        [
+          "test_checkpoint_folder_allow_prevents_creation_and_listing",
+          "Native macOS extended ACLs"
+        ],
+        [
+          "test_deny_only_inheritance_preserves_history_details_and_checkpoints",
+          "Native macOS extended ACLs"
+        ],
+        [
+          "test_existing_allow_atomic_target_is_preserved_instead_of_silently_repaired",
+          "Native macOS extended ACLs"
+        ],
+        [
+          "test_explicit_detail_file_and_folder_allow_are_unreadable",
+          "Native macOS extended ACLs"
+        ],
+        [
+          "test_history_failure_warns_without_changing_scan_result_or_acl",
+          "Native macOS extended ACLs"
+        ],
+        [
+          "test_inherited_allow_refuses_history_and_detail_payload_without_acl_repair",
+          "Native macOS extended ACLs"
+        ],
+        [
+          "test_lock_allow_is_refused_but_safe_read_fallback_still_works",
+          "Native macOS extended ACLs"
+        ],
+        [
+          "test_owner_only_write_and_search_permissions_keep_working",
+          "Native macOS extended ACLs"
+        ],
+        [
+          "test_unsafe_old_detail_is_not_deleted_or_replaced_by_retention",
+          "Native macOS extended ACLs"
+        ],
+        [
+          "test_windows_native_receiver_on_loopback",
+          "native Windows Winsock"
+        ],
+        [
+          "test_macos_acl_entries_that_allow_access_are_refused",
+          "macOS ACL entries apply regardless of the file mode"
+        ],
+        [
+          "test_best_fit_quote_in_target_name_never_reaches_engine",
+          "Best-fit command line conversion happens only on Windows"
+        ],
+        [
+          "test_legacy_profile_junction_does_not_block_scan",
+          "Legacy profile junctions exist only on Windows"
+        ],
+        [
+          "test_real_windows_junction_is_not_followed",
+          "Real junctions exist only on Windows"
+        ],
+        [
+          "test_native_cache_matching_projects_anonymous_result_without_lock_creation",
+          "Native Windows filesystem/APIs required"
+        ],
+        [
+          "test_native_cross_process_writer_lock_and_recovery",
+          "Native Windows filesystem/APIs required"
+        ],
+        [
+          "test_native_existing_inherited_dacl_and_hardlinks_fail_closed",
+          "Native Windows filesystem/APIs required"
+        ],
+        [
+          "test_native_failed_publish_cleans_temp_and_keeps_current",
+          "Native Windows filesystem/APIs required"
+        ],
+        [
+          "test_native_missing_reader_creates_no_artifacts_and_pinned_parent_cannot_move",
+          "Native Windows filesystem/APIs required"
+        ],
+        [
+          "test_native_pinned_ancestors_still_accept_other_programs_saves",
+          "Native Windows filesystem/APIs required"
+        ],
+        [
+          "test_native_protected_but_everyone_accessible_cache_is_refused",
+          "Native Windows filesystem/APIs required"
+        ],
+        [
+          "test_native_store_publishes_into_pinned_folder_not_current_folder",
+          "Native Windows filesystem/APIs required"
+        ],
+        [
+          "test_native_update_read_private_acl_and_failed_generation_preservation",
+          "Native Windows filesystem/APIs required"
+        ],
+        [
+          "test_native_update_replaces_current_while_another_process_reads_it",
+          "Native Windows filesystem/APIs required"
+        ],
+        [
+          "test_real_foreign_owner_is_refused",
+          "Windows security APIs"
+        ],
+        [
+          "test_real_hard_link_is_refused",
+          "Windows security APIs"
+        ],
+        [
+          "test_real_user_or_elevated_default_owner_is_accepted",
+          "Windows security APIs"
+        ]
+      ]
+    },
+    "mac_full_suites": [
+      {
+        "python": "3.14.10",
+        "total": 691,
+        "passed": 674,
+        "skipped": 17,
+        "failed": 0,
+        "errors": 0,
+        "seconds": 73.642,
+        "skipped_cases": [
+          [
+            "test_windows_native_receiver_on_loopback",
+            "native Windows Winsock"
+          ],
+          [
+            "test_best_fit_quote_in_target_name_never_reaches_engine",
+            "Best-fit command line conversion happens only on Windows"
+          ],
+          [
+            "test_legacy_profile_junction_does_not_block_scan",
+            "Legacy profile junctions exist only on Windows"
+          ],
+          [
+            "test_real_windows_junction_is_not_followed",
+            "Real junctions exist only on Windows"
+          ],
+          [
+            "test_native_cache_matching_projects_anonymous_result_without_lock_creation",
+            "Native Windows filesystem/APIs required"
+          ],
+          [
+            "test_native_cross_process_writer_lock_and_recovery",
+            "Native Windows filesystem/APIs required"
+          ],
+          [
+            "test_native_existing_inherited_dacl_and_hardlinks_fail_closed",
+            "Native Windows filesystem/APIs required"
+          ],
+          [
+            "test_native_failed_publish_cleans_temp_and_keeps_current",
+            "Native Windows filesystem/APIs required"
+          ],
+          [
+            "test_native_missing_reader_creates_no_artifacts_and_pinned_parent_cannot_move",
+            "Native Windows filesystem/APIs required"
+          ],
+          [
+            "test_native_pinned_ancestors_still_accept_other_programs_saves",
+            "Native Windows filesystem/APIs required"
+          ],
+          [
+            "test_native_protected_but_everyone_accessible_cache_is_refused",
+            "Native Windows filesystem/APIs required"
+          ],
+          [
+            "test_native_store_publishes_into_pinned_folder_not_current_folder",
+            "Native Windows filesystem/APIs required"
+          ],
+          [
+            "test_native_update_read_private_acl_and_failed_generation_preservation",
+            "Native Windows filesystem/APIs required"
+          ],
+          [
+            "test_native_update_replaces_current_while_another_process_reads_it",
+            "Native Windows filesystem/APIs required"
+          ],
+          [
+            "test_real_foreign_owner_is_refused",
+            "Windows security APIs"
+          ],
+          [
+            "test_real_hard_link_is_refused",
+            "Windows security APIs"
+          ],
+          [
+            "test_real_user_or_elevated_default_owner_is_accepted",
+            "Windows security APIs"
+          ]
+        ]
+      },
+      {
+        "python": "3.15.2",
+        "total": 691,
+        "passed": 674,
+        "skipped": 17,
+        "failed": 0,
+        "errors": 0,
+        "seconds": 72.978,
+        "skipped_cases": [
+          [
+            "test_windows_native_receiver_on_loopback",
+            "native Windows Winsock"
+          ],
+          [
+            "test_best_fit_quote_in_target_name_never_reaches_engine",
+            "Best-fit command line conversion happens only on Windows"
+          ],
+          [
+            "test_legacy_profile_junction_does_not_block_scan",
+            "Legacy profile junctions exist only on Windows"
+          ],
+          [
+            "test_real_windows_junction_is_not_followed",
+            "Real junctions exist only on Windows"
+          ],
+          [
+            "test_native_cache_matching_projects_anonymous_result_without_lock_creation",
+            "Native Windows filesystem/APIs required"
+          ],
+          [
+            "test_native_cross_process_writer_lock_and_recovery",
+            "Native Windows filesystem/APIs required"
+          ],
+          [
+            "test_native_existing_inherited_dacl_and_hardlinks_fail_closed",
+            "Native Windows filesystem/APIs required"
+          ],
+          [
+            "test_native_failed_publish_cleans_temp_and_keeps_current",
+            "Native Windows filesystem/APIs required"
+          ],
+          [
+            "test_native_missing_reader_creates_no_artifacts_and_pinned_parent_cannot_move",
+            "Native Windows filesystem/APIs required"
+          ],
+          [
+            "test_native_pinned_ancestors_still_accept_other_programs_saves",
+            "Native Windows filesystem/APIs required"
+          ],
+          [
+            "test_native_protected_but_everyone_accessible_cache_is_refused",
+            "Native Windows filesystem/APIs required"
+          ],
+          [
+            "test_native_store_publishes_into_pinned_folder_not_current_folder",
+            "Native Windows filesystem/APIs required"
+          ],
+          [
+            "test_native_update_read_private_acl_and_failed_generation_preservation",
+            "Native Windows filesystem/APIs required"
+          ],
+          [
+            "test_native_update_replaces_current_while_another_process_reads_it",
+            "Native Windows filesystem/APIs required"
+          ],
+          [
+            "test_real_foreign_owner_is_refused",
+            "Windows security APIs"
+          ],
+          [
+            "test_real_hard_link_is_refused",
+            "Windows security APIs"
+          ],
+          [
+            "test_real_user_or_elevated_default_owner_is_accepted",
+            "Windows security APIs"
+          ]
+        ]
+      }
+    ],
+    "commands": [
+      "Docker exec /opt/venv/bin/python -m unittest discover -s tests -v with current copied source and test-only packaging on PYTHONPATH",
+      "Mac .venv/bin/python and .venv-dev/bin/python -m unittest discover -s tests -v",
+      "npm test with PC_SCANNER_NPM_E2E=1 and explicit CPython 3.14"
+    ],
+    "android_and_mcp_included": true,
+    "npm_on_mac": {
+      "total": 26,
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0
+    },
+    "native_engine_calls": [
+      {
+        "phase": "initial",
+        "kind": "version",
+        "seconds": 0.007586,
+        "code": 0,
+        "stop": null,
+        "members": null
+      },
+      {
+        "phase": "initial",
+        "kind": "version",
+        "seconds": 0.005504,
+        "code": 0,
+        "stop": null,
+        "members": null
+      },
+      {
+        "phase": "initial",
+        "kind": "version",
+        "seconds": 0.006163,
+        "code": 0,
+        "stop": null,
+        "members": null
+      },
+      {
+        "phase": "initial",
+        "kind": "scan",
+        "seconds": 9.903971,
+        "code": 0,
+        "stop": null,
+        "members": 64
+      },
+      {
+        "phase": "initial",
+        "kind": "version",
+        "seconds": 0.002587,
+        "code": 0,
+        "stop": null,
+        "members": null
+      },
+      {
+        "phase": "initial",
+        "kind": "version",
+        "seconds": 0.00515,
+        "code": 0,
+        "stop": null,
+        "members": null
+      },
+      {
+        "phase": "initial",
+        "kind": "scan",
+        "seconds": 8.711808,
+        "code": 0,
+        "stop": null,
+        "members": 64
+      },
+      {
+        "phase": "initial",
+        "kind": "version",
+        "seconds": 0.006717,
+        "code": 0,
+        "stop": null,
+        "members": null
+      },
+      {
+        "phase": "initial",
+        "kind": "version",
+        "seconds": 0.005246,
+        "code": 0,
+        "stop": null,
+        "members": null
+      },
+      {
+        "phase": "initial",
+        "kind": "scan",
+        "seconds": 7.644008,
+        "code": 1,
+        "stop": null,
+        "members": 2
+      },
+      {
+        "phase": "initial",
+        "kind": "version",
+        "seconds": 0.006799,
+        "code": 0,
+        "stop": null,
+        "members": null
+      },
+      {
+        "phase": "unchanged_resume",
+        "kind": "version",
+        "seconds": 0.01098,
+        "code": 0,
+        "stop": null,
+        "members": null
+      },
+      {
+        "phase": "unchanged_resume",
+        "kind": "version",
+        "seconds": 0.00581,
+        "code": 0,
+        "stop": null,
+        "members": null
+      },
+      {
+        "phase": "cancel",
+        "kind": "version",
+        "seconds": 0.005773,
+        "code": 0,
+        "stop": null,
+        "members": null
+      },
+      {
+        "phase": "cancel",
+        "kind": "version",
+        "seconds": 0.003324,
+        "code": 0,
+        "stop": null,
+        "members": null
+      },
+      {
+        "phase": "cancel",
+        "kind": "version",
+        "seconds": 0.006041,
+        "code": 0,
+        "stop": null,
+        "members": null
+      },
+      {
+        "phase": "cancel",
+        "kind": "scan",
+        "seconds": 8.999757,
+        "code": 0,
+        "stop": null,
+        "members": 64
+      },
+      {
+        "phase": "cancel",
+        "kind": "version",
+        "seconds": 0.004941,
+        "code": 0,
+        "stop": null,
+        "members": null
+      },
+      {
+        "phase": "cancel",
+        "kind": "version",
+        "seconds": 0.002721,
+        "code": 0,
+        "stop": null,
+        "members": null
+      },
+      {
+        "phase": "cancel",
+        "kind": "scan",
+        "seconds": 1.045982,
+        "code": -9,
+        "stop": "cancelled",
+        "members": 64
+      },
+      {
+        "phase": "resume_after_cancel",
+        "kind": "version",
+        "seconds": 0.002582,
+        "code": 0,
+        "stop": null,
+        "members": null
+      },
+      {
+        "phase": "resume_after_cancel",
+        "kind": "version",
+        "seconds": 0.002704,
+        "code": 0,
+        "stop": null,
+        "members": null
+      },
+      {
+        "phase": "resume_after_cancel",
+        "kind": "version",
+        "seconds": 0.005179,
+        "code": 0,
+        "stop": null,
+        "members": null
+      },
+      {
+        "phase": "resume_after_cancel",
+        "kind": "scan",
+        "seconds": 8.86092,
+        "code": 0,
+        "stop": null,
+        "members": 64
+      },
+      {
+        "phase": "resume_after_cancel",
+        "kind": "version",
+        "seconds": 0.003378,
+        "code": 0,
+        "stop": null,
+        "members": null
+      },
+      {
+        "phase": "mcp_changed_resume",
+        "kind": "version",
+        "seconds": 0.002707,
+        "code": 0,
+        "stop": null,
+        "members": null
+      },
+      {
+        "phase": "mcp_changed_resume",
+        "kind": "version",
+        "seconds": 0.005367,
+        "code": 0,
+        "stop": null,
+        "members": null
+      },
+      {
+        "phase": "mcp_changed_resume",
+        "kind": "version",
+        "seconds": 0.00277,
+        "code": 0,
+        "stop": null,
+        "members": null
+      },
+      {
+        "phase": "mcp_changed_resume",
+        "kind": "scan",
+        "seconds": 7.951095,
+        "code": 0,
+        "stop": null,
+        "members": 2
+      },
+      {
+        "phase": "mcp_changed_resume",
+        "kind": "version",
+        "seconds": 0.003024,
+        "code": 0,
+        "stop": null,
+        "members": null
+      },
+      {
+        "phase": "mcp_unchanged_resume",
+        "kind": "version",
+        "seconds": 0.006439,
+        "code": 0,
+        "stop": null,
+        "members": null
+      },
+      {
+        "phase": "mcp_unchanged_resume",
+        "kind": "version",
+        "seconds": 0.006144,
+        "code": 0,
+        "stop": null,
+        "members": null
+      }
+    ]
+  },
+  "setup_failures_and_resolution": [
+    "The initial in-memory MCP fixture omitted the via=mcp attribute normally set by serve(); fixed in the test harness, not the product.",
+    "The test harness initially misread dashboard.build second return value as entry count; it is skipped-line count. Corrected assertion to zero.",
+    "The old image lacked packaging.licenses, including its older pip-vendored copy. Added existing public packaging 26.3 only for tests.",
+    "Without Docker --init, three descendant-liveness tests failed under sleep as PID1. Recreated the same isolated environment with standard init; all pass. Consistent with unreaped orphan state; prior /proc zombie-state evidence was not retained."
+  ],
+  "provenance": {
+    "copied_python_sha256": {
+      "pc_scanner/router.py": "0ac29db236b592f00cf0a77bd8d1af45de20afd8cab4d7981f3cddbcc8252500",
+      "pc_scanner/malware_group.py": "642137c12cad0cab3b9f3382f7fd4e5ea63effac1b156fcb01afd5a576d52c5f",
+      "pc_scanner/progress.py": "7f02ab2e76bd7e29f1e90cb04f9eb43f962b3b9636b692930dd06d7b99c95cc4",
+      "pc_scanner/freshness.py": "38c7fb6d0ca199aab9fea75f2b4975eb91785c5980f5fa40a4d6c80922b057f2",
+      "pc_scanner/server.py": "2c2c5b06099fa6fc6a2c9f4807f6b3fd51c0482f47e392c27585031f5efc1c87",
+      "pc_scanner/windows_owner.py": "32956f22ffbfc70ad0bb6c16a4856da11060990a4a205a3a98d0a1635334fa41",
+      "pc_scanner/history.py": "c34e2f07fea151034afe5022b570b8dd293765dd964f64b50fc527527b949cb7",
+      "pc_scanner/ip_threats.py": "10d1ece8a94f0a1ef55156bbfb6e39b1a958e0b825dc78bc3f6868967fea0ffe",
+      "pc_scanner/lan_mdns.py": "d7a18530ebe2ef900016b282cdfab1a6ff1f8ccdfc4b5f0b27959b953b1256f3",
+      "pc_scanner/dashboard.py": "debae99ce4bdc592d443617276c1ed6359cdba509831646237652b3f4ca35c88",
+      "pc_scanner/android.py": "a8527c3bd5d428127a78a81032327b2fdfffb79ff268f34f1b9ba35e6d7493d9",
+      "pc_scanner/__init__.py": "7ddeb4408c11afb816a7e1d52e1edab8c219b40b8690fae6fd97f42f5ed91bb0",
+      "pc_scanner/lan_os.py": "82a2f1203368235c04c759783158208229e6bb4248b3b2670a106b97fdf1dddf",
+      "pc_scanner/process_review.py": "21b02bbb8ae6bfe99d9fff025171838a8d57f573e3efce9dfdfd41b90d64d85b",
+      "pc_scanner/lan_windows.py": "daba031e8d2a4a220c46f9b115c0534c08bd5e2e453f6ca68d63b6e2521b38a0",
+      "pc_scanner/malware_batch.py": "27e1cfc85cf239e5ac80e5bbca61e361a4fd0f4b5935e2110e24e4fa2ab25331",
+      "pc_scanner/windows_ip_cache.py": "15f387e06da9c8f5c9445a7374947964cd11367b42ba8a7962d556233ed74a3f",
+      "pc_scanner/process_store.py": "1f2eac0d4cc8baae6c407edb9b85bb229bb6e4a2aacbd4c12618596f36147e95",
+      "pc_scanner/cli.py": "43872bc9c76ec07bfa787e72eed98c7f285011cc022c8a516bd5128489d780f7",
+      "pc_scanner/updates.py": "ca9832d6d4cfd3cbe0861f61dc71db38aa9048c691ed8b93f9468338db989864",
+      "pc_scanner/lan.py": "e03a924005d4ca03c9da29415ee80113e07cd49ce7afdd12f5fbb782289cc247",
+      "pc_scanner/coverage.py": "c829b44c5972f4c8c8b89d175f3a2cd9ba32f470cf9bec5b4a4c40669242f732",
+      "pc_scanner/checkpoints.py": "a3f3d84c9e43cd00028d6827707a72bf6f6601a76c07e9a7612dd3157d7bd839",
+      "pc_scanner/posix_acl.py": "39354284dee6cf99a9775ca43df8c89e31a19ccf843113c0223acd15cd97f9ab",
+      "pc_scanner/connections.py": "1624995d72d90e11ec04fed7e57f2601f5d14bcb933c0e2a1f56d2b8571f5870",
+      "pc_scanner/core.py": "4b517af60ef74d10e1d9844eb4e2c58ea78ead6cf27bb85d843a5b5c68e3ceae"
+    },
+    "public_test_library_only_from_existing_installation": true,
+    "whole_host_environment_or_personal_configuration_copied": false
+  },
+  "cleanup": {
+    "dedicated_containers_removed": true,
+    "synthetic_inputs_and_eicar_removed_with_containers": true,
+    "synthetic_acl_probe_removed": true,
+    "original_base_image_retained": true,
+    "sanitized_results_and_synthetic_raw_reports_retained_locally": true
+  },
+  "remaining": [
+    "Windows and other Linux CPU/distribution/physical-host grouped-engine acceptance",
+    "Linux npm and newer Python runtime acceptance beyond this existing image",
+    "Actual iCloud/OneDrive placeholder reacceptance; OneDrive postponement unchanged",
+    "Native Docker browser rendering not exercised here; static HTML saved and tested",
+    "Default-enable decision unchanged"
+  ],
+  "privacy": {
+    "personal_folders_mounted": false,
+    "personal_inputs_used": false,
+    "host_docker_socket_mounted": false,
+    "real_process_connections_or_credentials_collected": false,
+    "existing_personal_history_checkpoint_or_acl_changed": false,
+    "host_engine_or_definitions_updated": false
+  },
+  "commit_performed": false,
+  "push_performed": false
+}

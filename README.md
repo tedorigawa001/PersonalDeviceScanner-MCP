@@ -833,9 +833,10 @@ pc-scanner --config scanner.toml malware home --resume
 The owner may set `local.batch_group_small_files=true` and an absolute, non-link
 `local.clamav_database_directory`. The directory is shared by signature checks, ordinary scans and
 batch scans; choose the same official database directory your updater maintains. No updater is run.
-Currently the accepted grouping profile is **macOS ClamAV 1.5.4** with official daily/main/bytecode
+Accepted grouping profiles are **macOS ClamAV 1.5.4** and **Linux aarch64 ClamAV 1.5.4**
+(Ubuntu 24.04 arm64 Docker acceptance), with official daily/main/bytecode
 `.cvd`/`.cld` files. Missing/unknown database identity, stale definitions, other versions, custom databases,
-Linux and Windows use individual targets. Grouping is off by default.
+other Linux CPUs and Windows use individual targets. Grouping is off by default.
 
 At most 64 nonempty local regular files (1 MiB each, 32 MiB combined, 8 KiB command budget) from the
 same parent and selected scope share one nonrecursive engine call. Directories, unsupported names and

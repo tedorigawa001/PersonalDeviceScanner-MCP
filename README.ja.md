@@ -807,8 +807,9 @@ pc-scanner --config scanner.toml malware home --resume
 所有者設定の `local.batch_group_small_files=true` と、リンクを通らない絶対パスの
 `local.clamav_database_directory` で有効にします。定義保存先は定義確認・通常検査・分割検査で共用します。
 既存の更新処理が管理する公式定義の保存先を指定してください。定義の更新処理は実行しません。
-現時点の対応は **macOSのClamAV 1.5.4** と公式daily/main/bytecodeの `.cvd`／`.cld` です。
-保存先未指定・同一性不明・定義が古い場合や、別版・独自定義・Linux・Windowsは単独方式へ戻ります。既定は無効です。
+現時点の対応は **macOSとLinux aarch64のClamAV 1.5.4**、公式daily/main/bytecodeの `.cvd`／`.cld` です。
+LinuxはUbuntu 24.04／arm64のDockerで受入済みです。
+保存先未指定・同一性不明・定義が古い場合や、別版・独自定義・Linuxの他CPU・Windowsは単独方式へ戻ります。既定は無効です。
 
 同一親・同一許可範囲の取得済み通常ファイルを最大64件、1件1 MiB・合計32 MiB・コマンド8 KiB以内で
 1回の非再帰検査にまとめます。ディレクトリや対応不能な名前は既存方式を使います。
