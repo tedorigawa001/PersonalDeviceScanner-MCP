@@ -443,8 +443,9 @@ retained; use selected cleanup before reaching this limit. No automatic deletion
 Deletion may be partial after an I/O failure; list again to inspect the remainder. Invalid permissions, unknown
 files or ambiguous provider state require owner investigation; never clear wait files to force a retry.
 These maintenance commands are local CLI only, without administrator credentials or MCP dispatch.
-Windows support, native recovery/cleanup acceptance and MCP writes remain pending. See the
-[operational design](docs/clamav-signature-update-design.md).
+macOS CLI recovery/cleanup and storage-failure recovery passed native acceptance with test wait deadlines.
+Recovery after a real freshclam failure, Linux/Windows acceptance, Windows support and MCP writes remain pending.
+See the [operational design](docs/clamav-signature-update-design.md).
 
 ### Checking for engine updates
 
