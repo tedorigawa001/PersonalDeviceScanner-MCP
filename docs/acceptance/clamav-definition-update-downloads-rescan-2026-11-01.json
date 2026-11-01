@@ -1,0 +1,195 @@
+{
+  "date": "2026-11-01",
+  "status": "partial_owner_requested_stop_checkpoint_saved",
+  "recording_commit": "bfdce88a7861f3ef865848a25b5f5058e36fc0e7",
+  "scope": "Owner-authorized Downloads folder only; no home-wide or network scan",
+  "definition_update": {
+    "procedure": "Owner ran official freshclam with the existing configuration and normal database after administrator authentication; assistant did not handle password or change database ownership/permissions",
+    "update_execution_evidence": "Owner reported completion; freshclam update log not independently retained",
+    "before": {
+      "status": "partial",
+      "engine": "1.5.4",
+      "version": 28157,
+      "built_at": "2026-10-18T06:24:14+00:00",
+      "age_days": 13.6,
+      "max_age_days": 7,
+      "freshness": "stale"
+    },
+    "after": {
+      "status": "completed",
+      "engine": "1.5.4",
+      "version": 28170,
+      "built_at": "2026-10-31T06:24:42+00:00",
+      "age_days": 0.8,
+      "max_age_days": 7,
+      "freshness": "fresh"
+    },
+    "independent_check": "Normal clamscan --version and scanner check-clamav-signatures both reported engine1.5.4/database28170; freshness check exited0/completed",
+    "built_at_timezone": "UTC; 2026-10-31T06:24:42+00:00 is 2026-10-31 15:24:42 JST",
+    "mcp_update_feature_implemented": false
+  },
+  "initial_old_definition_scan": {
+    "status": "partial_timeout",
+    "budget_seconds": 600,
+    "scanned": 861,
+    "infected": 0,
+    "finished_parts": 38,
+    "unresolved_scopes": 144,
+    "included_in_updated_definition_totals": false
+  },
+  "updated_definition_rescan": {
+    "method": "Real local ClamAV, resumable batch CLI; each execution limited to3600s, no target deletion/quarantine",
+    "attempts": [
+      {
+        "attempt": 1,
+        "budget_seconds": 3600,
+        "elapsed_seconds": 3600.3,
+        "status": "partial",
+        "exit_code": 2,
+        "stage": "timed_out",
+        "engine_counts": {
+          "scanned": 24429,
+          "infected": 0,
+          "errors": 0
+        },
+        "parts": {
+          "finished": 533,
+          "pending": 83,
+          "reused": 0
+        },
+        "checkpoint": "saved"
+      },
+      {
+        "attempt": 2,
+        "budget_seconds": 3600,
+        "elapsed_seconds": 3601.1,
+        "status": "partial",
+        "exit_code": 2,
+        "stage": "timed_out",
+        "engine_counts": {
+          "scanned": 34490,
+          "infected": 0,
+          "errors": 1
+        },
+        "parts": {
+          "finished": 1013,
+          "pending": 52,
+          "reused": 533
+        },
+        "checkpoint": "saved"
+      },
+      {
+        "attempt": 3,
+        "budget_seconds": 3600,
+        "elapsed_seconds": 3600.3,
+        "status": "partial",
+        "exit_code": 2,
+        "stage": "timed_out",
+        "engine_counts": {
+          "scanned": 44513,
+          "infected": 0,
+          "errors": 1
+        },
+        "parts": {
+          "finished": 1401,
+          "pending": 169,
+          "reused": 1008
+        },
+        "checkpoint": "saved"
+      },
+      {
+        "attempt": 4,
+        "budget_seconds": 3600,
+        "elapsed_seconds": 1247.6,
+        "status": "partial",
+        "exit_code": 2,
+        "stage": "cancelled",
+        "engine_counts": {
+          "scanned": 47258,
+          "infected": 0,
+          "errors": 1
+        },
+        "parts": {
+          "finished": 1578,
+          "pending": 59,
+          "reused": 1365
+        },
+        "checkpoint": "saved"
+      }
+    ],
+    "execution_seconds_total": 12049.3,
+    "counts_note": "Each attempt includes retained/reused results. Final totals below are the last report, not a sum of attempt file counts. Times sum execution durations, not a pinned wall-clock or code revision.",
+    "final": {
+      "signature_version": 28170,
+      "signature_freshness": "fresh",
+      "engine_counts": {
+        "scanned": 47258,
+        "infected": 0,
+        "errors": 1
+      },
+      "malware_findings": 0,
+      "scan_limit_findings": 1,
+      "finished_parts": 1578,
+      "unresolved_scopes": 62
+    },
+    "final_status": "partial, cancelled by explicit owner request after scale clarification",
+    "coverage": {
+      "unit": "target_scopes",
+      "unresolved_scope_count": 62,
+      "unresolved_file_count": null,
+      "reasons": {
+        "cancelled": 1,
+        "directory_depth_limit": 3,
+        "engine_error": 1,
+        "file_size_limit": 1,
+        "not_reached": 57
+      },
+      "reason_counts_overlap": true,
+      "overlap_explanation": "One scope has both engine_error and file_size_limit; 57 not_reached +1 cancelled +3 depth-limit +1 size/error scope =62 unique scopes",
+      "size_limit_finding": "Heuristics.Limits.Exceeded.MaxFileSize; kind scan_limit, not malware",
+      "scope_details_available_locally": true,
+      "scope_names_paths_or_opaque_ids_in_record": false,
+      "whole_downloads_completed": false
+    },
+    "metadata_scale_snapshot": {
+      "regular_file_count": 443082,
+      "metadata_only": true,
+      "comparison_limit": "Separate metadata snapshot, not a denominator for ClamAV coverage or proof of inspected file contents"
+    }
+  },
+  "stop_and_persistence": {
+    "cli_remaining": 0,
+    "engine_remaining": 0,
+    "checkpoint_saved": true,
+    "active_lock_released": true,
+    "private_permissions_verified": true,
+    "unexamined_scopes_exported": true,
+    "cancel_signal": "SIGINT sent only to the uniquely identified scan CLI",
+    "last_cli_stage": "cancelled",
+    "saved_parts": 1578,
+    "last_attempt_reused_parts": 1365,
+    "checkpoint_permission": "Current-owner directory0700/files0600 verified",
+    "resume_requires_revalidation": "Reuse only when target metadata, engine, definition and settings context still qualify; later changes can require rescan"
+  },
+  "privacy_and_cloud": {
+    "actual_names_paths_raw_outputs_checkpoint_ids_and_hashes": "Local private files only; none copied into this record or backlog",
+    "credentials": "No administrator password or token collected",
+    "cloud_policy": "Existing placeholder exclusion preserved; no explicit download/hydration action",
+    "cloud_excluded_in_final_report": 0,
+    "hydration_verification_limit": "No actual placeholder encountered in the final report; not an independent OS/network hydration audit",
+    "target_files_deleted_or_quarantined": false,
+    "raw_reports_and_scope_list_retained_locally": true
+  },
+  "limitations": [
+    "No infection detected in inspected content does not prove safety of uninspected ranges or entire device",
+    "Depth limits, size limit/engine error and owner-requested cancellation remain partial coverage",
+    "No Windows/Android/MCP client acceptance or dependency audit in this scan",
+    "No product code changes or full regression/npm rerun for this documentation update",
+    "Runtime source revisions per attempt were not pinned; recording_commit identifies the documentation workspace only"
+  ],
+  "next_steps": [
+    "Owner may continue the locally saved not_reached/cancelled scopes when desired",
+    "Depth-limit and oversized-file scope need separate handling decisions; no silent relaxation of protections",
+    "Plan a sustainable normal definition-update schedule; MCP updater remains separate backlog work"
+  ]
+}
