@@ -1,0 +1,435 @@
+{
+  "date": "2026-11-01",
+  "status": "grouped_full_run_and_bounded_legacy_comparison_with_restart_verified",
+  "source_commit": "13c62aad7c37fd0064b99c9dc4bae9356808e0b5",
+  "scope": "This Mac, real ClamAV, new synthetic files only; personal folders and existing scan checkpoints were not read or changed",
+  "owner_time_preference": "Owner selected a time-bounded legacy measurement and separate observed versus extrapolated results after a one-process pilot indicated a long full run",
+  "environment": {
+    "os": "macOS 27.2",
+    "architecture": "arm64",
+    "python": "3.15.2",
+    "clamav": "1.5.4",
+    "definitions": "Existing installed official definitions, read only; same scanner/definition context across both modes and all restart phases",
+    "definition_context_equal": true,
+    "product_source_unchanged": true,
+    "concurrent_scan_engines": 1,
+    "product_call_timeout_seconds": 3600,
+    "max_output_bytes": 1048576,
+    "definitions_stamp": {
+      "engine": "1.5.4",
+      "version": 28170,
+      "built_at": "2026-10-31T06:24:42+00:00",
+      "freshness": "fresh"
+    }
+  },
+  "fixture": {
+    "files": 1024,
+    "bytes": 4190276,
+    "content": "1023 deterministic small text files and one standard EICAR antivirus test file, all flat under one private authorized synthetic root",
+    "sizes": "1023 files of 4096 bytes; one 68-byte EICAR file",
+    "initial_content_digest_verified_before_mutation": true,
+    "personal_inputs": false,
+    "cloud_placeholders_present": false,
+    "eicar_is_intentional_not_personal_infection": true,
+    "inputs_removed_after_measurements": true
+  },
+  "method": {
+    "interface": "Production Scanner.invoke API, same batch/resume path used by CLI and MCP; no CLI-process or external MCP-client benchmark in this task",
+    "order": [
+      "one-file pilot",
+      "grouped complete",
+      "legacy 300-second bounded run",
+      "legacy 60-second bounded resume",
+      "modify first 128 synthetic normal files",
+      "grouped resume interrupted 1 second into second actual scan",
+      "grouped resume to completion"
+    ],
+    "legacy_mode": "local.batch_group_small_files=false; one scan subprocess per regular file",
+    "grouped_mode": "local.batch_group_small_files=true; 64 members per group; no fallback in the complete run",
+    "same_conditions": "Same corpus before mutation, official database directory, scanner context, per-call time/output limits and detection protections; only grouping flag differs",
+    "natural_3600_second_timeout_hit": false,
+    "external_time_caps": "threading.Event cancellation, not changed product timeout/settings; preserves resumable checkpoint under the same context",
+    "process_counts": "Counted successful Popen creation for this worker only; scan and --version subprocesses separated. An interrupted scan is a start but not a completed scan.",
+    "memory": "Fresh worker process per phase. macOS getrusage RUSAGE_SELF and RUSAGE_CHILDREN high-water RSS in bytes. Child high-water includes scan and version subprocesses; their peaks are not summed across calls.",
+    "memory_sampling_limit": "ps sampling of even the worker was denied in restricted execution; sampled values are unavailable, not zero. Concurrent combined parent+engine peak not measured; do not add separate high-water values.",
+    "timing_limit": "Scan subprocess wall time includes ClamAV startup, definition loading and content scanning; those internal phases were not independently separated. Includes lightweight measurement/checkpoint overhead.",
+    "warmup_and_order_limit": "A one-file pilot preceded grouped then legacy runs. OS caches not flushed; no order reversal, repetition or thermal control. Treat as one warm-cache acceptance observation."
+  },
+  "pilot": {
+    "files": 1,
+    "scan_process_seconds": 23.444191540998872,
+    "peak_child_rss_bytes": 1444904960,
+    "included_in_main_comparison": false
+  },
+  "observations": {
+    "grouped_complete": {
+      "status": "completed",
+      "wall_seconds": 123.51611,
+      "external_cancel_cap_seconds": null,
+      "scan_processes_started": 16,
+      "completed_scan_processes": 16,
+      "version_check_processes_started": 34,
+      "engine_counts_snapshot": {
+        "scanned": 1024,
+        "infected": 1,
+        "errors": 0
+      },
+      "batch_snapshot": {
+        "finished": 1024,
+        "pending": 0,
+        "reused": 0,
+        "grouping": {
+          "schema": 1,
+          "mode": "enabled",
+          "engine_starts": 16,
+          "committed_jobs": 16,
+          "fallback_targets": 0,
+          "active_targets": 0
+        }
+      },
+      "coverage_snapshot": {
+        "unit": "target_scopes",
+        "unresolved": {
+          "count": 0,
+          "quality": "exact_scope",
+          "file_count": null
+        },
+        "by_reason": {},
+        "reason_counts_overlap": true,
+        "enumeration_complete": true,
+        "assessment_limits": [],
+        "stop_reason": null
+      },
+      "scan_process_wall_seconds": 116.784006,
+      "version_check_wall_seconds": 0.370364,
+      "other_wall_seconds": 6.36174,
+      "completed_scan_process_wall_seconds": {
+        "min": 5.331855,
+        "median": 5.9855825,
+        "mean": 7.299000375,
+        "max": 21.228287
+      },
+      "members_per_completed_scan": [
+        64
+      ],
+      "os_peak_worker_rss_bytes": 39583744,
+      "os_peak_child_rss_bytes": 1650737152,
+      "concurrent_combined_peak_rss_bytes": null,
+      "child_cpu_user_seconds": 100.648024,
+      "child_cpu_system_seconds": 5.739403,
+      "cancel_request_to_return_seconds": null,
+      "checkpoint_saved": true,
+      "checkpoint_finished_records": 1024,
+      "checkpoint_private": true,
+      "known_engine_children_remaining": 0,
+      "checkpoint_lock_released": true,
+      "finding_kinds": [
+        "malware"
+      ],
+      "finding_signatures": [
+        "Eicar-Test-Signature"
+      ]
+    },
+    "legacy_complete": {
+      "status": "partial",
+      "wall_seconds": 300.098205,
+      "external_cancel_cap_seconds": 300.0,
+      "scan_processes_started": 50,
+      "completed_scan_processes": 49,
+      "version_check_processes_started": 52,
+      "engine_counts_snapshot": {
+        "scanned": 49,
+        "infected": 0,
+        "errors": 0
+      },
+      "batch_snapshot": {
+        "finished": 49,
+        "pending": 975,
+        "reused": 0
+      },
+      "coverage_snapshot": {
+        "unit": "target_scopes",
+        "unresolved": {
+          "count": 975,
+          "quality": "exact_scope",
+          "file_count": null
+        },
+        "by_reason": {
+          "cancelled": 1,
+          "not_reached": 974
+        },
+        "reason_counts_overlap": true,
+        "enumeration_complete": true,
+        "assessment_limits": [],
+        "stop_reason": "cancelled"
+      },
+      "scan_process_wall_seconds": 298.970114,
+      "version_check_wall_seconds": 0.561974,
+      "other_wall_seconds": 0.566117,
+      "completed_scan_process_wall_seconds": {
+        "min": 4.947504,
+        "median": 6.090046,
+        "mean": 6.097200326530612,
+        "max": 8.516252
+      },
+      "members_per_completed_scan": [
+        1
+      ],
+      "os_peak_worker_rss_bytes": 34996224,
+      "os_peak_child_rss_bytes": 1644789760,
+      "concurrent_combined_peak_rss_bytes": null,
+      "child_cpu_user_seconds": 286.032008,
+      "child_cpu_system_seconds": 12.226773,
+      "cancel_request_to_return_seconds": 0.09309,
+      "checkpoint_saved": true,
+      "checkpoint_finished_records": 49,
+      "checkpoint_private": true,
+      "known_engine_children_remaining": 0,
+      "checkpoint_lock_released": true,
+      "finding_kinds": [],
+      "finding_signatures": []
+    },
+    "legacy_resume": {
+      "status": "partial",
+      "wall_seconds": 60.134993,
+      "external_cancel_cap_seconds": 60.0,
+      "scan_processes_started": 11,
+      "completed_scan_processes": 10,
+      "version_check_processes_started": 13,
+      "engine_counts_snapshot": {
+        "scanned": 59,
+        "infected": 0,
+        "errors": 0
+      },
+      "batch_snapshot": {
+        "finished": 59,
+        "pending": 965,
+        "reused": 49
+      },
+      "coverage_snapshot": {
+        "unit": "target_scopes",
+        "unresolved": {
+          "count": 965,
+          "quality": "exact_scope",
+          "file_count": null
+        },
+        "by_reason": {
+          "cancelled": 1,
+          "not_reached": 964
+        },
+        "reason_counts_overlap": true,
+        "enumeration_complete": true,
+        "assessment_limits": [],
+        "stop_reason": "cancelled"
+      },
+      "scan_process_wall_seconds": 59.538205,
+      "version_check_wall_seconds": 0.116745,
+      "other_wall_seconds": 0.480043,
+      "completed_scan_process_wall_seconds": {
+        "min": 4.959008,
+        "median": 5.1314075,
+        "mean": 5.5134006,
+        "max": 7.166425
+      },
+      "members_per_completed_scan": [
+        1
+      ],
+      "os_peak_worker_rss_bytes": 35667968,
+      "os_peak_child_rss_bytes": 1644675072,
+      "concurrent_combined_peak_rss_bytes": null,
+      "child_cpu_user_seconds": 56.901749,
+      "child_cpu_system_seconds": 2.358353,
+      "cancel_request_to_return_seconds": 0.13066,
+      "checkpoint_saved": true,
+      "checkpoint_finished_records": 59,
+      "checkpoint_private": true,
+      "known_engine_children_remaining": 0,
+      "checkpoint_lock_released": true,
+      "finding_kinds": [],
+      "finding_signatures": []
+    },
+    "grouped_interrupt": {
+      "status": "partial",
+      "wall_seconds": 9.532513,
+      "external_cancel_cap_seconds": null,
+      "scan_processes_started": 2,
+      "completed_scan_processes": 1,
+      "version_check_processes_started": 5,
+      "engine_counts_snapshot": {
+        "scanned": null,
+        "infected": null,
+        "errors": null
+      },
+      "batch_snapshot": {
+        "finished": 64,
+        "pending": 960,
+        "reused": 0,
+        "grouping": {
+          "schema": 1,
+          "mode": "enabled",
+          "engine_starts": 2,
+          "committed_jobs": 1,
+          "fallback_targets": 0,
+          "active_targets": 0
+        }
+      },
+      "coverage_snapshot": {
+        "unit": "target_scopes",
+        "unresolved": {
+          "count": 960,
+          "quality": "exact_scope",
+          "file_count": null
+        },
+        "by_reason": {
+          "group_result_unconfirmed": 64,
+          "not_reached": 896
+        },
+        "reason_counts_overlap": true,
+        "enumeration_complete": true,
+        "assessment_limits": [],
+        "stop_reason": "cancelled"
+      },
+      "scan_process_wall_seconds": 8.352678,
+      "version_check_wall_seconds": 0.061449,
+      "other_wall_seconds": 1.118386,
+      "completed_scan_process_wall_seconds": {
+        "min": 7.324215,
+        "median": 7.324215,
+        "mean": 7.324215,
+        "max": 7.324215
+      },
+      "members_per_completed_scan": [
+        64
+      ],
+      "os_peak_worker_rss_bytes": 40402944,
+      "os_peak_child_rss_bytes": 1634467840,
+      "concurrent_combined_peak_rss_bytes": null,
+      "child_cpu_user_seconds": 8.033429,
+      "child_cpu_system_seconds": 0.32462199999999997,
+      "cancel_request_to_return_seconds": 0.536219,
+      "checkpoint_saved": true,
+      "checkpoint_finished_records": 960,
+      "checkpoint_private": true,
+      "known_engine_children_remaining": 0,
+      "checkpoint_lock_released": true,
+      "finding_kinds": [
+        "malware"
+      ],
+      "finding_signatures": [
+        "Eicar-Test-Signature"
+      ]
+    },
+    "grouped_resume": {
+      "status": "completed",
+      "wall_seconds": 20.898286,
+      "external_cancel_cap_seconds": null,
+      "scan_processes_started": 1,
+      "completed_scan_processes": 1,
+      "version_check_processes_started": 4,
+      "engine_counts_snapshot": {
+        "scanned": 1024,
+        "infected": 1,
+        "errors": 0
+      },
+      "batch_snapshot": {
+        "finished": 1024,
+        "pending": 0,
+        "reused": 960,
+        "grouping": {
+          "schema": 1,
+          "mode": "enabled",
+          "engine_starts": 1,
+          "committed_jobs": 1,
+          "fallback_targets": 0,
+          "active_targets": 0
+        }
+      },
+      "coverage_snapshot": {
+        "unit": "target_scopes",
+        "unresolved": {
+          "count": 0,
+          "quality": "exact_scope",
+          "file_count": null
+        },
+        "by_reason": {},
+        "reason_counts_overlap": true,
+        "enumeration_complete": true,
+        "assessment_limits": [],
+        "stop_reason": null
+      },
+      "scan_process_wall_seconds": 8.199892,
+      "version_check_wall_seconds": 0.051326,
+      "other_wall_seconds": 12.647068,
+      "completed_scan_process_wall_seconds": {
+        "min": 8.199892,
+        "median": 8.199892,
+        "mean": 8.199892,
+        "max": 8.199892
+      },
+      "members_per_completed_scan": [
+        64
+      ],
+      "os_peak_worker_rss_bytes": 41533440,
+      "os_peak_child_rss_bytes": 1506213888,
+      "concurrent_combined_peak_rss_bytes": null,
+      "child_cpu_user_seconds": 7.856929,
+      "child_cpu_system_seconds": 0.368581,
+      "cancel_request_to_return_seconds": null,
+      "checkpoint_saved": true,
+      "checkpoint_finished_records": 1024,
+      "checkpoint_private": true,
+      "known_engine_children_remaining": 0,
+      "checkpoint_lock_released": true,
+      "finding_kinds": [
+        "malware"
+      ],
+      "finding_signatures": [
+        "Eicar-Test-Signature"
+      ]
+    }
+  },
+  "legacy_full_run_estimate": {
+    "measured_full_1024_run": false,
+    "formula": "legacy bounded wall_seconds / completed logical targets * 1024",
+    "completed_targets_observed": 49,
+    "observation_wall_seconds": 300.098205,
+    "estimated_1024_wall_seconds": 6271.440039183673,
+    "estimated_1024_minutes": 104.52400065306122,
+    "actual_1024_wall_seconds": null,
+    "actual_full_run_speedup_factor": null,
+    "estimated_wall_time_ratio_to_measured_grouped": 50.774267738707714,
+    "limitations": "Constant-throughput projection, including bounded-run startup/cancellation overhead; cache, load, thermal effects and growing checkpoint serialization may change a full run. Not a confidence interval, full measurement, or promised speedup."
+  },
+  "restart_checks": {
+    "legacy_reuse_no_double_count": true,
+    "grouped_reuse_no_double_count": true,
+    "source_unchanged": true,
+    "initial_definition_contexts_equal": true,
+    "all_known_engine_children_reaped": true,
+    "locks_released": true
+  },
+  "restart_protocol_limit": "Legacy resumes unchanged partially scanned corpus for 60 seconds and remains partial. Grouped test changes 128 already-scanned files, commits 64, cancels the next 64, then completes with 960 reused targets. These verify semantics; their raw times are not an equal-workload cancellation speed ranking.",
+  "privacy_and_changes": {
+    "official_definitions_updated": false,
+    "engine_configuration_or_permissions_changed": false,
+    "personal_files_used": false,
+    "existing_personal_history_or_checkpoints_modified": false,
+    "process_names_or_connections_collected": false,
+    "only_worker_owned_process_ids_used_for_attempted_rss_sampling": true,
+    "real_paths_or_checkpoint_identifiers_in_record": false,
+    "product_code_changed": false,
+    "full_regression_suite_rerun": false,
+    "reason_no_full_suite": "Acceptance and documentation only; no product implementation changes in this task",
+    "push_performed": false,
+    "private_raw_results_and_synthetic_checkpoints_retained_locally": true
+  },
+  "remaining": [
+    "Legacy complete 1024-file wall-time measurement, if owner later wants it",
+    "Repeated/order-reversed/controlled cold-cache performance runs and concurrent combined memory measurement",
+    "Native Linux/Windows grouped-engine acceptance",
+    "Real iCloud/OneDrive placeholder non-hydration reacceptance; OneDrive remains postponed",
+    "Default-enable decision and real-world directory/archive workload evaluation",
+    "Original Downloads 62 unconfirmed scopes remain unresolved"
+  ],
+  "findings_interpretation": "Grouped complete and grouped resume each report one intentionally placed EICAR marker. The bounded legacy run/resume did not reach that last file; their zero detections do not imply missed detection or clean coverage of the remainder."
+}
