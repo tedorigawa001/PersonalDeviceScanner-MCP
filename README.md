@@ -838,8 +838,9 @@ other targets use the existing path. Cloud placeholders remain excluded; metadat
 are rechecked before execution. The existing metadata/open race is not an OS-wide non-download guarantee.
 
 A group commits all its target evidence atomically only after complete, exact per-file results and matching
-summaries, file metadata and definition identity. Ambiguous output falls back once per target. Cancelled,
-output-limited or definition-changed groups remain unconfirmed; no partial `OK` becomes reusable success.
+summaries, file metadata and definition identity. A group is planned only when its expected output fits
+`max_output_bytes`; ambiguous or oversized output falls back once per target and grouping stops for that attempt.
+Cancelled or definition-changed groups remain unconfirmed; no partial `OK` becomes reusable success.
 Resume rebuilds the current plan, reuses unchanged evidence per target and never adds group totals again.
 `group_result_unconfirmed` explains uncertain group coverage; unknown engine counts are `null`, not zero.
 
