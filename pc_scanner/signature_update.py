@@ -51,7 +51,8 @@ def root(scanner, create=False):
         raise core.ScannerError("Private signature updates require an enabled, non-administrator POSIX account")
     # Validated once through descriptors (ancestors, local filesystem, cloud, owner and ACL); the descriptors close
     # before use. Later steps use paths: other users cannot redirect them because every ancestor is writable only by
-    # the owner or root (or is root-owned and sticky), and each file is rechecked as private when opened.
+    # the owner or root (or is root-owned and sticky), with no macOS ACL entry letting others add, remove or rename
+    # entries, and each file is rechecked as private when opened.
     # Same-user processes are outside this boundary.
     with SignatureStore({"directory": cfg["directory"]}).open(create=create, file_lock=False) as store:
         if store is None:

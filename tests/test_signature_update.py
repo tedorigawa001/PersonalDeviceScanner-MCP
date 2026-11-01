@@ -66,6 +66,15 @@ class UpdateTests(unittest.TestCase):
     def allow_next(self):
         update.write_json(self.root / "attempt.json", {"next_attempt": time.time() - 1, "pending": False})
 
+    @unittest.skipUnless(sys.platform == "darwin", "macOS ACL entries apply regardless of the file mode")
+    def test_ancestor_acl_letting_others_move_the_store_refuses_update_before_download(self):
+        # Otherwise another account could move the store away, and the next update would start without its waits.
+        subprocess.run(["/bin/chmod", "+a", "everyone allow list,search,add_subdirectory,delete_child", str(self.base)], check=True)
+        report = self.do_update()
+        self.assertEqual(report["data"]["update_status"], "failed", report)
+        self.assertEqual(self.calls, [])
+        self.assertFalse(self.root.exists())
+
     def test_publish_signed_complete_private_generation_and_unchanged(self):
         first = self.do_update()
         self.assertEqual(first["data"]["update_status"], "updated", first)
@@ -205,6 +214,17 @@ class UpdateTests(unittest.TestCase):
         self.assertIsNone(report["data"]["definition_generation"]["newer_generation_available"], report)
         self.assertFalse(any("New definitions were published" in w for w in report["warnings"]))
         self.assertTrue(any("could not be confirmed" in w for w in report["warnings"]))
+
+    def test_engine_text_naming_the_private_store_is_masked(self):
+        self.do_update()
+        generation = self.root / update.read_json(self.root / "current.json")["generation"]
+        def noisy(argv, *args, **kwargs):
+            code, output, error = self.engine(argv, *args, **kwargs)
+            return code, output, error + f"LibClamAV Warning: synthetic note for {generation}/daily.cvd and {self.root}/x\n"
+        with patch("pc_scanner.core.clamav_signatures", return_value=self.signatures), patch("pc_scanner.core.run_bounded", side_effect=noisy):
+            report = self.scanner().invoke("malware", root_alias="test")
+        self.assertNotIn(str(self.root), json.dumps(report))
+        self.assertIn("<definitions>/daily.cvd and <definitions>/x", report["data"]["diagnostic"], report)
 
     def test_untrusted_paths_permissions_and_contents_are_refused(self):
         self.do_update()
@@ -459,3 +479,19 @@ class ExplicitDatabaseChangeTests(unittest.TestCase):
         changed = self.scan(engine=changing)
         self.assertEqual(changed["status"], "partial")
         self.assertTrue(changed["data"]["definitions_changed"])
+
+    def test_engine_text_naming_the_definitions_folder_is_masked(self):
+        def noisy(argv, *args, **kwargs):
+            self.calls.append(argv)
+            return 0, "Scanned files: 1\nInfected files: 0\n", f"LibClamAV Warning: synthetic note for {self.db}/daily.cvd\n"
+        report = self.scan(engine=noisy)
+        self.assertNotIn(str(self.db), json.dumps(report))
+        self.assertIn("<definitions>/daily.cvd", report["data"]["diagnostic"], report)
+
+    def test_custom_database_change_between_sessions_invalidates_resume(self):
+        self.assertEqual(self.scan(batch=True)["status"], "completed")
+        (self.db / "custom.ndb").write_text("custom signatures changed between sessions")
+        calls = len(self.calls)
+        resumed = self.scan(batch=True, resume=True)
+        self.assertEqual(resumed["data"]["batch"]["reused"], 0, resumed)
+        self.assertGreater(len(self.calls), calls)

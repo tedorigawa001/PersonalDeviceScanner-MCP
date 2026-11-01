@@ -353,6 +353,16 @@ class StoreTests(unittest.TestCase):
         listed=self.manage(scanner=saved);self.assertEqual(listed['status'],'partial')
         self.assertEqual(listed['data']['records'][0]['state'],'unavailable')
 
+    @unittest.skipUnless(sys.platform=='darwin','macOS ACL entries apply regardless of the file mode')
+    def test_macos_ancestor_acl_that_lets_others_rename_entries_is_refused(self):
+        # Mode bits stay 0700, but this entry would let another account move the store away or swap in another folder.
+        parent=self.base/'shared';parent.mkdir(mode=0o700);saved=self.scanner(directory=str(parent/'records'))
+        self.save(scanner=saved)
+        subprocess.run(['/bin/chmod','+a','everyone allow list,search,add_subdirectory,delete_child',str(parent)],check=True)
+        with self.assertRaises(core.ScannerError):self.manage(scanner=saved)
+        report=self.report();store.save(self.scanner(directory=str(parent/'fresh')),report)
+        self.assertEqual(report['data']['persistence'],'save_failed');self.assertFalse((parent/'fresh').exists())
+
     def test_long_escaped_text_and_dependency_names_do_not_block_saving(self):
         # 700 control characters escape to 4,200 characters, and a 300-character scope exceeds npm's 214.
         package=self.base/'package.json';package.write_text(json.dumps({'dependencies':{'@'+'s'*300+'/dependency':'1.0'}}))

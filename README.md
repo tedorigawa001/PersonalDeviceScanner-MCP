@@ -405,6 +405,7 @@ OS-managed freshclam remains recommended for shared system definitions. An optio
 `[clamav_updates]` section supports a separate owner-only store on macOS/Linux, under a non-root account.
 Set `enabled=true`, absolute `directory`, `freshclam_binary` and `sigtool_binary` paths, and optionally
 `timeout_seconds` (1..3600, default 1800). The directory's parent must already exist on a local filesystem.
+Folders above it must not let other accounts add, remove or rename entries, by mode bits or a macOS ACL.
 Keep `local.clamav_database_directory` empty; checks and all scans use the published private generation.
 
 Run `pc-scanner --config scanner.toml update-clamav-signatures` explicitly, then
@@ -566,7 +567,8 @@ An invalid or future last-attempt time is reset to now without sending a request
 The provider sees the updater's public source IP and request timing; observed destinations and process data
 are never sent. The cache's parent must already exist; choose an absolute `cache_directory` beneath an
 existing private local parent if needed. POSIX uses owner-only 0700/0600 permissions, and on macOS an ACL entry
-that allows access is refused. The Windows cache
+that allows access is refused, as is a folder above it whose ACL lets others add, remove or rename entries.
+The Windows cache
 backend requires a local fixed NTFS/ReFS volume and a protected DACL granting access only to the effective
 user and SYSTEM. It pins directory handles, rejects reparse/cloud placeholders and multi-link files,
 and uses handle-bound publication and cross-process locking. Unsafe existing permissions are refused,
@@ -639,7 +641,8 @@ Use a private, local, non-synced directory with an existing parent; path aliases
 The default is the OS user-state location's `process-review` folder, independent of configured `history.file`.
 The parent must already exist. Directories must be owned and 0700, files 0600; unsafe existing permissions are
 refused, not silently changed. On macOS an ACL entry that allows access, such as one inherited from the parent
-folder, is refused too. Initial storage supports macOS and recognized local Linux filesystems; Windows
+folder, is refused too, as is a folder above the store whose ACL lets others add, remove or rename entries.
+Initial storage supports macOS and recognized local Linux filesystems; Windows
 storage is refused. Known cloud roots/placeholders and unverified network filesystems are refused; not every
 third-party sync arrangement can be detected, so the owner must choose an unsynced location.
 
@@ -1172,7 +1175,8 @@ remain independent of this ephemeral progress state.
 ### Privacy
 
 - Passing results to a cloud AI may send application names, process IDs, file names, host names, and similar data. The PC owner decides where results go and how much is shared.
-- To reduce what is sent, file paths are returned relative to the authorized folder, and absolute paths in engine output are replaced with `<alias>`.
+- To reduce what is sent, file paths are returned relative to the authorized folder, and absolute paths in engine output are replaced with `<alias>`
+  (the definitions folder, including a private signature store, with `<definitions>`).
 - Text from the PC or the index (file, application and package names, engine output) is cleaned before it is returned:
   control and format characters, line separators and every other invisible character (bidi controls, zero-width
   characters, Unicode tags, variation selectors) are shown as `\uXXXX` (`\UXXXXXXXX` above U+FFFF), bytes that are

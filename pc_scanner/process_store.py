@@ -18,7 +18,7 @@ import threading
 import time
 
 from . import core, history
-from .posix_acl import acl_allows
+from .posix_acl import acl_allows, acl_allows_redirect
 
 DEFAULTS = dict(enabled=False, directory="", retention_days=7, max_records=32, max_total_mb=32)
 ID = re.compile(r"[0-9a-f]{32}\Z")
@@ -295,7 +295,9 @@ class Store:
                         return
                     raise MissingParent("Store parent folder does not exist") from None
                 info = os.fstat(fd)
-                if info.st_uid not in {0, os.geteuid()} or (info.st_mode & 0o022 and not (info.st_uid == 0 and info.st_mode & stat.S_ISVTX)):
+                # A macOS ACL can grant others the same rename/replace rights as group/other write bits.
+                if (info.st_uid not in {0, os.geteuid()} or acl_allows_redirect(fd)
+                        or (info.st_mode & 0o022 and not (info.st_uid == 0 and info.st_mode & stat.S_ISVTX))):
                     os.close(fd)
                     raise OSError("Writable store ancestor")
                 os.close(self.parent)

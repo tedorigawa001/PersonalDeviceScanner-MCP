@@ -1133,8 +1133,18 @@ class Scanner:
                 return None
             return shown(location)
 
+        # Engine messages can also name the definitions folder, such as a private store below the home folder.
+        hidden = {str(root): f"<{root_alias}>"}
+        for folder in (self.local.get("clamav_database_directory"),
+                       self.signature_update_settings["enabled"] and self.signature_update_settings["directory"]):
+            if folder:
+                hidden.setdefault(folder, "<definitions>")
+
         def mask(text: str) -> str:
-            return text.replace(str(root), f"<{root_alias}>")
+            # Longest first, so a folder inside another is replaced by its own label.
+            for folder in sorted(hidden, key=len, reverse=True):
+                text = text.replace(folder, hidden[folder])
+            return text
 
         # A missing engine is a configuration error, reported before any folder is walked.
         binary = self.binary("clamav_binary")
