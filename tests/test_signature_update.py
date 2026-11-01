@@ -357,7 +357,10 @@ class UpdateTests(unittest.TestCase):
                   "scan_roots": {"test": str(self.inputs)},
                   "history": self.config["history"]}
         def engine(argv, *a, **kw):
-            (db / "daily.cvd").write_text("changed definitions")
+            # Docker filesystems can retain the same timestamps for rapid same-size rewrites.
+            # Change the bytes and size on every invocation, including the second (ordinary) scan.
+            with (db / "daily.cvd").open("a") as f:
+                f.write("\nchanged definitions")
             return 1, str(self.inputs / "a.txt") + ": Synthetic.Marker FOUND\nScanned files: 1\nInfected files: 1\n", ""
         with patch("pc_scanner.core.clamav_signatures", return_value=self.signatures), patch("pc_scanner.core.run_bounded", side_effect=engine):
             report = core.Scanner(config).invoke("malware", root_alias="test", batch=True)
