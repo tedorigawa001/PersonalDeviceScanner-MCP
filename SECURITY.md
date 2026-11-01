@@ -47,6 +47,12 @@ Please keep the details private until the fix is released. If a fix is not possi
 
 ### Scope
 
+The optional `update-clamav-signatures` command is an owner-only local CLI write/network operation,
+disabled by default. It uses a separate private CVD generation store, fixed executables and generated
+official freshclam configuration; it must never request administrator credentials, alter OS-managed
+definitions or expose an update tool through MCP. Same-user processes are outside the private-store
+ownership boundary. Failed attempts remain blocked for owner recovery; cooldown removal is not a retry mechanism.
+
 In scope is the code in this repository: the Python package `pc_scanner` (the MCP server and the CLI), the npm launcher,
 the release workflows, and the published npm package `personal-device-scanner-mcp`. For example:
 

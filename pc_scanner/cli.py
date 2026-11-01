@@ -60,6 +60,7 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("status")
     commands.add_parser("check-clamav-signatures", help="read definition freshness and update steps; never updates")
+    commands.add_parser("update-clamav-signatures", help="owner-only explicit freshclam update into enabled private CVD generations; no elevation")
     lan_devices = commands.add_parser("lan-devices", help="observe devices on an owner-authorized LAN; names, IPs and MACs are included")
     lan_devices.add_argument("network_alias")
     lan_devices.add_argument("--json", action="store_true", help="print the complete LAN observations")
@@ -150,6 +151,14 @@ def main():
         if args.command == "dashboard":
             write_dashboard(scanner, args.limit, not args.no_open)
             return
+        if args.command == "update-clamav-signatures":
+            from . import signature_update
+            from .progress import CLIProgress
+            scanner.via = "cli"
+            with CLIProgress() as display:
+                report = signature_update.update(scanner, display.cancel, display.progress)
+                display.progress.finish(report["status"], display.cancel)
+                report["data"]["progress"] = display.progress.snapshot()
         if args.command == "process-review-records":
             from . import process_store
             scanner.via = "cli"
@@ -178,7 +187,7 @@ def main():
                     print(row["target_id"], "; ".join(coverage.LABELS[r] for r in row["reasons"]), row["eligibility"].replace("_", " "),
                           row.get("relative_path", ""))
                 return
-        if args.command == "process-review-records":
+        if args.command in {"process-review-records", "update-clamav-signatures"}:
             pass
         elif args.command == "malware-checkpoints":
             from . import checkpoints

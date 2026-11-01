@@ -1,0 +1,85 @@
+{
+  "date": "2026-11-01",
+  "kind": "implementation_regression_verification",
+  "feature": "ClamAV private signature generations and owner CLI, phase one",
+  "design": "../clamav-signature-update-design.md",
+  "implementation": {
+    "owner_cli": "update-clamav-signatures",
+    "settings_section": "clamav_updates",
+    "default_enabled": false,
+    "platforms": "non-root POSIX macOS/Linux; Windows update backend disabled",
+    "mcp_write_tool_exposed": false,
+    "administrator_credentials_handled": false,
+    "system_database_modified": false,
+    "os_service_configuration_modified": false,
+    "dependency_changes": false,
+    "official_databases": ["main.cvd", "daily.cvd", "bytecode.cvd"],
+    "scripted_updates": false,
+    "validation": ["freshclam success", "required signed CVDs and sigtool verification", "size and content hash", "version rollback refusal", "clamscan database load", "freshness check"],
+    "publication": "private candidate, fsync, atomic current reference replacement and read-back",
+    "concurrency": "cross-process updater/publication locks and shared generation leases; running scan retains its generation",
+    "checkpoint_context": "private definition content digest, engine identity, semantic settings and target fingerprints",
+    "external_explicit_database_change": "normal scan pre/post manifest checks; partial, unresolved coverage and nonreusable evidence",
+    "limits": {"retry_interval_seconds": 86400, "retained_generation_or_failed_stage_entries": 4, "required_free_bytes_before_download": 4294967296, "verified_database_total_max_bytes": 2147483648},
+    "failed_attempt_policy": "retain private pending/staging state; block another download until owner recovery; never clear provider cooldown automatically"
+  },
+  "regressions": {
+    "new_test_count": 19,
+    "passed": 19,
+    "coverage": [
+      "invalid settings and disabled-by-default real CLI",
+      "publish complete CVD generation with 0700/0600 permissions",
+      "unchanged content and persisted retry interval",
+      "network failure, unsigned output, missing database, rollback and load failure preserve current",
+      "failed/interrupted attempts do not trigger automatic retries or expose raw diagnostics",
+      "cross-process update exclusion and subsequent lock release",
+      "parallel readers and publication while an old generation is pinned",
+      "mtime-only change preserves checkpoint reuse; content change invalidates completion",
+      "failed update preserves reusable checkpoint",
+      "invalid generation permissions and modified contents are refused",
+      "cloud and symlink stores are refused before running an engine",
+      "no implicit update, no MCP update dispatch, conflicting system/private settings rejected",
+      "capacity and publication failures preserve previous generation",
+      "cancellation after publication does not roll back",
+      "failure after pointer replacement returns unknown publication instead of false",
+      "real synthetic sleeping child is reaped on timeout/cancel and updater lock is released",
+      "external definition change retains findings but leaves batch evidence unfinished and ordinary scan coverage unresolved",
+      "SDK MCP checks pinned private definitions without exposing store paths; updater absent from tools",
+      "unknown definition freshness remains partial"
+    ],
+    "red_green_checks": [
+      "ordinary scan unresolved coverage assertion failed before coverage summary rebuild, passed afterward",
+      "post-replace durability failure assertion failed with published=false, passed with published=null"
+    ]
+  },
+  "verification": {
+    "python_3_15": {"version": "3.15.2", "command": ".venv-dev/bin/python -m unittest discover -s tests -v", "total": 710, "passed": 693, "skipped": 17, "failures": 0, "errors": 0, "seconds": 85.849},
+    "python_3_14": {"version": "3.14.10", "command": ".venv/bin/python -m unittest discover -s tests -v", "total": 710, "passed": 693, "skipped": 17, "failures": 0, "errors": 0, "seconds": 87.770},
+    "skip_reason": "17 Windows-only ownership, ACL, filesystem and process API tests on macOS; not accepted as Windows verification",
+    "android_and_mcp_tests_included": true,
+    "npm": {"command": "PC_SCANNER_NPM_E2E=1 npm test", "total": 26, "passed": 26, "skipped": 0, "failures": 0, "includes": "packed package setup, dependency installation and stdio MCP round trip"},
+    "configuration": "scanner.example.toml loads with no unknown-key warnings; private updates remain disabled",
+    "static_checks": ["Python AST parse", "git diff --check", "JSON and relative documentation links"],
+    "initial_restricted_run": "701 tests; 17 error reports caused by denied local test-server binds and 17 Windows skips. Re-execution with local listener access passed; final expanded suite reported above.",
+    "test_harness_correction": "CLI subprocess fixture initially used the package instead of pc_scanner.cli; corrected to the existing CLI module entry point"
+  },
+  "privacy": {
+    "fixtures": "synthetic CVD headers/content, harmless text and controlled Python sleeping children",
+    "real_personal_files_scanned": false,
+    "cloud_files_downloaded": false,
+    "actual_definition_download_performed": false,
+    "live_clamav_probe": "installed freshclam/sigtool 1.5.4 help and sigtool info on the existing public main.cvd were read; no update was run"
+  },
+  "remaining": [
+    "real freshclam download/publication acceptance on macOS and Linux",
+    "OS-managed freshclam automatic-service setup and operational acceptance",
+    "owner recovery and retention/deletion CLI; stale staging cleanup; hard disk quotas",
+    "provider-specific retry information handling beyond the conservative failed-attempt block",
+    "MCP explicit updater (not exposed in phase one)",
+    "Windows native private updater backend, Windows CI and real Windows acceptance",
+    "same-user processes are outside the private store ownership trust boundary",
+    "external OS updates cannot be locked by this app; pre/post checks are not immutable generation guarantees"
+  ],
+  "commit_created": false,
+  "push_performed": false
+}

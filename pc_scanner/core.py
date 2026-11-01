@@ -279,7 +279,8 @@ def excerpt(text: str) -> tuple[str, bool]:
 
 
 # Settings each section understands; None means free-form keys (scan root aliases).
-SETTINGS = {"local": {"osquery_binary", "clamav_binary", "timeout_seconds", "max_output_bytes",
+SETTINGS = {"clamav_updates": {"enabled", "directory", "freshclam_binary", "sigtool_binary", "timeout_seconds"},
+            "local": {"osquery_binary", "clamav_binary", "timeout_seconds", "max_output_bytes",
                       "max_signature_age_days", "batch_group_small_files", "clamav_database_directory"},
             "scan_roots": None,
             "wazuh": {"url", "agent_id", "ca_file", "agent_name", "freshness"},
@@ -715,6 +716,8 @@ class Scanner:
                                                   config.get("outbound_connections", {}), config.get("process_review", {}))):
             raise ScannerError("Configuration sections must be tables")
         self.config_warnings = unknown_settings(config)
+        from . import signature_update
+        signature_update.configure(self)
         from . import freshness
         freshness.configure(self)
         self.timeout = self.local.get("timeout_seconds", 600)
@@ -923,7 +926,14 @@ class Scanner:
         database = self.local.get("clamav_database_directory", "")
         return clamav_signatures(binary, deadline, self.limit, cancel=cancel, **({"database": database} if database else {}))
 
-    def check_clamav_signatures(self, cancel: threading.Event | None = None,
+    def check_clamav_signatures(self, cancel=None, *, deadline=None, progress=None):
+        if self.signature_update_settings["enabled"] and not hasattr(self, "_signature_generation"):
+            from .signature_update import pin
+            with pin(self, cancel) as scanner:
+                return scanner.check_clamav_signatures(cancel, deadline=deadline, progress=progress)
+        return self._check_clamav_signatures(cancel, deadline=deadline, progress=progress)
+
+    def _check_clamav_signatures(self, cancel: threading.Event | None = None,
                                *, deadline: float | None = None, progress=None) -> dict:
         """Inspect the configured engine's daily definition stamp; never run an updater."""
         deadline = deadline if deadline is not None else time.monotonic() + min(self.timeout, 30)
@@ -940,6 +950,10 @@ class Scanner:
                     "ownership or permissions automatically. No update is run by this check.",
                     "After updating, run CLI check-clamav-signatures or MCP check_clamav_signatures again. "
                     "Old ClamAV stderr warnings can prevent batch result reuse until definitions are updated."]}
+        info["update_mode"] = "private_owner_cli" if hasattr(self, "_signature_generation") else "os_managed"
+        if hasattr(self, "_signature_generation"):
+            info["update_steps"] = ["The owner may explicitly run CLI update-clamav-signatures with the enabled private-store configuration. No administrator password is used and MCP cannot update definitions.",
+                                    "Recheck freshness after updating; resume re-evaluates results when definition contents change."]
         def shown(report):
             if progress:
                 progress.signature_check(info)
@@ -974,6 +988,26 @@ class Scanner:
     def malware(self, root_alias: str, relative_path: str = ".",
                 cancel: threading.Event | None = None, batch: bool = False, resume: bool = False,
                 progress=None, retry: str = "", revision: int | None = None, target_ids=None) -> dict:
+        if self.signature_update_settings["enabled"] and not hasattr(self, "_signature_generation"):
+            from .signature_update import pin
+            with pin(self, cancel) as scanner:
+                report = scanner.malware(root_alias, relative_path, cancel, batch, resume, progress, retry, revision, target_ids)
+                self._coverage_snapshot = getattr(scanner, "_coverage_snapshot", None)
+                from .signature_update import read_json
+                try:
+                    current = read_json(Path(self.signature_update_settings["directory"]) / "current.json")
+                except (OSError, ValueError):
+                    current = None
+                newer = not current or current.get("content") != scanner._signature_generation["content"]
+                report["data"]["definition_generation"] = {"content": scanner._signature_generation["content"],
+                                                            "newer_generation_available": newer}
+                if newer:
+                    report["warnings"].append("New definitions were published during this scan; resume to recheck with the new generation")
+                return report
+        return self._malware_operation(root_alias, relative_path, cancel, batch, resume, progress, retry, revision, target_ids)
+
+    def _malware_operation(self, root_alias, relative_path=".", cancel=None, batch=False, resume=False,
+                           progress=None, retry="", revision=None, target_ids=None):
         self._coverage_snapshot = None
         if type(batch) is not bool or type(resume) is not bool:
             raise ScannerError("batch and resume must be true or false")
@@ -1037,7 +1071,22 @@ class Scanner:
             report = result("clamav", "error", error=str(exc))
         return with_advice(report)
 
-    def _malware(self, root_alias: str, relative_path: str = ".",
+    def _malware(self, *args, **kwargs):
+        from .malware_group import database_manifest
+        explicit = bool(self.local.get("clamav_database_directory"))
+        before = database_manifest(self) if explicit else None
+        report = self._malware_engine(*args, **kwargs)
+        if explicit and (before is None or before != database_manifest(self)):
+            from . import coverage
+            report["status"] = "partial" if report["status"] != "error" else "error"
+            report["data"]["definitions_changed"] = True
+            report["warnings"].append("Definitions changed or could not be verified; this result cannot be reused")
+            issues = report["data"].get("_coverage_issues", []) + [
+                coverage.issue(args[1] if len(args) > 1 else kwargs.get("relative_path", "."), "changed_during_scan", "subtree_remainder")]
+            coverage.attach(report, issues, report["data"].get("coverage", {}).get("assessment_limits", []))
+        return report
+
+    def _malware_engine(self, root_alias: str, relative_path: str = ".",
                  cancel: threading.Event | None = None, *, deadline: float | None = None,
                  max_levels: int = MAX_DIRECTORY_LEVELS, excluded_directory: Path | None = None,
                  expect_files: bool = True, progress=None, strict_metadata=False, excluded_scopes=(), on_engine_start=None) -> dict:

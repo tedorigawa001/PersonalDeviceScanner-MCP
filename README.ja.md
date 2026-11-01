@@ -397,6 +397,31 @@ MCPの `discover_lan_devices(network_alias)` は、所有者が `lan.expose_iden
 `history.enabled=false`なら結果を永続保存しません。スリープ中・分離された機器などを見逃し、実際の最終通信時刻は不明です。
 詳しくは[設計書・受入計画](docs/lan-discovery-design.md)を参照してください。
 
+### ClamAV定義を専用保存先へ更新する場合（所有者CLI）
+
+通常はOS側freshclamで共有定義を更新する運用を推奨します。別の保存先を使う場合は、
+設定例の `[clamav_updates]` で `enabled=true` と、絶対パスの `directory`・`freshclam_binary`・
+`sigtool_binary` を設定します。`timeout_seconds` は1〜3600秒（既定1800秒）。
+macOS/Linuxの一般ユーザー向けで、既定は無効です。親フォルダーはローカルに事前作成し、
+OSサービスの定義保存先とは分け、`local.clamav_database_directory` は空にしてください。
+
+所有者が `pc-scanner --config scanner.toml update-clamav-signatures` を明示的に実行し、
+続けて `pc-scanner --config scanner.toml check-clamav-signatures` で鮮度を確認します。
+公式freshclamの設定はアプリが制限した内容で生成します。署名付き完全版CVDを検証し、
+clamscanで読込み確認してから世代を切り替えます。管理者パスワード・独自URL・実行フックは扱わず、
+OSの定義・所有者・権限も変更しません。MCPからの更新操作は公開していません。
+
+検査中は開始時の世代を固定します。新定義の公開後も旧世代は残し、次の再開で内容変更を検出すると
+古い完了証跡を再検査します。同一内容の確認や私有世代の日時だけの変更では失効させません。
+他ユーザーから保護する保存先であり、同じユーザーで動くプロセスからの改ざんは防げません。
+
+第1段階は更新間隔を保守的に24時間とし、失敗・中断後は所有者の復旧確認まで次の取得を停止します。
+世代と失敗作業領域は最大4件で自動削除しません。障害時は全検査・更新を止め、保存先を保全して調査してください。
+待機情報を削除して再試行しないでください。新しい専用保存先で始め直す場合も、配布元の待機期限が
+経過したことを確認してから所有者が設定を変更します。
+Windows、実freshclamの更新受入、保持・復旧CLI、MCP更新は残課題です。
+詳細は[運用設計](docs/clamav-signature-update-design.md)を参照してください。
+
 ### エンジンの更新を確かめる場合
 
 このツールがエンジンを更新することはありませんが、古くなっていれば知らせることはできます。設定ファイルで有効にします。
@@ -618,6 +643,10 @@ macOSでは、親フォルダーから引き継いだものなど、アクセス
 | `local.max_output_bytes` | エンジン出力の上限（1024〜8388608 バイト） | `1048576` |
 | `local.max_signature_age_days` | ClamAV の定義がこの日数（1〜365）より古いと、検査結果を `partial` にします | `7` |
 | `local.clamav_database_directory` | 定義確認・通常検査・分割検査で共用する絶対パス。空ならClamAV既定値 | 空 |
+| `clamav_updates.enabled` | macOS/Linuxの非root所有者CLIによる私有世代更新。MCP更新は非公開 | `false` |
+| `clamav_updates.directory` | 親が既存のローカル専用保存先の絶対パス。`local.clamav_database_directory` との併用不可 | 空 |
+| `clamav_updates.freshclam_binary`・`clamav_updates.sigtool_binary` | 所有者が固定する更新・検証実行ファイルの絶対パス | 空 |
+| `clamav_updates.timeout_seconds` | 更新・検証の制限時間。1〜3600秒 | `1800` |
 | `local.batch_group_small_files` | 小さな通常ファイルのまとめ検査。明示的な定義保存先と受入済み構成が必要 | `false` |
 | `scan_roots.<エイリアス>` | 検査を許可するフォルダー（絶対パス）。エイリアスは英数字・`_`・`-` で64文字まで | なし |
 | `wazuh.url` | Wazuh indexer の HTTPS アドレス。空欄なら無効 | 空欄 |

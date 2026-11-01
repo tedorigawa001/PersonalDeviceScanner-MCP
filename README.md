@@ -399,6 +399,34 @@ device tables require `history.details=true`. `history.enabled=false` prevents p
 Sleeping, isolated and silent devices may be absent; actual cache age/last communication is unknown.
 See the [design and acceptance plan](docs/lan-discovery-design.md).
 
+### Private ClamAV definition updates (owner CLI)
+
+OS-managed freshclam remains recommended for shared system definitions. An optional, disabled-by-default
+`[clamav_updates]` section supports a separate owner-only store on macOS/Linux, under a non-root account.
+Set `enabled=true`, absolute `directory`, `freshclam_binary` and `sigtool_binary` paths, and optionally
+`timeout_seconds` (1..3600, default 1800). The directory's parent must already exist on a local filesystem.
+Keep `local.clamav_database_directory` empty; checks and all scans use the published private generation.
+
+Run `pc-scanner --config scanner.toml update-clamav-signatures` explicitly, then
+`pc-scanner --config scanner.toml check-clamav-signatures`. The updater uses official complete signed CVDs,
+validates them and loads them with clamscan before publication. It never requests an administrator password,
+changes system definitions, or accepts custom download URLs/hooks. The MCP server cannot update definitions.
+The official [freshclam configuration documentation](https://docs.clamav.net/manual/Usage/Configuration.html)
+describes the underlying updater; this CLI generates its own restricted configuration.
+
+Scans pin one generation throughout; publishing a new one preserves the old generation for running scans.
+Resume rechecks old completion evidence after a content change. Byte-identical checks and timestamp-only
+changes in private generations do not invalidate it. Other processes under the same account can still modify
+the store; this is protection from other users, not a boundary against same-user malware.
+
+Phase-one limits: a conservative 24-hour interval; failed/interrupted attempts block further downloads
+until owner recovery; up to four retained generations/failed stages, with no automatic deletion or recovery CLI.
+After a failure, stop all scanners/updaters and preserve the store for investigation. Do not clear cooldown files
+to force retries. For a fresh store, use another owner-configured private directory only after the provider's
+wait interval is known to have elapsed; do not point at an OS-managed database. Windows support, native update
+acceptance, retention/recovery CLI and MCP writes remain pending. See the
+[operational design](docs/clamav-signature-update-design.md).
+
 ### Checking for engine updates
 
 The scanner never updates an engine itself, but it can tell you when one is out of date. Turn it on in the configuration file:
@@ -634,6 +662,10 @@ with `neighbor_cache=true` and `mdns=false` by default. See the LAN example abov
 | `local.max_output_bytes` | Maximum engine output (1024–8388608 bytes) | `1048576` |
 | `local.max_signature_age_days` | ClamAV signatures older than this many days (1–365) make the scan `partial` | `7` |
 | `local.clamav_database_directory` | Optional absolute database directory used by definition checks and every scan; empty keeps ClamAV defaults | empty |
+| `clamav_updates.enabled` | Owner CLI private-generation updater; non-root macOS/Linux only; MCP cannot update | `false` |
+| `clamav_updates.directory` | Absolute private local store; parent must exist; requires empty `local.clamav_database_directory` | empty |
+| `clamav_updates.freshclam_binary`, `clamav_updates.sigtool_binary` | Owner-fixed absolute updater and verifier executables | empty |
+| `clamav_updates.timeout_seconds` | Update and validation budget, 1..3600 seconds | `1800` |
 | `local.batch_group_small_files` | Opt-in bounded grouping of small regular batch targets; requires an explicit database directory and an accepted engine profile | `false` |
 | `scan_roots.<alias>` | A folder allowed to be scanned (absolute path). Aliases use letters, digits, `_` and `-`, up to 64 characters | none |
 | `wazuh.url` | HTTPS address of the Wazuh indexer. Empty disables it | empty |

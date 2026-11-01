@@ -15,6 +15,18 @@ clamav_database_directory = ""
 # Accepted: macOS arm64 / Linux aarch64 ClamAV 1.5.4 with official daily/main/bytecode databases. Other profiles use single targets.
 batch_group_small_files = false
 
+# Optional owner-only updater (macOS/Linux non-root POSIX; no Windows backend yet).
+# Leave local.clamav_database_directory empty: all checks/scans pin a private generation instead.
+# The parent must already exist on a local filesystem. Never use the OS service database here.
+[clamav_updates]
+enabled = false
+directory = ""
+freshclam_binary = ""
+sigtool_binary = ""
+timeout_seconds = 1800
+# Complete signed CVDs only; 24h retry interval. Failure/interruption requires owner recovery.
+# At most four generations/failed stages; no automatic deletion in this first phase.
+
 [history]
 # A summary of each scan (what ran and how it ended; no file, app or package names) kept on this PC.
 # Read it with `pc-scanner history`; the AI cannot read it. false stops recording.
