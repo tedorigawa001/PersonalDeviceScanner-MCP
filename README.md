@@ -421,6 +421,9 @@ the store; this is protection from other users, not a boundary against same-user
 
 Phase-one limits: a conservative 24-hour interval; failed/interrupted attempts block further downloads
 until owner recovery; up to four retained generations/failed stages, with no automatic deletion or recovery CLI.
+Because nothing is deleted, the fourth published generation is the last: the next attempt stops with a capacity
+error, sooner if failed stages remain. Manual deletion is not a supported recovery; return to OS-managed updates or
+start a new private directory as described below.
 After a failure, stop all scanners/updaters and preserve the store for investigation. Do not clear cooldown files
 to force retries. For a fresh store, use another owner-configured private directory only after the provider's
 wait interval is known to have elapsed; do not point at an OS-managed database. Windows support, native update

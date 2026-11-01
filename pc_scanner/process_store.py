@@ -240,6 +240,9 @@ def local_filesystem(fd):
 
 
 class Store:
+    # Serializes private-store work in this process; a subclass may use its own lock.
+    thread_lock = _lock
+
     def __init__(self, settings, cancel=None):
         self.settings, self.cancel = settings, cancel
         self.deadline = time.monotonic() + 5
@@ -267,8 +270,8 @@ class Store:
         if os.name != "posix":
             raise OSError("Store backend unavailable")
         self.check()
-        # Process review, threat cache and signature store share this; another thread's short use is waited out.
-        if not _lock.acquire(timeout=max(0.0, self.deadline - time.monotonic())):
+        # Process review and the threat cache share this; another thread's short use is waited out.
+        if not self.thread_lock.acquire(timeout=max(0.0, self.deadline - time.monotonic())):
             raise OSError("Store busy")
         lockfd = None
         try:
@@ -333,7 +336,7 @@ class Store:
                 if fd is not None:
                     os.close(fd)
             self.fd = self.parent = None
-            _lock.release()
+            self.thread_lock.release()
 
     def unchanged(self):
         self.check()

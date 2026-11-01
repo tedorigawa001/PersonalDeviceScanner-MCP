@@ -26,6 +26,7 @@ sigtool_binary = ""
 timeout_seconds = 1800
 # Complete signed CVDs only; 24h retry interval. Failure/interruption requires owner recovery.
 # At most four generations/failed stages; no automatic deletion in this first phase.
+# Updates therefore stop after the fourth published generation (sooner when failed stages remain).
 
 [history]
 # A summary of each scan (what ran and how it ended; no file, app or package names) kept on this PC.

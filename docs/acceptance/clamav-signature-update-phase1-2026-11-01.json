@@ -107,6 +107,26 @@
     ],
     "regressions": "3 added and 1 extended; six mutations removing the fixes were each detected"
   },
+  "follow_up_review_fixes": {
+    "date": "2026-11-01",
+    "reviewed_commit": "900bedb",
+    "fixed": [
+      {
+        "issue": "A threat-list update keeps the shared private-store thread lock during its downloads, so definition checks and scans failed after waiting 5 seconds",
+        "reproduced": "With that lock held for 6 seconds, check_clamav_signatures returned 'Operation could not complete' after 5.0 seconds",
+        "fix": "The signature store uses its own thread lock; process review and the threat cache keep sharing theirs, still waited out within the store deadline"
+      },
+      {
+        "issue": "With no automatic deletion, updates always stop after the fourth published generation, but the documentation only named the limit",
+        "fix": "README, example configuration and design state the stop and the supported next steps; the retention/recovery CLI is the next backlog priority"
+      },
+      {
+        "issue": "The store comment described descriptor-based checks although later steps use paths",
+        "fix": "The comment states the path-use assumption: ancestors writable only by the owner or root (or root-owned and sticky), files rechecked when opened, same-user processes out of scope"
+      }
+    ],
+    "regressions": "1 changed and 1 added; removing the dedicated lock or the bounded wait was each detected"
+  },
   "commit_created_during_recording": false,
   "push_performed_during_recording": false
 }

@@ -9,6 +9,7 @@ import re
 import secrets
 import shutil
 import stat
+import threading
 import time
 
 from . import core, history, process_store
@@ -38,13 +39,21 @@ def configure(scanner):
     scanner.signature_update_settings = cfg
 
 
+class SignatureStore(process_store.Store):
+    """Path validation only, so scans never queue behind a threat-list download or process review."""
+    thread_lock = threading.Lock()
+
+
 @contextmanager
 def root(scanner, create=False):
     cfg = scanner.signature_update_settings
     if not cfg["enabled"] or os.name != "posix" or os.geteuid() == 0:
         raise core.ScannerError("Private signature updates require an enabled, non-administrator POSIX account")
-    # Reuse the descriptor-based ancestor, local filesystem, cloud, owner and ACL checks.
-    with process_store.Store({"directory": cfg["directory"]}).open(create=create, file_lock=False) as store:
+    # Validated once through descriptors (ancestors, local filesystem, cloud, owner and ACL); the descriptors close
+    # before use. Later steps use paths: other users cannot redirect them because every ancestor is writable only by
+    # the owner or root (or is root-owned and sticky), and each file is rechecked as private when opened.
+    # Same-user processes are outside this boundary.
+    with SignatureStore({"directory": cfg["directory"]}).open(create=create, file_lock=False) as store:
         if store is None:
             raise core.ScannerError("Private signature store is not initialized; run the owner update CLI")
         path = store.path

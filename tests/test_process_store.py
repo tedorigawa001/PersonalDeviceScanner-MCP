@@ -404,6 +404,19 @@ class StoreTests(unittest.TestCase):
         finally:child.communicate('\n',timeout=5)
         self.assertEqual(child.returncode,0);self.assertEqual(self.manage()['status'],'completed')
 
+    def test_in_process_store_use_is_waited_out_only_within_the_deadline(self):
+        self.save();cfg=store.settings(self.scanner());holding=threading.Event()
+        def other():
+            with store._lock:holding.set();time.sleep(0.1)
+        worker=threading.Thread(target=other);worker.start();holding.wait()
+        with store.Store(cfg).open() as s:self.assertIsNotNone(s)
+        worker.join()
+        with store._lock:
+            started=time.monotonic();s=store.Store(cfg);s.deadline=started+0.2
+            with self.assertRaises(OSError):
+                with s.open():pass
+            self.assertLess(time.monotonic()-started,2)
+
     def test_json_and_total_capacity_fail_without_eviction(self):
         rid=self.save();report=self.report();report['data']['run_id']='c'*32
         with patch.object(store.Store,'used',return_value=128*1024*1024):store.save(self.scanner(),report)

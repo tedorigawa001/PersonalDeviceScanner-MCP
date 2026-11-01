@@ -150,15 +150,14 @@ class UpdateTests(unittest.TestCase):
             results.append(self.scanner().invoke("check_clamav_signatures"))
         with patch("pc_scanner.core.clamav_signatures", return_value=self.signatures), \
                 patch("pc_scanner.signature_update.digest_directory", side_effect=slow):
-            first, second = threading.Thread(target=check), threading.Thread(target=check)
+            first = threading.Thread(target=check)
             with history.locked(self.root / "publish"):  # a publication is switching the reference
                 first.start()
                 time.sleep(0.1)
-            with process_store._lock:  # another thread is using a private store
-                second.start()
-                time.sleep(0.1)
+            # A threat-list download can keep the shared private-store lock for its whole update; never wait on it.
+            with process_store._lock:
+                check()
             first.join()
-            second.join()
         self.assertEqual([r["status"] for r in results], ["completed"] * 2, results)
 
     def test_update_lock_is_cross_process_and_released(self):
