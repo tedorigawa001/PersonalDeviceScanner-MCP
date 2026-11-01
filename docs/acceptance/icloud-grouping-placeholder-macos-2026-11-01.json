@@ -1,0 +1,204 @@
+{
+  "date": "2026-11-01",
+  "status": "real_icloud_direct_target_exclusion_verified_with_grouping_enabled",
+  "recording_base_commit": "25b372958e58dce3e272d5cde4ca88cba6240b3a",
+  "scope": "One real existing iCloud SF_DATALESS regular file, direct target only; native batch and resume with small-target grouping enabled. No iCloud directory-wide content scan.",
+  "provider": "iCloud",
+  "real_provider_placeholder": true,
+  "target_identity": "Withheld; actual name, path, inode and raw timestamps remain only in private local evidence",
+  "method": {
+    "selection": "Metadata-only bounded discovery under the existing iCloud provider root; stopped after selecting a nonempty SF_DATALESS regular file of at most 1 MiB with zero allocated blocks",
+    "interface": "Production Scanner.invoke batch/resume API shared by CLI/MCP; no external MCP client or AI service used",
+    "grouping_enabled": true,
+    "engine": "ClamAV 1.5.4",
+    "definition_directory": "Existing normal installed official definitions; no updater or permission changes",
+    "real_target_cases": [
+      "batch",
+      "resume"
+    ],
+    "real_target_content_inspection": false,
+    "independent_guards": "Python audit hook refused any open of the real target identity; real engine wrapper permitted only version checks during real-placeholder cases. No guard was triggered; no fake scan result returned.",
+    "control": "Four newly created harmless local synthetic files under a separate private temporary root; real grouped scan completed in one engine call",
+    "mixed_workload_limit": "The real provider file and synthetic group were separate invocations. No files were created/uploaded into iCloud and no other personal file contents were inspected merely to form a mixed group."
+  },
+  "observations": {
+    "cloud_batch": {
+      "status": "partial",
+      "cloud_excluded_count": 1,
+      "coverage_by_reason": {
+        "cloud_placeholder": 1
+      },
+      "unresolved": 1,
+      "grouping": {
+        "schema": 1,
+        "mode": "enabled",
+        "engine_starts": 0,
+        "committed_jobs": 0,
+        "fallback_targets": 0,
+        "active_targets": 0
+      },
+      "engine_counts": {
+        "scanned": 0,
+        "infected": 0,
+        "errors": 0
+      },
+      "warnings": [
+        "1 cloud placeholder files or directories were excluded to avoid downloading their contents; scan coverage is incomplete"
+      ],
+      "metadata_unchanged": true,
+      "dataless_after": true,
+      "allocated_blocks_after": 0,
+      "checkpoint_saved_without_completed_content_evidence": true
+    },
+    "cloud_resume": {
+      "status": "partial",
+      "cloud_excluded_count": 1,
+      "coverage_by_reason": {
+        "cloud_placeholder": 1
+      },
+      "unresolved": 1,
+      "grouping": {
+        "schema": 1,
+        "mode": "enabled",
+        "engine_starts": 0,
+        "committed_jobs": 0,
+        "fallback_targets": 0,
+        "active_targets": 0
+      },
+      "engine_counts": {
+        "scanned": 0,
+        "infected": 0,
+        "errors": 0
+      },
+      "warnings": [
+        "1 cloud placeholder files or directories were excluded to avoid downloading their contents; scan coverage is incomplete"
+      ],
+      "metadata_unchanged": true,
+      "dataless_after": true,
+      "allocated_blocks_after": 0,
+      "checkpoint_saved_without_completed_content_evidence": true
+    },
+    "synthetic_control": {
+      "status": "completed",
+      "engine_counts": {
+        "scanned": 4,
+        "infected": 0,
+        "errors": 0
+      },
+      "grouping": {
+        "schema": 1,
+        "mode": "enabled",
+        "engine_starts": 1,
+        "committed_jobs": 1,
+        "fallback_targets": 0,
+        "active_targets": 0
+      }
+    }
+  },
+  "metadata_before": {
+    "flags": 1073741920,
+    "dataless": true,
+    "size_range": "nonempty, at most 1 MiB",
+    "blocks": 0,
+    "allocated_bytes": 0
+  },
+  "metadata_after": {
+    "flags": 1073741920,
+    "dataless": true,
+    "size_range": "nonempty, at most 1 MiB",
+    "blocks": 0,
+    "allocated_bytes": 0
+  },
+  "comparison": {
+    "metadata_equal_before_and_after_each_real_case": true,
+    "native_dataless_flag_retained": true,
+    "allocated_blocks_before": 0,
+    "allocated_blocks_after_batch": 0,
+    "allocated_blocks_after_resume": 0,
+    "allocated_bytes_before": 0,
+    "allocated_bytes_after": 0,
+    "device_inode_mode_size_flags_and_atime_mtime_ctime_equal": true,
+    "exact_size_withheld_from_public_record": true
+  },
+  "delayed_recheck": {
+    "seconds_after_report": 153.003,
+    "metadata_unchanged": true,
+    "dataless": true,
+    "allocated_blocks": 0,
+    "allocated_bytes": 0
+  },
+  "guards": {
+    "python_target_content_open_attempts": 0,
+    "blocked_engine_scan_attempts": 0,
+    "version_calls": 8,
+    "synthetic_scan_calls": 1
+  },
+  "save_and_reuse": {
+    "cloud_exclusion_count_per_invocation": 1,
+    "unresolved_cloud_scope_per_invocation": 1,
+    "resume_does_not_double_count_exclusion": true,
+    "no_completed_content_evidence_created": true,
+    "checkpoint_saved": true,
+    "checkpoint_lock_released": true,
+    "known_child_processes_remaining": 0
+  },
+  "privacy": {
+    "real_names_paths_or_checkpoint_identifiers_in_record": false,
+    "raw_metadata_reports_and_path_pointer": "Private local evidence only",
+    "private_evidence_permissions": {
+      "directory": "0700",
+      "files": "0600",
+      "allow_acl_absent": true
+    },
+    "normal_summary_history_enabled": false,
+    "detail_history_enabled": false,
+    "existing_user_history_or_checkpoint_modified": false,
+    "icloud_file_content_read": false,
+    "icloud_file_copied_moved_linked_or_modified": false,
+    "icloud_test_files_created": false,
+    "sync_settings_changed": false,
+    "credentials_collected": false
+  },
+  "onedrive": {
+    "status": "deferred_by_owner",
+    "app_sync_environment_or_additional_search_touched": false
+  },
+  "validation": {
+    "all_native_assertions_passed": true,
+    "metadata_discovery_summary": {
+      "provider_root_exists": true,
+      "metadata_entries": 3,
+      "directories_listed": 2,
+      "dataless_directories_skipped": 0,
+      "errors": 0,
+      "selected": true
+    },
+    "synthetic_control_scanned": 4,
+    "synthetic_control_infected": 0,
+    "synthetic_control_engine_calls": 1,
+    "real_target_scan_engine_calls": 0,
+    "real_target_python_content_open_attempts": 0,
+    "new_test_guard_blocks": 0,
+    "product_code_changed": false,
+    "full_unit_and_npm_suites_rerun": false,
+    "reason": "Acceptance/documentation-only task; no implementation change"
+  },
+  "limitations": [
+    "Only one directly selected real iCloud file was tested, not an entire mixed provider directory or all FileProvider states",
+    "Separate harmless synthetic group confirms the real grouping path; it was not combined in the same parent with the real placeholder",
+    "Non-hydration conclusion is based on no content-open/scan request and unchanged SF_DATALESS, size, timestamps and zero allocated blocks including delayed recheck; no OS-wide network-byte or transient FileProvider-cache audit",
+    "Concurrent provider state transitions remain an existing metadata-to-open race outside this observation",
+    "No safety verdict about the contents of the excluded real file; its contents remain uninspected"
+  ],
+  "remaining": [
+    "Owner-deferred OneDrive real-placeholder acceptance",
+    "Mixed real-provider directory and additional provider-state acceptance before default-enable decision"
+  ],
+  "commit_performed": false,
+  "push_performed": false,
+  "cleanup": {
+    "synthetic_local_inputs_removed": true,
+    "real_icloud_target_untouched": true,
+    "private_evidence_retained_locally": true
+  }
+}
