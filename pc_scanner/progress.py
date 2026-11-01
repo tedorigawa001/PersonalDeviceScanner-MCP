@@ -65,6 +65,9 @@ def message(state):
             + (f" samples={state['samples_completed']}/{state['samples_planned']} failed={state['samples_failed']}"
                if "samples_completed" in state else "")
             + (f" persistence={state['persistence']}" if "persistence" in state else "")
+            + (f" engine_calls={state['grouping']['engine_starts']} active_targets={state['grouping']['active_targets']} "
+               f"committed_jobs={state['grouping']['committed_jobs']} fallback_targets={state['grouping']['fallback_targets']}"
+               if state.get("grouping") else "")
             + signature_message(state.get("signature_check"))
             + (f" observed_records={state['observed_records']} methods={state.get('methods', {})}"
                if "observed_records" in state else "")

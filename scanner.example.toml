@@ -9,6 +9,11 @@ timeout_seconds = 600
 max_output_bytes = 1048576
 # ClamAV signatures older than this make scans partial; ClamAV itself warns after 7 days.
 max_signature_age_days = 7
+# Optional explicit database directory, shared by checks and all scans. Empty uses ClamAV defaults.
+clamav_database_directory = ""
+# Opt-in: group small regular files for batches. Requires the explicit database directory above.
+# Currently accepted: macOS ClamAV 1.5.4 with official daily/main/bytecode databases. Other profiles use single targets.
+batch_group_small_files = false
 
 [history]
 # A summary of each scan (what ran and how it ended; no file, app or package names) kept on this PC.

@@ -633,6 +633,8 @@ with `neighbor_cache=true` and `mdns=false` by default. See the LAN example abov
 | `local.timeout_seconds` | Time limit per operation (1–3600 seconds). For ClamAV it covers the folder check and the scan together; Wazuh uses at most 30 seconds | `600` |
 | `local.max_output_bytes` | Maximum engine output (1024–8388608 bytes) | `1048576` |
 | `local.max_signature_age_days` | ClamAV signatures older than this many days (1–365) make the scan `partial` | `7` |
+| `local.clamav_database_directory` | Optional absolute database directory used by definition checks and every scan; empty keeps ClamAV defaults | empty |
+| `local.batch_group_small_files` | Opt-in bounded grouping of small regular batch targets; requires an explicit database directory and an accepted engine profile | `false` |
 | `scan_roots.<alias>` | A folder allowed to be scanned (absolute path). Aliases use letters, digits, `_` and `-`, up to 64 characters | none |
 | `wazuh.url` | HTTPS address of the Wazuh indexer. Empty disables it | empty |
 | `wazuh.agent_id` | Numeric ID of the target device | empty |
@@ -820,6 +822,32 @@ pc-scanner --config scanner.toml malware home --resume
 - Only one batch runs at a time across processes. Limits: 16 checkpoints, 16 MiB each, 10,000 parts per call.
   Exhausting a limit/time budget leaves coverage incomplete. A single file/archive cannot resume halfway through;
   an interrupted part is retried. Starting with `--batch` again resets that target's checkpoint.
+
+### Grouping small batch targets
+
+The owner may set `local.batch_group_small_files=true` and an absolute, non-link
+`local.clamav_database_directory`. The directory is shared by signature checks, ordinary scans and
+batch scans; choose the same official database directory your updater maintains. No updater is run.
+Currently the accepted grouping profile is **macOS ClamAV 1.5.4** with official daily/main/bytecode
+`.cvd`/`.cld` files. Missing/unknown database identity, stale definitions, other versions, custom databases,
+Linux and Windows use individual targets. Grouping is off by default.
+
+At most 64 nonempty local regular files (1 MiB each, 32 MiB combined, 8 KiB command budget) from the
+same parent and selected scope share one nonrecursive engine call. Directories, unsupported names and
+other targets use the existing path. Cloud placeholders remain excluded; metadata and ancestor state
+are rechecked before execution. The existing metadata/open race is not an OS-wide non-download guarantee.
+
+A group commits all its target evidence atomically only after complete, exact per-file results and matching
+summaries, file metadata and definition identity. Ambiguous output falls back once per target. Cancelled,
+output-limited or definition-changed groups remain unconfirmed; no partial `OK` becomes reusable success.
+Resume rebuilds the current plan, reuses unchanged evidence per target and never adds group totals again.
+`group_result_unconfirmed` explains uncertain group coverage; unknown engine counts are `null`, not zero.
+
+`data.batch.grouping`, CLI/MCP progress and the dashboard show engine calls, committed jobs and fallback
+targets for this attempt. Finished/pending/reused still count logical targets. Normal file names and raw OK
+lines are not added to MCP or summary history. Schema-2 checkpoints remain readable; grouped work uses
+schema 3, which older versions cannot resume. Keep the checkpoint when rolling back and start a separate
+one instead of overwriting saved evidence. See the [design](docs/malware-small-target-grouping-design.md).
 
 ### Managing saved batch checkpoints (local CLI only)
 

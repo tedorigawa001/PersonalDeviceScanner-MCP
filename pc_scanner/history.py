@@ -276,9 +276,17 @@ def entry(operation: str, arguments: dict, report: dict, started: datetime, seco
             **({"error": clean_text(error, ERROR_CHARS)} if report.get("error") else {}),
             **(freshness_fields(data) if operation == 'vulnerabilities' else {}),
             **(coverage_fields(data) if operation == 'malware' else {}),
+            **(grouping_fields(data) if operation == 'malware' else {}),
             **(lan.summary(data) if operation == 'discover_lan_devices' else {}),
             **(connections.summary(data) if operation in {'observe_outbound_connections', 'check_connection_destinations'} else {}),
             **(ip_threats.summary(data) if operation == 'check_connection_destinations' else {})}
+
+
+def grouping_fields(data):
+    from .malware_group import projection
+    batch = data.get("batch", {}) if isinstance(data, dict) else {}
+    value = projection(data.get("grouping") or (batch.get("grouping") if isinstance(batch, dict) else None)) if isinstance(data, dict) else None
+    return {"grouping": value} if value else {}
 
 
 def save_details(path: Path, report: dict, max_bytes: int) -> str:
@@ -419,6 +427,7 @@ def parse(line: str) -> dict | None:
                 "details": details if isinstance(details, str) and DETAILS_ID.fullmatch(details) else None,
                 **(freshness_fields(record) if record.get('operation') == 'vulnerabilities' else {}),
                 **(coverage_fields(record) if record.get('operation') == 'malware' else {}),
+                **(grouping_fields(record) if record.get('operation') == 'malware' else {}),
                 **(lan.summary(record) if record.get('operation') == 'discover_lan_devices' else {}),
                 **(connections.summary(record) if record.get('operation') in {'observe_outbound_connections', 'check_connection_destinations'} else {}),
                 **(ip_threats.summary(record) if record.get('operation') == 'check_connection_destinations' else {})}

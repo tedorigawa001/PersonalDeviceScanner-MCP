@@ -144,14 +144,16 @@ def label(state, show_paths):
 def describe(raw, show_paths):
     try:
         state = json.loads(raw)
-        if (not isinstance(state, dict) or type(state.get("schema")) is not int or state["schema"] not in (1, 2)
+        if (not isinstance(state, dict) or type(state.get("schema")) is not int or state["schema"] not in (1, 2, 3)
                 or not isinstance(state.get("parts"), dict) or len(state["parts"]) > batch.MAX_PARTS):
             raise ValueError
         parts = state["parts"]
         out = {"state": "valid", "schema": state["schema"], "saved_parts": len(parts),
                "finished_parts": sum(isinstance(p, dict) and p.get("finished") is True for p in parts.values()),
                **label(state, show_paths)}
-        if state["schema"] == 2:
+        if state["schema"] in (2, 3):
+            if state["schema"] == 3:
+                batch.validate_jobs(state)
             ledger = coverage.validate(state["coverage"])
             out.update(scan_group_id=ledger["group"], coverage_revision=ledger["revision"],
                        unresolved_scopes=coverage.summary(ledger)["unresolved"]["count"])

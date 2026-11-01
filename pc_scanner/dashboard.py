@@ -192,6 +192,7 @@ def findings_table(findings: list) -> str:
 def scan_body(item: dict, report: dict | None, reason: str) -> str:
     parts = [f'<div class="callout">Error: {esc(item["error"])}</div>'] if item["error"] else []
     parts.append(coverage_panel(item.get("coverage")))
+    parts.append(grouping_panel(item.get("grouping")))
     if report is None:
         parts.append(f'<p class="quiet">{esc(REASONS[reason])}</p>')
         return "".join(parts)
@@ -447,9 +448,20 @@ def freshness_notes(run: list[tuple[int, dict]]) -> str:
 def latest_row(run: list[tuple[int, dict]]) -> str:
     total, first, last = combined(run), run[0], run[-1][1]
     return (f'<tr><td class="op">{esc(last["operation"])}</td><td>{esc(history.source(last["operation"]))}</td>'
-            f'<td class="target"><a href="#scan-{first[0]}">{esc(run_label(first[1]))}</a>{run_notes(run)}{freshness_notes(run)}{coverage_panel(last.get("coverage"))}</td>'
+            f'<td class="target"><a href="#scan-{first[0]}">{esc(run_label(first[1]))}</a>{run_notes(run)}{freshness_notes(run)}{coverage_panel(last.get("coverage"))}{grouping_panel(last.get("grouping"))}</td>'
             f'<td>{badge(total["status"], STATUSES)}</td><td>{counts(total)}</td>'
             f'<td class="time">{esc(local_time(last))}</td></tr>')
+
+
+def grouping_panel(value):
+    from .malware_group import projection
+    value = projection(value)
+    if value is None:
+        return ""
+    return ('<div class="quiet">ClamAV engine calls (this attempt): ' + str(value["engine_starts"])
+            + '; committed jobs: ' + str(value["committed_jobs"])
+            + '; fallback targets: ' + str(value["fallback_targets"])
+            + '; grouping: ' + value["mode"] + '. Target counts remain logical scopes.</div>')
 
 
 def coverage_panel(value):

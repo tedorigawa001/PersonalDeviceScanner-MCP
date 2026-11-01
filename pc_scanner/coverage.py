@@ -12,11 +12,11 @@ from pathlib import Path
 REASONS = frozenset({"cloud_placeholder", "permission_denied", "metadata_unavailable", "file_size_limit",
                      "archive_limit", "engine_limit_unknown", "directory_depth_limit", "timeout", "cancelled",
                      "not_reached", "metadata_limit", "changed_during_scan", "target_missing",
-                     "authorization_changed", "engine_error", "output_limit", "attribution_unknown"})
+                     "authorization_changed", "engine_error", "output_limit", "attribution_unknown", "group_result_unconfirmed"})
 ID = re.compile(r"[0-9a-f]{32}\Z")
 MAX_TARGETS = 10000
 MAX_BYTES = 16 * 1024 * 1024
-LABELS = {"cloud_placeholder": "Cloud file not downloaded (metadata check only)",
+LABELS = {"group_result_unconfirmed": "Grouped inspection result not confirmed", "cloud_placeholder": "Cloud file not downloaded (metadata check only)",
           "permission_denied": "Permission denied", "metadata_unavailable": "File state could not be verified",
           "file_size_limit": "File size limit", "archive_limit": "Archive inspection limit",
           "engine_limit_unknown": "Unidentified engine limit", "directory_depth_limit": "Directory depth limit",

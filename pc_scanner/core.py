@@ -280,7 +280,7 @@ def excerpt(text: str) -> tuple[str, bool]:
 
 # Settings each section understands; None means free-form keys (scan root aliases).
 SETTINGS = {"local": {"osquery_binary", "clamav_binary", "timeout_seconds", "max_output_bytes",
-                      "max_signature_age_days"},
+                      "max_signature_age_days", "batch_group_small_files", "clamav_database_directory"},
             "scan_roots": None,
             "wazuh": {"url", "agent_id", "ca_file", "agent_name", "freshness"},
             "android": {"adb_binary", "indicators_file", "max_indicator_age_days", "max_patch_age_days"},
@@ -436,7 +436,7 @@ DATABASE_STAMP = re.compile(r"/(\d+)/\w{3} (\w{3}) +(\d{1,2}) (\d{2}):(\d{2}):(\
 
 
 def clamav_signatures(binary: str, deadline: float, limit: int,
-                      cancel: threading.Event | None = None) -> dict:
+                      cancel: threading.Event | None = None, *, database="") -> dict:
     """Engine version and newest daily signature database from `clamscan --version`.
 
     clamscan prints "ClamAV <engine>/<daily version>/<build time>", the time in
@@ -445,7 +445,7 @@ def clamav_signatures(binary: str, deadline: float, limit: int,
     remaining = deadline - time.monotonic()
     if remaining <= 0:
         raise ScannerError("Time budget used before the signature check; scan was not completed")
-    code, output, _ = run_bounded([binary, "--version"], min(remaining, 30), limit, cancel=cancel)
+    code, output, _ = run_bounded([binary, *(["--database=" + engine_argument(database)] if database else []), "--version"], min(remaining, 30), limit, cancel=cancel)
     info = {"engine": None, "version": None, "built_at": None}
     engine = re.match(r"ClamAV ([^/\s]+)", output) if code == 0 else None
     if not engine:
@@ -625,6 +625,14 @@ def engine_environment() -> dict:
 
 def run_bounded(argv: list[str], timeout: float, limit: int,
                 cancel: threading.Event | None = None) -> tuple[int, str, str]:
+    return _run_bounded(argv, timeout, limit, cancel)
+
+
+def _run_bounded(argv, timeout, limit, cancel=None, *, capture_stopped=False):
+    """Internal adapter: grouping may retain bounded output after a stopped engine.
+
+    The public run_bounded exception contract remains unchanged.
+    """
     check_cancel(cancel)
     try:
         process = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
@@ -675,6 +683,10 @@ def run_bounded(argv: list[str], timeout: float, limit: int,
         tree.close()
     for thread in threads:
         thread.join(timeout=2)
+    if capture_stopped:
+        reason = ("cancelled" if cancel is not None and cancel.is_set() else
+                  "timeout" if stopped else "output_limit" if exceeded.is_set() or any(t.is_alive() for t in threads) else None)
+        return (process.returncode, *(decode(bytes(b)) for b in buffers), reason)
     if stopped:
         raise ScannerError(stopped)
     if exceeded.is_set():
@@ -715,6 +727,11 @@ class Scanner:
         self.max_signature_age = self.local.get("max_signature_age_days", 7)
         if type(self.max_signature_age) is not int or not 1 <= self.max_signature_age <= 365:
             raise ScannerError("max_signature_age_days must be 1..365")
+        if type(self.local.get("batch_group_small_files", False)) is not bool:
+            raise ScannerError("batch_group_small_files must be a boolean")
+        database = self.local.get("clamav_database_directory", "")
+        if not isinstance(database, str) or (database and not Path(database).is_absolute()):
+            raise ScannerError("clamav_database_directory must be an absolute path or empty")
         for key in ("osquery_binary", "clamav_binary"):
             value = self.local.get(key, "")
             if not isinstance(value, str) or (value and not Path(value).is_absolute()):
@@ -902,6 +919,10 @@ class Scanner:
                       + page_warnings
                       + (["One page, engine warning, or no observable rows; coverage incomplete"] if partial else []))
 
+    def signature_info(self, binary, deadline, cancel=None):
+        database = self.local.get("clamav_database_directory", "")
+        return clamav_signatures(binary, deadline, self.limit, cancel=cancel, **({"database": database} if database else {}))
+
     def check_clamav_signatures(self, cancel: threading.Event | None = None,
                                *, deadline: float | None = None, progress=None) -> dict:
         """Inspect the configured engine's daily definition stamp; never run an updater."""
@@ -926,7 +947,7 @@ class Scanner:
 
         try:
             check_cancel(cancel)
-            signatures = clamav_signatures(self.binary("clamav_binary"), deadline, self.limit, cancel)
+            signatures = self.signature_info(self.binary("clamav_binary"), deadline, cancel)
             check_cancel(cancel)
             if signatures["engine"] is None:
                 raise ScannerError("ClamAV definition check failed; no valid version response")
@@ -1019,7 +1040,7 @@ class Scanner:
     def _malware(self, root_alias: str, relative_path: str = ".",
                  cancel: threading.Event | None = None, *, deadline: float | None = None,
                  max_levels: int = MAX_DIRECTORY_LEVELS, excluded_directory: Path | None = None,
-                 expect_files: bool = True, progress=None, strict_metadata=False, excluded_scopes=()) -> dict:
+                 expect_files: bool = True, progress=None, strict_metadata=False, excluded_scopes=(), on_engine_start=None) -> dict:
         from . import coverage
         if root_alias not in self.roots:
             raise ScannerError("Scan root alias is not authorized")
@@ -1033,6 +1054,13 @@ class Scanner:
         if strict_metadata:
             from .malware_batch import target_path
             root, target = target_path(self, root_alias, relative_path)
+            ancestor_state = coverage.path_state(root, target.parent if target != root else root)
+            if ancestor_state != "local":
+                return coverage.attach(result("clamav", "partial", data={"root_alias": root_alias,
+                    "relative_path": clean_text(relative_path, PATH_CHARS), "scan_started": False,
+                    "cloud_excluded_count": int(ancestor_state == "cloud_placeholder")},
+                    warnings=["An ancestor no longer permits safe scanning; coverage remains incomplete"]),
+                    [coverage.issue(relative_path, ancestor_state)])
         if not target.is_relative_to(root):
             raise ScannerError("Scan target escapes the authorized root")
         if not (target.is_dir() or target.is_file()):
@@ -1115,7 +1143,7 @@ class Scanner:
                    [coverage.issue(str(target.relative_to(root)), "not_reached", "subtree_remainder")]))
         if progress:
             progress.update(stage="definitions")
-        signatures = clamav_signatures(binary, deadline, self.limit, cancel=cancel)
+        signatures = self.signature_info(binary, deadline, cancel)
         age_seconds = age_days = None
         if signatures["built_at"]:
             age_seconds = (datetime.now(timezone.utc) - signatures["built_at"]).total_seconds()
@@ -1133,8 +1161,11 @@ class Scanner:
             raise ScannerError("Directory coverage check used the time budget; scan was not completed")
         if progress:
             progress.update(stage="scanning")
+        if on_engine_start:
+            on_engine_start()
         code, output, diagnostic = run_bounded([
-            binary, "--recursive=yes", "--infected",
+            binary, *(["--database=" + engine_argument(self.local["clamav_database_directory"])]
+                      if self.local.get("clamav_database_directory") else []), "--recursive=yes", "--infected",
             "--follow-dir-symlinks=0", "--follow-file-symlinks=0",
             f"--max-dir-recursion={max_levels}",
             "--max-filesize=100M", "--max-scansize=200M", "--max-recursion=16",
