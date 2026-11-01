@@ -97,6 +97,6 @@
   ],
   "cleanup": "private test stores, cooldown data, synthetic fixtures and raw reports retained locally; no active acceptance scanner remains",
   "runtime_source_changed": false,
-  "commit_created": false,
-  "push_performed": false
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false
 }

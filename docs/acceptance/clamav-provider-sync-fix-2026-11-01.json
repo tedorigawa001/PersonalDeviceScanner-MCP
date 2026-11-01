@@ -47,8 +47,8 @@
     "prior_native_acceptance_store_or_wait_modified": false,
     "administrator_credentials_handled": false,
     "dependencies_changed": false,
-    "commit_created": false,
-    "push_performed": false
+    "commit_created_during_recording": false,
+    "push_performed_during_recording": false
   },
   "remaining": [
     "native recovery acceptance using the new synchronization journal after real freshclam failure and storage recovery",

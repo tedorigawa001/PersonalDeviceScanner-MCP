@@ -431,6 +431,10 @@ Each invocation records pending synchronization before freshclam starts; durable
 required before recovery can clear the failed-attempt flag. An interrupted save is retried from that invocation's
 protected staging directory. If copying or verification still fails, recovery remains blocked. Legacy stores without
 this evidence need a single unambiguous staging source; an old `provider.dat` alone is not sufficient.
+While recovery is blocked, scans keep using the current generation, but its definitions age and become stale.
+If the cause cannot be resolved, set `clamav_updates.enabled=false` to return to OS-managed definitions, or
+configure a new private directory (never an OS-managed database) only after every provider wait is known to
+have elapsed. Preserve the blocked store for investigation.
 
 To reclaim a selected entry, list again and run `clamav-signature-store delete ENTRY_ID --revision ENTRY_REVISION`.
 Current/in-use generations, the last previous generation, unrecovered failed stages, changed revisions and unsafe
