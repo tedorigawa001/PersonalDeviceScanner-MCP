@@ -1,0 +1,215 @@
+{
+  "date": "2026-11-02",
+  "kind": "native_freshclam_network_failure_and_early_recovery_acceptance",
+  "status": "failure preservation and early-refusal cases passed; natural-wait recovery remains pending",
+  "source_commit": "50c8481098ca0cd67cb43c0d7174baa73abc2c23",
+  "runtime_source_changed": false,
+  "environment": {
+    "host": "this Mac Docker Desktop",
+    "container": "pc-scanner-freshclam-network-failure",
+    "image": "sha256:fbb1f452c0c824212eba8b5ebe6284fa201ee465fad2e5c56844adcde499a748",
+    "architecture": "aarch64",
+    "python": "3.15.2",
+    "engine": "real freshclam/sigtool/clamscan 1.5.4",
+    "uid_gid": "10001:10001",
+    "network_mode": "none",
+    "ipv4_route_count": 0,
+    "network_note": "Docker has no routable external network. sysfs also exposes unconfigured kernel tunnel/control entries; an initial lo-only harness assertion was too strict. No application behavior changed.",
+    "mounts": [],
+    "published_ports": [],
+    "capabilities_dropped": [
+      "ALL"
+    ],
+    "security_options": [
+      "no-new-privileges"
+    ],
+    "init": true,
+    "memory_bytes": 2684354560,
+    "cpus": 2.0,
+    "pids_limit": 256
+  },
+  "fixture": {
+    "initial_generation": "Test harness copied only public, already signed Mac CVDs into a new offline fixture generation and wrote its content-verified pointer. It was not a freshclam download/publication in this trial.",
+    "seed_signature_verification": {
+      "main.cvd": true,
+      "daily.cvd": true,
+      "bytecode.cvd": true
+    },
+    "versions": {
+      "main.cvd": 63,
+      "daily.cvd": 28172,
+      "bytecode.cvd": 339
+    },
+    "provider_or_wait_state_copied_from_existing_store": false,
+    "personal_folders_mounted": false,
+    "inputs": "128 harmless synthetic text files only",
+    "source": "committed public files from git archive; no host config or credentials exported"
+  },
+  "real_failure": {
+    "updater_entrypoint": "unmodified owner CLI update-clamav-signatures",
+    "freshclam_calls": 1,
+    "freshclam_exit": 11,
+    "failure": "DNS query and libcurl hostname resolution failure; libcurl error 6, freshclam exit 11",
+    "public_provider_requests_reached": 0,
+    "synthetic_http_responses": false,
+    "fake_engine": false,
+    "argv_clock_or_returncode_mocked": false,
+    "observation": "test-only wrapper around run_bounded recorded actual command/result; underlying implementation called unchanged",
+    "report": {
+      "schema_version": 1,
+      "source": "clamav",
+      "status": "error",
+      "observed_at": "2026-11-02T12:39:58.647438+00:00",
+      "findings": [],
+      "warnings": [
+        "Signature operation did not complete; check the private store and owner configuration. No administrator credentials were requested."
+      ],
+      "data": {
+        "update_status": "failed",
+        "published": false,
+        "previous_preserved": true,
+        "resume_recheck_required": false,
+        "progress": {
+          "stage": "error",
+          "finished": null,
+          "pending": null,
+          "reused": null,
+          "checkpoint": "not_applicable",
+          "saved_parts": null,
+          "elapsed_seconds": 0.096
+        }
+      }
+    },
+    "current_and_old_definition_bytes_preserved": true
+  },
+  "wait_and_provider": {
+    "attempt": {
+      "next_attempt": 1793709598.5896919,
+      "pending": true
+    },
+    "earliest_retry_utc": "2026-11-03T12:39:58.589692+00:00",
+    "earliest_retry_jst": "2026-11-03T21:39:58.589692+09:00",
+    "owner_cli_not_before": "Use minimum_not_before from a fresh inventory after all real provider waits; displayed seconds must round up",
+    "pending_retained": true,
+    "provider_state_exists": true,
+    "provider_state_sha256": "77194b0df15c44173b9612cece6ed1a1243301ed4f04d9efe60bc433ec131199",
+    "provider_sync": {
+      "provider_hash": "77194b0df15c44173b9612cece6ed1a1243301ed4f04d9efe60bc433ec131199",
+      "stage": "stage-3a14216a37dbea30848119c4644d8145",
+      "status": "synced"
+    },
+    "provider_wait_note": "Real freshclam state retained, but no actual HTTP 429/provider-specific cooldown was induced or verified",
+    "attempt_bytes_unchanged_after_early_actions": true,
+    "provider_bytes_unchanged_after_early_actions": true,
+    "early_update_retry": {
+      "schema_version": 1,
+      "source": "clamav",
+      "status": "error",
+      "observed_at": "2026-11-02T12:39:58.911737+00:00",
+      "findings": [],
+      "warnings": [
+        "Signature operation did not complete; check the private store and owner configuration. No administrator credentials were requested."
+      ],
+      "data": {
+        "update_status": "failed",
+        "published": false,
+        "previous_preserved": true,
+        "resume_recheck_required": false,
+        "progress": {
+          "stage": "error",
+          "finished": null,
+          "pending": null,
+          "reused": null,
+          "checkpoint": "not_applicable",
+          "saved_parts": null,
+          "elapsed_seconds": 0.038
+        }
+      }
+    },
+    "early_recovery": {
+      "schema_version": 1,
+      "source": "clamav",
+      "status": "partial",
+      "observed_at": "2026-11-02T12:39:59.282003+00:00",
+      "findings": [],
+      "warnings": [
+        "Recovery cannot shorten or bypass the update/provider wait; retry after the acknowledged deadline"
+      ],
+      "data": {
+        "recovered": false,
+        "next_attempt_at": 1793709598.5896919
+      }
+    },
+    "stage_deletion": {
+      "schema_version": 1,
+      "source": "bridge",
+      "status": "error",
+      "observed_at": "2026-11-02T12:39:59.463067+00:00",
+      "findings": [],
+      "warnings": [],
+      "error": "Selected entry is protected: pending_recovery"
+    }
+  },
+  "old_generation_usability": {
+    "baseline_scan": "128 harmless files completed in 2 real ClamAV grouped calls",
+    "resume_counts": {
+      "scanned": 128,
+      "infected": 0,
+      "errors": 0
+    },
+    "reused": 128,
+    "new_engine_starts": 0,
+    "freshness": {
+      "engine": "1.5.4",
+      "version": 28172,
+      "built_at": "2026-11-02T06:24:10+00:00",
+      "age_days": 0.3,
+      "max_age_days": 7,
+      "freshness": "fresh",
+      "checked_at": "2026-11-02T12:40:00.060391+00:00",
+      "update_performed": false,
+      "update_steps": [
+        "The owner may explicitly run CLI update-clamav-signatures with the enabled private-store configuration. No administrator password is used and MCP cannot update definitions.",
+        "Recheck freshness after updating; resume re-evaluates results when definition contents change."
+      ],
+      "update_mode": "private_owner_cli"
+    },
+    "permissions": "native private-store descriptor guards passed",
+    "lock_release": "separate owner CLI inventory, check and resume commands succeeded after failure"
+  },
+  "regressions": {
+    "command": ".venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -v",
+    "python": "3.15.2",
+    "total": 61,
+    "passed": 61,
+    "skipped": 0,
+    "failures": 0,
+    "errors": 0,
+    "seconds": 6.39,
+    "full_suite_rerun": false,
+    "reason": "No runtime or regression-test implementation changes; this task adds native acceptance documentation only"
+  },
+  "preservation": {
+    "existing_mac_pointer_wait_provider_and_sync_sha256_unchanged": true,
+    "existing_linux_waiting_container_never_started_execed_or_copied_from": true,
+    "os_definitions_written": false,
+    "administrator_passwords_handled": false,
+    "real_wait_or_clock_shortened": false
+  },
+  "cleanup": {
+    "new_failure_container_stopped": true,
+    "new_failure_container_retained": "Retain stopped with pending=true, failed stage and real provider state for follow-up; network remains none; do not reset deadline",
+    "private_local_evidence_retained": true
+  },
+  "remaining": [
+    "Recover this actual pending state only after natural expiry, preserving provider state and old generation",
+    "After successful owner recovery, verify a subsequent actual freshclam attempt; keep offline unless explicit provider-contact acceptance is intended",
+    "Real HTTP/TLS transfer failure and HTTP 429/provider-specific retry instructions remain separate cases",
+    "No external-provider success recovery or new definition publication in this network-disabled trial"
+  ],
+  "static_checks": [
+    "Acceptance JSON and relative links",
+    "git diff --check"
+  ],
+  "push_performed": false
+}
