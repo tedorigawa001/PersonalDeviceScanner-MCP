@@ -154,7 +154,7 @@
   "compatibility": {
     "accepted": "Linux aarch64 glibc 2.39 CPython 3.15.2",
     "minimum_glibc": "2.34 from cryptography manylinux_2_34_aarch64",
-    "native_wheel_abis": "cffi/pydantic-core/rpds-py cp315; cryptography cp311-abi3 usable on 3.15",
+    "native_wheel_abis": "cffi/pydantic-core/rpds-py cp315; cryptography cp315-abi3.abi3t (stable ABI wheel for 3.15)",
     "outside_scope": [
       "musl/Alpine",
       "glibc older than 2.34",
@@ -276,5 +276,6 @@
     "six-profile compliance regression coverage",
     "README/compliance/backlog and historical cp314 record follow-up"
   ],
-  "push_performed": false
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false
 }

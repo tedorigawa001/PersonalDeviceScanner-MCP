@@ -197,7 +197,7 @@ npmの起動用スクリプトはプロファイルを自動列挙するので�
 
 `profiles/linux-aarch64-cp315/` はLinux aarch64・CPython 3.15.2で、3.14と同じ固定版29件を使って生成しました。
 3.15用wheelを対象OS上で取得・導入し、空の別venvへのオフライン・ハッシュ必須導入と再生成一致を確認しています。
-cffi・pydantic-core・rpds-pyはcp315用wheel、cryptographyは3.15でも利用できるcp311-abi3 wheelです。
+cffi・pydantic-core・rpds-pyはcp315用wheel、cryptographyは3.15用の安定ABI版wheel（`cp315-abi3.abi3t`）です。
 既存の3.14用ハッシュを3.15用としてコピーしていません。glibc 2.34以上が必要で、musl／Alpineは対象外です。
 
 npmの選択処理は既存の自動列挙を使います。回帰テストで3.15優先・3.14へのフォールバックと、
