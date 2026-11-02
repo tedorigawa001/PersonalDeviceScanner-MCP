@@ -210,7 +210,7 @@ the npm package holds a small launcher, this project's Python code and the lock 
   "mcpServers": {
     "personal-device-scanner": {
       "command": "npx",
-      "args": ["-y", "personal-device-scanner-mcp@0.10.1", "--config", "/absolute/path/to/scanner.toml", "serve"]
+      "args": ["-y", "personal-device-scanner-mcp@0.11.0", "--config", "/absolute/path/to/scanner.toml", "serve"]
     }
   }
 }
@@ -221,7 +221,7 @@ the npm package holds a small launcher, this project's Python code and the lock 
 - On first use, the launcher creates its own virtual environment in your cache folder and installs the Python packages there
   (macOS: `~/Library/Caches/personal-device-scanner-mcp`, Linux: `~/.cache/personal-device-scanner-mcp`,
   Windows: `%LOCALAPPDATA%\personal-device-scanner-mcp`). This can take longer than some clients wait for a server to start,
-  so run `npx -y personal-device-scanner-mcp@0.10.1 setup` once beforehand.
+  so run `npx -y personal-device-scanner-mcp@0.11.0 setup` once beforehand.
 - With CPython 3.14 on Windows x64, macOS (Intel or Apple silicon) or Linux x86_64/aarch64, and with CPython 3.15 on
   Apple silicon (macOS 11 or later) or Linux x86_64/aarch64 (Linux needs glibc 2.34 or later), packages are
   installed with the hashes in the bundled lock files (`pip --require-hashes`); with musl or older glibc that setup
@@ -237,10 +237,10 @@ the npm package holds a small launcher, this project's Python code and the lock 
   `PC_SCANNER_PYTHON` to its absolute path; `PC_SCANNER_CACHE_DIR` (absolute) moves the cache.
   Looking for Python never installs one: Windows' Python install manager would otherwise install a missing runtime on
   its own when none is installed yet. Without a suitable Python the launcher stops and says so.
-- Keep the version pinned (`@0.10.1`) so that updating is your decision. Each version and Python gets its own environment;
+- Keep the version pinned (`@0.11.0`) so that updating is your decision. Each version and Python gets its own environment;
   old ones in the cache folder (folders named like `<version>-<hash>`) can be deleted. Do not delete the whole folder: on Windows it
   also holds the scan history.
-- The CLI works the same way, for example `npx -y personal-device-scanner-mcp@0.10.1 --config scanner.toml status`.
+- The CLI works the same way, for example `npx -y personal-device-scanner-mcp@0.11.0 --config scanner.toml status`.
 - If a Windows client cannot start `npx` directly, use `"command": "cmd"` with `"args": ["/c", "npx", ...]`.
 
 ### Using Wazuh
@@ -1308,13 +1308,13 @@ Windows (PowerShell):
   The subsequent [aarch64 profile verification](docs/acceptance/linux-aarch64-hashed-profile-2026-11-02.json) adds
   `profiles/linux-aarch64-cp314/` for CPython 3.14. The subsequent [3.15 profile](docs/acceptance/linux-aarch64-cp315-hashed-profile-2026-11-02.json)
   adds matching CPython 3.15 wheel hashes under `profiles/linux-aarch64-cp315/`. On Linux aarch64, npm now prefers
-  hash-matching 3.15 when available and keeps hash-matching 3.14 as a fallback. These changes are local and not published to npm.
+  hash-matching 3.15 when available and keeps hash-matching 3.14 as a fallback. These profiles ship with 0.11.0.
 - macOS arm64 CPython 3.15 has an additional [hash-pinned profile](docs/acceptance/macos-arm64-cp315-hashed-profile-2026-11-02.json)
   under `profiles/darwin-arm64-cp315/`. npm prefers matching 3.15 when installed, retaining the root 3.14 reference as fallback.
-  This local change has not been published to npm.
+  It ships with 0.11.0.
 - Linux x86_64 CPython 3.15 also has a [hash-pinned profile](docs/acceptance/linux-x86_64-cp315-hashed-profile-2026-11-02.json)
   under `profiles/linux-x86_64-cp315/`. npm prefers matching 3.15 and falls back to matching 3.14. Acceptance used
-  an emulated amd64 Docker container on this arm64 Mac, with ordinary ClamAV 1.4.6 scans. No npm release was published.
+  an emulated amd64 Docker container on this arm64 Mac, with ordinary ClamAV 1.4.6 scans. It ships with 0.11.0.
 - Detection accuracy with real engines and behavior on each OS are not guaranteed. Acceptance testing on real machines for each OS is required before distribution.
 
 ## Related documents and license
