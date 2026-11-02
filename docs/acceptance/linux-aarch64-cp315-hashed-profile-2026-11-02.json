@@ -254,7 +254,7 @@
       "JSON and local links",
       "git diff --check for project changes; byte-preserved upstream evidence excluded"
     ],
-    "ci": "not run; no push"
+    "ci": "not run during recording; see ci_follow_up"
   },
   "preservation": {
     "personal_folders_mounted": false,
@@ -277,5 +277,17 @@
     "README/compliance/backlog and historical cp314 record follow-up"
   ],
   "commit_created_during_recording": false,
-  "push_performed_during_recording": false
+  "push_performed_during_recording": false,
+  "ci_follow_up": {
+    "date": "2026-11-02",
+    "run": 41436406969,
+    "url": "https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/runs/41436406969",
+    "commit": "f0ca4b1",
+    "result": "22 of 22 jobs passed",
+    "python_tests": "741 per Python (3.11, 3.14, 3.15) on each OS; skipped macOS 17, Ubuntu 36, Windows 148",
+    "profile_tests": "six-profile security floor and both Linux aarch64 profile evidence tests passed on all three operating systems",
+    "distributions": "verified; every profiles/ file, including linux-aarch64-cp314 and linux-aarch64-cp315, matched the repository bytes in the sdist; 35 notice files per distribution",
+    "npm_launcher": "12 of 12 jobs passed; the 3.14/Node 24 and 3.15/Node 26 jobs ran 28 tests including the end-to-end check (Windows skipped only the POSIX-only SIGTERM check)",
+    "limit": "CI Linux runners are x86_64; installing the aarch64 profiles is verified only by the local Docker acceptance"
+  }
 }
