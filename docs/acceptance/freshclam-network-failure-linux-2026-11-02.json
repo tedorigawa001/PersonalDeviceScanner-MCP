@@ -211,5 +211,6 @@
     "Acceptance JSON and relative links",
     "git diff --check"
   ],
-  "push_performed": false
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false
 }
