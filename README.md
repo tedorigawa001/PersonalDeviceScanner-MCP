@@ -500,6 +500,7 @@ Then every inventory, malware and Android scan reads its engine's version (`osqu
   On Linux aarch64 with CPython 3.14 and glibc 2.34+, use `-r profiles/linux-aarch64-cp314/requirements-agent.lock`
   instead of the root lock in the command below. musl/Alpine is outside this profile.
   With CPython 3.15 on the same platform, use `profiles/linux-aarch64-cp315/requirements-agent.lock`.
+  On an Apple silicon Mac with standard CPython 3.15 and macOS 11+, use `profiles/darwin-arm64-cp315/requirements-agent.lock`.
 
   ```sh
   .venv/bin/python -m pip install --require-hashes --only-binary=:all: -r requirements-agent.lock
@@ -1297,6 +1298,9 @@ Windows (PowerShell):
   `profiles/linux-aarch64-cp314/` for CPython 3.14. The subsequent [3.15 profile](docs/acceptance/linux-aarch64-cp315-hashed-profile-2026-11-02.json)
   adds matching CPython 3.15 wheel hashes under `profiles/linux-aarch64-cp315/`. On Linux aarch64, npm now prefers
   hash-matching 3.15 when available and keeps hash-matching 3.14 as a fallback. These changes are local and not published to npm.
+- macOS arm64 CPython 3.15 has an additional [hash-pinned profile](docs/acceptance/macos-arm64-cp315-hashed-profile-2026-11-02.json)
+  under `profiles/darwin-arm64-cp315/`. npm prefers matching 3.15 when installed, retaining the root 3.14 reference as fallback.
+  This local change has not been published to npm.
 - Detection accuracy with real engines and behavior on each OS are not guaranteed. Acceptance testing on real machines for each OS is required before distribution.
 
 ## Related documents and license
@@ -1309,7 +1313,7 @@ These documents are in Japanese.
 - [docs/licensing.md](docs/licensing.md): license policy and pre-distribution checks
 - [docs/compliance.md](docs/compliance.md): scope of the SBOM and third-party notices, and how to regenerate them
 - [docs/releasing.md](docs/releasing.md): how the npm package is released (staged publishing from GitHub Actions, in Japanese)
-- [profiles/](profiles/): the lock, SBOM and notices for Windows, Linux and Intel Macs (the root holds the macOS arm64 reference)
+- [profiles/](profiles/): the lock, SBOM and notices for Windows, Linux, Intel Macs and macOS arm64 CPython 3.15 (the root holds the arm64 3.14 reference)
 - [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the [CycloneDX SBOM](sbom/python-agent.cdx.json): notices for the Python dependencies used for MCP
 
 This project's own code is licensed under the [MIT License](LICENSE) (Copyright (c) 2026 tedorigawa001);

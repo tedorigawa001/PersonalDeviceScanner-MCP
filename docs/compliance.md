@@ -15,7 +15,7 @@
 Windowsではpywin32等が追加されるため、このロックを全OS共通として使わないでください。
 同じPythonパッケージのメタデータと依存条件でも、プラットフォーム別wheelには違う内包物があります。
 
-開発用の処理系は2026-10-22からCPython 3.15（2026-10-27から3.15.2）ですが、既存の5プロファイルはCPython 3.14の参照記録として維持し、Linux aarch64にはCPython 3.15のプロファイルも追加しました。
+開発用の処理系は2026-10-22からCPython 3.15（2026-10-27から3.15.2）ですが、既存の5プロファイルはCPython 3.14の参照記録として維持し、Linux aarch64とmacOS arm64にはCPython 3.15のプロファイルも追加しました。
 開発用`.venv-dev`や、そのビルドツール一式をこのSBOMが記録したものとは扱いません。
 Compliance profilesワークフローではPython 3.15も選べますが、3.15用のロック・SBOMとして配布するには、
 そのOS上で生成した新しい成果物を検証して取り込む必要があります。
@@ -156,13 +156,14 @@ Windows / Linux / macOS（Intel、x86_64）それぞれで次を行い、結果�
 | 置き場所 | 環境 | パッケージ | cryptography | 検証 |
 |---|---|---|---|---|
 | リポジトリ直下 | macOS arm64 / CPython 3.14.10（ローカル生成、参照） | 29 | 50.0.2 | 合格 |
+| `profiles/darwin-arm64-cp315/` | macOS arm64 / CPython 3.15.2（ローカル生成） | 29 | 50.0.2 | 合格 |
 | `profiles/darwin-x86_64-cp314/` | macOS x86_64 / CPython 3.14.7（旧参照、ローカル生成） | 29 | 48.0.1 | 合格 |
 | `profiles/linux-x86_64-cp314/` | Linux x86_64 / CPython 3.14.8 | 29 | 50.0.2 | 合格 |
 | `profiles/linux-aarch64-cp314/` | Linux aarch64 / CPython 3.14.10（Docker上で生成） | 29 | 50.0.2 | 合格 |
 | `profiles/linux-aarch64-cp315/` | Linux aarch64 / CPython 3.15.2（Docker上で生成） | 29 | 50.0.2 | 合格 |
 | `profiles/windows-amd64-cp314/` | Windows AMD64 / CPython 3.14.7 | 30（pywin32 312 を含む） | 50.0.2 | **未合格**：pywin32 のライセンス表記が未確定 |
 
-- 6つとも同じ依存バージョンです（cryptography と、Windows の pywin32 を除く）。macOS x86_64 と Linux のライセンス原文は参照と完全に同じです
+- 7つとも同じ依存バージョンです（cryptography と、Windows の pywin32 を除く）。macOS x86_64 と Linux のライセンス原文は参照と完全に同じです
   （cryptography 48.0.1 の原文も 50.0.2 とバイト単位で同じ）。
 - cryptography 49.0.0 以降には Intel Mac（x86_64）向けのビルド済みパッケージがないため、`profiles/darwin-x86_64-cp314/` だけ 48.0.1 のままです。
   48.0.1 の既知の脆弱性（CVE-2026-69249・CVE-2026-69247・CVE-2026-69248）は、この基盤の使い方（stdio のみ、
@@ -204,6 +205,22 @@ npmの選択処理は既存の自動列挙を使います。回帰テストで3.
 両バージョンの正しいハッシュ付きロックの選択を確認しました。通し試験のハッシュ必須条件も、
 3.14固定ではなく、選んだロックとPython minorが一致することを確認する形にしました。
 詳細は[3.15プロファイル検証記録](acceptance/linux-aarch64-cp315-hashed-profile-2026-11-02.json)を参照してください。
+
+### macOS arm64 / CPython 3.15 の追加（2026-11-02）
+
+`profiles/darwin-arm64-cp315/` は、このAppleシリコンMacの標準CPython 3.15.2で生成した追加プロファイルです。
+直下のmacOS arm64 / 3.14参照は移動・再生成せず、同じ固定版29件を3.15用の実wheelから導入し、
+ロック・SBOM・METADATA・原文を生成しました。空の別venvへ取得済みwheelからハッシュ必須で再導入し、
+その環境での再生成一致とpip checkを確認しています。
+
+ネイティブ4件はmacOS arm64用で、cffi・pydantic-core・rpds-pyはcp315、
+cryptographyは `cp315-abi3.abi3t-macosx_11_0_arm64` です。対応範囲はmacOS 11以降のarm64・標準CPython 3.15で、
+Intel Macやfree-threadedビルド向けのプロファイルではありません。実受入はこのMac（macOS 27.2）で行い、
+macOS 11という下限はwheelタグに基づくもので、旧macOSでの実動作を確認したという意味ではありません。
+
+npmは既存の自動列挙・探索順で3.15用のハッシュ付きプロファイルを選び、3.15がなければ直下の3.14参照を使います。
+直下を3.15へ切り替えたわけではなく、Intel Macのcryptography例外も変更していません。
+[Mac 3.15プロファイル検証記録](acceptance/macos-arm64-cp315-hashed-profile-2026-11-02.json)に実導入と検査の結果を記録します。
 
 ## npm パッケージ
 

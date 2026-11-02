@@ -492,6 +492,7 @@ lookup = true    # エンジンのバージョンを公式の最新リリース�
   Linux aarch64・CPython 3.14・glibc 2.34以上では、下のコマンドの `-r` を
   `-r profiles/linux-aarch64-cp314/requirements-agent.lock` に置き換えます。musl／Alpineは対象外です。
   同じ環境のCPython 3.15では `-r profiles/linux-aarch64-cp315/requirements-agent.lock` を使います。
+  AppleシリコンMac・macOS 11以降・標準CPython 3.15では `-r profiles/darwin-arm64-cp315/requirements-agent.lock` を使います。
 
   ```sh
   .venv/bin/python -m pip install --require-hashes --only-binary=:all: -r requirements-agent.lock
@@ -1250,6 +1251,9 @@ Windows（PowerShell）：
   CPython 3.14用wheelをハッシュで検証します。その後の[3.15プロファイル検証](docs/acceptance/linux-aarch64-cp315-hashed-profile-2026-11-02.json)で
   `profiles/linux-aarch64-cp315/` も追加しました。Linux aarch64のnpmは3.15があれば対応ハッシュで検証し、なければ3.14もハッシュ検証付きで使います。
   これらの変更はローカルのみで、npmには未公開です。
+- macOS arm64のCPython 3.15にも[ハッシュ付きプロファイル](docs/acceptance/macos-arm64-cp315-hashed-profile-2026-11-02.json)
+  `profiles/darwin-arm64-cp315/` を追加しました。npmは3.15があれば対応するハッシュで検証し、なければ直下の3.14参照を使います。
+  この変更はローカルのみで、npmには未公開です。
 - 実際のエンジンでの検出精度や、各 OS での動作は保証していません。配布前に、各 OS の実機での受入試験が必要です。
 
 ## 関連ドキュメント・ライセンス

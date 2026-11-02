@@ -86,7 +86,7 @@ class SecurityFloorTests(unittest.TestCase):
         fixed = Requirement("certifi>=2026.10.19")
         wheel_hashes = set()
         roots = [ROOT, *sorted((ROOT / "profiles").glob("*/requirements-agent.lock"))]
-        self.assertEqual(len(roots), 6)
+        self.assertEqual(len(roots), 7)
         for profile in roots:
             root = profile if profile.is_dir() else profile.parent
             with self.subTest(profile=str(root.relative_to(ROOT))):
@@ -124,11 +124,16 @@ class SecurityFloorTests(unittest.TestCase):
     def test_linux_aarch64_cp315_profile_matches_native_wheel_evidence(self):
         self.check_linux_aarch64_profile("3.15", "315")
 
+    def test_macos_arm64_cp315_profile_matches_native_wheel_evidence(self):
+        self.check_native_profile(ROOT / "profiles/darwin-arm64-cp315", "Darwin", "arm64", "3.15", "315")
+
     def check_linux_aarch64_profile(self, minor, tag):
-        root = ROOT / f"profiles/linux-aarch64-cp{tag}"
+        self.check_native_profile(ROOT / f"profiles/linux-aarch64-cp{tag}", "Linux", "aarch64", minor, tag)
+
+    def check_native_profile(self, root, system, architecture, minor, tag):
         artifacts = json.loads((root / "sbom/reference-artifacts.json").read_text())
-        self.assertEqual(artifacts["environment"]["os"], "Linux")
-        self.assertEqual(artifacts["environment"]["architecture"], "aarch64")
+        self.assertEqual(artifacts["environment"]["os"], system)
+        self.assertEqual(artifacts["environment"]["architecture"], architecture)
         self.assertTrue(artifacts["environment"]["python"].startswith(minor + "."))
         manifest = json.loads((root / "third_party/license-manifest.json").read_text())
         bom = json.loads((root / "sbom/python-agent.cdx.json").read_text())
@@ -145,7 +150,7 @@ class SecurityFloorTests(unittest.TestCase):
             with self.subTest(package=wheel["name"]):
                 self.assertNotIn("x86_64", wheel["filename"])
                 self.assertNotIn("cp315" if tag == "314" else "cp314", wheel["filename"])
-                if "aarch64" in wheel["filename"]:
+                if architecture in wheel["filename"] or (system == "Darwin" and "universal2" in wheel["filename"]):
                     native.append(wheel["name"])
                 else:
                     self.assertTrue(wheel["filename"].endswith("-none-any.whl"))

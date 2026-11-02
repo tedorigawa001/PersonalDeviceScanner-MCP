@@ -9,7 +9,7 @@ const test = require('node:test');
 const launcher = require('../launcher.js');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const LOCK_FILES = ['requirements-agent.lock', ...['darwin-x86_64-cp314', 'linux-aarch64-cp314', 'linux-aarch64-cp315', 'linux-x86_64-cp314', 'windows-amd64-cp314']
+const LOCK_FILES = ['requirements-agent.lock', ...['darwin-arm64-cp315', 'darwin-x86_64-cp314', 'linux-aarch64-cp314', 'linux-aarch64-cp315', 'linux-x86_64-cp314', 'windows-amd64-cp314']
   .map((name) => path.join('profiles', name, 'requirements-agent.lock'))];
 
 function interpreter(os_, architecture, python, implementation = 'CPython') {
@@ -50,12 +50,12 @@ test('other Python versions and CPUs get the same versions without hash checks',
   assert.equal(older.lock.file, LOCK_FILES[0]);
   assert.equal(older.hashed, false);
   const arm = launcher.chooseEnvironment([interpreter('Linux', 'aarch64', '3.13.0')], locks);
-  assert.equal(arm.lock.file, LOCK_FILES[2]);
+  assert.equal(arm.lock.file, path.join('profiles', 'linux-aarch64-cp314', 'requirements-agent.lock'));
   assert.equal(arm.hashed, false);
   assert.match(launcher.requirements(arm), /^mcp==1\.30\.0$/m);
   assert.doesNotMatch(launcher.requirements(arm), /--hash/);
   const latest = launcher.chooseEnvironment([interpreter('Darwin', 'x86_64', '3.15.1')], locks);
-  assert.equal(latest.lock.file, LOCK_FILES[1]);
+  assert.equal(latest.lock.file, path.join('profiles', 'darwin-x86_64-cp314', 'requirements-agent.lock'));
   assert.equal(latest.hashed, false); // Existing snapshots describe CPython 3.14 wheels.
   assert.match(launcher.requirements(launcher.chooseEnvironment([interpreter('Linux', 'x86_64', '3.14.8')], locks)),
     /^mcp==1\.30\.0 --hash=sha256:[0-9a-f]{64}$/m);
@@ -141,6 +141,30 @@ test('Linux aarch64 keeps hash-matching 3.14 when 3.15 is absent', (context) => 
   const choice = launcher.findEnvironment(locks, env, 'linux');
   assert.equal(choice.hashed, true);
   assert.equal(choice.lock.file, path.join('profiles', 'linux-aarch64-cp314', 'requirements-agent.lock'));
+  assert.equal(calls.length, 2);
+});
+
+test('macOS arm64 discovery chooses hash-matching 3.15 before installed 3.14', (context) => {
+  const locks = launcher.readLocks(ROOT);
+  const { env, calls } = discoveryProbes(context, 'darwin', {
+    'python3.15': interpreter('Darwin', 'arm64', '3.15.2'),
+    'python3.14': interpreter('Darwin', 'arm64', '3.14.10'),
+  });
+  const choice = launcher.findEnvironment(locks, env, 'darwin');
+  assert.equal(choice.info.python, '3.15.2');
+  assert.equal(choice.hashed, true);
+  assert.equal(choice.lock.file, path.join('profiles', 'darwin-arm64-cp315', 'requirements-agent.lock'));
+  assert.equal(calls.length, 1, 'stop after the first hash-matching interpreter');
+});
+
+test('macOS arm64 keeps hash-matching 3.14 when 3.15 is absent', (context) => {
+  const locks = launcher.readLocks(ROOT);
+  const { env, calls } = discoveryProbes(context, 'darwin', {
+    'python3.14': interpreter('Darwin', 'arm64', '3.14.10'),
+  });
+  const choice = launcher.findEnvironment(locks, env, 'darwin');
+  assert.equal(choice.hashed, true);
+  assert.equal(choice.lock.file, 'requirements-agent.lock');
   assert.equal(calls.length, 2);
 });
 
