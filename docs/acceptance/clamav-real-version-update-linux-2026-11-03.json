@@ -1,0 +1,247 @@
+{
+  "date": "2026-11-03",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "native_linux_different_definition_update_and_resume_acceptance",
+  "status": "passed within the recorded Linux aarch64 environment",
+  "source_commit": "c326bcdfe9ebfcf7497def0ee2b11e1bd7ae5dd5",
+  "runtime_source_changed": false,
+  "environment": {
+    "host": "this Mac Docker Desktop",
+    "container": "pc-scanner-signature-linux-acceptance",
+    "image": "sha256:3e1c98126c919e08f2a14906645d63c849612d776f6425c46938c7c9602c5b6c",
+    "distribution": "Ubuntu 24.04",
+    "architecture": "aarch64",
+    "python": "3.12.3",
+    "engine": "real freshclam/sigtool/clamscan 1.5.4",
+    "uid_gid": "10001:10001",
+    "mounts": [],
+    "published_ports": [],
+    "capabilities_dropped": [
+      "ALL"
+    ],
+    "security_options": [
+      "no-new-privileges"
+    ],
+    "init": true,
+    "memory_bytes": 2684354560,
+    "cpus": 2.0,
+    "pids_limit": 256
+  },
+  "authorization": "Initial read-only copy was rejected under the prior preserve-container instruction. User explicitly authorized reading wait state, starting this container, official update and synthetic acceptance; no workaround preceded permission.",
+  "natural_wait": {
+    "previous_retry_utc": "2026-11-02T13:56:47.266753+00:00",
+    "verified_now_utc": "2026-11-02T15:39:00.509431+00:00",
+    "pending_before": false,
+    "naturally_elapsed": true,
+    "real_wait_or_clock_shortened": false,
+    "network_update_requests": 1,
+    "next_retry_utc": "2026-11-03T15:40:42.095563+00:00",
+    "next_retry_jst": "2026-11-04T00:40:42.095563+09:00",
+    "pending_after": false
+  },
+  "real_update": {
+    "status": "completed",
+    "data": {
+      "update_status": "updated",
+      "published": true,
+      "previous_preserved": true,
+      "resume_recheck_required": true,
+      "signature_check": {
+        "engine": "1.5.4",
+        "version": 28172,
+        "built_at": "2026-11-02T06:24:10+00:00",
+        "freshness": "fresh"
+      },
+      "next_attempt_at": 1793720442.095563,
+      "cancellation_requested_after_publication": false,
+      "progress": {
+        "stage": "completed",
+        "finished": null,
+        "pending": null,
+        "reused": null,
+        "checkpoint": "not_applicable",
+        "saved_parts": null,
+        "elapsed_seconds": 10.918
+      }
+    },
+    "old_versions": {
+      "bytecode.cvd": 339,
+      "daily.cvd": 28171,
+      "main.cvd": 63
+    },
+    "new_versions": {
+      "bytecode.cvd": 339,
+      "daily.cvd": 28172,
+      "main.cvd": 63
+    },
+    "content_changed": true,
+    "seconds": 10.963,
+    "signature_verification": {
+      "main.cvd": {
+        "exit": 0,
+        "signature_present": true,
+        "verified": true
+      },
+      "daily.cvd": {
+        "exit": 0,
+        "signature_present": true,
+        "verified": true
+      },
+      "bytecode.cvd": {
+        "exit": 0,
+        "signature_present": true,
+        "verified": true
+      }
+    },
+    "freshness": {
+      "engine": "1.5.4",
+      "version": 28172,
+      "built_at": "2026-11-02T06:24:10+00:00",
+      "age_days": 0.4,
+      "max_age_days": 7,
+      "freshness": "fresh",
+      "checked_at": "2026-11-02T15:41:15.208050+00:00",
+      "update_performed": false,
+      "update_steps": [
+        "The owner may explicitly run CLI update-clamav-signatures with the enabled private-store configuration. No administrator password is used and MCP cannot update definitions.",
+        "Recheck freshness after updating; resume re-evaluates results when definition contents change."
+      ],
+      "update_mode": "private_owner_cli"
+    },
+    "provider_sync": {
+      "provider_hash": "0b8862757f0473a96d6e61318e1961e289575a4ecde5f45113d74358a21e4114",
+      "stage": "stage-0698b4da5e4c6f78c6f7edb9cc797b65",
+      "status": "synced"
+    },
+    "provider_hash_matches_canonical": true,
+    "successful_staging_removed": true
+  },
+  "overlap": {
+    "method": "Test-only launcher hook SIGSTOPped the first actual recursive clamscan child after spawn while the production scanner held the old-generation lease. Unmodified owner CLI performed the real freshclam update and publication. Child was then SIGCONTinued.",
+    "fake_engine": false,
+    "manual_pointer_publication": false,
+    "clock_mock": false,
+    "actual_engine_calls": 2,
+    "all_scan_arguments_used_old_generation": true,
+    "old_definition_content_digest_unchanged": true,
+    "old_generation_preserved": true,
+    "child_reaped": true,
+    "report": {
+      "status": "completed",
+      "counts": {
+        "scanned": 128,
+        "infected": 0,
+        "errors": 0
+      },
+      "batch": {
+        "finished": 128,
+        "pending": 0,
+        "reused": 0,
+        "grouping": {
+          "schema": 1,
+          "mode": "enabled",
+          "engine_starts": 2,
+          "committed_jobs": 2,
+          "fallback_targets": 0,
+          "active_targets": 0
+        }
+      },
+      "generation": {
+        "content": "e3e92f5084e74bf24a7ade0dfdf79a04d8ffe3a763793c27e9ecff87a1660887",
+        "newer_generation_available": true
+      },
+      "warnings": [
+        "Signature-based detection only; no detection does not prove safety",
+        "New definitions were published during this scan; resume to recheck with the new generation"
+      ]
+    },
+    "limit": "Controlled scheduling verifies publication overlap and pinning, not simultaneous CPU throughput"
+  },
+  "resume": {
+    "after_changed_definition": {
+      "status": "completed",
+      "counts": {
+        "scanned": 128,
+        "infected": 0,
+        "errors": 0
+      },
+      "batch": {
+        "finished": 128,
+        "pending": 0,
+        "reused": 0,
+        "grouping": {
+          "schema": 1,
+          "mode": "enabled",
+          "engine_starts": 2,
+          "committed_jobs": 2,
+          "fallback_targets": 0,
+          "active_targets": 0
+        }
+      }
+    },
+    "second_resume": {
+      "status": "completed",
+      "counts": {
+        "scanned": 128,
+        "infected": 0,
+        "errors": 0
+      },
+      "batch": {
+        "finished": 128,
+        "pending": 0,
+        "reused": 128,
+        "grouping": {
+          "schema": 1,
+          "mode": "enabled",
+          "engine_starts": 0,
+          "committed_jobs": 0,
+          "fallback_targets": 0,
+          "active_targets": 0
+        }
+      }
+    },
+    "counts_not_added_across_runs": true,
+    "checkpoint_context_manually_modified": false
+  },
+  "permissions": "Owner UID 10001; generation/store folders 0700 and files 0600. Native private-store descriptor guards passed on root and descendants.",
+  "regressions": {
+    "command": ".venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -v",
+    "environment": "Mac Python 3.15",
+    "total": 61,
+    "passed": 61,
+    "skipped": 0,
+    "failures": 0,
+    "errors": 0,
+    "seconds": 6.603,
+    "full_suite_rerun": false,
+    "reason": "Only acceptance documentation changed; native preserved-container updater remains Python 3.12.3. Earlier 3.14/3.15 CLI/MCP/npm and profile acceptance remains separate."
+  },
+  "preservation": {
+    "personal_folders_mounted": false,
+    "personal_files_scanned": false,
+    "inputs": "128 existing harmless synthetic text files only",
+    "os_definitions_written": false,
+    "host_credentials_exported": false,
+    "administrator_password_handled": false,
+    "separate_network_failure_container": "not started, execed, copied from or modified",
+    "existing_mac_stores_modified": false
+  },
+  "cleanup": {
+    "network": "Bridge enabled only for authorized update; disconnected after update and before final checks",
+    "final_networks": {},
+    "container_stopped": true,
+    "container_retained_with_new_wait_and_provider_state": true,
+    "public_synthetic_evidence_retained_privately": true
+  },
+  "remaining": [
+    "Real freshclam unchanged check after next natural retry interval; no forced early request",
+    "Natural-wait recovery/retry of the separate DNS-failure container remains unconfirmed",
+    "Real HTTP/TLS transfer failures, 429/provider-specific waits",
+    "Physical Linux hosts, other distributions/CPUs and Windows update acceptance"
+  ],
+  "static_checks": [
+    "Acceptance JSON and local links",
+    "git diff --check"
+  ],
+  "push_performed": false
+}

@@ -131,6 +131,7 @@
     "aarch64 current-runtime/npm acceptance; subsequent x86_64 Python 3.14/3.15 and npm acceptance is linked separately",
     "Windows backend, Windows CI and real Windows acceptance"
   ],
+  "different_version_follow_up": "clamav-real-version-update-linux-2026-11-03.json",
   "commit_created_during_recording": false,
   "push_performed_during_recording": false
 }
