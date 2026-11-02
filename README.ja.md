@@ -220,7 +220,7 @@ npm パッケージに入っているのは、小さな起動用スクリプト�
   Windows：`%LOCALAPPDATA%\personal-device-scanner-mcp`）。クライアントがサーバーの起動を待つ時間より長くかかることがあるため、
   先に一度 `npx -y personal-device-scanner-mcp@0.10.1 setup` を実行してください。
 - Windows x64・macOS（Intel / Apple シリコン）・Linux x86_64／aarch64 の CPython 3.14 と、
-  Apple シリコン（macOS 11以降）・Linux aarch64 の CPython 3.15 では
+  Apple シリコン（macOS 11以降）・Linux x86_64／aarch64 の CPython 3.15 では
   （Linux は glibc 2.34以上）、同梱のロックファイルのハッシュで検証して導入します（`pip --require-hashes`）。musl や古い glibc では、
   ハッシュの検証を省かずに導入を中止します。それ以外の Python や CPU では、同じバージョンをハッシュの検証なしで導入し、
   その旨を stderr に表示します。起動用スクリプトと pip の出力はすべて stderr に出し、MCP の通信路には混ぜません。
@@ -1235,8 +1235,8 @@ Windows（PowerShell）：
   （macOS / Linux）起動用スクリプトへのSIGTERMでサーバーも止まることを確認します。
   CIでは各OSでPython/Node.jsを3.11/22・3.14/22・3.14/24・3.15/26の組合せで確認します。
   公開前の試験は3.14/24と3.15/26の両方で行い、公開処理自体はNode.js 24 LTSで実行します。
-  3.14のジョブは`PC_SCANNER_NPM_EXPECT_HASHED=1`を設定し、ハッシュなし導入に落ちたら改ざん試験を省略せず失敗させます。
-  あわせて`PC_SCANNER_NPM_AUTO_DISCOVER=1`で`PC_SCANNER_PYTHON`の指定を外し、実際の配布物の自動探索を通します。
+  3.14のジョブとLinuxの3.15のジョブは`PC_SCANNER_NPM_EXPECT_HASHED=1`を設定し、ハッシュなし導入に落ちたら改ざん試験を省略せず失敗させます。
+  3.14のジョブは、あわせて`PC_SCANNER_NPM_AUTO_DISCOVER=1`で`PC_SCANNER_PYTHON`の指定を外し、実際の配布物の自動探索を通します。
   他のジョブは指定した処理系を試すため、明示指定を維持します。
 - Linux arm64コンテナの受入試験（2026-10-19）：Ubuntu 24.04上で実osquery 5.23.1・ClamAV 1.5.4を一般ユーザーで実行。
   ホストのマウント・実行時ネットワークなしで、インベントリ、EICAR、日本語名、リンク、深度・サイズ・権限制限、定義の鮮度、

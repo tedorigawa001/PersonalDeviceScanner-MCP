@@ -234,7 +234,7 @@ glibc 2.34以上の標準CPythonが対象で、musl／Alpineやfree-threaded版�
 受入はarm64 Mac上のエミュレーション（glibc 2.36）であり、物理x86_64 Linuxホストの受入とは区別します。
 
 npmは3.15をハッシュ検証付きで優先し、3.15がなければ既存3.14プロファイルへフォールバックします。
-CIもLinuxの3.15ジョブでハッシュ検証を必須にしましたが、今回push・CI実行はしていません。
+CIもLinuxの3.15ジョブでハッシュ検証を必須にしました（記録時点ではCIで未確認）。
 [Linux x86_64 3.15プロファイル検証記録](acceptance/linux-x86_64-cp315-hashed-profile-2026-11-02.json)に記録します。
 
 ## npm パッケージ

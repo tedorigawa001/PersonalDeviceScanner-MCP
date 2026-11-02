@@ -221,10 +221,10 @@ the npm package holds a small launcher, this project's Python code and the lock 
   Windows: `%LOCALAPPDATA%\personal-device-scanner-mcp`). This can take longer than some clients wait for a server to start,
   so run `npx -y personal-device-scanner-mcp@0.10.1 setup` once beforehand.
 - With CPython 3.14 on Windows x64, macOS (Intel or Apple silicon) or Linux x86_64/aarch64, and with CPython 3.15 on
-  Apple silicon (macOS 11 or later) or Linux aarch64 (Linux needs glibc 2.34 or later), packages are installed with
-  the hashes in the bundled lock files (`pip --require-hashes`); with musl or older glibc that setup stops instead of
-  skipping the hashes. Other Python versions and CPUs get the same versions without hash checks, and the launcher
-  says so on stderr. Its own messages and pip's output go to stderr, never to the MCP channel.
+  Apple silicon (macOS 11 or later) or Linux x86_64/aarch64 (Linux needs glibc 2.34 or later), packages are
+  installed with the hashes in the bundled lock files (`pip --require-hashes`); with musl or older glibc that setup
+  stops instead of skipping the hashes. Other Python versions and CPUs get the same versions without hash checks,
+  and the launcher says so on stderr. Its own messages and pip's output go to stderr, never to the MCP channel.
 - It looks for `python3.15`, `python3.14`, `python3.13` … `python3` (Windows: `py -3.15`, `py -3.14`, `py -3`, `python`) in the absolute folders on
   `PATH` only. It never looks in the current folder (which Windows would otherwise search first) or in relative `PATH`
   entries such as `.`, so a program named like Python in a downloads folder is not run. To choose one, set
@@ -1280,9 +1280,10 @@ Windows (PowerShell):
   that a wrong hash in the lock stops the setup, that modules planted in the current folder are not imported,
   and (macOS / Linux) that SIGTERM to the launcher stops the server. On each OS, CI pairs Python/Node.js 3.11/22,
   3.14/22, 3.14/24 and 3.15/26. Release checks cover both 3.14/24 and 3.15/26 before publishing with Node.js 24 LTS.
-  The 3.14 jobs set `PC_SCANNER_NPM_EXPECT_HASHED=1` so a versions-only install fails rather than skipping the
-  tampered-lock check. They also set `PC_SCANNER_NPM_AUTO_DISCOVER=1` to test the packed launcher's automatic
-  interpreter search without `PC_SCANNER_PYTHON`. Other jobs retain the explicit override to test their chosen Python.
+  The 3.14 jobs and the Linux 3.15 job set `PC_SCANNER_NPM_EXPECT_HASHED=1` so a versions-only install fails rather
+  than skipping the tampered-lock check. The 3.14 jobs also set `PC_SCANNER_NPM_AUTO_DISCOVER=1` to test the packed
+  launcher's automatic interpreter search without `PC_SCANNER_PYTHON`. Other jobs retain the explicit override to
+  test their chosen Python.
 - Linux arm64 container acceptance (2026-10-19): actual osquery 5.23.1 and ClamAV 1.5.4 on Ubuntu 24.04, as an unprivileged
   user, with no host mounts or runtime network. Inventory, EICAR, Japanese names, links, depth/size/permission limits,
   signature age, real CLI and MCP stdio progress/cancellation passed ([record](docs/acceptance/linux-arm64-container-2026-10-19.json)).
