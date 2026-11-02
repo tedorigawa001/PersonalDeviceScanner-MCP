@@ -86,7 +86,7 @@ class SecurityFloorTests(unittest.TestCase):
         fixed = Requirement("certifi>=2026.10.19")
         wheel_hashes = set()
         roots = [ROOT, *sorted((ROOT / "profiles").glob("*/requirements-agent.lock"))]
-        self.assertEqual(len(roots), 5)
+        self.assertEqual(len(roots), 6)
         for profile in roots:
             root = profile if profile.is_dir() else profile.parent
             with self.subTest(profile=str(root.relative_to(ROOT))):
@@ -119,11 +119,17 @@ class SecurityFloorTests(unittest.TestCase):
                                  applies)
 
     def test_linux_aarch64_profile_matches_native_wheel_evidence(self):
-        root = ROOT / "profiles/linux-aarch64-cp314"
+        self.check_linux_aarch64_profile("3.14", "314")
+
+    def test_linux_aarch64_cp315_profile_matches_native_wheel_evidence(self):
+        self.check_linux_aarch64_profile("3.15", "315")
+
+    def check_linux_aarch64_profile(self, minor, tag):
+        root = ROOT / f"profiles/linux-aarch64-cp{tag}"
         artifacts = json.loads((root / "sbom/reference-artifacts.json").read_text())
         self.assertEqual(artifacts["environment"]["os"], "Linux")
         self.assertEqual(artifacts["environment"]["architecture"], "aarch64")
-        self.assertTrue(artifacts["environment"]["python"].startswith("3.14."))
+        self.assertTrue(artifacts["environment"]["python"].startswith(minor + "."))
         manifest = json.loads((root / "third_party/license-manifest.json").read_text())
         bom = json.loads((root / "sbom/python-agent.cdx.json").read_text())
         environment = next(p["value"] for p in bom["metadata"]["properties"]
@@ -138,7 +144,7 @@ class SecurityFloorTests(unittest.TestCase):
         for wheel in artifacts["artifacts"]:
             with self.subTest(package=wheel["name"]):
                 self.assertNotIn("x86_64", wheel["filename"])
-                self.assertNotIn("cp315", wheel["filename"])
+                self.assertNotIn("cp315" if tag == "314" else "cp314", wheel["filename"])
                 if "aarch64" in wheel["filename"]:
                     native.append(wheel["name"])
                 else:

@@ -259,5 +259,6 @@
     "README/compliance/backlog and linked historical acceptance follow-up"
   ],
   "commit_created_during_recording": false,
-  "push_performed_during_recording": false
+  "push_performed_during_recording": false,
+  "cp315_follow_up": "linux-aarch64-cp315-hashed-profile-2026-11-02.json"
 }

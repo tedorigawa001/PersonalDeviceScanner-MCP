@@ -9,7 +9,7 @@ const test = require('node:test');
 const launcher = require('../launcher.js');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const LOCK_FILES = ['requirements-agent.lock', ...['darwin-x86_64-cp314', 'linux-aarch64-cp314', 'linux-x86_64-cp314', 'windows-amd64-cp314']
+const LOCK_FILES = ['requirements-agent.lock', ...['darwin-x86_64-cp314', 'linux-aarch64-cp314', 'linux-aarch64-cp315', 'linux-x86_64-cp314', 'windows-amd64-cp314']
   .map((name) => path.join('profiles', name, 'requirements-agent.lock'))];
 
 function interpreter(os_, architecture, python, implementation = 'CPython') {
@@ -38,7 +38,7 @@ test('CPython of the same OS, CPU and minor version gets hash-checked packages',
   const locks = launcher.readLocks(ROOT);
   for (const lock of locks) {
     const { os: system, architecture } = lock.environment;
-    const choice = launcher.chooseEnvironment([interpreter(system, architecture, '3.14.0')], locks);
+    const choice = launcher.chooseEnvironment([interpreter(system, architecture, lock.environment.python)], locks);
     assert.equal(choice.lock, lock);
     assert.equal(choice.hashed, true);
   }
@@ -49,7 +49,7 @@ test('other Python versions and CPUs get the same versions without hash checks',
   const older = launcher.chooseEnvironment([interpreter('Darwin', 'arm64', '3.12.9')], locks);
   assert.equal(older.lock.file, LOCK_FILES[0]);
   assert.equal(older.hashed, false);
-  const arm = launcher.chooseEnvironment([interpreter('Linux', 'aarch64', '3.15.0')], locks);
+  const arm = launcher.chooseEnvironment([interpreter('Linux', 'aarch64', '3.13.0')], locks);
   assert.equal(arm.lock.file, LOCK_FILES[2]);
   assert.equal(arm.hashed, false);
   assert.match(launcher.requirements(arm), /^mcp==1\.30\.0$/m);
@@ -90,7 +90,6 @@ function discoveryProbes(context, platform, answers, overrides = {}) {
 }
 
 for (const [platform, system, cpu] of [['darwin', 'Darwin', 'x86_64'], ['linux', 'Linux', 'x86_64'],
-  ['linux', 'Linux', 'aarch64'],
   ['win32', 'Windows', 'AMD64']]) {
   test(`Python discovery on ${platform} ${cpu} probes past 3.15 and stops at hash-matching 3.14`, (context) => {
     const locks = launcher.readLocks(ROOT);
@@ -119,6 +118,30 @@ test('discovery retains 3.15 without hashes when no matching interpreter is inst
   assert.equal(choice.info.python, '3.15.1');
   assert.equal(choice.hashed, false);
   assert.equal(calls.length, launcher.pythonCandidates(env, 'linux').length);
+});
+
+test('Linux aarch64 discovery chooses hash-matching 3.15 before installed 3.14', (context) => {
+  const locks = launcher.readLocks(ROOT);
+  const { env, calls } = discoveryProbes(context, 'linux', {
+    'python3.15': interpreter('Linux', 'aarch64', '3.15.2'),
+    'python3.14': interpreter('Linux', 'aarch64', '3.14.10'),
+  });
+  const choice = launcher.findEnvironment(locks, env, 'linux');
+  assert.equal(choice.info.python, '3.15.2');
+  assert.equal(choice.hashed, true);
+  assert.equal(choice.lock.file, path.join('profiles', 'linux-aarch64-cp315', 'requirements-agent.lock'));
+  assert.equal(calls.length, 1, 'stop after the first hash-matching interpreter');
+});
+
+test('Linux aarch64 keeps hash-matching 3.14 when 3.15 is absent', (context) => {
+  const locks = launcher.readLocks(ROOT);
+  const { env, calls } = discoveryProbes(context, 'linux', {
+    'python3.14': interpreter('Linux', 'aarch64', '3.14.10'),
+  });
+  const choice = launcher.findEnvironment(locks, env, 'linux');
+  assert.equal(choice.hashed, true);
+  assert.equal(choice.lock.file, path.join('profiles', 'linux-aarch64-cp314', 'requirements-agent.lock'));
+  assert.equal(calls.length, 2);
 });
 
 test('discovery skips malformed and unsupported probes before selecting 3.14', (context) => {
@@ -217,7 +240,7 @@ test('the hint names a hash-checked CPython only where a lock exists', () => {
   const locks = launcher.readLocks(ROOT);
   const latest = launcher.chooseEnvironment([interpreter('Darwin', 'x86_64', '3.15.1')], locks);
   assert.match(launcher.unhashedNote(latest, locks), /without hash checks \(use CPython 3\.14 for hash-checked installs\)$/);
-  const arm = launcher.chooseEnvironment([interpreter('Linux', 'aarch64', '3.15.2')], locks);
+  const arm = launcher.chooseEnvironment([interpreter('Linux', 'aarch64', '3.13.2')], locks);
   assert.equal(arm.lock.file, path.join('profiles', 'linux-aarch64-cp314', 'requirements-agent.lock'));
   assert.equal(arm.hashed, false);
   assert.match(launcher.unhashedNote(arm, locks), /use CPython 3\.14 for hash-checked installs/);

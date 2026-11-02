@@ -15,7 +15,7 @@
 Windowsではpywin32等が追加されるため、このロックを全OS共通として使わないでください。
 同じPythonパッケージのメタデータと依存条件でも、プラットフォーム別wheelには違う内包物があります。
 
-開発用の処理系は2026-10-22からCPython 3.15（2026-10-27から3.15.2）ですが、5プロファイルはCPython 3.14の参照記録として維持しています。
+開発用の処理系は2026-10-22からCPython 3.15（2026-10-27から3.15.2）ですが、既存の5プロファイルはCPython 3.14の参照記録として維持し、Linux aarch64にはCPython 3.15のプロファイルも追加しました。
 開発用`.venv-dev`や、そのビルドツール一式をこのSBOMが記録したものとは扱いません。
 Compliance profilesワークフローではPython 3.15も選べますが、3.15用のロック・SBOMとして配布するには、
 そのOS上で生成した新しい成果物を検証して取り込む必要があります。
@@ -159,9 +159,10 @@ Windows / Linux / macOS（Intel、x86_64）それぞれで次を行い、結果�
 | `profiles/darwin-x86_64-cp314/` | macOS x86_64 / CPython 3.14.7（旧参照、ローカル生成） | 29 | 48.0.1 | 合格 |
 | `profiles/linux-x86_64-cp314/` | Linux x86_64 / CPython 3.14.8 | 29 | 50.0.2 | 合格 |
 | `profiles/linux-aarch64-cp314/` | Linux aarch64 / CPython 3.14.10（Docker上で生成） | 29 | 50.0.2 | 合格 |
+| `profiles/linux-aarch64-cp315/` | Linux aarch64 / CPython 3.15.2（Docker上で生成） | 29 | 50.0.2 | 合格 |
 | `profiles/windows-amd64-cp314/` | Windows AMD64 / CPython 3.14.7 | 30（pywin32 312 を含む） | 50.0.2 | **未合格**：pywin32 のライセンス表記が未確定 |
 
-- 5つとも同じバージョンです（cryptography と、Windows の pywin32 を除く）。macOS x86_64 と Linux のライセンス原文は参照と完全に同じです
+- 6つとも同じ依存バージョンです（cryptography と、Windows の pywin32 を除く）。macOS x86_64 と Linux のライセンス原文は参照と完全に同じです
   （cryptography 48.0.1 の原文も 50.0.2 とバイト単位で同じ）。
 - cryptography 49.0.0 以降には Intel Mac（x86_64）向けのビルド済みパッケージがないため、`profiles/darwin-x86_64-cp314/` だけ 48.0.1 のままです。
   48.0.1 の既知の脆弱性（CVE-2026-69249・CVE-2026-69247・CVE-2026-69248）は、この基盤の使い方（stdio のみ、
@@ -188,9 +189,21 @@ cryptographyの参照wheelは `manylinux_2_34_aarch64` なのでglibc 2.34以上
 既存のCompliance profilesワークフローはx86_64 Linuxのみのため、このARM成果物はローカルDockerで生成したものです。
 
 npmの起動用スクリプトはプロファイルを自動列挙するので選択ロジック自体の変更は不要です。
-Linux aarch64ではCPython 3.14をハッシュ検証付きで選び、3.15と3.14が両方あれば3.14を優先します。
-3.15だけの場合や3.15を明示指定した場合はARM用プロファイルの固定版をハッシュなしで導入し、
-ハッシュ検証には3.14を使うよう案内します。3.15用wheelのハッシュを作成したという意味ではありません。
+最初の追加時点ではLinux aarch64の3.14だけがハッシュ対象でした。続く3.15用プロファイル追加後は、
+3.15と3.14が両方あれば探索順の3.15をハッシュ検証付きで選び、3.15がなければ3.14もハッシュ検証付きで使います。
+他のOS・CPUに3.15用ハッシュ付きロックを追加したという意味ではありません。
+
+### Linux aarch64 / CPython 3.15 の追加（2026-11-02）
+
+`profiles/linux-aarch64-cp315/` はLinux aarch64・CPython 3.15.2で、3.14と同じ固定版29件を使って生成しました。
+3.15用wheelを対象OS上で取得・導入し、空の別venvへのオフライン・ハッシュ必須導入と再生成一致を確認しています。
+cffi・pydantic-core・rpds-pyはcp315用wheel、cryptographyは3.15でも利用できるcp311-abi3 wheelです。
+既存の3.14用ハッシュを3.15用としてコピーしていません。glibc 2.34以上が必要で、musl／Alpineは対象外です。
+
+npmの選択処理は既存の自動列挙を使います。回帰テストで3.15優先・3.14へのフォールバックと、
+両バージョンの正しいハッシュ付きロックの選択を確認しました。通し試験のハッシュ必須条件も、
+3.14固定ではなく、選んだロックとPython minorが一致することを確認する形にしました。
+詳細は[3.15プロファイル検証記録](acceptance/linux-aarch64-cp315-hashed-profile-2026-11-02.json)を参照してください。
 
 ## npm パッケージ
 

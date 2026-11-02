@@ -11,7 +11,7 @@ const test = require('node:test');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const OPT_IN = process.env.PC_SCANNER_NPM_E2E === '1';
-// CI's CPython 3.14 jobs must execute the hash check, including the tampered-lock test below.
+// Hash-required jobs must execute the tampered-lock check for the selected Python profile.
 const EXPECT_HASHED = process.env.PC_SCANNER_NPM_EXPECT_HASHED === '1';
 const AUTO_DISCOVER = process.env.PC_SCANNER_NPM_AUTO_DISCOVER === '1';
 // Printed when an environment is built: with hash checks, or with the versions only.
@@ -142,7 +142,10 @@ test('the installed package sets itself up on first use and serves MCP on a clea
       const used = JSON.parse(fs.readFileSync(path.join(env.PC_SCANNER_CACHE_DIR, built, 'environment.json'), 'utf8'));
       if (EXPECT_HASHED) {
         assert.equal(used.hashed, true, 'CI requires a hash-checked installation; the tampered-lock test must not be skipped');
-        assert.match(used.python, /^3\.14\./, 'the hash-required job must use the bundled CPython 3.14 profile');
+        const selected = fs.readFileSync(path.join(prefix, 'node_modules', 'personal-device-scanner-mcp', used.lock), 'utf8');
+        const header = JSON.parse(selected.match(/^# Python\/OS: (\{.*\})$/m)[1]);
+        assert.equal(used.python.split('.').slice(0, 2).join('.'), header.python.split('.').slice(0, 2).join('.'),
+          'the hash-required job must use a matching Python minor profile');
         assert.match(client.stderr(), /with hash-checked packages/);
       }
       if (used.hashed) {

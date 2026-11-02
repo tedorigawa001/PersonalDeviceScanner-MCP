@@ -498,6 +498,7 @@ Then every inventory, malware and Android scan reads its engine's version (`osqu
   (for an Intel Mac, `profiles/darwin-x86_64-cp314/requirements-agent.lock`).
   On Linux aarch64 with CPython 3.14 and glibc 2.34+, use `-r profiles/linux-aarch64-cp314/requirements-agent.lock`
   instead of the root lock in the command below. musl/Alpine is outside this profile.
+  With CPython 3.15 on the same platform, use `profiles/linux-aarch64-cp315/requirements-agent.lock`.
 
   ```sh
   .venv/bin/python -m pip install --require-hashes --only-binary=:all: -r requirements-agent.lock
@@ -1292,8 +1293,9 @@ Windows (PowerShell):
   Linux aarch64 (Ubuntu 24.04, ClamAV 1.5.4) followed on 2026-11-02 with the same Python/Node.js pairs, including grouped
   scans ([record](docs/acceptance/linux-aarch64-runtime-cli-mcp-npm-2026-11-02.json)). That run used versions only.
   The subsequent [aarch64 profile verification](docs/acceptance/linux-aarch64-hashed-profile-2026-11-02.json) adds
-  `profiles/linux-aarch64-cp314/`: CPython 3.14 uses matching wheel hashes and is preferred over 3.15 by npm discovery.
-  CPython 3.15 still installs fixed versions without matching hashes. This change is local and has not been published to npm.
+  `profiles/linux-aarch64-cp314/` for CPython 3.14. The subsequent [3.15 profile](docs/acceptance/linux-aarch64-cp315-hashed-profile-2026-11-02.json)
+  adds matching CPython 3.15 wheel hashes under `profiles/linux-aarch64-cp315/`. On Linux aarch64, npm now prefers
+  hash-matching 3.15 when available and keeps hash-matching 3.14 as a fallback. These changes are local and not published to npm.
 - Detection accuracy with real engines and behavior on each OS are not guaranteed. Acceptance testing on real machines for each OS is required before distribution.
 
 ## Related documents and license
