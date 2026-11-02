@@ -221,10 +221,10 @@ the npm package holds a small launcher, this project's Python code and the lock 
   Windows: `%LOCALAPPDATA%\personal-device-scanner-mcp`). This can take longer than some clients wait for a server to start,
   so run `npx -y personal-device-scanner-mcp@0.10.1 setup` once beforehand.
 - With CPython 3.14 on Windows x64, macOS (Intel or Apple silicon) or Linux x86_64/aarch64, and with CPython 3.15 on
-  Linux aarch64 (Linux needs glibc 2.34 or later), packages are installed with the hashes in the bundled lock files
-  (`pip --require-hashes`); with musl or older glibc that setup stops instead of skipping the hashes. Other Python
-  versions and CPUs get the same versions without hash checks, and the launcher says so on stderr. Its own messages
-  and pip's output go to stderr, never to the MCP channel.
+  Apple silicon (macOS 11 or later) or Linux aarch64 (Linux needs glibc 2.34 or later), packages are installed with
+  the hashes in the bundled lock files (`pip --require-hashes`); with musl or older glibc that setup stops instead of
+  skipping the hashes. Other Python versions and CPUs get the same versions without hash checks, and the launcher
+  says so on stderr. Its own messages and pip's output go to stderr, never to the MCP channel.
 - It looks for `python3.15`, `python3.14`, `python3.13` … `python3` (Windows: `py -3.15`, `py -3.14`, `py -3`, `python`) in the absolute folders on
   `PATH` only. It never looks in the current folder (which Windows would otherwise search first) or in relative `PATH`
   entries such as `.`, so a program named like Python in a downloads folder is not run. To choose one, set

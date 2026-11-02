@@ -219,7 +219,8 @@ npm パッケージに入っているのは、小さな起動用スクリプト�
   （macOS：`~/Library/Caches/personal-device-scanner-mcp`、Linux：`~/.cache/personal-device-scanner-mcp`、
   Windows：`%LOCALAPPDATA%\personal-device-scanner-mcp`）。クライアントがサーバーの起動を待つ時間より長くかかることがあるため、
   先に一度 `npx -y personal-device-scanner-mcp@0.10.1 setup` を実行してください。
-- Windows x64・macOS（Intel / Apple シリコン）・Linux x86_64／aarch64 の CPython 3.14 と、Linux aarch64 の CPython 3.15 では
+- Windows x64・macOS（Intel / Apple シリコン）・Linux x86_64／aarch64 の CPython 3.14 と、
+  Apple シリコン（macOS 11以降）・Linux aarch64 の CPython 3.15 では
   （Linux は glibc 2.34以上）、同梱のロックファイルのハッシュで検証して導入します（`pip --require-hashes`）。musl や古い glibc では、
   ハッシュの検証を省かずに導入を中止します。それ以外の Python や CPU では、同じバージョンをハッシュの検証なしで導入し、
   その旨を stderr に表示します。起動用スクリプトと pip の出力はすべて stderr に出し、MCP の通信路には混ぜません。

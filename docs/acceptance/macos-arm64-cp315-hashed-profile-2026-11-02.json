@@ -204,7 +204,7 @@
       "git diff --check for project files; byte-preserved upstream evidence excluded"
     ],
     "initial_harness_note": "Import-origin assertion used /var vs /private/var string prefixes and failed before scans/setup. Resolved both paths to verify the installed venv import; no application source or import isolation was changed.",
-    "ci": "not run; no push"
+    "ci": "not run during recording"
   },
   "preservation": {
     "existing_six_profiles_unchanged": true,
@@ -225,5 +225,6 @@
     "seven-profile compliance coverage and shared native-wheel environment checks",
     "README/compliance/backlog verification record"
   ],
-  "push_performed": false
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false
 }
