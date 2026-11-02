@@ -354,16 +354,19 @@ test('pip reads no configuration file and no PIP_ variables', () => {
 });
 
 test('an environment holding anything beyond the lock is refused', () => {
-  const lock = launcher.parseLock('lock', '# Python/OS: {}\nmcp==1.30.0\nPyJWT==2.15.1\n');
-  const choice = { lock };
-  const exact = { distributions: [['mcp', '1.30.0'], ['pyjwt', '2.15.1'], ['pip', '26.2.2']], pth: [] };
-  assert.deepEqual(launcher.unexpectedPackages(choice, exact), []);
-  assert.deepEqual(launcher.unexpectedPackages(choice, { ...exact, distributions: [...exact.distributions, ['setuptools', '65.5.0']],
-    pth: ['distutils-precedence.pth'] }), [], 'Python 3.11 venv adds setuptools');
-  assert.deepEqual(launcher.unexpectedPackages(choice, { distributions: [...exact.distributions, ['evilpkg', '1.0']], pth: ['evilpkg.pth'] }),
-    ['evilpkg 1.0', 'evilpkg.pth']);
-  assert.deepEqual(launcher.unexpectedPackages(choice, { distributions: [['mcp', '1.29.0'], ['pip', '26.2.2']], pth: [] }),
-    ['mcp 1.29.0', 'pyjwt missing']);
+  const choice = { lock: launcher.parseLock('lock', '# Python/OS: {}\nmcp==1.30.0\nPyJWT==2.15.1\npywin32==312\n') };
+  const exact = { distributions: [['mcp', '1.30.0', []], ['pyjwt', '2.15.1', []], ['pywin32', '312', ['pywin32.pth']],
+    ['pip', '26.2.2', []]], pth: ['pywin32.pth'] };
+  assert.deepEqual(launcher.unexpectedPackages(choice, exact), [], 'a pinned package may install its own .pth');
+  assert.deepEqual(launcher.unexpectedPackages(choice, { distributions: [...exact.distributions,
+    ['setuptools', '65.5.0', ['distutils-precedence.pth']]], pth: ['distutils-precedence.pth', 'pywin32.pth'] }), [],
+  'Python 3.11 venv adds setuptools');
+  assert.deepEqual(launcher.unexpectedPackages(choice, { distributions: [...exact.distributions, ['evilpkg', '1.0', ['evilpkg.pth']]],
+    pth: ['evilpkg.pth', 'pywin32.pth'] }), ['evilpkg 1.0', 'evilpkg.pth']);
+  assert.deepEqual(launcher.unexpectedPackages(choice, { ...exact, pth: ['planted.pth', 'pywin32.pth'] }), ['planted.pth'],
+    'a .pth that no package installed');
+  assert.deepEqual(launcher.unexpectedPackages(choice, { distributions: [['mcp', '1.29.0', []], ['pywin32', '312', []],
+    ['pip', '26.2.2', []]], pth: [] }), ['mcp 1.29.0', 'pyjwt missing']);
 });
 
 test('environments are reused only from private folders', { skip: process.platform === 'win32' && 'POSIX owner and mode' }, (context) => {

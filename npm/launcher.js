@@ -16,14 +16,16 @@ const NAME = 'personal-device-scanner-mcp';
 const MINIMUM_PYTHON = [3, 11];
 // Temporary build folders older than this were left by an interrupted setup.
 const STALE_BUILD_MS = 24 * 60 * 60 * 1000;
-// What pip installed: every distribution and any .pth file, which Python runs at each start.
+// What pip installed: each distribution with the .pth files its RECORD lists, and every .pth present
+// (Python runs them at each start).
 const INVENTORY = 'import importlib.metadata as m, json, pathlib, sysconfig; '
   + 'folders = sorted({sysconfig.get_path("purelib"), sysconfig.get_path("platlib")}); '
-  + 'print(json.dumps({"distributions": sorted([str(d.metadata["Name"]), d.version] for d in m.distributions(path=folders)), '
+  + 'print(json.dumps({"distributions": sorted([str(d.metadata["Name"]), d.version, '
+  + 'sorted(str(f) for f in d.files or () if len(f.parts) == 1 and f.suffix == ".pth")] '
+  + 'for d in m.distributions(path=folders)), '
   + '"pth": sorted({p.name for f in folders for p in pathlib.Path(f).glob("*.pth")})}))';
-// venv itself installs pip (and, on Python 3.11, setuptools with its .pth file).
+// venv itself installs pip (and, on Python 3.11, setuptools).
 const VENV_PACKAGES = new Set(['pip', 'setuptools']);
-const VENV_PTH = new Set(['distutils-precedence.pth']);
 const DESCRIBE = 'import json, platform, sys; print(json.dumps({"python": platform.python_version(), '
   + '"implementation": platform.python_implementation(), "os": platform.system(), '
   + '"architecture": platform.machine(), "executable": sys.executable}))';
@@ -218,18 +220,23 @@ function pipEnvironment(env = process.env, platform = process.platform) {
   return { ...kept, PIP_CONFIG_FILE: platform === 'win32' ? 'nul' : '/dev/null' };
 }
 
-/** Anything installed beyond the lock's pins (and venv's own pip), with a different version, or missing. */
+/**
+ * Anything installed beyond the lock's pins (and venv's own pip), with a different version, or missing,
+ * and any .pth file that no accepted distribution installed (pywin32 ships one of its own).
+ */
 function unexpectedPackages(choice, inventory) {
   const normal = (name) => name.toLowerCase().replace(/[-_.]+/g, '-');
   const pinned = new Map(choice.lock.pins.map((pin) => [normal(pin.name), pin.version]));
   const problems = [];
-  for (const [name, version] of inventory.distributions) {
+  const owned = new Set();
+  for (const [name, version, pth = []] of inventory.distributions) {
     const key = normal(name);
     if (pinned.has(key) ? pinned.get(key) !== version : !VENV_PACKAGES.has(key)) problems.push(`${name} ${version}`);
+    else for (const file of pth) owned.add(file);
     pinned.delete(key);
   }
   problems.push(...[...pinned.keys()].map((name) => `${name} missing`));
-  return problems.concat(inventory.pth.filter((file) => !VENV_PTH.has(file)));
+  return problems.concat(inventory.pth.filter((file) => !owned.has(file)));
 }
 
 function check(command, args, what, env = process.env) {

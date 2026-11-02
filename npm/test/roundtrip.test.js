@@ -69,6 +69,8 @@ function connect(launcherPath, args, env) {
 async function initialize(client) {
   const reply = await client.request('initialize', { protocolVersion: '2025-06-18', capabilities: {},
     clientInfo: { name: 'npm-roundtrip-test', version: '1' } });
+  // The launcher's own stderr says why setup stopped; without it a failure here shows only a missing result.
+  assert.ok(reply.result, `initialize failed: ${reply.error?.message}\n${client.stderr()}`);
   assert.equal(reply.result.serverInfo.name, 'Personal Device Scanner');
   client.notify('notifications/initialized');
 }
