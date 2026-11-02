@@ -17,8 +17,8 @@ import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
-from .core import (CANCEL_POLL_SECONDS, PAGE_SIZE, PATH_CHARS, ProcessTree, ScannerError, check_cancel,
-                   clean_text, engine_environment, result, run_bounded)
+from .core import (CANCEL_POLL_SECONDS, PAGE_SIZE, PATH_CHARS, InputRefused, ProcessTree, ScannerError,
+                   check_cancel, clean_text, engine_environment, result, run_bounded)
 
 PROPERTIES = {"ro.build.version.release": "android_version", "ro.build.version.sdk": "sdk",
               "ro.build.version.security_patch": "security_patch", "ro.product.manufacturer": "manufacturer",
@@ -200,7 +200,7 @@ class Session:
 
 def connect(scanner, device_alias: str, cancel: threading.Event | None) -> Session:
     if device_alias not in scanner.android_devices:
-        raise ScannerError("Android device alias is not registered")
+        raise InputRefused("Android device alias is not registered")
     adb = scanner.binary("adb_binary", scanner.android)
     deadline = time.monotonic() + scanner.timeout
     transport = find_usb_transport([adb, "track-devices", "--proto-text"], scanner.android_devices[device_alias],
@@ -218,12 +218,14 @@ def parse_properties(text: str) -> dict:
 def parse_users(pm_users: str, user_list: str | None) -> list[dict]:
     """User IDs and kinds; names are never returned (a user's name may be a person's name)."""
     users = {}
-    for line in pm_users.splitlines():
-        match = re.search(r"UserInfo\{(\d+):.*:([0-9a-fA-F]+)\}", line)
+    # A name may hold line breaks: read each entry up to the last ":<flags>}" before the next one.
+    for entry in pm_users.split("UserInfo{")[1:]:
+        match = re.match(r"(\d+):.*:([0-9a-fA-F]+)\}", entry, re.S)
         if match:
             users[int(match.group(1))] = {"user_id": int(match.group(1)), "flags": int(match.group(2), 16)}
     details = {}
-    for line in (user_list or "").splitlines():
+    # Only "\n" separates entries; splitlines() would also split names at Unicode line separators.
+    for line in (user_list or "").split("\n"):
         # Read from the end: the name before it may contain anything, even ", type=".
         match = re.search(r"\bid=(\d+), .*, type=([\w.]+), flags=[A-Z_|]*((?: \([^()]*\))*)\s*$", line)
         if match:
@@ -490,6 +492,10 @@ def read_users(session: Session) -> list[dict]:
     users = parse_users(output, detail)
     if not users:
         session.reject("users", None, "no users in the output")
+    # A user whose entry could not be read must not silently drop out of every later check.
+    listed = {int(user_id) for user_id in re.findall(r"^\s*\d+: id=(\d+),", detail or "", re.M)}
+    for user_id in sorted(listed - {user["user_id"] for user in users}):
+        session.missing("users", user_id, "the user is listed by cmd user list but its entry could not be read")
     for user in users:
         if user["kind"] != "full" and user["parent_user_id"] is None:
             session.missing("profile_parent", user["user_id"], "the profile's parent user could not be determined")
@@ -558,6 +564,10 @@ def read_privileged(session: Session, users: list[dict]) -> tuple[list[dict], li
             for user in users:
                 if user["user_id"] not in admins:
                     session.missing("device_admins", user["user_id"], "the output has no section for this user")
+            known = {user["user_id"] for user in users}
+            named = set(admins) | {owner["user_id"] for owner in owners if owner["user_id"] is not None}
+            for user_id in sorted(named - known):
+                session.missing("users", user_id, "device policy names this user, but it is not in the user list")
             for uid, components in admins.items():
                 entries += [{"user_id": uid, "access": "device_admin", **component} for component in components]
     return entries, owners, shared
@@ -645,7 +655,7 @@ def collect(scanner, device_alias: str, query_id: str, cancel: threading.Event |
 def check(scanner, device_alias: str, cancel: threading.Event | None = None) -> dict:
     """Match every package against known monitoring apps, and list apps to review."""
     if device_alias not in scanner.android_devices:
-        raise ScannerError("Android device alias is not registered")
+        raise InputRefused("Android device alias is not registered")
     notes: list[str] = []
     issues: list[str] = []
     indicators, meta = {}, {"source": INDICATOR_SOURCE, "freshness": "unknown"}

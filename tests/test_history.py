@@ -107,36 +107,39 @@ class HistoryTests(unittest.TestCase):
                           if entry["operation"] == "vulnerabilities"], ["page 3", "first page", "next page"])
 
     def test_failed_scans_are_kept_with_their_error(self):
-        self.scanner().invoke("malware", root_alias="missing")
+        self.scanner().invoke("malware", root_alias="downloads")
         [record] = self.records()
         self.assertEqual(record["status"], "error")
-        self.assertEqual(record["error"], "Scan root alias is not authorized")
-        self.assertEqual(record["target"], {"root_alias": "missing"})
+        self.assertEqual(record["error"], "clamav_binary is not configured or not installed")
+        self.assertEqual(record["target"], {"root_alias": "downloads"})
+        # Refused arguments are not recorded, so repeating them cannot rotate earlier scans out.
+        self.scanner().invoke("malware", root_alias="missing")
+        self.assertEqual(len(self.records()), 1)
 
     def test_status_library_use_and_turning_it_off_record_nothing(self):
         self.scanner().invoke("status")
-        self.scanner(via=None).invoke("malware", root_alias="missing")
-        report = self.scanner(enabled=False).invoke("malware", root_alias="missing")
+        self.scanner(via=None).invoke("malware", root_alias="downloads")
+        report = self.scanner(enabled=False).invoke("malware", root_alias="downloads")
         self.assertFalse(self.file.exists())
         self.assertFalse(any("history" in warning for warning in report["warnings"]))
 
     def test_names_from_the_ai_are_cleaned_and_bounded(self):
-        self.scanner().invoke("malware", root_alias="a‮b\n", relative_path="x" * 5000)
-        [record] = self.records()
+        record = history.entry("malware", {"root_alias": "a‮b\n", "relative_path": "x" * 5000},
+                               result("clamav", "error", error="x"), datetime.now(timezone.utc), 0.1, "mcp")
         self.assertEqual(record["target"]["root_alias"], "a\\u202eb\\u000a")
         self.assertLess(len(record["target"]["relative_path"]), 1100)
 
     def test_the_file_is_private_and_a_link_is_refused(self):
         if os.name == "nt":
             self.skipTest("POSIX permissions and links")
-        self.scanner().invoke("malware", root_alias="missing")
+        self.scanner().invoke("malware", root_alias="downloads")
         self.assertEqual(self.file.stat().st_mode & 0o777, 0o600)
         self.assertEqual(self.file.parent.stat().st_mode & 0o077, 0)
         target = self.root / "other.txt"
         target.write_text("keep")
         self.file.unlink()
         self.file.symlink_to(target)
-        report = self.scanner().invoke("malware", root_alias="missing")
+        report = self.scanner().invoke("malware", root_alias="downloads")
         self.assertEqual(target.read_text(), "keep")
         self.assertIn("Scan history could not be written; the scan itself is unaffected", report["warnings"])
 
@@ -146,7 +149,7 @@ class HistoryTests(unittest.TestCase):
         self.file.parent.mkdir()
         self.file.write_text("")
         self.file.chmod(0o644)
-        self.scanner().invoke("malware", root_alias="missing")
+        self.scanner().invoke("malware", root_alias="downloads")
         self.assertEqual(self.file.stat().st_mode & 0o777, 0o600)
         self.assertEqual(len(self.records()), 1)
         # A new file is private from the start, so no reader can open it before it is checked.
@@ -183,7 +186,7 @@ class HistoryTests(unittest.TestCase):
         profile.chmod(0o644)
         self.file.parent.mkdir()
         os.link(profile, self.file)
-        report = self.scanner().invoke("malware", root_alias="$(id)")
+        report = self.scanner().invoke("malware", root_alias="downloads")
         self.assertIn("Scan history could not be written; the scan itself is unaffected", report["warnings"])
         self.assertEqual((profile.read_text(), profile.stat().st_mode & 0o777), ("echo hi\n", 0o644))
         self.file.unlink()
@@ -269,7 +272,7 @@ class HistoryTests(unittest.TestCase):
                 # Neither rotated nor written while the other process holds the lock.
                 self.assertFalse(history.older(self.file).exists())
                 self.assertEqual(self.file.read_text(), full)
-                report = self.scanner().invoke("malware", root_alias="missing")
+                report = self.scanner().invoke("malware", root_alias="downloads")
                 self.assertIn("Scan history could not be written; the scan itself is unaffected", report["warnings"])
                 # Reading does not need the lock.
                 self.assertEqual(history.read(self.file, 5), ([], 20))
@@ -282,7 +285,7 @@ class HistoryTests(unittest.TestCase):
         self.assertEqual(self.file.read_text(), json.dumps({"n": 21}) + "\n")
 
     def test_reading_holds_the_lock_so_no_rotation_falls_between_the_files(self):
-        self.scanner().invoke("malware", root_alias="missing")
+        self.scanner().invoke("malware", root_alias="downloads")
         held = []
         original = history.locked
 
@@ -300,11 +303,11 @@ class HistoryTests(unittest.TestCase):
 
     def test_a_history_that_cannot_be_written_only_adds_a_warning(self):
         (self.root / "state").write_text("not a folder")
-        report = self.scanner().invoke("malware", root_alias="missing")
-        self.assertEqual(report["error"], "Scan root alias is not authorized")
+        report = self.scanner().invoke("malware", root_alias="downloads")
+        self.assertEqual(report["error"], "clamav_binary is not configured or not installed")
         self.assertIn("Scan history could not be written; the scan itself is unaffected", report["warnings"])
         with patch("pc_scanner.history.entry", side_effect=KeyError("status")):
-            report = self.scanner().invoke("malware", root_alias="missing")
+            report = self.scanner().invoke("malware", root_alias="downloads")
         self.assertEqual(report["status"], "error")
         self.assertIn("Scan history could not be written; the scan itself is unaffected", report["warnings"])
 
@@ -351,7 +354,9 @@ class HistoryTests(unittest.TestCase):
         empty = self.cli("history")
         self.assertEqual(empty.returncode, 0, empty.stderr)
         self.assertIn("No scans recorded yet", empty.stdout)
-        self.assertEqual(self.cli("malware", "missing").returncode, 2)
+        (self.root / "sub").mkdir()
+        self.assertEqual(self.cli("malware", "downloads").returncode, 2)
+        self.assertEqual(self.cli("malware", "missing").returncode, 2)  # refused: not recorded
         self.assertEqual(self.cli("malware", "downloads", "sub").returncode, 2)
         shown = self.cli("history")
         self.assertEqual(shown.returncode, 0, shown.stderr)
@@ -359,8 +364,8 @@ class HistoryTests(unittest.TestCase):
         self.assertEqual(lines[0].split(),
                          ["TIME", "VIA", "OPERATION", "SOURCE", "STATUS", "FINDINGS", "SECONDS", "TARGET"])
         self.assertEqual(lines[1].split()[2:6], ["cli", "malware", "ClamAV", "error"])
-        self.assertTrue(lines[1].endswith("missing"))
-        self.assertEqual(lines[2].strip(), "error: Scan root alias is not authorized")
+        self.assertTrue(lines[1].endswith("downloads"))
+        self.assertEqual(lines[2].strip(), "error: clamav_binary is not configured or not installed")
         self.assertEqual(lines[1].split()[6], "-")
         self.assertTrue(lines[3].endswith("downloads/sub"))
         latest = self.cli("history", "--limit", "1", "--json")
@@ -414,18 +419,18 @@ class HistoryTests(unittest.TestCase):
         self.assertEqual(set(history.SOURCES), history.OPERATIONS)
 
     def test_the_source_is_shown_but_never_recorded(self):
-        self.scanner().invoke("malware", root_alias="missing")
+        self.scanner().invoke("malware", root_alias="downloads")
         self.assertNotIn("source", self.file.read_text(encoding="utf-8"))
         report = json.loads(self.cli("history", "--json").stdout)
         self.assertEqual(report["data"]["entries"][0]["source"], "ClamAV")
 
     def test_the_history_command_still_reads_after_recording_is_turned_off(self):
-        self.scanner().invoke("malware", root_alias="missing")
+        self.scanner().invoke("malware", root_alias="downloads")
         config = self.root / "off.toml"
         config.write_text(f"[history]\nenabled = false\nfile = {toml_path(self.file)}\n")
         shown = self.cli("history", config=config)
         self.assertEqual(shown.returncode, 0, shown.stderr)
-        self.assertIn("missing", shown.stdout)
+        self.assertIn("downloads", shown.stdout)
         self.assertIn("Recording is turned off", shown.stderr)
         self.assertEqual(self.cli("malware", "missing", config=config).returncode, 2)
         self.assertEqual(len(self.records()), 1)
@@ -455,7 +460,7 @@ class HistoryTests(unittest.TestCase):
         with patch("pc_scanner.history.default_file", side_effect=RuntimeError):
             scanner = Scanner({})
             scanner.via = "cli"
-            report = scanner.invoke("malware", root_alias="missing")
+            report = scanner.invoke("inventory", query_id="os_version")
         self.assertIn("Scan history could not be written; the scan itself is unaffected", report["warnings"])
 
     def test_the_mcp_server_marks_its_scans(self):
@@ -475,12 +480,12 @@ class HistoryTests(unittest.TestCase):
         async def exercise():
             async with create_connected_server_and_client_session(create_server(scanner)) as session:
                 await session.call_tool("scanner_status", {})
-                await session.call_tool("scan_malware", {"root_alias": "missing"})
+                await session.call_tool("scan_malware", {"root_alias": "downloads"})
 
         asyncio.run(exercise())
         [record] = self.records()
         self.assertEqual((record["via"], record["operation"], record["status"]), ("mcp", "malware", "error"))
-        self.assertEqual(record["target"], {"root_alias": "missing", "relative_path": "."})
+        self.assertEqual(record["target"], {"root_alias": "downloads", "relative_path": "."})
 
 
 if __name__ == "__main__":

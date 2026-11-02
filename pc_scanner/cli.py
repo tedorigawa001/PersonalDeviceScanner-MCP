@@ -152,6 +152,9 @@ def main():
     sys.stdout.reconfigure(errors="backslashreplace")
     stop_engines_on_terminate()
     try:
+        if args.command == "serve" and not Path(args.config).is_absolute():
+            # A relative file would come from whichever folder the MCP client starts the server in.
+            raise ScannerError("serve requires --config with the absolute path of the owner's configuration")
         scanner = Scanner.load(args.config)
         if args.command == "serve":
             from .server import serve
@@ -235,6 +238,10 @@ def main():
         # Exit 2 ("not completed"), never 1, which means "completed with findings".
         report = result("bridge", "error",
                         error=f"Unexpected internal error ({type(exc).__name__}); the operation was not completed")
+    if args.command == "serve":
+        # stdout belongs to MCP: why the server could not start goes to stderr.
+        print("pc-scanner: " + report["error"], file=sys.stderr)
+        raise SystemExit(2)
     if args.command == "review-processes" and not args.show_details:
         from .process_review import for_cli
         omitted = len(report.get("warnings", []))

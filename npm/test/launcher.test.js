@@ -334,9 +334,47 @@ test('the cache folder follows each OS, and an override must be absolute', () =>
   assert.equal(launcher.cacheRoot({}, 'linux', home), path.join(home, '.cache', 'personal-device-scanner-mcp'));
   assert.equal(launcher.cacheRoot({ XDG_CACHE_HOME: 'relative' }, 'linux', home),
     path.join(home, '.cache', 'personal-device-scanner-mcp'));
-  assert.equal(launcher.cacheRoot({ LOCALAPPDATA: path.join(home, 'Local') }, 'win32', home),
-    path.join(home, 'Local', 'personal-device-scanner-mcp'));
+  const windowsHome = 'C:\\Users\\someone';
+  assert.equal(launcher.cacheRoot({ LOCALAPPDATA: `${windowsHome}\\Local` }, 'win32', windowsHome),
+    path.join(`${windowsHome}\\Local`, 'personal-device-scanner-mcp'));
+  // A root-relative folder depends on the current drive, so the profile's AppData is used instead.
+  assert.equal(launcher.cacheRoot({ LOCALAPPDATA: '\\Local' }, 'win32', windowsHome),
+    path.join(windowsHome, 'AppData', 'Local', 'personal-device-scanner-mcp'));
   assert.throws(() => launcher.cacheRoot({ PC_SCANNER_CACHE_DIR: 'cache' }, 'linux', home), launcher.LauncherError);
+  assert.throws(() => launcher.cacheRoot({ PC_SCANNER_CACHE_DIR: '\\cache' }, 'win32', windowsHome), launcher.LauncherError);
+  // An empty home would put the environments in whatever folder the client starts the launcher in.
+  assert.throws(() => launcher.cacheRoot({}, 'linux', ''), launcher.LauncherError);
+});
+
+test('pip reads no configuration file and no PIP_ variables', () => {
+  // A pip.ini or PIP_REQUIREMENT could add packages, with their own hashes, to a hash-checked install.
+  const env = { PATH: '/usr/bin', PIP_CONFIG_FILE: '/shared/pip.ini', pip_requirement: 'x.txt', HTTPS_PROXY: 'http://proxy' };
+  assert.deepEqual(launcher.pipEnvironment(env, 'linux'), { PATH: '/usr/bin', HTTPS_PROXY: 'http://proxy', PIP_CONFIG_FILE: '/dev/null' });
+  assert.equal(launcher.pipEnvironment(env, 'win32').PIP_CONFIG_FILE, 'nul');
+});
+
+test('an environment holding anything beyond the lock is refused', () => {
+  const lock = launcher.parseLock('lock', '# Python/OS: {}\nmcp==1.30.0\nPyJWT==2.15.1\n');
+  const choice = { lock };
+  const exact = { distributions: [['mcp', '1.30.0'], ['pyjwt', '2.15.1'], ['pip', '26.2.2']], pth: [] };
+  assert.deepEqual(launcher.unexpectedPackages(choice, exact), []);
+  assert.deepEqual(launcher.unexpectedPackages(choice, { ...exact, distributions: [...exact.distributions, ['setuptools', '65.5.0']],
+    pth: ['distutils-precedence.pth'] }), [], 'Python 3.11 venv adds setuptools');
+  assert.deepEqual(launcher.unexpectedPackages(choice, { distributions: [...exact.distributions, ['evilpkg', '1.0']], pth: ['evilpkg.pth'] }),
+    ['evilpkg 1.0', 'evilpkg.pth']);
+  assert.deepEqual(launcher.unexpectedPackages(choice, { distributions: [['mcp', '1.29.0'], ['pip', '26.2.2']], pth: [] }),
+    ['mcp 1.29.0', 'pyjwt missing']);
+});
+
+test('environments are reused only from private folders', { skip: process.platform === 'win32' && 'POSIX owner and mode' }, (context) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pc-scanner-private-'));
+  context.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  launcher.requirePrivate(root);
+  fs.chmodSync(root, 0o777);
+  assert.throws(() => launcher.requirePrivate(root), launcher.LauncherError);
+  fs.chmodSync(root, 0o700);
+  fs.symlinkSync(root, path.join(root, 'link'));
+  assert.throws(() => launcher.requirePrivate(path.join(root, 'link')), launcher.LauncherError);
 });
 
 test('Python is found by fixed names, or only at an absolute path the owner set', () => {

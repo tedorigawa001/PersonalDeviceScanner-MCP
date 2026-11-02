@@ -216,6 +216,8 @@ the npm package holds a small launcher, this project's Python code and the lock 
 }
 ```
 
+- `serve` requires `--config` with an absolute path; a relative one would be read from whatever folder the
+  client starts the server in. If the server cannot start, the reason goes to stderr, never to the MCP channel.
 - On first use, the launcher creates its own virtual environment in your cache folder and installs the Python packages there
   (macOS: `~/Library/Caches/personal-device-scanner-mcp`, Linux: `~/.cache/personal-device-scanner-mcp`,
   Windows: `%LOCALAPPDATA%\personal-device-scanner-mcp`). This can take longer than some clients wait for a server to start,
@@ -225,6 +227,10 @@ the npm package holds a small launcher, this project's Python code and the lock 
   installed with the hashes in the bundled lock files (`pip --require-hashes`); with musl or older glibc that setup
   stops instead of skipping the hashes. Other Python versions and CPUs get the same versions without hash checks,
   and the launcher says so on stderr. Its own messages and pip's output go to stderr, never to the MCP channel.
+- pip runs without pip configuration files or `PIP_*` variables, so an index, mirror or extra requirement set there is
+  not used. After installing, an environment whose packages differ from the lock (or that holds a `.pth` file from a
+  package) is refused. The cache folder, including a `PC_SCANNER_CACHE_DIR` override, must be yours and writable only
+  by you; otherwise the launcher stops instead of reusing what is there.
 - It looks for `python3.15`, `python3.14`, `python3.13` … `python3` (Windows: `py -3.15`, `py -3.14`, `py -3`, `python`) in the absolute folders on
   `PATH` only. It never looks in the current folder (which Windows would otherwise search first) or in relative `PATH`
   entries such as `.`, so a program named like Python in a downloads folder is not run. To choose one, set
@@ -818,7 +824,8 @@ TIME                 VIA  OPERATION      SOURCE         STATUS     FINDINGS    S
 - **Size**: when the file reaches 1 MiB it becomes `history.jsonl.1`, replacing the previous one, so roughly the latest
   several thousand scans are kept. Delete `history.jsonl` and `history.jsonl.1` to clear the history. The empty
   `history.jsonl.lock` next to them makes a CLI and MCP servers running at the same time take turns, so none of them
-  rotates over another's history.
+  rotates over another's history. Calls refused for their arguments (an unknown alias, a path outside the folder) are
+  not recorded, but many accepted calls can still rotate older entries out; keep copies of results you need.
 - **Turning it off**: `history.enabled = false`. The `history` command still shows what was recorded before.
 - If the history cannot be written, the scan is unaffected and its result gets a warning.
 
@@ -1101,9 +1108,10 @@ remain independent of this ephemeral progress state.
   Detection reflects metadata at preflight time; concurrent sync-state changes and providers that do not expose these attributes are outside this guarantee.
 - Unreadable folders do not stop the scan. They are listed in `data.unreadable_directories` (up to 20) and the result is `partial`.
 - Detections are checked against ClamAV's own summary. If its count of infected files or of errors does not match
-  what was read, or a detection does not name an existing file inside the authorized folder, the result is `partial`
+  what was read, or a detection does not name an existing file inside the scanned folder, the result is `partial`
   and that finding has no `path`. ClamAV's counts are in `data.engine_counts`.
-- A line break in a file name can make one detection read as another file's. If any name contains one, no finding
+- A line break in a file name (including a vertical tab, form feed or Unicode line or paragraph separator) can make one
+  detection read as another file's. If any name contains one, no finding
   gets a `path`, the result is `partial`, and the names are listed (escaped) in `data.line_break_names`.
 - Before each scan, the signature date is read from `clamscan --version`. If the signatures are older than
   `max_signature_age_days` (7 days by default, the same point at which ClamAV itself warns) or their date is unknown,
@@ -1149,6 +1157,7 @@ remain independent of this ephemeral progress state.
 - Everything is read per user, including work profiles. A work profile shares accessibility with its parent user, so it is
   matched with the parent's apps.
 - Anything that could not be read is listed in `data.unavailable` and makes the result `partial`; it is never treated as absent.
+  A user named by `cmd user list` or the device policy whose entry cannot be read is listed there too.
   This includes output in an unexpected format, even when the command succeeded. If nothing at all can be read from the
   device, the result is `error`. A malformed indicator file does not stop the device check; it makes it `partial`.
 - The format of `dumpsys device_policy` with an enabled device admin is taken from the AOSP source; it could not be

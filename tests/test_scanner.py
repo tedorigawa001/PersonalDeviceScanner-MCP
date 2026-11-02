@@ -882,6 +882,59 @@ class ScannerTests(unittest.TestCase):
         self.assertEqual(report["data"]["line_break_names"], ["x\\u000areport.docx"])
         self.assertTrue(any("line breaks" in warning for warning in report["warnings"]))
 
+    @unittest.skipIf(os.name == "nt", "Windows file names cannot contain these characters")
+    def test_every_line_separator_in_names_blocks_attribution(self):
+        # splitlines() also ends lines here: such a name made a decoy signature name the benign "readme".
+        (self.root / "readme").write_text("benign")
+        root = self.root.resolve()
+        for separator in "\x0b\x0c\x1c\x1d\x1e\x85\u2028\u2029":
+            name = f"readme: Decoy.Signature FOUND{separator}"
+            with self.subTest(separator=separator):
+                (self.root / name).write_text("malicious")
+                output = f"{root / name}: Real.Signature FOUND\nScanned files: 3\nInfected files: 1\n"
+                with patch("pc_scanner.core.run_bounded", return_value=(1, output, "")):
+                    report = self.scanner.invoke("malware", root_alias="test")
+                (self.root / name).unlink()
+                self.assertEqual(report["status"], "partial")
+                self.assertEqual([(f["path"], f["signature"]) for f in report["findings"]], [(None, "Real.Signature")])
+                self.assertEqual(len(report["data"]["line_break_names"]), 1)
+
+    @unittest.skipIf(os.name == "nt", "Creating symlinks needs extra rights on Windows")
+    def test_link_inside_the_root_does_not_reveal_which_outside_paths_exist(self):
+        outside = tempfile.TemporaryDirectory()
+        self.addCleanup(outside.cleanup)
+        (Path(outside.name) / "exists.pdf").write_text("private")
+        (self.root / "shortcut").symlink_to(outside.name, target_is_directory=True)
+        with patch("pc_scanner.core.run_bounded") as run:
+            errors = [self.scanner.invoke("malware", root_alias="test", relative_path=f"shortcut/{name}")["error"]
+                      for name in ("exists.pdf", "missing.pdf")]
+        run.assert_not_called()
+        self.assertEqual(errors[0], errors[1])
+
+    def test_refused_calls_are_not_added_to_the_history(self):
+        # Repeated refused calls once rotated earlier detections out of the history within seconds.
+        from pc_scanner import history
+        file = self.root / "state" / "history.jsonl"
+        scanner = Scanner({"local": {"clamav_binary": sys.executable}, "scan_roots": {"test": str(self.root)},
+                           "history": {"file": str(file)}})
+        scanner.via = "mcp"
+        for kwargs in ({"root_alias": "nope", "relative_path": "A" * 1024}, {"root_alias": "test", "relative_path": "../x"},
+                       {"root_alias": "test", "relative_path": "missing"}):
+            self.assertEqual(scanner.invoke("malware", **kwargs)["status"], "error")
+        self.assertFalse(file.exists())
+        with patch("pc_scanner.core.run_bounded", return_value=(0, "Scanned files: 1\nInfected files: 0\n", "")):
+            scanner.invoke("malware", root_alias="test", relative_path="sample.txt")
+        self.assertEqual(len(history.read(file, 10)[0]), 1)
+
+    def test_detection_outside_the_scanned_folder_has_no_path(self):
+        (self.root / "sub").mkdir()
+        (self.root / "sub" / "inside.txt").write_text("benign")
+        output = f"{self.root.resolve() / 'sample.txt'}: Eicar-Test-Signature FOUND\nScanned files: 1\nInfected files: 1\n"
+        with patch("pc_scanner.core.run_bounded", return_value=(1, output, "")):
+            report = self.scanner.invoke("malware", root_alias="test", relative_path="sub")
+        self.assertEqual(report["status"], "partial")
+        self.assertIsNone(report["findings"][0]["path"])
+
     def test_clamav_report_is_relative_and_bounded(self):
         root = self.root.resolve()
         output = "\n".join([f"{root / 'sample.txt'}: Test.Signature FOUND"]
@@ -1565,6 +1618,18 @@ class ScannerTests(unittest.TestCase):
         failed = subprocess.run(command + ["inventory", "os_version"], capture_output=True, text=True)
         self.assertEqual(failed.returncode, 2)
         self.assertEqual(json.loads(failed.stdout)["status"], "error")
+
+    def test_serve_requires_an_absolute_config_and_keeps_stdout_for_mcp(self):
+        # A relative config would be read from whichever folder the client starts the server in.
+        (self.root / "scanner.toml").write_text('[scan_roots]\nplanted = "/"\n')
+        env = {**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[1])}
+        for config, reason in (("scanner.toml", "absolute path"), (str(self.root / "missing.toml"), "configuration")):
+            with self.subTest(config=config):
+                run = subprocess.run([sys.executable, "-m", "pc_scanner.cli", "--config", config, "serve"],
+                                     capture_output=True, text=True, cwd=self.root, env=env, stdin=subprocess.DEVNULL)
+                self.assertEqual(run.returncode, 2, run.stderr)
+                self.assertEqual(run.stdout, "")
+                self.assertIn(reason, run.stderr)
 
 
 if __name__ == "__main__":

@@ -16,6 +16,14 @@ const NAME = 'personal-device-scanner-mcp';
 const MINIMUM_PYTHON = [3, 11];
 // Temporary build folders older than this were left by an interrupted setup.
 const STALE_BUILD_MS = 24 * 60 * 60 * 1000;
+// What pip installed: every distribution and any .pth file, which Python runs at each start.
+const INVENTORY = 'import importlib.metadata as m, json, pathlib, sysconfig; '
+  + 'folders = sorted({sysconfig.get_path("purelib"), sysconfig.get_path("platlib")}); '
+  + 'print(json.dumps({"distributions": sorted([str(d.metadata["Name"]), d.version] for d in m.distributions(path=folders)), '
+  + '"pth": sorted({p.name for f in folders for p in pathlib.Path(f).glob("*.pth")})}))';
+// venv itself installs pip (and, on Python 3.11, setuptools with its .pth file).
+const VENV_PACKAGES = new Set(['pip', 'setuptools']);
+const VENV_PTH = new Set(['distutils-precedence.pth']);
 const DESCRIBE = 'import json, platform, sys; print(json.dumps({"python": platform.python_version(), '
   + '"implementation": platform.python_implementation(), "os": platform.system(), '
   + '"architecture": platform.machine(), "executable": sys.executable}))';
@@ -108,15 +116,38 @@ function environmentName(choice, sources, version) {
   return `${version}-${digest.digest('hex').slice(0, 16)}`;
 }
 
-function cacheRoot(env = process.env, platform = process.platform, home = os.homedir()) {
+function absolute(folder, platform) {
+  // On Windows, '\\dir' counts as absolute but depends on the current drive: require a drive or a UNC path.
+  return platform === 'win32' ? /^([A-Za-z]:[\\/]|\\\\)/.test(folder) : path.isAbsolute(folder);
+}
+
+function cacheRoot(env = process.env, platform = process.platform, home = os.homedir() || os.userInfo().homedir) {
+  let root;
   if (env.PC_SCANNER_CACHE_DIR) {
-    if (!path.isAbsolute(env.PC_SCANNER_CACHE_DIR)) throw new LauncherError('PC_SCANNER_CACHE_DIR must be an absolute path');
-    return env.PC_SCANNER_CACHE_DIR;
+    if (!absolute(env.PC_SCANNER_CACHE_DIR, platform)) throw new LauncherError('PC_SCANNER_CACHE_DIR must be an absolute path');
+    root = env.PC_SCANNER_CACHE_DIR;
+  } else if (platform === 'win32') {
+    root = path.join(env.LOCALAPPDATA && absolute(env.LOCALAPPDATA, platform) ? env.LOCALAPPDATA
+      : path.join(home, 'AppData', 'Local'), NAME);
+  } else if (platform === 'darwin') {
+    root = path.join(home, 'Library', 'Caches', NAME);
+  } else {
+    root = path.join(env.XDG_CACHE_HOME && path.isAbsolute(env.XDG_CACHE_HOME) ? env.XDG_CACHE_HOME
+      : path.join(home, '.cache'), NAME);
   }
-  if (platform === 'win32') return path.join(env.LOCALAPPDATA || path.join(home, 'AppData', 'Local'), NAME);
-  if (platform === 'darwin') return path.join(home, 'Library', 'Caches', NAME);
-  return path.join(env.XDG_CACHE_HOME && path.isAbsolute(env.XDG_CACHE_HOME) ? env.XDG_CACHE_HOME
-    : path.join(home, '.cache'), NAME);
+  // An empty or relative home would place the environments in the folder the client starts us in.
+  if (!absolute(root, platform)) throw new LauncherError('The cache folder could not be determined; set PC_SCANNER_CACHE_DIR');
+  return root;
+}
+
+/** A folder holding environments the server will run: a real folder of this user that others cannot change. */
+function requirePrivate(folder, platform = process.platform) {
+  const info = fs.lstatSync(folder);
+  if (!info.isDirectory()) throw new LauncherError(`${folder} must be a folder, not a link or file`);
+  // Windows has no owner or mode here; its default %LOCALAPPDATA% is already private to the user.
+  if (platform !== 'win32' && (info.uid !== process.getuid() || (info.mode & 0o022))) {
+    throw new LauncherError(`${folder} must belong to this user and be writable only by them`);
+  }
 }
 
 /** Commands that may start Python, most specific first. */
@@ -180,9 +211,30 @@ function venvPython(venv, platform = process.platform) {
   return platform === 'win32' ? path.join(venv, 'Scripts', 'python.exe') : path.join(venv, 'bin', 'python');
 }
 
-function check(command, args, what) {
+/** pip reads no configuration file and no PIP_* variable: either could add packages to a hash-checked install. */
+function pipEnvironment(env = process.env, platform = process.platform) {
+  const kept = Object.fromEntries(Object.entries(env).filter(([key]) => !key.toUpperCase().startsWith('PIP_')));
+  // pip skips every configuration file only when this equals Python's os.devnull exactly.
+  return { ...kept, PIP_CONFIG_FILE: platform === 'win32' ? 'nul' : '/dev/null' };
+}
+
+/** Anything installed beyond the lock's pins (and venv's own pip), with a different version, or missing. */
+function unexpectedPackages(choice, inventory) {
+  const normal = (name) => name.toLowerCase().replace(/[-_.]+/g, '-');
+  const pinned = new Map(choice.lock.pins.map((pin) => [normal(pin.name), pin.version]));
+  const problems = [];
+  for (const [name, version] of inventory.distributions) {
+    const key = normal(name);
+    if (pinned.has(key) ? pinned.get(key) !== version : !VENV_PACKAGES.has(key)) problems.push(`${name} ${version}`);
+    pinned.delete(key);
+  }
+  problems.push(...[...pinned.keys()].map((name) => `${name} missing`));
+  return problems.concat(inventory.pth.filter((file) => !VENV_PTH.has(file)));
+}
+
+function check(command, args, what, env = process.env) {
   // Child output goes to stderr too: stdout stays clean for MCP.
-  const result = childProcess.spawnSync(command, args, { stdio: ['ignore', 2, 2], windowsHide: true });
+  const result = childProcess.spawnSync(command, args, { stdio: ['ignore', 2, 2], windowsHide: true, env });
   if (result.error || result.status !== 0) {
     throw new LauncherError(`${what} failed${result.error ? `: ${result.error.message}` : ` (exit code ${result.status})`}`);
   }
@@ -212,6 +264,7 @@ function unhashedNote(choice, locks) {
 /** Build the environment in a temporary folder and move it into place when it is complete. */
 function build(choice, sources, root, name, locks = readLocks()) {
   fs.mkdirSync(root, { recursive: true, mode: 0o700 });
+  requirePrivate(root);
   removeStaleBuilds(root);
   const temporary = path.join(root, `${name}.build-${process.pid}-${crypto.randomBytes(4).toString('hex')}`);
   const venv = path.join(temporary, 'venv');
@@ -220,13 +273,23 @@ function build(choice, sources, root, name, locks = readLocks()) {
     : unhashedNote(choice, locks));
   try {
     fs.mkdirSync(temporary, { mode: 0o700 });
-    check(choice.info.executable, ['-I', '-m', 'venv', venv], 'Creating the virtual environment');
+    const pipEnv = pipEnvironment();
+    check(choice.info.executable, ['-I', '-m', 'venv', venv], 'Creating the virtual environment', pipEnv);
     const python = venvPython(venv);
     const lockCopy = path.join(temporary, 'requirements.txt');
     fs.writeFileSync(lockCopy, requirements(choice));
     check(python, ['-I', '-m', 'pip', 'install', '--disable-pip-version-check', '--no-input', '--no-deps',
-      '--only-binary=:all:', ...(choice.hashed ? ['--require-hashes'] : []), '-r', lockCopy], 'Installing the packages');
-    check(python, ['-I', '-m', 'pip', 'check', '--disable-pip-version-check'], 'Checking the installed packages');
+      '--only-binary=:all:', ...(choice.hashed ? ['--require-hashes'] : []), '-r', lockCopy], 'Installing the packages', pipEnv);
+    check(python, ['-I', '-m', 'pip', 'check', '--disable-pip-version-check'], 'Checking the installed packages', pipEnv);
+    const listed = childProcess.spawnSync(python, ['-I', '-c', INVENTORY],
+      { encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 2] });
+    let extra;
+    try {
+      extra = unexpectedPackages(choice, JSON.parse(listed.stdout));
+    } catch {
+      throw new LauncherError('Listing the installed packages failed');
+    }
+    if (extra.length) throw new LauncherError(`The installed packages do not match ${choice.lock.file}: ${extra.slice(0, 5).join(', ')}`);
     const site = childProcess.spawnSync(python, ['-I', '-c', 'import sysconfig; print(sysconfig.get_path("purelib"))'],
       { encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 2] });
     if (site.status !== 0) throw new LauncherError('Locating the virtual environment failed');
@@ -271,7 +334,13 @@ function main(argv = process.argv.slice(2)) {
   const sources = sourceFiles();
   const root = cacheRoot();
   const name = environmentName(choice, sources, packageVersion());
-  if (!fs.existsSync(path.join(root, name, 'environment.json'))) build(choice, sources, root, name, locks);
+  if (fs.existsSync(path.join(root, name, 'environment.json'))) {
+    // Reused only from private folders: anyone who can write there decides what the server runs.
+    requirePrivate(root);
+    requirePrivate(path.join(root, name));
+  } else {
+    build(choice, sources, root, name, locks);
+  }
   const python = venvPython(path.join(root, name, 'venv'));
   if (argv[0] === 'setup') {
     log(`ready: ${path.join(root, name)}`);
@@ -297,8 +366,9 @@ function main(argv = process.argv.slice(2)) {
 }
 
 module.exports = {
-  LauncherError, cacheRoot, chooseEnvironment, describe, environmentName, findEnvironment, main, parseLock, probeOptions, pythonCandidates,
-  readLocks, removeStaleBuilds, requirements, resolveOnPath, sourceFiles, supported, unhashedNote, venvPython,
+  LauncherError, cacheRoot, chooseEnvironment, describe, environmentName, findEnvironment, main, parseLock, pipEnvironment,
+  probeOptions, pythonCandidates, readLocks, removeStaleBuilds, requirePrivate, requirements, resolveOnPath, sourceFiles,
+  supported, unexpectedPackages, unhashedNote, venvPython,
 };
 
 if (require.main === module) {

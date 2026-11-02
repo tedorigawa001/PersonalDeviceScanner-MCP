@@ -31,6 +31,10 @@ class ScannerError(Exception):
     """Safe, user-facing operation failure."""
 
 
+class InputRefused(ScannerError):
+    """The caller's arguments were refused before any work; such calls are not added to the history."""
+
+
 MAX_DIRECTORY_LEVELS = 16
 PAGE_SIZE = 500
 # Inventory offsets stay bounded; real inventories are far smaller.
@@ -42,6 +46,8 @@ REPORTED_DIRECTORIES = 20
 # stat defines this only on Windows; the value is fixed by the Windows SDK.
 JUNCTION_TAG = getattr(stat, "IO_REPARSE_TAG_MOUNT_POINT", 0xA0000003)
 FOUND = re.compile(r"(.+): (.+) FOUND")
+# Every character str.splitlines() ends a line at: in a file name, any of them can split a report line.
+LINE_BREAKS = frozenset("\n\r\x0b\x0c\x1c\x1d\x1e\x85\u2028\u2029")
 # Characters that can hide or reorder text for a reader: controls and format characters (Unicode Cc, Cf),
 # line and paragraph separators, and every default-ignorable code point (bidi controls, zero-width
 # characters, soft hyphen, variation selectors, tags and fillers), which renderers may draw as nothing.
@@ -153,7 +159,7 @@ def inspect_directories(target: Path, deadline: float,
     clamscan reports one line per file, so a line break in a name can make a
     detection read as if it named another file.
     """
-    line_breaks = [str(target)] if "\n" in str(target) or "\r" in str(target) else []
+    line_breaks = [str(target)] if not LINE_BREAKS.isdisjoint(str(target)) else []
     if cloud_excluded is not None and cloud_placeholder(target):
         cloud_excluded.append((str(target), target.is_dir()))
         return False, [], line_breaks
@@ -168,7 +174,7 @@ def inspect_directories(target: Path, deadline: float,
         check_cancel(cancel)
         if time.monotonic() >= deadline:
             raise ScannerError("Directory coverage check timed out; scan was not completed")
-        line_breaks += [str(Path(directory) / name) for name in children + files if "\n" in name or "\r" in name]
+        line_breaks += [str(Path(directory) / name) for name in children + files if not LINE_BREAKS.isdisjoint(name)]
         # os.walk only skips symlinks, so junctions must be pruned here.
         children[:] = [name for name in children if not is_link(Path(directory) / name)
                        and Path(directory) / name != excluded_directory]
@@ -225,18 +231,18 @@ def decode_cursor(cursor) -> tuple[int, list | None]:
     if cursor == "":
         return 1, None
     if not isinstance(cursor, str) or len(cursor) > CURSOR_CHARS:
-        raise ScannerError("Invalid cursor; pass data.next_cursor unchanged")
+        raise InputRefused("Invalid cursor; pass data.next_cursor unchanged")
     try:
         values = json.loads(base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4)))
     except ValueError:
-        raise ScannerError("Invalid cursor; pass data.next_cursor unchanged") from None
+        raise InputRefused("Invalid cursor; pass data.next_cursor unchanged") from None
     if not (isinstance(values, list) and len(values) == len(WAZUH_SORT) + 1
             and type(values[0]) is int and 2 <= values[0] <= MAX_PAGES
             # CVSS base scores are 0..10 and -1 marks a missing score. Comparing, unlike
             # float conversion, cannot overflow on huge integers, and it rejects NaN and infinity.
             and type(values[1]) in (int, float) and -1 <= values[1] <= 10
             and all(isinstance(v, str) and len(v) <= SORT_VALUE_CHARS for v in values[2:])):
-        raise ScannerError("Invalid cursor; pass data.next_cursor unchanged")
+        raise InputRefused("Invalid cursor; pass data.next_cursor unchanged")
     return values[0], values[1:]
 
 
@@ -1013,9 +1019,12 @@ class Scanner:
                            progress=None, retry="", revision=None, target_ids=None):
         self._coverage_snapshot = None
         if type(batch) is not bool or type(resume) is not bool:
-            raise ScannerError("batch and resume must be true or false")
-        if root_alias not in self.roots:
-            raise ScannerError("Scan root alias is not authorized")
+            raise InputRefused("batch and resume must be true or false")
+        if not retry:
+            # Refused before the definitions check, so a refused call starts no engine at all.
+            self.scan_target(root_alias, relative_path)
+        elif root_alias not in self.roots:
+            raise InputRefused("Scan root alias is not authorized")
         if retry and (batch or resume):
             raise ScannerError("retry cannot be combined with batch or resume")
         if not retry and (revision is not None or target_ids):
@@ -1074,6 +1083,26 @@ class Scanner:
             report = result("clamav", "error", error=str(exc))
         return with_advice(report)
 
+    def scan_target(self, root_alias, relative_path):
+        """The resolved root and target, or InputRefused for anything the caller may not scan."""
+        if root_alias not in self.roots:
+            raise InputRefused("Scan root alias is not authorized")
+        if not isinstance(relative_path, str) or "\x00" in relative_path:
+            raise InputRefused("Invalid relative path")
+        relative = Path(relative_path)
+        if relative.is_absolute() or relative.drive or ".." in relative.parts:
+            raise InputRefused("Use a relative path within the authorized root")
+        root = Path(self.roots[root_alias]).resolve(strict=True)
+        try:
+            target = (root / relative).resolve(strict=True)
+        except OSError:
+            target = None
+        # One answer for a missing path and one outside the root, so a link inside the root
+        # cannot reveal which paths exist beyond it.
+        if target is None or not target.is_relative_to(root):
+            raise InputRefused("Scan target was not found inside the authorized root")
+        return root, target
+
     def _malware(self, *args, **kwargs):
         from .malware_group import database_state
         explicit = bool(self.local.get("clamav_database_directory"))
@@ -1094,15 +1123,7 @@ class Scanner:
                  max_levels: int = MAX_DIRECTORY_LEVELS, excluded_directory: Path | None = None,
                  expect_files: bool = True, progress=None, strict_metadata=False, excluded_scopes=(), on_engine_start=None) -> dict:
         from . import coverage
-        if root_alias not in self.roots:
-            raise ScannerError("Scan root alias is not authorized")
-        if not isinstance(relative_path, str) or "\x00" in relative_path:
-            raise ScannerError("Invalid relative path")
-        relative = Path(relative_path)
-        if relative.is_absolute() or relative.drive or ".." in relative.parts:
-            raise ScannerError("Use a relative path within the authorized root")
-        root = Path(self.roots[root_alias]).resolve(strict=True)
-        target = (root / relative).resolve(strict=True)
+        root, target = self.scan_target(root_alias, relative_path)
         if strict_metadata:
             from .malware_batch import target_path
             root, target = target_path(self, root_alias, relative_path)
@@ -1113,8 +1134,6 @@ class Scanner:
                     "cloud_excluded_count": int(ancestor_state == "cloud_placeholder")},
                     warnings=["An ancestor no longer permits safe scanning; coverage remains incomplete"]),
                     [coverage.issue(relative_path, ancestor_state)])
-        if not target.is_relative_to(root):
-            raise ScannerError("Scan target escapes the authorized root")
         if not (target.is_dir() or target.is_file()):
             raise ScannerError("Scan target must be a regular file or directory")
 
@@ -1126,10 +1145,10 @@ class Scanner:
                 return clean_text(Path(path).name, PATH_CHARS)
 
         def attributed(location: str) -> str | None:
-            # Only an existing file inside the root counts; a line break in a name can turn
+            # Only an existing file inside the scanned target counts; a line break in a name can turn
             # the text before ": <signature> FOUND" into a fragment naming another file.
             path = Path(location)
-            if line_breaks or not (path.is_absolute() and path.is_relative_to(root) and os.path.lexists(path)):
+            if line_breaks or not (path.is_absolute() and path.is_relative_to(target) and os.path.lexists(path)):
                 return None
             return shown(location)
 
@@ -1234,7 +1253,9 @@ class Scanner:
             # The target stays last, so a mis-parsed quote cannot place options after it.
             "--alert-exceeds-max=yes", *exclusions, target_argument], remaining, self.limit, cancel=cancel)
         findings, messages, limit_issues, finding_paths = [], [], [], []
-        for line in output.splitlines():
+        # Split at "\n" only: splitlines() would also split names holding the other LINE_BREAKS.
+        for line in output.removesuffix("\n").split("\n"):
+            line = line.removesuffix("\r")
             match = FOUND.fullmatch(line)
             if not match:
                 messages.append(line)
@@ -1515,6 +1536,7 @@ class Scanner:
                       "review_processes": self.review_processes}
         source = SOURCES.get(operation, "bridge")
         started, clock = datetime.now(timezone.utc), time.perf_counter()
+        refused = False
         if progress:
             progress.update(stage="preflight" if operation == "malware" else "running")
             if operation in {"malware", "check_clamav_signatures", "discover_lan_devices", "observe_outbound_connections", "review_processes", "check_connection_destinations", "update_ip_threat_lists"}:
@@ -1525,6 +1547,10 @@ class Scanner:
             if operation not in operations:
                 raise ScannerError("Unknown operation")
             report = operations[operation](**kwargs)
+        except InputRefused as exc:
+            # Not history: repeated refused calls must not rotate earlier results out of it.
+            refused = True
+            report = result(source, "error", error=str(exc))
         except ScannerError as exc:
             report = result(source, "error", error=str(exc))
         except (OSError, ValueError, TypeError, RuntimeError):
@@ -1546,7 +1572,7 @@ class Scanner:
                                               "the scan itself is unaffected")
         # Every result carries them, as a misspelt setting can change any operation.
         report["warnings"] = self.config_warnings + report["warnings"]
-        if self.via and self.history_enabled:
+        if self.via and self.history_enabled and not refused:
             from . import history
             if operation in history.OPERATIONS:
                 try:

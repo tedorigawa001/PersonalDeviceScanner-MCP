@@ -24,8 +24,8 @@ from urllib.error import URLError
 from urllib.parse import urlencode
 from urllib.request import ProxyHandler, Request, build_opener
 
-from .core import (NoRedirect, ScannerError, TrackedHTTPSHandler, check_cancel, clean_text, fetch_bounded,
-                   result)
+from .core import (InputRefused, NoRedirect, ScannerError, TrackedHTTPSHandler, check_cancel, clean_text,
+                   fetch_bounded, result)
 
 MYJVN = "https://jvndb.jvn.jp/myjvn"
 ATTRIBUTION = "MyJVN API (IPA)"
@@ -576,7 +576,7 @@ ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "unknown": 4}
 
 def check(scanner, router_alias: str, cancel: threading.Event | None = None, transport=None) -> dict:
     if not isinstance(router_alias, str) or router_alias not in scanner.routers:
-        raise ScannerError("Router alias is not registered")
+        raise InputRefused("Router alias is not registered")
     check_cancel(cancel)
     settings, entry = scanner.router_settings, scanner.routers[router_alias]
     now = datetime.now(timezone.utc)

@@ -158,6 +158,14 @@ class ParserTests(unittest.TestCase):
                   "flags=MANAGED_PROFILE|PROFILE (parentId=0) (running)\n")
         self.assertEqual(android.parse_users("UserInfo{0:a:13}\nUserInfo{10:b:1030}", tricky)[1]["parent_user_id"], 0)
 
+    def test_user_names_with_line_breaks_keep_the_user(self):
+        # A profile owner can name its profile; a line break once dropped the profile from every check.
+        for name in ("Work\nX", "Work\u2028X", "a:ff} b"):
+            with self.subTest(name=name):
+                users = android.parse_users(ANDROID_16_USERS.replace("{10:Work:", f"{{10:{name}:"),
+                                            ANDROID_16_USER_LIST.replace("name=Work", f"name={name}"))
+                self.assertEqual([(u["user_id"], u["kind"]) for u in users], [(0, "full"), (10, "managed_profile")])
+
     def test_profile_parent_unknown_with_two_full_users(self):
         users = android.parse_users("UserInfo{0:a:13}\nUserInfo{11:b:10}\nUserInfo{12:c:30}", "")
         self.assertEqual(users[2], {"user_id": 12, "kind": "managed_profile", "parent_user_id": None})
@@ -481,6 +489,23 @@ class DeviceTests(unittest.TestCase):
         report = self.run_with(FakeDevice(device), "android_check")
         self.assertFalse(any(f.get("user_id") == 0 and f["kind"] == "monitoring_app_indicator" for f in report["findings"]))
         self.assertTrue(any("not treated as absent" in w for w in report["warnings"]))
+
+    def test_a_user_named_elsewhere_but_unreadable_makes_the_result_partial(self):
+        # cmd user list or the device policy still names user 10 when its entry cannot be read; either is enough.
+        policy = POLICY.replace("  Profile Owner (User 10):\n    admin=ComponentInfo{com.work.mdm/com.work.mdm.Receiver}\n"
+                                "    name=Work MDM\n    package=com.work.mdm\n", "").replace(
+            "  Enabled Device Admins (User 10, provisioningState: 3):\n    com.work.mdm/com.work.mdm.Receiver:\n"
+            "      uid=1010100\n", "")
+        self.assertNotIn("User 10", policy)
+        for source, changes in (("user list", {"dumpsys device_policy": policy}),
+                                ("device policy", {"cmd user list -v": (1, "", "error")})):
+            with self.subTest(source=source):
+                device = answers()
+                device["pm list users"] = ANDROID_16_USERS.replace("UserInfo{10:Work:1030}", "UserInfo{10:Work")
+                device.update(changes)
+                report = self.run_with(FakeDevice(device), "android_check")
+                self.assertEqual(report["status"], "partial")
+                self.assertIn(("users", 10), {(u["item"], u["user_id"]) for u in report["data"]["unavailable"]})
 
     def test_device_admin_section_missing_for_a_user(self):
         device = answers()

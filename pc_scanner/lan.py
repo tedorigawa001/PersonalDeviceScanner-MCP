@@ -8,7 +8,7 @@ import secrets
 import threading
 import time
 
-from .core import ScannerError, clean_text, result
+from .core import InputRefused, ScannerError, clean_text, result
 
 PRIVATE = tuple(ipaddress.ip_network(n) for n in
                 ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7", "fe80::/10"))
@@ -168,7 +168,7 @@ def discover(scanner, network_alias, cancel=None, progress=None):
     if not settings["enabled"]:
         raise ScannerError("LAN discovery is disabled")
     if not isinstance(network_alias, str) or network_alias not in scanner.lan_networks:
-        raise ScannerError("LAN alias is not authorized")
+        raise InputRefused("LAN alias is not authorized")
     if scanner.via == "mcp" and not settings["expose_identifiers_to_mcp"]:
         raise ScannerError("LAN identifiers are not authorized for MCP; owner must enable their disclosure")
     if not _lock.acquire(False):
