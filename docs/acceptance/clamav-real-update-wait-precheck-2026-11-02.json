@@ -1,0 +1,48 @@
+{
+  "date": "2026-11-02",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "real_definition_update_follow_up_wait_precheck",
+  "status": "deferred: saved retry deadlines have not naturally elapsed",
+  "checked_at_utc": "2026-11-01T16:04:45.896887+00:00",
+  "checks": [
+    {
+      "platform": "macOS",
+      "pending": false,
+      "earliest_app_retry_utc": "2026-11-02T09:10:38.398596+00:00",
+      "earliest_app_retry_jst": "2026-11-02T18:10:38.398596+09:00",
+      "deadline_elapsed": false,
+      "attempt_json_sha256": "3c1ee428063d98c4e4e4c513ad9aece5dd2ad4755593ae0891cd0d731b5d0a81"
+    },
+    {
+      "platform": "Linux aarch64",
+      "pending": false,
+      "earliest_app_retry_utc": "2026-11-02T13:56:47.266753+00:00",
+      "earliest_app_retry_jst": "2026-11-02T22:56:47.266753+09:00",
+      "deadline_elapsed": false,
+      "attempt_json_sha256": "c7e145a48c9591c2f257302c8b937d40e1aa62adb1d74f49cae6f41f5428592d"
+    }
+  ],
+  "method": "Read Mac dedicated attempt.json and copy only Linux attempt.json out of the stopped container; parse timestamps and compare with actual UTC wall clock. No container start or exec.",
+  "update_requests": 0,
+  "provider_requests": 0,
+  "waiting_state_modified": false,
+  "clock_modified": false,
+  "new_store_created_to_bypass_wait": false,
+  "os_definitions_modified": false,
+  "personal_inputs_used": false,
+  "linux_container": "pc-scanner-signature-linux-acceptance remained exited with Networks={} and Mounts=[]",
+  "acceptance_not_claimed": [
+    "real different-version publication during an active scan",
+    "resume invalidation after actual changed-definition publication",
+    "real freshclam unchanged check after the retry interval"
+  ],
+  "next_steps": [
+    "Re-read authoritative saved deadline and provider wait information after natural expiry; honor any longer provider wait",
+    "Use retained dedicated test store and synthetic inputs only; establish old-generation checkpoint and active scan before one authorized update attempt",
+    "If updated content publishes, verify active scan stays pinned to old generation and subsequent resume re-inspects without double counting",
+    "If definitions are unchanged, record unchanged behavior and keep different-version acceptance open; do not force another download"
+  ],
+  "push_performed": false,
+  "macos_follow_up": "clamav-real-version-update-macos-2026-11-02.json",
+  "historical_status_note": "This precheck records the early-morning non-expired deadlines only. Mac later passed the linked real-update acceptance after natural expiry; Linux was not retried by that Mac acceptance."
+}

@@ -108,5 +108,6 @@
     "native network/validation-failure recovery and retention/deletion CLI acceptance",
     "OS automatic-service configuration acceptance; Linux and Windows acceptance"
   ],
+  "different_version_follow_up": "clamav-real-version-update-macos-2026-11-02.json",
   "cleanup": "no acceptance processes remain; private test definitions, cooldown state, synthetic files and evidence are retained locally for follow-up; no ordinary OS definitions or personal files were changed"
 }

@@ -1,0 +1,246 @@
+{
+  "date": "2026-11-02",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "native_macos_different_definition_update_and_resume_acceptance",
+  "status": "passed within the recorded Mac environment",
+  "source_commit": "75d946688212561783a1e29eb2ff03ac3a2ee91f",
+  "runtime_source_changed": false,
+  "scope": {
+    "python": "3.15.2",
+    "engine": "installed ClamAV / freshclam / sigtool 1.5.4",
+    "dedicated_store": "retained private Mac acceptance store from 2026-11-01",
+    "inputs": "same 128 harmless synthetic text files; no personal files",
+    "os_database_written": false,
+    "administrator_password_handled": false,
+    "linux_store_touched": false
+  },
+  "natural_wait": {
+    "previous_retry_utc": "2026-11-02T09:10:38.398596+00:00",
+    "precheck_jst": "2026-11-02T19:19:59.877747+09:00",
+    "elapsed": true,
+    "wait_state_or_clock_reset": false,
+    "network_update_requests": 1,
+    "next_retry_utc": "2026-11-03T10:22:26.304380+00:00",
+    "next_retry_jst": "2026-11-03T19:22:26.304380+09:00",
+    "pending_after": false
+  },
+  "real_update": {
+    "status": "completed",
+    "update_data": {
+      "update_status": "updated",
+      "published": true,
+      "previous_preserved": true,
+      "resume_recheck_required": true,
+      "signature_check": {
+        "engine": "1.5.4",
+        "version": 28172,
+        "built_at": "2026-11-02T06:24:10+00:00",
+        "freshness": "fresh"
+      },
+      "next_attempt_at": 1793701346.30438,
+      "cancellation_requested_after_publication": false,
+      "progress": {
+        "stage": "completed",
+        "finished": null,
+        "pending": null,
+        "reused": null,
+        "checkpoint": "not_applicable",
+        "saved_parts": null,
+        "elapsed_seconds": 10.753
+      }
+    },
+    "old_versions": {
+      "bytecode.cvd": 339,
+      "daily.cvd": 28171,
+      "main.cvd": 63
+    },
+    "new_versions": {
+      "bytecode.cvd": 339,
+      "daily.cvd": 28172,
+      "main.cvd": 63
+    },
+    "content_changed": true,
+    "seconds": 10.816,
+    "verification": {
+      "main.cvd": {
+        "exit": 0,
+        "signature_present": true,
+        "verified": true
+      },
+      "daily.cvd": {
+        "exit": 0,
+        "signature_present": true,
+        "verified": true
+      },
+      "bytecode.cvd": {
+        "exit": 0,
+        "signature_present": true,
+        "verified": true
+      }
+    },
+    "freshness": {
+      "engine": "1.5.4",
+      "version": 28172,
+      "built_at": "2026-11-02T06:24:10+00:00",
+      "age_days": 0.2,
+      "max_age_days": 7,
+      "freshness": "fresh",
+      "checked_at": "2026-11-02T10:22:58.324646+00:00",
+      "update_performed": false,
+      "update_steps": [
+        "The owner may explicitly run CLI update-clamav-signatures with the enabled private-store configuration. No administrator password is used and MCP cannot update definitions.",
+        "Recheck freshness after updating; resume re-evaluates results when definition contents change."
+      ],
+      "update_mode": "private_owner_cli"
+    },
+    "provider_sync": "production updater retained provider.dat and a synced provider-sync journal; no successful staging directory remains"
+  },
+  "overlap_method": {
+    "instrumentation": "Test-only subprocess launcher hook recorded actual clamscan arguments and SIGSTOPped the first real recursive clamscan child immediately after spawn. The existing production scan held its old generation lease. Unmodified owner CLI then ran real freshclam, verification and publication; child was SIGCONTinued afterwards.",
+    "no_fake_engine_or_definition": true,
+    "no_manual_pointer_publication": true,
+    "no_mock_clock": true,
+    "limit": "Controlled process scheduling establishes overlap and generation pinning; it does not measure throughput while both engines execute CPU work simultaneously.",
+    "paused_child_reaped": true
+  },
+  "scan_pinning": {
+    "actual_engine_calls": 2,
+    "all_engine_arguments_used_original_generation": true,
+    "old_generation_preserved": true,
+    "report": {
+      "status": "completed",
+      "counts": {
+        "scanned": 128,
+        "infected": 0,
+        "errors": 0
+      },
+      "batch": {
+        "finished": 128,
+        "pending": 0,
+        "reused": 0,
+        "grouping": {
+          "schema": 1,
+          "mode": "enabled",
+          "engine_starts": 2,
+          "committed_jobs": 2,
+          "fallback_targets": 0,
+          "active_targets": 0
+        }
+      },
+      "generation": {
+        "content": "e3e92f5084e74bf24a7ade0dfdf79a04d8ffe3a763793c27e9ecff87a1660887",
+        "newer_generation_available": true
+      },
+      "warnings": [
+        "Signature-based detection only; no detection does not prove safety",
+        "New definitions were published during this scan; resume to recheck with the new generation"
+      ]
+    }
+  },
+  "resume": {
+    "after_actual_changed_definition": {
+      "status": "completed",
+      "counts": {
+        "scanned": 128,
+        "infected": 0,
+        "errors": 0
+      },
+      "batch": {
+        "finished": 128,
+        "pending": 0,
+        "reused": 0,
+        "grouping": {
+          "schema": 1,
+          "mode": "enabled",
+          "engine_starts": 2,
+          "committed_jobs": 2,
+          "fallback_targets": 0,
+          "active_targets": 0
+        }
+      }
+    },
+    "second_resume": {
+      "status": "completed",
+      "counts": {
+        "scanned": 128,
+        "infected": 0,
+        "errors": 0
+      },
+      "batch": {
+        "finished": 128,
+        "pending": 0,
+        "reused": 128,
+        "grouping": {
+          "schema": 1,
+          "mode": "enabled",
+          "engine_starts": 0,
+          "committed_jobs": 0,
+          "fallback_targets": 0,
+          "active_targets": 0
+        }
+      }
+    },
+    "counts_not_added_across_runs": true,
+    "old_checkpoint_context_manually_modified": false
+  },
+  "permissions": {
+    "directories": "0700, current effective UID",
+    "files": "0600, current effective UID, no symbolic links",
+    "native_descriptor_owner_mode_acl_guards": "passed on the store and every descendant",
+    "scope": "same-user processes remain outside the boundary"
+  },
+  "os_preservation": {
+    "before_after_same": true,
+    "compared": [
+      "file set",
+      "SHA-256",
+      "size",
+      "mode",
+      "uid/gid",
+      "inode",
+      "mtime_ns",
+      "ctime_ns"
+    ],
+    "atime_compared": false
+  },
+  "preparation_note": "An initial harness assertion expected the retained checkpoint to reuse 128 scopes immediately, but the real CLI conservatively rescanned 128 scopes (2 calls). That run completed before any update request. Its output was retained separately. A second pre-update resume then independently confirmed all 128 scopes reused. No runtime source or checkpoint data was changed to force reuse.",
+  "regressions": {
+    "signature_update_tests": {
+      "total": 26,
+      "passed": 26,
+      "skipped": 0,
+      "seconds": 3.689
+    },
+    "full_suite": {
+      "command": ".venv-dev/bin/python -m unittest discover -s tests -v",
+      "python": "3.15.2",
+      "total": 739,
+      "passed": 722,
+      "skipped": 17,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 89.266,
+      "android_and_mcp_included": true,
+      "skip_reason": "Windows-native tests",
+      "initial_restricted_run": "739 tests, 17 permission errors from local socket setup; rerun allowed localhost and passed without source changes"
+    },
+    "static_checks": [
+      "Acceptance JSON and local links",
+      "git diff --check"
+    ],
+    "npm_rerun": false,
+    "npm_note": "No launcher or implementation changes in this acceptance task; npm not reaccepted here."
+  },
+  "remaining": [
+    "Actual freshclam unchanged result after the new retry interval naturally expires",
+    "Real freshclam communication-failure retry and provider-specific waits",
+    "Linux different-version publication and resume invalidation remain separately unconfirmed",
+    "Windows backend/real-engine acceptance and OS automatic-update service configuration"
+  ],
+  "cleanup": {
+    "no_acceptance_engine_children_remain": true,
+    "private_definitions_and_new_wait_state_retained": true,
+    "os_service_configuration_unchanged": true
+  },
+  "push_performed": false
+}
