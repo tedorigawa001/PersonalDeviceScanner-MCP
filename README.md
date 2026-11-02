@@ -500,6 +500,7 @@ Then every inventory, malware and Android scan reads its engine's version (`osqu
   On Linux aarch64 with CPython 3.14 and glibc 2.34+, use `-r profiles/linux-aarch64-cp314/requirements-agent.lock`
   instead of the root lock in the command below. musl/Alpine is outside this profile.
   With CPython 3.15 on the same platform, use `profiles/linux-aarch64-cp315/requirements-agent.lock`.
+  Linux x86_64 with CPython 3.15 and glibc 2.34+ uses `profiles/linux-x86_64-cp315/requirements-agent.lock`.
   On an Apple silicon Mac with standard CPython 3.15 and macOS 11+, use `profiles/darwin-arm64-cp315/requirements-agent.lock`.
 
   ```sh
@@ -1301,6 +1302,9 @@ Windows (PowerShell):
 - macOS arm64 CPython 3.15 has an additional [hash-pinned profile](docs/acceptance/macos-arm64-cp315-hashed-profile-2026-11-02.json)
   under `profiles/darwin-arm64-cp315/`. npm prefers matching 3.15 when installed, retaining the root 3.14 reference as fallback.
   This local change has not been published to npm.
+- Linux x86_64 CPython 3.15 also has a [hash-pinned profile](docs/acceptance/linux-x86_64-cp315-hashed-profile-2026-11-02.json)
+  under `profiles/linux-x86_64-cp315/`. npm prefers matching 3.15 and falls back to matching 3.14. Acceptance used
+  an emulated amd64 Docker container on this arm64 Mac, with ordinary ClamAV 1.4.6 scans. No npm release was published.
 - Detection accuracy with real engines and behavior on each OS are not guaranteed. Acceptance testing on real machines for each OS is required before distribution.
 
 ## Related documents and license

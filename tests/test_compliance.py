@@ -86,7 +86,7 @@ class SecurityFloorTests(unittest.TestCase):
         fixed = Requirement("certifi>=2026.10.19")
         wheel_hashes = set()
         roots = [ROOT, *sorted((ROOT / "profiles").glob("*/requirements-agent.lock"))]
-        self.assertEqual(len(roots), 7)
+        self.assertEqual(len(roots), 8)
         for profile in roots:
             root = profile if profile.is_dir() else profile.parent
             with self.subTest(profile=str(root.relative_to(ROOT))):
@@ -127,6 +127,9 @@ class SecurityFloorTests(unittest.TestCase):
     def test_macos_arm64_cp315_profile_matches_native_wheel_evidence(self):
         self.check_native_profile(ROOT / "profiles/darwin-arm64-cp315", "Darwin", "arm64", "3.15", "315")
 
+    def test_linux_x86_64_cp315_profile_matches_native_wheel_evidence(self):
+        self.check_native_profile(ROOT / "profiles/linux-x86_64-cp315", "Linux", "x86_64", "3.15", "315")
+
     def check_linux_aarch64_profile(self, minor, tag):
         self.check_native_profile(ROOT / f"profiles/linux-aarch64-cp{tag}", "Linux", "aarch64", minor, tag)
 
@@ -148,7 +151,7 @@ class SecurityFloorTests(unittest.TestCase):
         native = []
         for wheel in artifacts["artifacts"]:
             with self.subTest(package=wheel["name"]):
-                self.assertNotIn("x86_64", wheel["filename"])
+                self.assertNotIn("aarch64" if architecture == "x86_64" else "x86_64", wheel["filename"])
                 self.assertNotIn("cp315" if tag == "314" else "cp314", wheel["filename"])
                 if architecture in wheel["filename"] or (system == "Darwin" and "universal2" in wheel["filename"]):
                     native.append(wheel["name"])

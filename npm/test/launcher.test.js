@@ -9,7 +9,7 @@ const test = require('node:test');
 const launcher = require('../launcher.js');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const LOCK_FILES = ['requirements-agent.lock', ...['darwin-arm64-cp315', 'darwin-x86_64-cp314', 'linux-aarch64-cp314', 'linux-aarch64-cp315', 'linux-x86_64-cp314', 'windows-amd64-cp314']
+const LOCK_FILES = ['requirements-agent.lock', ...['darwin-arm64-cp315', 'darwin-x86_64-cp314', 'linux-aarch64-cp314', 'linux-aarch64-cp315', 'linux-x86_64-cp314', 'linux-x86_64-cp315', 'windows-amd64-cp314']
   .map((name) => path.join('profiles', name, 'requirements-agent.lock'))];
 
 function interpreter(os_, architecture, python, implementation = 'CPython') {
@@ -63,9 +63,9 @@ test('other Python versions and CPUs get the same versions without hash checks',
 
 test('an interpreter that allows hash checks is preferred over an earlier one', () => {
   const locks = launcher.readLocks(ROOT);
-  const choice = launcher.chooseEnvironment([interpreter('Linux', 'x86_64', '3.12.3'),
-    interpreter('Linux', 'x86_64', '3.15.1'),
-    interpreter('Linux', 'x86_64', '3.14.8')], locks);
+  const choice = launcher.chooseEnvironment([interpreter('Windows', 'AMD64', '3.12.3'),
+    interpreter('Windows', 'AMD64', '3.15.1'),
+    interpreter('Windows', 'AMD64', '3.14.8')], locks);
   assert.equal(choice.info.python, '3.14.8');
   assert.equal(choice.hashed, true);
 });
@@ -89,7 +89,7 @@ function discoveryProbes(context, platform, answers, overrides = {}) {
   return { env, calls };
 }
 
-for (const [platform, system, cpu] of [['darwin', 'Darwin', 'x86_64'], ['linux', 'Linux', 'x86_64'],
+for (const [platform, system, cpu] of [['darwin', 'Darwin', 'x86_64'],
   ['win32', 'Windows', 'AMD64']]) {
   test(`Python discovery on ${platform} ${cpu} probes past 3.15 and stops at hash-matching 3.14`, (context) => {
     const locks = launcher.readLocks(ROOT);
@@ -112,7 +112,7 @@ for (const [platform, system, cpu] of [['darwin', 'Darwin', 'x86_64'], ['linux',
 test('discovery retains 3.15 without hashes when no matching interpreter is installed', (context) => {
   const locks = launcher.readLocks(ROOT);
   const { env, calls } = discoveryProbes(context, 'linux', {
-    'python3.15': interpreter('Linux', 'x86_64', '3.15.1'),
+    'python3.15': interpreter('Linux', 'riscv64', '3.15.1'),
   });
   const choice = launcher.findEnvironment(locks, env, 'linux');
   assert.equal(choice.info.python, '3.15.1');
@@ -141,6 +141,30 @@ test('Linux aarch64 keeps hash-matching 3.14 when 3.15 is absent', (context) => 
   const choice = launcher.findEnvironment(locks, env, 'linux');
   assert.equal(choice.hashed, true);
   assert.equal(choice.lock.file, path.join('profiles', 'linux-aarch64-cp314', 'requirements-agent.lock'));
+  assert.equal(calls.length, 2);
+});
+
+test('Linux x86_64 discovery chooses hash-matching 3.15 before installed 3.14', (context) => {
+  const locks = launcher.readLocks(ROOT);
+  const { env, calls } = discoveryProbes(context, 'linux', {
+    'python3.15': interpreter('Linux', 'x86_64', '3.15.2'),
+    'python3.14': interpreter('Linux', 'x86_64', '3.14.10'),
+  });
+  const choice = launcher.findEnvironment(locks, env, 'linux');
+  assert.equal(choice.info.python, '3.15.2');
+  assert.equal(choice.hashed, true);
+  assert.equal(choice.lock.file, path.join('profiles', 'linux-x86_64-cp315', 'requirements-agent.lock'));
+  assert.equal(calls.length, 1, 'stop after the first hash-matching interpreter');
+});
+
+test('Linux x86_64 keeps hash-matching 3.14 when 3.15 is absent', (context) => {
+  const locks = launcher.readLocks(ROOT);
+  const { env, calls } = discoveryProbes(context, 'linux', {
+    'python3.14': interpreter('Linux', 'x86_64', '3.14.10'),
+  });
+  const choice = launcher.findEnvironment(locks, env, 'linux');
+  assert.equal(choice.hashed, true);
+  assert.equal(choice.lock.file, path.join('profiles', 'linux-x86_64-cp314', 'requirements-agent.lock'));
   assert.equal(calls.length, 2);
 });
 
@@ -202,7 +226,7 @@ test('missing Windows Python stops discovery without allowing automatic installa
   assert.ok(calls.every((call) => call.options.env.PYTHON_MANAGER_AUTOMATIC_INSTALL === 'false'));
 });
 
-test('setup uses automatic discovery to reuse the 3.14 environment after probing 3.15', (context) => {
+test('setup uses automatic discovery to reuse the preferred hash-matching environment', (context) => {
   const locks = launcher.readLocks(ROOT);
   const platform = process.platform;
   const system = { darwin: 'Darwin', linux: 'Linux', win32: 'Windows' }[platform];
@@ -210,7 +234,7 @@ test('setup uses automatic discovery to reuse the 3.14 environment after probing
   const old = interpreter(system, cpu, '3.14.9');
   const newer = interpreter(system, cpu, '3.15.1');
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pc-scanner-discover-'));
-  const choice = launcher.chooseEnvironment([old], locks);
+  const choice = launcher.chooseEnvironment([newer, old], locks);
   const name = launcher.environmentName(choice, launcher.sourceFiles(ROOT),
     JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version);
   fs.mkdirSync(path.join(root, name));
@@ -225,7 +249,8 @@ test('setup uses automatic discovery to reuse the 3.14 environment after probing
     delete process.env.PC_SCANNER_PYTHON;
     process.env.PC_SCANNER_CACHE_DIR = root;
     launcher.main(['setup']);
-    assert.equal(calls.length, 2, 'setup must reuse the matching environment without invoking pip');
+    assert.equal(calls.length, choice.info.python === newer.python ? 1 : 2,
+      'setup must reuse the matching environment without invoking pip');
     assert.ok(diagnostic.includes(`ready: ${path.join(root, name)}`));
   } finally {
     for (const [key, value] of saved) {
