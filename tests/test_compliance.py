@@ -86,7 +86,7 @@ class SecurityFloorTests(unittest.TestCase):
         fixed = Requirement("certifi>=2026.10.19")
         wheel_hashes = set()
         roots = [ROOT, *sorted((ROOT / "profiles").glob("*/requirements-agent.lock"))]
-        self.assertEqual(len(roots), 4)
+        self.assertEqual(len(roots), 5)
         for profile in roots:
             root = profile if profile.is_dir() else profile.parent
             with self.subTest(profile=str(root.relative_to(ROOT))):
@@ -117,6 +117,36 @@ class SecurityFloorTests(unittest.TestCase):
             with self.subTest(platform=platform, machine=machine):
                 self.assertEqual(floor.marker.evaluate({"sys_platform": platform, "platform_machine": machine}),
                                  applies)
+
+    def test_linux_aarch64_profile_matches_native_wheel_evidence(self):
+        root = ROOT / "profiles/linux-aarch64-cp314"
+        artifacts = json.loads((root / "sbom/reference-artifacts.json").read_text())
+        self.assertEqual(artifacts["environment"]["os"], "Linux")
+        self.assertEqual(artifacts["environment"]["architecture"], "aarch64")
+        self.assertTrue(artifacts["environment"]["python"].startswith("3.14."))
+        manifest = json.loads((root / "third_party/license-manifest.json").read_text())
+        bom = json.loads((root / "sbom/python-agent.cdx.json").read_text())
+        environment = next(p["value"] for p in bom["metadata"]["properties"]
+                           if p["name"] == "pc-scanner:environment")
+        header = next(line.removeprefix("# Python/OS: ") for line in
+                      (root / "requirements-agent.lock").read_text().splitlines()
+                      if line.startswith("# Python/OS: "))
+        self.assertEqual(json.loads(header), artifacts["environment"])
+        self.assertEqual(json.loads(environment), artifacts["environment"])
+        self.assertEqual(manifest["environment"], artifacts["environment"])
+        native = []
+        for wheel in artifacts["artifacts"]:
+            with self.subTest(package=wheel["name"]):
+                self.assertNotIn("x86_64", wheel["filename"])
+                self.assertNotIn("cp315", wheel["filename"])
+                if "aarch64" in wheel["filename"]:
+                    native.append(wheel["name"])
+                else:
+                    self.assertTrue(wheel["filename"].endswith("-none-any.whl"))
+        self.assertEqual(set(native), {"cffi", "cryptography", "pydantic-core", "rpds-py"})
+        intel = json.loads((ROOT / "profiles/linux-x86_64-cp314/sbom/reference-artifacts.json").read_text())
+        self.assertEqual({a["name"]: a["version"] for a in artifacts["artifacts"]},
+                         {a["name"]: a["version"] for a in intel["artifacts"]})
 
 
 class OwnLicenseTests(unittest.TestCase):

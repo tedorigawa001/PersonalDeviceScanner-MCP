@@ -485,8 +485,11 @@ lookup = true    # エンジンのバージョンを公式の最新リリース�
   ```
 
 - **依存パッケージのバージョンを固定したい**：`requirements-agent.lock` は、ハッシュ付きで依存を固定したロックファイルです。
-  直下のものは **macOS arm64（Apple シリコン）/ CPython 3.14 専用**です。Intel Mac・Linux x86_64・Windows x64 では、
+  直下のものは **macOS arm64（Apple シリコン）/ CPython 3.14 専用**です。Intel Mac・Linux x86_64／aarch64・Windows x64 では、
   [profiles/](profiles/) にある同じ OS・CPU のロックを指定します（例：Intel Mac は `profiles/darwin-x86_64-cp314/requirements-agent.lock`）。
+
+  Linux aarch64・CPython 3.14・glibc 2.34以上では、下のコマンドの `-r` を
+  `-r profiles/linux-aarch64-cp314/requirements-agent.lock` に置き換えます。musl／Alpineは対象外です。
 
   ```sh
   .venv/bin/python -m pip install --require-hashes --only-binary=:all: -r requirements-agent.lock
@@ -1240,8 +1243,10 @@ Windows（PowerShell）：
   ClamAV 1.4.6でのEICAR検査が成功し、全テストは各700件成功・34件スキップ、npm通し試験は各26件すべて成功しました
   （[記録](docs/acceptance/linux-runtime-cli-mcp-npm-2026-11-01.json)）。
   2026-11-02にはLinux aarch64（Ubuntu 24.04・ClamAV 1.5.4）でも同じPython／Node.jsの組み合わせとまとめ検査を確認しました
-  （[記録](docs/acceptance/linux-aarch64-runtime-cli-mcp-npm-2026-11-02.json)）。aarch64用のハッシュ付きロックはまだないため、
-  同じ版をハッシュなしで導入しており、ハッシュ検証ではありません。
+  （[記録](docs/acceptance/linux-aarch64-runtime-cli-mcp-npm-2026-11-02.json)）。この時点の導入は固定版のみでした。
+  その後の[ARMプロファイル検証](docs/acceptance/linux-aarch64-hashed-profile-2026-11-02.json)で `profiles/linux-aarch64-cp314/` を追加し、
+  CPython 3.14は対象wheelのハッシュで検証し、npmの自動探索でも3.15より優先します。
+  3.15は引き続き固定版をハッシュなしで導入します。この変更はローカルのみで、npmには未公開です。
 - 実際のエンジンでの検出精度や、各 OS での動作は保証していません。配布前に、各 OS の実機での受入試験が必要です。
 
 ## 関連ドキュメント・ライセンス

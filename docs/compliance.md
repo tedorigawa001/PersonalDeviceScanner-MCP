@@ -15,7 +15,7 @@
 Windowsではpywin32等が追加されるため、このロックを全OS共通として使わないでください。
 同じPythonパッケージのメタデータと依存条件でも、プラットフォーム別wheelには違う内包物があります。
 
-開発用の処理系は2026-10-22からCPython 3.15（2026-10-27から3.15.2）ですが、既存の4プロファイルはCPython 3.14の参照記録として維持しています。
+開発用の処理系は2026-10-22からCPython 3.15（2026-10-27から3.15.2）ですが、5プロファイルはCPython 3.14の参照記録として維持しています。
 開発用`.venv-dev`や、そのビルドツール一式をこのSBOMが記録したものとは扱いません。
 Compliance profilesワークフローではPython 3.15も選べますが、3.15用のロック・SBOMとして配布するには、
 そのOS上で生成した新しい成果物を検証して取り込む必要があります。
@@ -151,16 +151,17 @@ Windows / Linux / macOS（Intel、x86_64）それぞれで次を行い、結果�
 - 切り替え後、`generate_compliance.py --check`（直下）と、直下・3プロファイルの `validate_compliance.py` を実行しました
   （Windows は pywin32 の既知の未確定表記だけを除いて検証）。
 
-### 現在のプロファイル（2026-10-27 時点）
+### 現在のプロファイル（2026-11-02 時点）
 
 | 置き場所 | 環境 | パッケージ | cryptography | 検証 |
 |---|---|---|---|---|
 | リポジトリ直下 | macOS arm64 / CPython 3.14.10（ローカル生成、参照） | 29 | 50.0.2 | 合格 |
 | `profiles/darwin-x86_64-cp314/` | macOS x86_64 / CPython 3.14.7（旧参照、ローカル生成） | 29 | 48.0.1 | 合格 |
 | `profiles/linux-x86_64-cp314/` | Linux x86_64 / CPython 3.14.8 | 29 | 50.0.2 | 合格 |
+| `profiles/linux-aarch64-cp314/` | Linux aarch64 / CPython 3.14.10（Docker上で生成） | 29 | 50.0.2 | 合格 |
 | `profiles/windows-amd64-cp314/` | Windows AMD64 / CPython 3.14.7 | 30（pywin32 312 を含む） | 50.0.2 | **未合格**：pywin32 のライセンス表記が未確定 |
 
-- 4つとも同じバージョンです（cryptography と、Windows の pywin32 を除く）。macOS x86_64 と Linux のライセンス原文は参照と完全に同じです
+- 5つとも同じバージョンです（cryptography と、Windows の pywin32 を除く）。macOS x86_64 と Linux のライセンス原文は参照と完全に同じです
   （cryptography 48.0.1 の原文も 50.0.2 とバイト単位で同じ）。
 - cryptography 49.0.0 以降には Intel Mac（x86_64）向けのビルド済みパッケージがないため、`profiles/darwin-x86_64-cp314/` だけ 48.0.1 のままです。
   48.0.1 の既知の脆弱性（CVE-2026-69249・CVE-2026-69247・CVE-2026-69248）は、この基盤の使い方（stdio のみ、
@@ -171,6 +172,25 @@ Windows / Linux / macOS（Intel、x86_64）それぞれで次を行い、結果�
   Mark Hammond の BSD 形式、adodbapi は LGPL 2.1、MAPIStubLibrary は MIT 形式、Scintilla は HPND 形式、idle は PSF と HPND 形式。
   原文はすべて `profiles/windows-amd64-cp314/third_party/licenses/pywin32/` に保存してあります。
   ライセンス表記（SPDX 式）と LGPL 部分の扱いを所有者が判断するまで、Windows 版は `validate_compliance.py` に合格しません。
+
+### Linux aarch64 の追加（2026-11-02）
+
+`profiles/linux-aarch64-cp314/` は、このMacのDocker上のLinux aarch64・CPython 3.14.10で生成しました。
+Linux x86_64と同じ固定版29件を対象環境のwheelとして取得し、実際に導入されたMETADATA・原文とともに記録しています。
+ネイティブ4件（cffi・cryptography・pydantic-core・rpds-py）のwheelはaarch64用で、x86_64のハッシュを流用していません。
+cryptographyの参照wheelは `manylinux_2_34_aarch64` なのでglibc 2.34以上が必要です。musl/Alpineや古いglibcはこのプロファイルの受入範囲外です。
+起動用スクリプトはOS・CPU・Python minorで選択するため、それ以外の互換性はpipが判定します。
+非互換wheelしかない場合はハッシュ検証・binary限定を緩めず導入に失敗します。
+
+生成後は取得済みwheelから別の空venvへ `--no-index --find-links ... --require-hashes` で導入し、
+その環境での再生成一致と `pip check` を確認しました。公式ローカルスキーマによる検証も成功しました。
+再生成は同じLinux aarch64 / CPython 3.14環境で、上記の生成・検証手順と `--output profiles/linux-aarch64-cp314` を使います。
+既存のCompliance profilesワークフローはx86_64 Linuxのみのため、このARM成果物はローカルDockerで生成したものです。
+
+npmの起動用スクリプトはプロファイルを自動列挙するので選択ロジック自体の変更は不要です。
+Linux aarch64ではCPython 3.14をハッシュ検証付きで選び、3.15と3.14が両方あれば3.14を優先します。
+3.15だけの場合や3.15を明示指定した場合はARM用プロファイルの固定版をハッシュなしで導入し、
+ハッシュ検証には3.14を使うよう案内します。3.15用wheelのハッシュを作成したという意味ではありません。
 
 ## npm パッケージ
 

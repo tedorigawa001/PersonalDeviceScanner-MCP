@@ -264,5 +264,6 @@
     "No Windows CI/real engine or external AI client acceptance"
   ],
   "commit_created_during_recording": false,
-  "push_performed_during_recording": false
+  "push_performed_during_recording": false,
+  "hashed_profile_follow_up": "linux-aarch64-hashed-profile-2026-11-02.json"
 }

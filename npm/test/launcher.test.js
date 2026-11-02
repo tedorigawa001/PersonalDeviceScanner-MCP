@@ -9,7 +9,7 @@ const test = require('node:test');
 const launcher = require('../launcher.js');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const LOCK_FILES = ['requirements-agent.lock', ...['darwin-x86_64-cp314', 'linux-x86_64-cp314', 'windows-amd64-cp314']
+const LOCK_FILES = ['requirements-agent.lock', ...['darwin-x86_64-cp314', 'linux-aarch64-cp314', 'linux-x86_64-cp314', 'windows-amd64-cp314']
   .map((name) => path.join('profiles', name, 'requirements-agent.lock'))];
 
 function interpreter(os_, architecture, python, implementation = 'CPython') {
@@ -49,7 +49,7 @@ test('other Python versions and CPUs get the same versions without hash checks',
   const older = launcher.chooseEnvironment([interpreter('Darwin', 'arm64', '3.12.9')], locks);
   assert.equal(older.lock.file, LOCK_FILES[0]);
   assert.equal(older.hashed, false);
-  const arm = launcher.chooseEnvironment([interpreter('Linux', 'aarch64', '3.14.0')], locks);
+  const arm = launcher.chooseEnvironment([interpreter('Linux', 'aarch64', '3.15.0')], locks);
   assert.equal(arm.lock.file, LOCK_FILES[2]);
   assert.equal(arm.hashed, false);
   assert.match(launcher.requirements(arm), /^mcp==1\.30\.0$/m);
@@ -90,8 +90,9 @@ function discoveryProbes(context, platform, answers, overrides = {}) {
 }
 
 for (const [platform, system, cpu] of [['darwin', 'Darwin', 'x86_64'], ['linux', 'Linux', 'x86_64'],
+  ['linux', 'Linux', 'aarch64'],
   ['win32', 'Windows', 'AMD64']]) {
-  test(`Python discovery on ${platform} probes past 3.15 and stops at hash-matching 3.14`, (context) => {
+  test(`Python discovery on ${platform} ${cpu} probes past 3.15 and stops at hash-matching 3.14`, (context) => {
     const locks = launcher.readLocks(ROOT);
     const keys = platform === 'win32' ? ['-3.15', '-3.14'] : ['python3.15', 'python3.14'];
     const { env, calls } = discoveryProbes(context, platform, {
@@ -216,8 +217,12 @@ test('the hint names a hash-checked CPython only where a lock exists', () => {
   const locks = launcher.readLocks(ROOT);
   const latest = launcher.chooseEnvironment([interpreter('Darwin', 'x86_64', '3.15.1')], locks);
   assert.match(launcher.unhashedNote(latest, locks), /without hash checks \(use CPython 3\.14 for hash-checked installs\)$/);
+  const arm = launcher.chooseEnvironment([interpreter('Linux', 'aarch64', '3.15.2')], locks);
+  assert.equal(arm.lock.file, path.join('profiles', 'linux-aarch64-cp314', 'requirements-agent.lock'));
+  assert.equal(arm.hashed, false);
+  assert.match(launcher.unhashedNote(arm, locks), /use CPython 3\.14 for hash-checked installs/);
   // No lock for these CPUs, so no CPython would install with hash checks there.
-  for (const [system, architecture] of [['Linux', 'aarch64'], ['Windows', 'ARM64']]) {
+  for (const [system, architecture] of [['Linux', 'riscv64'], ['Windows', 'ARM64']]) {
     const choice = launcher.chooseEnvironment([interpreter(system, architecture, '3.14.8')], locks);
     assert.equal(choice.hashed, false);
     const note = launcher.unhashedNote(choice, locks);

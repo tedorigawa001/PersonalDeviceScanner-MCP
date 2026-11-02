@@ -36,6 +36,12 @@ def verify(directory, root=ROOT):
                          "scripts/verify_distribution.py", "docs/license-recommendation.md", "docs/compliance.md"]:
             stream = archive.extractfile(source_prefix + relative)
             assert stream is not None and stream.read() == (root / relative).read_bytes(), f"sdist missing/changed: {relative}"
+        # Each platform's lock, SBOM and original evidence must travel together in the sdist.
+        for file in sorted((root / "profiles").rglob("*")):
+            if file.is_file() and file.name not in {".DS_Store", "Thumbs.db", "desktop.ini"}:
+                relative = file.relative_to(root).as_posix()
+                stream = archive.extractfile(source_prefix + relative)
+                assert stream is not None and stream.read() == file.read_bytes(), f"sdist missing/changed: {relative}"
     checksums = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in [*wheels, *sources]}
     print(json.dumps({"status": "verified", "notice_files_per_distribution": len(expected), "artifacts_sha256": checksums}, indent=2))
 
