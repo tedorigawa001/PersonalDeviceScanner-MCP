@@ -258,5 +258,6 @@
     "sdist verification covers each platform profile",
     "README/compliance/backlog and linked historical acceptance follow-up"
   ],
-  "push_performed": false
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false
 }
