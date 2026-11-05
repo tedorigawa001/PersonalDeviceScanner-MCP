@@ -264,6 +264,17 @@
     "Acceptance JSON and local links",
     "git diff --check"
   ],
+  "ci_follow_up": {
+    "date": "2026-11-06",
+    "run": 42063032963,
+    "url": "https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/runs/42063032963",
+    "commit": "e605ceb",
+    "result": "22 of 22 jobs passed",
+    "python_tests": "752 per Python (3.11, 3.14, 3.15) on each OS, one more than before for the new acceptance-record field check; skipped macOS 17, Ubuntu 36, Windows 151",
+    "npm_launcher": "12 of 12 jobs passed",
+    "distributions": "verified",
+    "limit": "CI reruns the repository's tests on commits whose runtime code matches 0.11.0; it does not repeat this record's native Docker acceptance, real freshclam runs or provider contact"
+  },
   "commit_created_during_recording": false,
   "push_performed_during_recording": false
 }
