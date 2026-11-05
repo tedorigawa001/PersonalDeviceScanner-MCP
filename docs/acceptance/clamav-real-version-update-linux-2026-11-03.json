@@ -4,6 +4,7 @@
   "kind": "native_linux_different_definition_update_and_resume_acceptance",
   "status": "passed within the recorded Linux aarch64 environment",
   "source_commit": "c326bcdfe9ebfcf7497def0ee2b11e1bd7ae5dd5",
+  "code_under_test": "c326bcd expanded to /tmp/linux-version-followup/repo inside the retained container and run as the CLI with Python 3.12.3 and the real ClamAV; its runtime code, launcher and locks are the same as the 0.11.0 commit 0953a2a",
   "runtime_source_changed": false,
   "environment": {
     "host": "this Mac Docker Desktop",
@@ -243,5 +244,7 @@
     "Acceptance JSON and local links",
     "git diff --check"
   ],
-  "push_performed": false
+  "natural_recovery_follow_up": "freshclam-network-recovery-linux-2026-11-05.json",
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false
 }

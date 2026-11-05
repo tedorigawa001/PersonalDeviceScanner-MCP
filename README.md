@@ -453,8 +453,9 @@ Deletion may be partial after an I/O failure; list again to inspect the remainde
 files or ambiguous provider state require owner investigation; never clear wait files to force a retry.
 These maintenance commands are local CLI only, without administrator credentials or MCP dispatch.
 macOS CLI recovery/cleanup and storage-failure recovery passed native acceptance with test wait deadlines;
-Linux Docker (Ubuntu 24.04 aarch64) also passed a real update, recovery and cleanup. Recovery after a real
-freshclam failure, other Linux environments, Windows support/acceptance and MCP writes remain pending.
+Linux Docker (Ubuntu 24.04 aarch64) also passed a real update, recovery and cleanup, and after a real freshclam DNS
+failure, recovery and a successful retry once its wait had elapsed. Recovery from HTTP/TLS transfer failures and
+provider-specific waits, other Linux environments, Windows support/acceptance and MCP writes remain pending.
 See the [operational design](docs/clamav-signature-update-design.md).
 
 ### Checking for engine updates
