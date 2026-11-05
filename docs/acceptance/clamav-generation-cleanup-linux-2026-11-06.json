@@ -1,0 +1,227 @@
+{
+  "date": "2026-11-06",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "retained Linux ClamAV definition generations: selected owner CLI deletion",
+  "status": "completed; only the two explicitly selected old Linux generations and their leases removed",
+  "source_commit": "bb1a87dc163b2b78bdbba34bef8e62fc2ebf794a",
+  "runtime_source_changed": false,
+  "authorization": "Owner authorized fresh usage verification and selected deletion of exactly the two previously proposed Linux generations; preserve current, previous and all Mac store contents; no definition update or push.",
+  "environment": {
+    "platform": "Ubuntu 24.04 aarch64 Docker on this Mac",
+    "container": "pc-scanner-signature-linux-acceptance",
+    "python": "3.12.3",
+    "uid": 10001,
+    "gid": 10001,
+    "personal_mounts": false,
+    "mounts": [],
+    "networks": {},
+    "initial_state": "exited; no active container processes",
+    "started_for": "existing owner CLI list/delete only; retained sleep infinity entry point",
+    "running_process_check": "docker-init, sleep, acceptance Python; no scanner or updater process",
+    "runtime_source": "existing exported follow-up source used by the preceding unchanged attempt; no source deployment in this acceptance",
+    "relevant_source_sha256_matching_current_checkout": {
+      "pc_scanner/signature_maintenance.py": "a6eb25e5042d924d778cfe0d1b0a4c940a351c9861ca27adefc988a7f835bc18",
+      "pc_scanner/signature_update.py": "d4ceb14e1dd021b732cf019052fddb06cc82a8549da40fd30a3708ae56d32a72",
+      "pc_scanner/cli.py": "d9b5bf9f0a984ecc3070858e311e9c5948f9f6e5ee19823c44d65e314fda7dea"
+    }
+  },
+  "preflight": {
+    "generation_count": 4,
+    "current_id_verified": "3546dc2af6fe2990f9fb0cbba56d8e8b",
+    "candidate_content_comparison": "all three CVD SHA-256 hashes equal between the two daily 28171 candidates",
+    "candidate_daily_version": 28171,
+    "owner_cli_list_completed": true,
+    "initial_list_changed_store_snapshot": false,
+    "candidate_usage_rechecked": "owner CLI list immediately before each deletion; in_use=false, current=false, deletable=true",
+    "deletion_contract": "each selected ID supplied with its own fresh row revision; existing CLI update lock, validation and exclusive generation lease retained",
+    "entries": [
+      {
+        "id": "075e50736cb4a911ef3898059fb9ca7d",
+        "kind": "generation",
+        "revision": "6f1e038d6e7ee069b6d8628b02db44976a2cb8e312ba815c0215c4bced02bec3",
+        "current": false,
+        "in_use": false,
+        "deletable": true,
+        "bytes": 112801890,
+        "reason": null
+      },
+      {
+        "id": "3546dc2af6fe2990f9fb0cbba56d8e8b",
+        "kind": "generation",
+        "revision": "a1477c9a0b5bffa1999c7d7c4a221606d671cb449ff85e90f1835e906878f296",
+        "current": true,
+        "in_use": null,
+        "deletable": false,
+        "bytes": 112801889,
+        "reason": "current"
+      },
+      {
+        "id": "45b58239db23a88d2f6adde88b649c10",
+        "kind": "generation",
+        "revision": "109515559fdff6d91f099712e6c18ffb6d0e3352b5cacd78f7189628c786f0fb",
+        "current": false,
+        "in_use": false,
+        "deletable": true,
+        "bytes": 112801880,
+        "reason": null
+      },
+      {
+        "id": "ecc8bdd0b0328bd857e7631602bee32c",
+        "kind": "generation",
+        "revision": "86298d93484ff4ae71a41c39304fa644f5e52685ba08301b0c28104a7e7142a7",
+        "current": false,
+        "in_use": false,
+        "deletable": true,
+        "bytes": 112801890,
+        "reason": null
+      }
+    ]
+  },
+  "selected_deletions": [
+    {
+      "id": "075e50736cb4a911ef3898059fb9ca7d",
+      "daily_version": 28171,
+      "bytes": 112801890,
+      "status": "completed",
+      "update_performed": false,
+      "directory_absent_after": true,
+      "lease_absent_after": true
+    },
+    {
+      "id": "ecc8bdd0b0328bd857e7631602bee32c",
+      "daily_version": 28171,
+      "bytes": 112801890,
+      "status": "completed",
+      "update_performed": false,
+      "directory_absent_after": true,
+      "lease_absent_after": true
+    }
+  ],
+  "after": {
+    "generation_count": 2,
+    "entries": [
+      {
+        "id": "3546dc2af6fe2990f9fb0cbba56d8e8b",
+        "kind": "generation",
+        "revision": "a1477c9a0b5bffa1999c7d7c4a221606d671cb449ff85e90f1835e906878f296",
+        "current": true,
+        "in_use": null,
+        "deletable": false,
+        "bytes": 112801889,
+        "reason": "current"
+      },
+      {
+        "id": "45b58239db23a88d2f6adde88b649c10",
+        "kind": "generation",
+        "revision": "109515559fdff6d91f099712e6c18ffb6d0e3352b5cacd78f7189628c786f0fb",
+        "current": false,
+        "in_use": false,
+        "deletable": false,
+        "bytes": 112801880,
+        "reason": "last_previous"
+      }
+    ],
+    "current_daily_version": 28174,
+    "retained_previous_daily_version": 28172,
+    "all_remaining_entries_deletable": false,
+    "protection_reasons": [
+      "current",
+      "last_previous"
+    ],
+    "database_file_bytes_removed": 225603780,
+    "database_file_MiB_removed": 215.153,
+    "physical_Docker_disk_space_reclamation_measured": false
+  },
+  "preservation": {
+    "verified_before_and_after_each_deletion": [
+      "current.json",
+      "attempt.json",
+      "provider.dat",
+      "provider-sync.json",
+      "current generation directory, three CVD files and lease",
+      "retained previous generation directory, three CVD files and lease"
+    ],
+    "compared": [
+      "SHA-256 for every protected regular file",
+      "mode",
+      "uid",
+      "gid",
+      "nlink",
+      "size",
+      "inode",
+      "mtime_ns",
+      "ctime_ns"
+    ],
+    "all_compared_values_unchanged": true,
+    "linux_wait_unchanged": {
+      "next_attempt": 1793979673.9253254,
+      "pending": false,
+      "minimum_not_before_utc": "2026-11-06T15:41:14+00:00",
+      "minimum_not_before_japan": "2026-11-07T00:41:14+09:00"
+    },
+    "mac_store": {
+      "read_only_pre_and_post_snapshots_equal": true,
+      "entries_including_root": 19,
+      "compared": [
+        "regular file SHA-256",
+        "type and mode",
+        "uid",
+        "gid",
+        "nlink",
+        "size",
+        "inode",
+        "mtime_ns",
+        "ctime_ns",
+        "file flags"
+      ],
+      "content_or_metadata_writes": false,
+      "current_daily_version": 28174,
+      "previous_daily_version": 28172,
+      "old_empty_directories": [
+        "33da79421477864cfef27d2f1e9653fd",
+        "76e5e4591f539e970cb9e722951aa24d"
+      ],
+      "old_empty_directory_handling": "no CVD files and no lease; conservatively excluded from deletion because usage could not be established; preserved as found"
+    },
+    "definition_updates": 0,
+    "freshclam_started_in_real_store": false,
+    "os_normal_definitions_updated": false,
+    "other_retained_containers_modified": false
+  },
+  "verification": {
+    "signature_regressions": {
+      "command": "bdo proxy .venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -v",
+      "python": "3.15.2",
+      "total": 61,
+      "passed": 61,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 6.562,
+      "includes": [
+        "cross-process lease blocks selected deletion",
+        "current and last previous protection",
+        "stale revision and forged ID refusal",
+        "selected deletion preserves pointer and wait",
+        "updater lock and unsafe entry refusal",
+        "real MCP SDK read-only signature tools and no update publication"
+      ]
+    },
+    "full_android_mcp_suite_rerun": false,
+    "full_suite_note": "No runtime or test changes; only focused signature regressions rerun. Android and unrelated Windows/full-suite coverage are not claimed for this operation."
+  },
+  "cleanup": {
+    "container_final_state": "exited; running=false; pid=0; mounts=[]; networks={}",
+    "container_retained": true,
+    "new_definition_fetches": 0,
+    "real_scans": 0
+  },
+  "remaining": [
+    "Mac empty old generation directories remain untouched; investigate provenance and usage before any separate cleanup authorization.",
+    "Official freshclam unchanged response remains unconfirmed; no retry or wait reset performed.",
+    "Linux has two retained generations; future deletion still requires fresh revision and usage checks."
+  ],
+  "privacy": "Only generation IDs, public definition metadata and aggregate results recorded; detailed filesystem evidence remains in local temporary acceptance folders.",
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false
+}
