@@ -1,0 +1,267 @@
+{
+  "date": "2026-11-05",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "native_freshclam_natural_wait_recovery_and_successful_retry",
+  "status": "passed for retained Linux DNS-failure state after natural wait expiry",
+  "source_commit": "096d39bb0b3b56520ffab72234efd26404266f24",
+  "runtime_source_changed": false,
+  "prior_failure": "freshclam-network-failure-linux-2026-11-02.json",
+  "environment": {
+    "host": "this Mac Docker Desktop",
+    "container": "pc-scanner-freshclam-network-failure",
+    "image": "sha256:fbb1f452c0c824212eba8b5ebe6284fa201ee465fad2e5c56844adcde499a748",
+    "architecture": "aarch64",
+    "python": "3.15.2",
+    "engine": "real freshclam/sigtool/clamscan 1.5.4",
+    "uid_gid": "10001:10001",
+    "mounts": [],
+    "published_ports": [],
+    "capabilities_dropped": [
+      "ALL"
+    ],
+    "security_options": [
+      "no-new-privileges"
+    ],
+    "init": true,
+    "memory_bytes": 2684354560,
+    "cpus": 2.0,
+    "pids_limit": 256
+  },
+  "retained_state": {
+    "before": {
+      "attempt": {
+        "next_attempt": 1793709598.5896919,
+        "pending": true
+      },
+      "current": {
+        "content": "d6646b922ad2ff65ffd660dc01ad5e11079189cb239deae2798f8030782fc43a",
+        "generation": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "versions": {
+          "bytecode.cvd": 339,
+          "daily.cvd": 28172,
+          "main.cvd": 63
+        }
+      },
+      "provider_hash": "77194b0df15c44173b9612cece6ed1a1243301ed4f04d9efe60bc433ec131199",
+      "provider_sync": {
+        "provider_hash": "77194b0df15c44173b9612cece6ed1a1243301ed4f04d9efe60bc433ec131199",
+        "stage": "stage-3a14216a37dbea30848119c4644d8145",
+        "status": "synced"
+      },
+      "checked_at_utc": "2026-11-05T14:07:33.743675+00:00"
+    },
+    "original_failure": "actual DNS resolution/libcurl error 6; freshclam exit 11",
+    "original_provider_hash_matches_previous_record": true,
+    "deadline_naturally_elapsed": true,
+    "clock_overridden": false,
+    "wait_deleted_or_shortened": false
+  },
+  "offline_recovery": {
+    "report": {
+      "schema_version": 1,
+      "source": "clamav",
+      "status": "completed",
+      "observed_at": "2026-11-05T14:07:34.921035+00:00",
+      "findings": [],
+      "warnings": [],
+      "data": {
+        "recovered": true,
+        "next_attempt_at": 1793709599.0,
+        "provider_state_preserved": true,
+        "update_performed": false
+      }
+    },
+    "attempt_after": {
+      "next_attempt": 1793709599.0,
+      "pending": false
+    },
+    "provider_bytes_unchanged": true,
+    "pending_false": true,
+    "recovery_used": "Fresh owner CLI inventory recovery_revision and minimum_not_before; original deadline rounded up less than one second",
+    "freshclam_calls": 0,
+    "expired_pending_update_before_recovery": "refused without starting freshclam; explicit owner recovery remained necessary",
+    "old_pointer_unchanged": true,
+    "old_generation_reuse": 128,
+    "new_engine_starts": 0
+  },
+  "real_retry": {
+    "entrypoint": "unmodified owner CLI update-clamav-signatures",
+    "owner_cli_update_invocations": 1,
+    "actual_freshclam_invocations": 1,
+    "freshclam_exit": 0,
+    "provider_input_hash": "77194b0df15c44173b9612cece6ed1a1243301ed4f04d9efe60bc433ec131199",
+    "retained_canonical_bytes_present_in_staging_before_spawn": true,
+    "report": {
+      "schema_version": 1,
+      "source": "clamav",
+      "status": "completed",
+      "observed_at": "2026-11-05T14:08:58.687082+00:00",
+      "findings": [],
+      "warnings": [],
+      "data": {
+        "update_status": "updated",
+        "published": true,
+        "previous_preserved": true,
+        "resume_recheck_required": true,
+        "signature_check": {
+          "engine": "1.5.4",
+          "version": 28174,
+          "built_at": "2026-11-05T06:26:24+00:00",
+          "freshness": "fresh"
+        },
+        "next_attempt_at": 1793974119.2802858,
+        "cancellation_requested_after_publication": false,
+        "progress": {
+          "stage": "completed",
+          "finished": null,
+          "pending": null,
+          "reused": null,
+          "checkpoint": "not_applicable",
+          "saved_parts": null,
+          "elapsed_seconds": 19.511
+        }
+      }
+    },
+    "old_versions": {
+      "bytecode.cvd": 339,
+      "daily.cvd": 28172,
+      "main.cvd": 63
+    },
+    "new_versions": {
+      "bytecode.cvd": 339,
+      "daily.cvd": 28174,
+      "main.cvd": 63
+    },
+    "signature_verification": {
+      "main.cvd": true,
+      "daily.cvd": true,
+      "bytecode.cvd": true
+    },
+    "freshness": {
+      "engine": "1.5.4",
+      "version": 28174,
+      "built_at": "2026-11-05T06:26:24+00:00",
+      "age_days": 0.4,
+      "max_age_days": 7,
+      "freshness": "fresh",
+      "checked_at": "2026-11-05T14:09:20.169387+00:00",
+      "update_performed": false,
+      "update_steps": [
+        "The owner may explicitly run CLI update-clamav-signatures with the enabled private-store configuration. No administrator password is used and MCP cannot update definitions.",
+        "Recheck freshness after updating; resume re-evaluates results when definition contents change."
+      ],
+      "update_mode": "private_owner_cli"
+    },
+    "provider_sync_after": {
+      "provider_hash": "77194b0df15c44173b9612cece6ed1a1243301ed4f04d9efe60bc433ec131199",
+      "stage": "stage-29e2a3aca221833a65af4c073eb3c080",
+      "status": "synced"
+    },
+    "pending_after": false,
+    "new_retry_utc": "2026-11-06T14:08:39.280286+00:00",
+    "new_retry_jst_rounded_up": "2026-11-06T23:08:40+09:00",
+    "network": "none for recovery; bridge only for real retry; none restored afterwards",
+    "observation": "Test-only run_bounded wrapper recorded real command/result and checked copied provider bytes before spawn; no substituted return codes, network responses, definitions or clock"
+  },
+  "scan_validation": {
+    "inputs": "128 existing harmless synthetic text files only",
+    "after_retry": {
+      "status": "completed",
+      "counts": {
+        "scanned": 128,
+        "infected": 0,
+        "errors": 0
+      },
+      "batch": {
+        "finished": 128,
+        "pending": 0,
+        "reused": 0,
+        "grouping": {
+          "schema": 1,
+          "mode": "enabled",
+          "engine_starts": 2,
+          "committed_jobs": 2,
+          "fallback_targets": 0,
+          "active_targets": 0
+        }
+      }
+    },
+    "subsequent_reuse": {
+      "status": "completed",
+      "counts": {
+        "scanned": 128,
+        "infected": 0,
+        "errors": 0
+      },
+      "batch": {
+        "finished": 128,
+        "pending": 0,
+        "reused": 128,
+        "grouping": {
+          "schema": 1,
+          "mode": "enabled",
+          "engine_starts": 0,
+          "committed_jobs": 0,
+          "fallback_targets": 0,
+          "active_targets": 0
+        }
+      }
+    },
+    "totals_not_added_across_runs": true,
+    "old_definition_content_preserved": true,
+    "old_generation_actual_read_only_scan": {
+      "status": "completed",
+      "counts": {
+        "scanned": 128,
+        "infected": 0,
+        "errors": 0
+      },
+      "configuration": "Separate owner CLI configuration with updates disabled and explicit old generation database; production current pointer unchanged"
+    },
+    "pointer_attempt_provider_and_sync_bytes_unchanged_by_old_scan": true
+  },
+  "storage": {
+    "native_private_store_descriptor_guards_passed": true,
+    "directories": "0700, effective UID 10001",
+    "files": "0600, effective UID 10001",
+    "failed_stage_preserved_for_owner_inspection": true,
+    "old_generation_preserved": true
+  },
+  "regressions": {
+    "command": ".venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -v",
+    "environment": "Mac Python 3.15",
+    "total": 61,
+    "passed": 61,
+    "skipped": 0,
+    "failures": 0,
+    "errors": 0,
+    "seconds": 12.662,
+    "full_suite_rerun": false,
+    "reason": "Native acceptance changed only private test data/network state and repository documentation; no runtime or regression-test implementation changes"
+  },
+  "preservation": {
+    "personal_folders_mounted": false,
+    "personal_files_scanned": false,
+    "host_credentials_exported": false,
+    "os_definitions_written": false,
+    "administrator_password_handled": false,
+    "other_signature_stores_or_waiting_containers_modified": false,
+    "external_ai_provider_used": false
+  },
+  "cleanup": {
+    "container_stopped": true,
+    "final_networks": "none",
+    "container_retained_with_real_provider_state_and_new_wait": true,
+    "private_sanitized_local_evidence_retained": true
+  },
+  "remaining": [
+    "Actual HTTP/TLS transfer failure and 429/provider-specific cooldown acceptance",
+    "Other operating systems, physical hosts and distributions",
+    "No forced retry before the new guard; future retries must re-read saved state and provider instructions"
+  ],
+  "static_checks": [
+    "Acceptance JSON and local links",
+    "git diff --check"
+  ],
+  "push_performed": false
+}

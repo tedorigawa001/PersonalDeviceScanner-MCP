@@ -211,6 +211,7 @@
     "Acceptance JSON and relative links",
     "git diff --check"
   ],
+  "natural_recovery_follow_up": "freshclam-network-recovery-linux-2026-11-05.json",
   "commit_created_during_recording": false,
   "push_performed_during_recording": false
 }
