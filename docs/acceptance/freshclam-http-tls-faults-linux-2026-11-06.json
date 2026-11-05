@@ -3,6 +3,7 @@
   "kind": "native_freshclam_http_tls_transfer_fault_acceptance",
   "status": "passed for controlled local HTTP/HTTPS cut and stall fixtures",
   "source_commit": "23835698f0c361e28f8a5378b63f84a6a0e3e110",
+  "code_under_test": "2383569 run as the CLI inside the fixture container; its runtime code, launcher and locks are the same as the 0.11.0 commit 0953a2a",
   "runtime_source_changed": false,
   "environment": {
     "host": "this Mac Docker Desktop",
@@ -564,5 +565,6 @@
     "Acceptance JSON, case counts and local links",
     "git diff --check"
   ],
-  "push_performed": false
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false
 }

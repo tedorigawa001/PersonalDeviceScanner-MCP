@@ -3,6 +3,7 @@ import importlib.metadata as metadata
 import importlib.util
 import io
 import json
+import re
 import sys
 import tempfile
 import tomllib
@@ -242,6 +243,34 @@ class UnlistedEvidenceTests(unittest.TestCase):
             with self.subTest(profile=root.name):
                 manifest = json.loads((root / "third_party/license-manifest.json").read_text())
                 self.assertEqual(unlisted_evidence(root, manifest), [])
+
+
+class AcceptanceRecordTests(unittest.TestCase):
+    # A value describes the recording itself, not the later history of the commit that holds the record.
+    # Records before this date keep the names they were written with.
+    OLD_FIELDS = {"commit_created", "push_performed", "commit_or_push_performed"}
+    SINCE = "2026-11-01"
+
+    def old_fields(self, value):
+        if isinstance(value, dict):
+            return [key for key in value if key in self.OLD_FIELDS] + self.old_fields(list(value.values()))
+        if isinstance(value, list):
+            return [field for item in value for field in self.old_fields(item)]
+        return []
+
+    def test_new_records_name_what_happened_during_recording(self):
+        self.assertEqual(self.old_fields({"checks": [{"push_performed": False}], "commit_created_during_recording": False}),
+                         ["push_performed"])
+        checked = 0
+        for path in sorted((ROOT / "docs/acceptance").glob("*.json")):
+            day = re.search(r"(\d{4}-\d{2}-\d{2})\.json$", path.name)
+            with self.subTest(record=path.name):
+                self.assertIsNotNone(day, "a record name must end with its date, or this check would skip it")
+                if day and day.group(1) >= self.SINCE:
+                    checked += 1
+                    self.assertEqual(self.old_fields(json.loads(path.read_text(encoding="utf-8"))), [],
+                                     "use commit_created_during_recording and push_performed_during_recording")
+        self.assertGreater(checked, 0)
 
 
 if __name__ == "__main__":
