@@ -1,0 +1,568 @@
+{
+  "date": "2026-11-06",
+  "kind": "native_freshclam_http_tls_transfer_fault_acceptance",
+  "status": "passed for controlled local HTTP/HTTPS cut and stall fixtures",
+  "source_commit": "23835698f0c361e28f8a5378b63f84a6a0e3e110",
+  "runtime_source_changed": false,
+  "environment": {
+    "host": "this Mac Docker Desktop",
+    "container": "pc-scanner-transfer-fault-acceptance",
+    "image": "sha256:20fd8ed13f28e2b3e10a54c9b2fe018c8e8d5a2549a79fc3b55fc1ea82021ada",
+    "architecture": "aarch64",
+    "python": "3.15.2",
+    "engine": "real freshclam/sigtool/clamscan 1.5.4",
+    "uid_gid": "10001:10001",
+    "network_mode": "none; loopback local fixture servers only",
+    "mounts": [],
+    "published_ports": [],
+    "capabilities_dropped": [
+      "ALL"
+    ],
+    "security_options": [
+      "no-new-privileges"
+    ],
+    "memory_bytes": 2684354560,
+    "cpus": 2.0,
+    "pids_limit": 256
+  },
+  "transport_fixture": {
+    "adapter": "Owner-approved test executable rewrites only generated stage mirror and receive/connect timeouts, then os.execv actual /usr/bin/freshclam with --no-dns. Scanner update, stage/validation/publication, wait and provider-save code unchanged.",
+    "mirror": "PrivateMirror http(s)://localhost:ephemeral-port; official fixed mirror replaced only inside the isolated fixture stage configuration",
+    "timeouts": "3-second ConnectTimeout/ReceiveTimeout in fixture, 25-second owner CLI ceiling; not production default timeout performance",
+    "tls": "TLS certificate verification remains enabled. Dedicated localhost/IP-SAN server certificate signed by test CA; CA installed only into derived disposable Docker image via update-ca-certificates.",
+    "ca_sha256": "f4ff8c1a77588307525d2810272c6dac5732785e8ee0953e0db35dafc1d5fd62",
+    "host_trust_store_changed": false,
+    "initial_generations": "Each independent offline fixture seeded with previously verified official main 63/daily 28172/bytecode 339 CVDs; signed seed reverified with real sigtool",
+    "full_download_fixture": "Actual newer daily 28174 CVD header supplied as successful 512-byte range response; subsequent full request declared 23447610 bytes and sent 1024 then cut, or sent no body and stalled",
+    "not_a_production_mirror_configuration_test": true,
+    "public_provider_requests": 0,
+    "clocks_or_exit_codes_mocked": false
+  },
+  "cases": [
+    {
+      "phase": "cvd_header_response",
+      "case": "http_cut",
+      "freshclam_exit": 11,
+      "libcurl_error": 18,
+      "elapsed_seconds": 0.330972083000006,
+      "server_events": [
+        {
+          "method": "GET",
+          "tls": false,
+          "path": "/daily.cld",
+          "declared_bytes": 4096,
+          "sent_bytes": 7
+        },
+        {
+          "method": "GET",
+          "tls": false,
+          "path": "/daily.cvd",
+          "declared_bytes": 4096,
+          "sent_bytes": 7
+        }
+      ],
+      "report": {
+        "schema_version": 1,
+        "source": "clamav",
+        "status": "error",
+        "observed_at": "2026-11-05T15:58:45.030198+00:00",
+        "findings": [],
+        "warnings": [
+          "Signature operation did not complete; check the private store and owner configuration. No administrator credentials were requested."
+        ],
+        "data": {
+          "update_status": "failed",
+          "published": false,
+          "previous_preserved": true,
+          "resume_recheck_required": false,
+          "progress": {
+            "stage": "error",
+            "finished": null,
+            "pending": null,
+            "reused": null,
+            "checkpoint": "not_applicable",
+            "saved_parts": null,
+            "elapsed_seconds": 0.143
+          }
+        }
+      },
+      "attempt": {
+        "next_attempt": 1793980724.9416823,
+        "pending": true
+      },
+      "provider_state_exists": true,
+      "provider_sync": {
+        "provider_hash": "da77fe1403166925161557d7125f379df8a89f8a5ff7ed347048a0d37ea6296f",
+        "stage": "stage-46f9049ca823543e8445a3a2d6600383",
+        "status": "synced"
+      },
+      "old_bytes_preserved": true,
+      "reused": 128,
+      "additional_engine_starts": 0,
+      "early_recovery": {
+        "schema_version": 1,
+        "source": "clamav",
+        "status": "partial",
+        "observed_at": "2026-11-05T15:58:46.204734+00:00",
+        "findings": [],
+        "warnings": [
+          "Recovery cannot shorten or bypass the update/provider wait; retry after the acknowledged deadline"
+        ],
+        "data": {
+          "recovered": false,
+          "next_attempt_at": 1793980724.9416823
+        }
+      },
+      "permissions_passed": true
+    },
+    {
+      "phase": "cvd_header_response",
+      "case": "https_cut",
+      "freshclam_exit": 11,
+      "libcurl_error": 18,
+      "elapsed_seconds": 0.3347460420000061,
+      "server_events": [
+        {
+          "method": "GET",
+          "tls": true,
+          "path": "/daily.cld",
+          "declared_bytes": 4096,
+          "sent_bytes": 7
+        },
+        {
+          "method": "GET",
+          "tls": true,
+          "path": "/daily.cvd",
+          "declared_bytes": 4096,
+          "sent_bytes": 7
+        }
+      ],
+      "report": {
+        "schema_version": 1,
+        "source": "clamav",
+        "status": "error",
+        "observed_at": "2026-11-05T15:58:57.534133+00:00",
+        "findings": [],
+        "warnings": [
+          "Signature operation did not complete; check the private store and owner configuration. No administrator credentials were requested."
+        ],
+        "data": {
+          "update_status": "failed",
+          "published": false,
+          "previous_preserved": true,
+          "resume_recheck_required": false,
+          "progress": {
+            "stage": "error",
+            "finished": null,
+            "pending": null,
+            "reused": null,
+            "checkpoint": "not_applicable",
+            "saved_parts": null,
+            "elapsed_seconds": 0.138
+          }
+        }
+      },
+      "attempt": {
+        "next_attempt": 1793980737.4568112,
+        "pending": true
+      },
+      "provider_state_exists": true,
+      "provider_sync": {
+        "provider_hash": "8448cae0703b0d13198e07bd2ff7edb31eeccc3218061dad251c1ce34e601938",
+        "stage": "stage-bd39d454a511c3573b45fd10c33e3bba",
+        "status": "synced"
+      },
+      "old_bytes_preserved": true,
+      "reused": 128,
+      "additional_engine_starts": 0,
+      "early_recovery": {
+        "schema_version": 1,
+        "source": "clamav",
+        "status": "partial",
+        "observed_at": "2026-11-05T15:58:58.729648+00:00",
+        "findings": [],
+        "warnings": [
+          "Recovery cannot shorten or bypass the update/provider wait; retry after the acknowledged deadline"
+        ],
+        "data": {
+          "recovered": false,
+          "next_attempt_at": 1793980737.4568112
+        }
+      },
+      "permissions_passed": true
+    },
+    {
+      "phase": "cvd_header_response",
+      "case": "https_stall",
+      "freshclam_exit": 11,
+      "libcurl_error": 28,
+      "elapsed_seconds": 8.373931254000013,
+      "server_events": [
+        {
+          "method": "GET",
+          "tls": true,
+          "path": "/daily.cld",
+          "declared_bytes": 4096,
+          "sent_bytes": 0
+        },
+        {
+          "method": "GET",
+          "tls": true,
+          "path": "/daily.cvd",
+          "declared_bytes": 4096,
+          "sent_bytes": 0
+        }
+      ],
+      "report": {
+        "schema_version": 1,
+        "source": "clamav",
+        "status": "error",
+        "observed_at": "2026-11-05T15:59:18.393616+00:00",
+        "findings": [],
+        "warnings": [
+          "Signature operation did not complete; check the private store and owner configuration. No administrator credentials were requested."
+        ],
+        "data": {
+          "update_status": "failed",
+          "published": false,
+          "previous_preserved": true,
+          "resume_recheck_required": false,
+          "progress": {
+            "stage": "error",
+            "finished": null,
+            "pending": null,
+            "reused": null,
+            "checkpoint": "not_applicable",
+            "saved_parts": null,
+            "elapsed_seconds": 8.154
+          }
+        }
+      },
+      "attempt": {
+        "next_attempt": 1793980750.2878077,
+        "pending": true
+      },
+      "provider_state_exists": true,
+      "provider_sync": {
+        "provider_hash": "ba3b047ca47e1635198f212006abea02fc4c98353a68f60f23209b8b1fdcbf43",
+        "stage": "stage-ba94d7a839a0249d5bfe2ab412f2968e",
+        "status": "synced"
+      },
+      "old_bytes_preserved": true,
+      "reused": 128,
+      "additional_engine_starts": 0,
+      "early_recovery": {
+        "schema_version": 1,
+        "source": "clamav",
+        "status": "partial",
+        "observed_at": "2026-11-05T15:59:19.088715+00:00",
+        "findings": [],
+        "warnings": [
+          "Recovery cannot shorten or bypass the update/provider wait; retry after the acknowledged deadline"
+        ],
+        "data": {
+          "recovered": false,
+          "next_attempt_at": 1793980750.2878077
+        }
+      },
+      "permissions_passed": true
+    },
+    {
+      "phase": "full_database_download",
+      "case": "http_cut",
+      "freshclam_exit": 5,
+      "libcurl_error": 18,
+      "elapsed_seconds": 0.2656398750000335,
+      "server_events": [
+        {
+          "method": "GET",
+          "tls": false,
+          "path": "/daily.cld",
+          "range": "bytes=0-511",
+          "phase": "header",
+          "declared_bytes": 512,
+          "sent_bytes": 512
+        },
+        {
+          "method": "GET",
+          "tls": false,
+          "path": "/daily.cld",
+          "range": null,
+          "phase": "full",
+          "declared_bytes": 23447610,
+          "sent_bytes": 1024
+        }
+      ],
+      "report": {
+        "schema_version": 1,
+        "source": "clamav",
+        "status": "error",
+        "observed_at": "2026-11-05T16:02:20.454919+00:00",
+        "findings": [],
+        "warnings": [
+          "Signature operation did not complete; check the private store and owner configuration. No administrator credentials were requested."
+        ],
+        "data": {
+          "update_status": "failed",
+          "published": false,
+          "previous_preserved": true,
+          "resume_recheck_required": false,
+          "progress": {
+            "stage": "error",
+            "finished": null,
+            "pending": null,
+            "reused": null,
+            "checkpoint": "not_applicable",
+            "saved_parts": null,
+            "elapsed_seconds": 0.082
+          }
+        }
+      },
+      "attempt": {
+        "next_attempt": 1793980940.412988,
+        "pending": true
+      },
+      "provider_state_exists": true,
+      "provider_sync": {
+        "provider_hash": "8fe9f383fd74e5e46f8c19173f591ecf719f20dc58976ed611c8b2676ade3340",
+        "stage": "stage-3c8c2b80158bb3f76f9f287f8b2fdbfb",
+        "status": "synced"
+      },
+      "old_bytes_preserved": true,
+      "reused": 128,
+      "additional_engine_starts": 0,
+      "early_recovery": {
+        "schema_version": 1,
+        "source": "clamav",
+        "status": "partial",
+        "observed_at": "2026-11-05T16:02:21.633285+00:00",
+        "findings": [],
+        "warnings": [
+          "Recovery cannot shorten or bypass the update/provider wait; retry after the acknowledged deadline"
+        ],
+        "data": {
+          "recovered": false,
+          "next_attempt_at": 1793980940.412988
+        }
+      },
+      "permissions_passed": true
+    },
+    {
+      "phase": "full_database_download",
+      "case": "https_cut",
+      "freshclam_exit": 5,
+      "libcurl_error": 18,
+      "elapsed_seconds": 0.3153102499999818,
+      "server_events": [
+        {
+          "method": "GET",
+          "tls": true,
+          "path": "/daily.cld",
+          "range": "bytes=0-511",
+          "phase": "header",
+          "declared_bytes": 512,
+          "sent_bytes": 512
+        },
+        {
+          "method": "GET",
+          "tls": true,
+          "path": "/daily.cld",
+          "range": null,
+          "phase": "full",
+          "declared_bytes": 23447610,
+          "sent_bytes": 1024
+        }
+      ],
+      "report": {
+        "schema_version": 1,
+        "source": "clamav",
+        "status": "error",
+        "observed_at": "2026-11-05T16:02:32.664878+00:00",
+        "findings": [],
+        "warnings": [
+          "Signature operation did not complete; check the private store and owner configuration. No administrator credentials were requested."
+        ],
+        "data": {
+          "update_status": "failed",
+          "published": false,
+          "previous_preserved": true,
+          "resume_recheck_required": false,
+          "progress": {
+            "stage": "error",
+            "finished": null,
+            "pending": null,
+            "reused": null,
+            "checkpoint": "not_applicable",
+            "saved_parts": null,
+            "elapsed_seconds": 0.118
+          }
+        }
+      },
+      "attempt": {
+        "next_attempt": 1793980952.5941224,
+        "pending": true
+      },
+      "provider_state_exists": true,
+      "provider_sync": {
+        "provider_hash": "b46dff7a78f79015a1409d374a6d9e2a042ccd4d316180aa730cee8e465c4995",
+        "stage": "stage-7d625fb62889cd7c9642959ebe437623",
+        "status": "synced"
+      },
+      "old_bytes_preserved": true,
+      "reused": 128,
+      "additional_engine_starts": 0,
+      "early_recovery": {
+        "schema_version": 1,
+        "source": "clamav",
+        "status": "partial",
+        "observed_at": "2026-11-05T16:02:33.869428+00:00",
+        "findings": [],
+        "warnings": [
+          "Recovery cannot shorten or bypass the update/provider wait; retry after the acknowledged deadline"
+        ],
+        "data": {
+          "recovered": false,
+          "next_attempt_at": 1793980952.5941224
+        }
+      },
+      "permissions_passed": true
+    },
+    {
+      "phase": "full_database_download",
+      "case": "https_stall",
+      "freshclam_exit": 5,
+      "libcurl_error": 28,
+      "elapsed_seconds": 4.311521793999987,
+      "server_events": [
+        {
+          "method": "GET",
+          "tls": true,
+          "path": "/daily.cld",
+          "range": "bytes=0-511",
+          "phase": "header",
+          "declared_bytes": 512,
+          "sent_bytes": 512
+        },
+        {
+          "method": "GET",
+          "tls": true,
+          "path": "/daily.cld",
+          "range": null,
+          "phase": "full",
+          "declared_bytes": 23447610,
+          "sent_bytes": 0
+        }
+      ],
+      "report": {
+        "schema_version": 1,
+        "source": "clamav",
+        "status": "error",
+        "observed_at": "2026-11-05T16:02:48.581412+00:00",
+        "findings": [],
+        "warnings": [
+          "Signature operation did not complete; check the private store and owner configuration. No administrator credentials were requested."
+        ],
+        "data": {
+          "update_status": "failed",
+          "published": false,
+          "previous_preserved": true,
+          "resume_recheck_required": false,
+          "progress": {
+            "stage": "error",
+            "finished": null,
+            "pending": null,
+            "reused": null,
+            "checkpoint": "not_applicable",
+            "saved_parts": null,
+            "elapsed_seconds": 4.116
+          }
+        }
+      },
+      "attempt": {
+        "next_attempt": 1793980964.5070374,
+        "pending": true
+      },
+      "provider_state_exists": true,
+      "provider_sync": {
+        "provider_hash": "4cb732884df4cb191c57375862684a14e10973bbbd697c24be2a8995f37a418c",
+        "stage": "stage-6fdc3c5ea5c35455f9a4c9367c20c182",
+        "status": "synced"
+      },
+      "old_bytes_preserved": true,
+      "reused": 128,
+      "additional_engine_starts": 0,
+      "early_recovery": {
+        "schema_version": 1,
+        "source": "clamav",
+        "status": "partial",
+        "observed_at": "2026-11-05T16:02:49.253917+00:00",
+        "findings": [],
+        "warnings": [
+          "Recovery cannot shorten or bypass the update/provider wait; retry after the acknowledged deadline"
+        ],
+        "data": {
+          "recovered": false,
+          "next_attempt_at": 1793980964.5070374
+        }
+      },
+      "permissions_passed": true
+    }
+  ],
+  "summary": {
+    "case_count": 6,
+    "header_cases": 3,
+    "full_download_cases": 3,
+    "all_old_definitions_and_current_references_preserved": true,
+    "all_pending_and_24h_guards_retained": true,
+    "early_retry": "all refused without another adapter/freshclam invocation",
+    "early_recovery": "all refused; original attempt bytes unchanged",
+    "failed_stage_deletion_protection": "all inventory rows protected while pending",
+    "provider_bytes_after_failure_preserved_by_early_actions": true,
+    "all_scans": {
+      "scanned": 128,
+      "infected": 0,
+      "errors": 0,
+      "reused": 128,
+      "new_engine_starts": 0
+    },
+    "private_store_owner_mode_descriptor_guards_passed": true,
+    "remaining_engine_processes_before_stop": 0
+  },
+  "regressions": {
+    "command": ".venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
+    "total": 61,
+    "passed": 61,
+    "skipped": 0,
+    "failures": 0,
+    "errors": 0,
+    "seconds": 6.449,
+    "full_suite_rerun": false,
+    "reason": "Native fixture scripts and acceptance documentation only; no implementation or regression-test changes"
+  },
+  "preservation": {
+    "personal_folders_mounted": false,
+    "personal_files_scanned": false,
+    "old_wait_states_copied_or_reset": false,
+    "existing_stores_modified": false,
+    "os_definitions_written": false,
+    "host_CA_or_service_settings_changed": false,
+    "automatic_update_design_and_installation": "remains deferred"
+  },
+  "cleanup": {
+    "fixture_container_stopped": true,
+    "fixture_container_retained": "network none; pending states and synthetic evidence preserved for inspection",
+    "dedicated_fixture_image_retained": true,
+    "private_local_evidence_retained": true
+  },
+  "limitations": [
+    "Faults delivered by controlled localhost server with a test-only transport adapter; not induced against official distribution infrastructure",
+    "No actual HTTP 429/Retry-After or provider-specific cooldown behavior verified",
+    "Natural-expiry owner recovery of these HTTP/TLS fixture failures not repeated; existing DNS recovery acceptance is separate",
+    "TLS handshake interruption, unknown-CA refusal and default-production timeout timing not separately accepted here"
+  ],
+  "static_checks": [
+    "Acceptance JSON, case counts and local links",
+    "git diff --check"
+  ],
+  "push_performed": false
+}
