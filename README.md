@@ -449,6 +449,8 @@ To reclaim a selected entry, list again and run `clamav-signature-store delete E
 Current/in-use generations, the last previous generation, unrecovered failed stages, changed revisions and unsafe
 storage are refused. There is no arbitrary path or force-delete option. At most four generations/failed stages are
 retained; use selected cleanup before reaching this limit. No automatic deletion or disk quota is implemented.
+A folder without all three definition files is listed as `incomplete`: it counts toward the limit and can be deleted,
+but it never counts as the last previous generation.
 Deletion may be partial after an I/O failure; list again to inspect the remainder. Invalid permissions, unknown
 files or ambiguous provider state require owner investigation; never clear wait files to force a retry.
 These maintenance commands are local CLI only, without administrator credentials or MCP dispatch.

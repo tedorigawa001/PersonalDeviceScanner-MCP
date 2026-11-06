@@ -288,6 +288,14 @@ class UpdateTests(unittest.TestCase):
         self.allow_next()
         with patch.object(update, "MAX_GENERATIONS", 1):
             self.assertEqual(self.do_update()["status"], "error")
+        # A folder without definitions still takes a slot: the owner investigates it, nothing is removed automatically.
+        empty = self.root / ("0" * 32)
+        empty.mkdir(mode=0o700)
+        calls = len(self.calls)
+        with patch.object(update, "MAX_GENERATIONS", 2):
+            self.assertEqual(self.do_update()["status"], "error")
+        self.assertEqual(len(self.calls), calls)
+        empty.rmdir()
         self.version = 2
         original = update.write_json
         def fail(path, obj):

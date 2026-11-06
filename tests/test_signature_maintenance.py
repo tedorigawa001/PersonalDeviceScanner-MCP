@@ -76,6 +76,26 @@ class MaintenanceTests(unittest.TestCase):
         with self.assertRaises(core.ScannerError):
             maintenance.manage(self.scanner, "delete", self.previous, row["revision"])
 
+    def test_an_incomplete_folder_never_stands_in_for_the_last_previous_generation(self):
+        # Empty folders once counted as generations: the real previous one could go, leaving only an empty "previous".
+        maintenance.manage(self.scanner, "delete", self.removable, self.entry(self.removable)["revision"])
+        empty = secrets.token_hex(16)
+        (self.root / empty).mkdir(mode=0o700)
+        partial = secrets.token_hex(16)
+        (self.root / partial).mkdir(mode=0o700)
+        history.replace_private(self.root / partial / update.DATABASES[0], b"synthetic")
+        real = self.entry(self.previous)
+        self.assertEqual((real["deletable"], real["reason"], real["incomplete"]), (False, "last_previous", False))
+        with self.assertRaises(core.ScannerError):
+            maintenance.manage(self.scanner, "delete", self.previous, real["revision"])
+        self.assertEqual(self.entry(self.active)["incomplete"], False)
+        for name in (empty, partial):
+            row = self.entry(name)
+            self.assertEqual((row["deletable"], row["reason"], row["incomplete"]), (True, None, True))
+            self.assertEqual(maintenance.manage(self.scanner, "delete", name, row["revision"])["status"], "completed")
+            self.assertFalse((self.root / name).exists())
+        self.assertEqual(self.entry(self.previous)["reason"], "last_previous")
+
     def test_listing_never_exclusively_locks_the_current_generation(self):
         real, locked = maintenance.exclusive_lease, []
         def recording(path):

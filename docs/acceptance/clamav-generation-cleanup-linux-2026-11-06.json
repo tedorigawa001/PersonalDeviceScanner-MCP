@@ -5,7 +5,7 @@
   "status": "completed; only the two explicitly selected old Linux generations and their leases removed",
   "source_commit": "bb1a87dc163b2b78bdbba34bef8e62fc2ebf794a",
   "runtime_source_changed": false,
-  "authorization": "Owner authorized fresh usage verification and selected deletion of exactly the two previously proposed Linux generations; preserve current, previous and all Mac store contents; no definition update or push.",
+  "authorization": "Owner authorized fresh usage verification and selected deletion of exactly the two previously proposed Linux generations; preserve current, previous and all Mac store contents; no definition update.",
   "environment": {
     "platform": "Ubuntu 24.04 aarch64 Docker on this Mac",
     "container": "pc-scanner-signature-linux-acceptance",
@@ -190,7 +190,7 @@
   },
   "verification": {
     "signature_regressions": {
-      "command": "bdo proxy .venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -v",
+      "command": ".venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -v",
       "python": "3.15.2",
       "total": 61,
       "passed": 61,

@@ -179,6 +179,14 @@ def exclusive_lease(path):
         os.close(fd)
 
 
+def complete(folder):
+    """Only a folder holding every database can be rolled back to; an empty one must not count as a generation."""
+    try:
+        return all(stat.S_ISREG(os.lstat(folder / name).st_mode) for name in update.DATABASES)
+    except OSError:
+        return False
+
+
 def inventory(path, deadline):
     state, current = attempt(path), update.pointer(path)
     names = []
@@ -187,7 +195,7 @@ def inventory(path, deadline):
             raise OSError("Signature inventory limit")
         names.append(f.name)
     managed = sorted(n for n in names if ENTRY.fullmatch(n))
-    previous = [n for n in managed if update.GEN.fullmatch(n) and (not current or n != current["generation"])]
+    previous = [n for n in managed if update.GEN.fullmatch(n) and (not current or n != current["generation"]) and complete(path / n)]
     rows = []
     for name in managed:
         row = dict(id=name, kind="stage" if name.startswith("stage-") else "generation", revision=None,
@@ -196,6 +204,8 @@ def inventory(path, deadline):
             metadata = tree(path / name, deadline)
             row["revision"] = hashlib.sha256(json.dumps(metadata).encode()).hexdigest()
             row["bytes"] = sum(r[1][5] for r in metadata if stat.S_ISREG(r[1][2]))
+            if row["kind"] == "generation":
+                row["incomplete"] = not complete(path / name)
             row["reason"] = "current" if row["current"] else "pending_recovery" if state and state["pending"] and row["kind"] == "stage" else "last_previous" if current and name in previous and len(previous) == 1 else None
             # Scans lease only the current generation, which is protected anyway; probing it would fail their start.
             if row["kind"] == "generation" and not row["current"]:
