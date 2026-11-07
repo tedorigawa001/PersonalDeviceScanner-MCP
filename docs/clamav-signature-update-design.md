@@ -259,4 +259,5 @@ Linuxは個人フォルダーをマウントしないDockerで、WindowsはCIと
 第1段階の検証結果は[実装検証記録](acceptance/clamav-signature-update-phase1-2026-11-01.json)に記載する。
 自動更新設定は変更していない。Macは異なる公式定義版への実更新と再開失効まで確認済み。
 Linux Docker aarch64も異なる版への更新・再開失効まで確認済み。
-他のLinux環境・Windowsの受入、HTTP／TLS転送障害や配布元固有の待機からの復旧は残る。
+ローカルの制御した配布元でのHTTP／HTTPS転送障害からは、期限後の復旧と再試行の成功まで確認済み。
+他のLinux環境・Windowsの受入、実配布元での障害と429／Retry-Afterなどの配布元固有の待機は残る。

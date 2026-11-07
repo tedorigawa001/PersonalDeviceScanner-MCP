@@ -456,8 +456,10 @@ files or ambiguous provider state require owner investigation; never clear wait 
 These maintenance commands are local CLI only, without administrator credentials or MCP dispatch.
 macOS CLI recovery/cleanup and storage-failure recovery passed native acceptance with test wait deadlines;
 Linux Docker (Ubuntu 24.04 aarch64) also passed a real update, recovery and cleanup, and after a real freshclam DNS
-failure, recovery and a successful retry once its wait had elapsed. Recovery from HTTP/TLS transfer failures and
-provider-specific waits, other Linux environments, Windows support/acceptance and MCP writes remain pending.
+failure, recovery and a successful retry once its wait had elapsed. After HTTP/HTTPS transfer failures from a
+controlled local mirror, recovery and a successful retry also passed once their waits had elapsed. Faults on the real
+provider, provider-specific waits such as 429/Retry-After, other Linux environments, Windows support/acceptance and
+MCP writes remain pending.
 See the [operational design](docs/clamav-signature-update-design.md).
 
 ### Checking for engine updates

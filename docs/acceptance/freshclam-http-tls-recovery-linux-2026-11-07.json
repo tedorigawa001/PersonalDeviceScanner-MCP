@@ -30,7 +30,7 @@
   },
   "scope": {
     "original_stores": "same six retained fixture stores, three header failures and three full-download failures",
-    "natural_expiry": "Actual UTC clock was later than all persisted deadlines (Japan November 7 00:58:44 through 01:02:45); no clock change or wait reset.",
+    "natural_expiry": "Actual UTC clock was later than all persisted deadlines (Japan November 7 00:58:44 through 01:02:44); no clock change or wait reset.",
     "recovery_acknowledgement": "Used each fresh owner inventory minimum_not_before, rounded up to an integral UTC second. Original guard was extended by less than one second, never shortened.",
     "retry": "Exactly one real freshclam retry per recovered store, from a successful localhost mirror with previously verified signed daily 28174, main 63 and bytecode 339.",
     "not_an_official_provider_fetch": true,
@@ -852,7 +852,7 @@
     "duplicate_rescan_to_repair_verifier": false
   },
   "regressions": {
-    "command": "bdo proxy .venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
+    "command": ".venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
     "python": "3.15.2",
     "platform": "macOS",
     "total": 62,
@@ -902,7 +902,7 @@
   },
   "static_checks": {
     "acceptance_record_field_test": {
-      "command": "bdo proxy .venv-dev/bin/python -m unittest discover -s tests -p 'test_compliance.py' -k AcceptanceRecordTests -q",
+      "command": ".venv-dev/bin/python -m unittest discover -s tests -p 'test_compliance.py' -k AcceptanceRecordTests -q",
       "total": 1,
       "passed": 1,
       "failures": 0,
