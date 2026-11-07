@@ -576,6 +576,14 @@
     "distributions": "verified",
     "limit": "CI reruns the repository's tests on commits whose runtime code matches 0.11.0; it does not repeat this record's native Docker acceptance, real freshclam runs or provider contact"
   },
+  "natural_expiry_follow_up": {
+    "date": "2026-11-07",
+    "record": "freshclam-http-tls-recovery-linux-2026-11-07.json",
+    "source_commit": "50c33abb79118ed981a98a3b5e83e707d3d9dedf",
+    "result": "All six original retained states naturally expired and recovered through the owner CLI; each passed one real freshclam retry from a successful localhost signed-CVD mirror, publication, new-definition rescan and subsequent full reuse.",
+    "preservation": "No wait shortening, clock change, store reinitialization or deletion of original failed stages/generations; no external provider traffic; new waits and provider states retained with container stopped on network none.",
+    "limit": "Original case observations and limitations above describe the original run. This follow-up completes local natural-expiry recovery and successful retry only; official provider fetches, 429/Retry-After and handshake faults remain separate."
+  },
   "commit_created_during_recording": false,
   "push_performed_during_recording": false
 }

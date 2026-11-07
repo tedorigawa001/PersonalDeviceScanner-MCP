@@ -1,0 +1,917 @@
+{
+  "date": "2026-11-07",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "native_freshclam_http_tls_natural_expiry_recovery_acceptance",
+  "status": "passed for all six retained local HTTP/HTTPS transfer-failure states",
+  "source_commit": "50c33abb79118ed981a98a3b5e83e707d3d9dedf",
+  "runtime_source_changed": false,
+  "predecessor_record": "freshclam-http-tls-faults-linux-2026-11-06.json",
+  "code_under_test": "Latest committed 50c33ab exported into a separate follow-up source folder; all 28 pc_scanner Python module SHA-256 values match the host checkout. Original six fixture sources and stores were not reinitialized.",
+  "environment": {
+    "host": "this Mac Docker Desktop",
+    "container": "pc-scanner-transfer-fault-acceptance",
+    "image": "sha256:20fd8ed13f28e2b3e10a54c9b2fe018c8e8d5a2549a79fc3b55fc1ea82021ada",
+    "architecture": "aarch64",
+    "python": "3.15.2",
+    "engine": "real freshclam/sigtool/clamscan 1.5.4",
+    "uid_gid": "10001:10001",
+    "network_mode": "none; loopback local fixture servers only",
+    "mounts": [],
+    "published_ports": [],
+    "capabilities_dropped": [
+      "ALL"
+    ],
+    "security_options": [
+      "no-new-privileges"
+    ],
+    "memory_bytes": 2684354560,
+    "cpus": 2.0,
+    "pids_limit": 256
+  },
+  "scope": {
+    "original_stores": "same six retained fixture stores, three header failures and three full-download failures",
+    "natural_expiry": "Actual UTC clock was later than all persisted deadlines (Japan November 7 00:58:44 through 01:02:45); no clock change or wait reset.",
+    "recovery_acknowledgement": "Used each fresh owner inventory minimum_not_before, rounded up to an integral UTC second. Original guard was extended by less than one second, never shortened.",
+    "retry": "Exactly one real freshclam retry per recovered store, from a successful localhost mirror with previously verified signed daily 28174, main 63 and bytecode 339.",
+    "not_an_official_provider_fetch": true,
+    "public_provider_requests": 0,
+    "tls_certificate_verification": "Enabled with default freshclam verification; test CA remains only in the pre-existing isolated fixture image; no insecure TLS option.",
+    "adapter": "New test-only executable changes generated mirror to localhost and connect/receive timeouts to 3/10 seconds, then execs /usr/bin/freshclam --no-dns; no code, result or exit mocking.",
+    "successful_update_timeout_seconds": 180,
+    "original_fault_timeout_seconds": 25,
+    "mirror_compatibility": "Server returns 404 for .cld and detached .cvd.sign paths and serves complete signed CVDs. freshclam falls back to .cvd and exits zero; app verifies embedded signatures with real sigtool.",
+    "test_ca_sha256": "f4ff8c1a77588307525d2810272c6dac5732785e8ee0953e0db35dafc1d5fd62"
+  },
+  "cases": [
+    {
+      "phase": "header",
+      "case": "http_cut",
+      "observed_at": "2026-11-07T05:12:30.474098+00:00",
+      "original_attempt": {
+        "next_attempt": 1793980724.9416823,
+        "pending": true
+      },
+      "original_not_before_japan": "2026-11-07T00:58:44.941682+09:00",
+      "original_state_matches_prior_acceptance": true,
+      "expired_pending_update": {
+        "status": "error",
+        "published": false,
+        "updater_invocations": 0
+      },
+      "owner_recovery": {
+        "status": "completed",
+        "recovered": true,
+        "acknowledged_not_before": "2026-11-06T15:58:45+00:00",
+        "attempt_after": {
+          "pending": false,
+          "next_attempt": 1793980725.0
+        },
+        "deadline_round_up_seconds": 0.058318,
+        "old_generation_pointer_provider_and_failed_stage_unchanged": true,
+        "engine_or_updater_invocations": 0
+      },
+      "provider_state_handoff": {
+        "sha256": "da77fe1403166925161557d7125f379df8a89f8a5ff7ed347048a0d37ea6296f",
+        "same_bytes_passed_to_actual_freshclam": true
+      },
+      "successful_retry": {
+        "freshclam_invocations": 1,
+        "freshclam_exit": 0,
+        "status": "completed",
+        "update_status": "updated",
+        "published": true,
+        "signature_check": {
+          "engine": "1.5.4",
+          "version": 28174,
+          "built_at": "2026-11-05T06:26:24+00:00",
+          "freshness": "fresh"
+        },
+        "real_cli_elapsed_seconds": 18.834,
+        "all_three_sigtool_verifications_and_clamscan_validation_succeeded": true,
+        "previous_generation": {
+          "content": "d6646b922ad2ff65ffd660dc01ad5e11079189cb239deae2798f8030782fc43a",
+          "generation": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "versions": {
+            "bytecode.cvd": 339,
+            "daily.cvd": 28172,
+            "main.cvd": 63
+          }
+        },
+        "current_generation": {
+          "content": "a9075554c6da69a5376d139dacbeab793f2c2297cb6a9cd08bf314c3bd862857",
+          "generation": "3fa9105409a09cab5e5ca3a3be708a15",
+          "versions": {
+            "bytecode.cvd": 339,
+            "daily.cvd": 28174,
+            "main.cvd": 63
+          }
+        },
+        "old_generation_and_failed_stage_bytes_and_attributes_unchanged": true,
+        "provider_sync": {
+          "provider_hash": "da77fe1403166925161557d7125f379df8a89f8a5ff7ed347048a0d37ea6296f",
+          "stage": "stage-04f09e43bbc22ea0ab051d69e4aad73b",
+          "status": "synced"
+        },
+        "new_attempt": {
+          "next_attempt": 1794114753.6662009,
+          "pending": false
+        },
+        "new_not_before_japan": "2026-11-08T14:12:33.666201+09:00"
+      },
+      "resume": {
+        "after_recovery_before_update": {
+          "reused": 128,
+          "engine_starts": 0
+        },
+        "after_new_definition": {
+          "engine_counts": {
+            "scanned": 128,
+            "infected": 0,
+            "errors": 0
+          },
+          "batch": {
+            "finished": 128,
+            "pending": 0,
+            "reused": 0,
+            "grouping": {
+              "schema": 1,
+              "mode": "enabled",
+              "engine_starts": 2,
+              "committed_jobs": 2,
+              "fallback_targets": 0,
+              "active_targets": 0
+            }
+          }
+        },
+        "subsequent": {
+          "engine_counts": {
+            "scanned": 128,
+            "infected": 0,
+            "errors": 0
+          },
+          "batch": {
+            "finished": 128,
+            "pending": 0,
+            "reused": 128,
+            "grouping": {
+              "schema": 1,
+              "mode": "enabled",
+              "engine_starts": 0,
+              "committed_jobs": 0,
+              "fallback_targets": 0,
+              "active_targets": 0
+            }
+          }
+        }
+      },
+      "local_transport": {
+        "tls": false,
+        "http_requests": 10,
+        "daily_full_download_bytes": 23447610,
+        "all_requests_localhost": true
+      },
+      "private_owner_mode_guards_passed": true
+    },
+    {
+      "phase": "header",
+      "case": "https_cut",
+      "observed_at": "2026-11-07T05:14:45.505514+00:00",
+      "original_attempt": {
+        "next_attempt": 1793980737.4568112,
+        "pending": true
+      },
+      "original_not_before_japan": "2026-11-07T00:58:57.456811+09:00",
+      "original_state_matches_prior_acceptance": true,
+      "expired_pending_update": {
+        "status": "error",
+        "published": false,
+        "updater_invocations": 0
+      },
+      "owner_recovery": {
+        "status": "completed",
+        "recovered": true,
+        "acknowledged_not_before": "2026-11-06T15:58:58+00:00",
+        "attempt_after": {
+          "next_attempt": 1793980738.0,
+          "pending": false
+        },
+        "deadline_round_up_seconds": 0.543189,
+        "old_generation_pointer_provider_and_failed_stage_unchanged": true,
+        "engine_or_updater_invocations": 0
+      },
+      "provider_state_handoff": {
+        "sha256": "8448cae0703b0d13198e07bd2ff7edb31eeccc3218061dad251c1ce34e601938",
+        "same_bytes_passed_to_actual_freshclam": true
+      },
+      "successful_retry": {
+        "freshclam_invocations": 1,
+        "freshclam_exit": 0,
+        "status": "completed",
+        "update_status": "updated",
+        "published": true,
+        "signature_check": {
+          "engine": "1.5.4",
+          "version": 28174,
+          "built_at": "2026-11-05T06:26:24+00:00",
+          "freshness": "fresh"
+        },
+        "real_cli_elapsed_seconds": 35.102,
+        "all_three_sigtool_verifications_and_clamscan_validation_succeeded": true,
+        "previous_generation": {
+          "content": "d6646b922ad2ff65ffd660dc01ad5e11079189cb239deae2798f8030782fc43a",
+          "generation": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "versions": {
+            "bytecode.cvd": 339,
+            "daily.cvd": 28172,
+            "main.cvd": 63
+          }
+        },
+        "current_generation": {
+          "content": "a9075554c6da69a5376d139dacbeab793f2c2297cb6a9cd08bf314c3bd862857",
+          "generation": "62ddee311f9fed9cfce6d9684e3be45a",
+          "versions": {
+            "bytecode.cvd": 339,
+            "daily.cvd": 28174,
+            "main.cvd": 63
+          }
+        },
+        "old_generation_and_failed_stage_bytes_and_attributes_unchanged": true,
+        "provider_sync": {
+          "provider_hash": "8448cae0703b0d13198e07bd2ff7edb31eeccc3218061dad251c1ce34e601938",
+          "stage": "stage-72173f0d56097f43b09b8ab5d77d406a",
+          "status": "synced"
+        },
+        "new_attempt": {
+          "next_attempt": 1794114891.023073,
+          "pending": false
+        },
+        "new_not_before_japan": "2026-11-08T14:14:51.023073+09:00"
+      },
+      "resume": {
+        "after_recovery_before_update": {
+          "reused": 128,
+          "engine_starts": 0
+        },
+        "after_new_definition": {
+          "engine_counts": {
+            "scanned": 128,
+            "infected": 0,
+            "errors": 0
+          },
+          "batch": {
+            "finished": 128,
+            "pending": 0,
+            "reused": 0,
+            "grouping": {
+              "schema": 1,
+              "mode": "enabled",
+              "engine_starts": 2,
+              "committed_jobs": 2,
+              "fallback_targets": 0,
+              "active_targets": 0
+            }
+          }
+        },
+        "subsequent": {
+          "engine_counts": {
+            "scanned": 128,
+            "infected": 0,
+            "errors": 0
+          },
+          "batch": {
+            "finished": 128,
+            "pending": 0,
+            "reused": 128,
+            "grouping": {
+              "schema": 1,
+              "mode": "enabled",
+              "engine_starts": 0,
+              "committed_jobs": 0,
+              "fallback_targets": 0,
+              "active_targets": 0
+            }
+          }
+        }
+      },
+      "local_transport": {
+        "tls": true,
+        "http_requests": 10,
+        "daily_full_download_bytes": 23447610,
+        "all_requests_localhost": true
+      },
+      "private_owner_mode_guards_passed": true
+    },
+    {
+      "phase": "header",
+      "case": "https_stall",
+      "observed_at": "2026-11-07T05:15:47.612546+00:00",
+      "original_attempt": {
+        "next_attempt": 1793980750.2878077,
+        "pending": true
+      },
+      "original_not_before_japan": "2026-11-07T00:59:10.287808+09:00",
+      "original_state_matches_prior_acceptance": true,
+      "expired_pending_update": {
+        "status": "error",
+        "published": false,
+        "updater_invocations": 0
+      },
+      "owner_recovery": {
+        "status": "completed",
+        "recovered": true,
+        "acknowledged_not_before": "2026-11-06T15:59:11+00:00",
+        "attempt_after": {
+          "next_attempt": 1793980751.0,
+          "pending": false
+        },
+        "deadline_round_up_seconds": 0.712192,
+        "old_generation_pointer_provider_and_failed_stage_unchanged": true,
+        "engine_or_updater_invocations": 0
+      },
+      "provider_state_handoff": {
+        "sha256": "ba3b047ca47e1635198f212006abea02fc4c98353a68f60f23209b8b1fdcbf43",
+        "same_bytes_passed_to_actual_freshclam": true
+      },
+      "successful_retry": {
+        "freshclam_invocations": 1,
+        "freshclam_exit": 0,
+        "status": "completed",
+        "update_status": "updated",
+        "published": true,
+        "signature_check": {
+          "engine": "1.5.4",
+          "version": 28174,
+          "built_at": "2026-11-05T06:26:24+00:00",
+          "freshness": "fresh"
+        },
+        "real_cli_elapsed_seconds": 21.13,
+        "all_three_sigtool_verifications_and_clamscan_validation_succeeded": true,
+        "previous_generation": {
+          "content": "d6646b922ad2ff65ffd660dc01ad5e11079189cb239deae2798f8030782fc43a",
+          "generation": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "versions": {
+            "bytecode.cvd": 339,
+            "daily.cvd": 28172,
+            "main.cvd": 63
+          }
+        },
+        "current_generation": {
+          "content": "a9075554c6da69a5376d139dacbeab793f2c2297cb6a9cd08bf314c3bd862857",
+          "generation": "a6b6c13d26766e0e2dd122ea00b21833",
+          "versions": {
+            "bytecode.cvd": 339,
+            "daily.cvd": 28174,
+            "main.cvd": 63
+          }
+        },
+        "old_generation_and_failed_stage_bytes_and_attributes_unchanged": true,
+        "provider_sync": {
+          "provider_hash": "ba3b047ca47e1635198f212006abea02fc4c98353a68f60f23209b8b1fdcbf43",
+          "stage": "stage-062b5956e61f73a7b3ea852698b79923",
+          "status": "synced"
+        },
+        "new_attempt": {
+          "next_attempt": 1794114950.0643163,
+          "pending": false
+        },
+        "new_not_before_japan": "2026-11-08T14:15:50.064316+09:00"
+      },
+      "resume": {
+        "after_recovery_before_update": {
+          "reused": 128,
+          "engine_starts": 0
+        },
+        "after_new_definition": {
+          "engine_counts": {
+            "scanned": 128,
+            "infected": 0,
+            "errors": 0
+          },
+          "batch": {
+            "finished": 128,
+            "pending": 0,
+            "reused": 0,
+            "grouping": {
+              "schema": 1,
+              "mode": "enabled",
+              "engine_starts": 2,
+              "committed_jobs": 2,
+              "fallback_targets": 0,
+              "active_targets": 0
+            }
+          }
+        },
+        "subsequent": {
+          "engine_counts": {
+            "scanned": 128,
+            "infected": 0,
+            "errors": 0
+          },
+          "batch": {
+            "finished": 128,
+            "pending": 0,
+            "reused": 128,
+            "grouping": {
+              "schema": 1,
+              "mode": "enabled",
+              "engine_starts": 0,
+              "committed_jobs": 0,
+              "fallback_targets": 0,
+              "active_targets": 0
+            }
+          }
+        }
+      },
+      "local_transport": {
+        "tls": true,
+        "http_requests": 10,
+        "daily_full_download_bytes": 23447610,
+        "all_requests_localhost": true
+      },
+      "private_owner_mode_guards_passed": true
+    },
+    {
+      "phase": "body",
+      "case": "http_cut",
+      "observed_at": "2026-11-07T05:16:33.336288+00:00",
+      "original_attempt": {
+        "next_attempt": 1793980940.412988,
+        "pending": true
+      },
+      "original_not_before_japan": "2026-11-07T01:02:20.412988+09:00",
+      "original_state_matches_prior_acceptance": true,
+      "expired_pending_update": {
+        "status": "error",
+        "published": false,
+        "updater_invocations": 0
+      },
+      "owner_recovery": {
+        "status": "completed",
+        "recovered": true,
+        "acknowledged_not_before": "2026-11-06T16:02:21+00:00",
+        "attempt_after": {
+          "next_attempt": 1793980941.0,
+          "pending": false
+        },
+        "deadline_round_up_seconds": 0.587012,
+        "old_generation_pointer_provider_and_failed_stage_unchanged": true,
+        "engine_or_updater_invocations": 0
+      },
+      "provider_state_handoff": {
+        "sha256": "8fe9f383fd74e5e46f8c19173f591ecf719f20dc58976ed611c8b2676ade3340",
+        "same_bytes_passed_to_actual_freshclam": true
+      },
+      "successful_retry": {
+        "freshclam_invocations": 1,
+        "freshclam_exit": 0,
+        "status": "completed",
+        "update_status": "updated",
+        "published": true,
+        "signature_check": {
+          "engine": "1.5.4",
+          "version": 28174,
+          "built_at": "2026-11-05T06:26:24+00:00",
+          "freshness": "fresh"
+        },
+        "real_cli_elapsed_seconds": 19.716,
+        "all_three_sigtool_verifications_and_clamscan_validation_succeeded": true,
+        "previous_generation": {
+          "content": "d6646b922ad2ff65ffd660dc01ad5e11079189cb239deae2798f8030782fc43a",
+          "generation": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "versions": {
+            "bytecode.cvd": 339,
+            "daily.cvd": 28172,
+            "main.cvd": 63
+          }
+        },
+        "current_generation": {
+          "content": "a9075554c6da69a5376d139dacbeab793f2c2297cb6a9cd08bf314c3bd862857",
+          "generation": "3c9b94df82607906183e4617b37e5eae",
+          "versions": {
+            "bytecode.cvd": 339,
+            "daily.cvd": 28174,
+            "main.cvd": 63
+          }
+        },
+        "old_generation_and_failed_stage_bytes_and_attributes_unchanged": true,
+        "provider_sync": {
+          "provider_hash": "8fe9f383fd74e5e46f8c19173f591ecf719f20dc58976ed611c8b2676ade3340",
+          "stage": "stage-d43031e03d39e02e2af59b70e59c3ffc",
+          "status": "synced"
+        },
+        "new_attempt": {
+          "next_attempt": 1794114996.619963,
+          "pending": false
+        },
+        "new_not_before_japan": "2026-11-08T14:16:36.619963+09:00"
+      },
+      "resume": {
+        "after_recovery_before_update": {
+          "reused": 128,
+          "engine_starts": 0
+        },
+        "after_new_definition": {
+          "engine_counts": {
+            "scanned": 128,
+            "infected": 0,
+            "errors": 0
+          },
+          "batch": {
+            "finished": 128,
+            "pending": 0,
+            "reused": 0,
+            "grouping": {
+              "schema": 1,
+              "mode": "enabled",
+              "engine_starts": 2,
+              "committed_jobs": 2,
+              "fallback_targets": 0,
+              "active_targets": 0
+            }
+          }
+        },
+        "subsequent": {
+          "engine_counts": {
+            "scanned": 128,
+            "infected": 0,
+            "errors": 0
+          },
+          "batch": {
+            "finished": 128,
+            "pending": 0,
+            "reused": 128,
+            "grouping": {
+              "schema": 1,
+              "mode": "enabled",
+              "engine_starts": 0,
+              "committed_jobs": 0,
+              "fallback_targets": 0,
+              "active_targets": 0
+            }
+          }
+        }
+      },
+      "local_transport": {
+        "tls": false,
+        "http_requests": 10,
+        "daily_full_download_bytes": 23447610,
+        "all_requests_localhost": true
+      },
+      "private_owner_mode_guards_passed": true
+    },
+    {
+      "phase": "body",
+      "case": "https_cut",
+      "observed_at": "2026-11-07T05:17:27.026950+00:00",
+      "original_attempt": {
+        "next_attempt": 1793980952.5941224,
+        "pending": true
+      },
+      "original_not_before_japan": "2026-11-07T01:02:32.594122+09:00",
+      "original_state_matches_prior_acceptance": true,
+      "expired_pending_update": {
+        "status": "error",
+        "published": false,
+        "updater_invocations": 0
+      },
+      "owner_recovery": {
+        "status": "completed",
+        "recovered": true,
+        "acknowledged_not_before": "2026-11-06T16:02:33+00:00",
+        "attempt_after": {
+          "next_attempt": 1793980953.0,
+          "pending": false
+        },
+        "deadline_round_up_seconds": 0.405878,
+        "old_generation_pointer_provider_and_failed_stage_unchanged": true,
+        "engine_or_updater_invocations": 0
+      },
+      "provider_state_handoff": {
+        "sha256": "b46dff7a78f79015a1409d374a6d9e2a042ccd4d316180aa730cee8e465c4995",
+        "same_bytes_passed_to_actual_freshclam": true
+      },
+      "successful_retry": {
+        "freshclam_invocations": 1,
+        "freshclam_exit": 0,
+        "status": "completed",
+        "update_status": "updated",
+        "published": true,
+        "signature_check": {
+          "engine": "1.5.4",
+          "version": 28174,
+          "built_at": "2026-11-05T06:26:24+00:00",
+          "freshness": "fresh"
+        },
+        "real_cli_elapsed_seconds": 26.274,
+        "all_three_sigtool_verifications_and_clamscan_validation_succeeded": true,
+        "previous_generation": {
+          "content": "d6646b922ad2ff65ffd660dc01ad5e11079189cb239deae2798f8030782fc43a",
+          "generation": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "versions": {
+            "bytecode.cvd": 339,
+            "daily.cvd": 28172,
+            "main.cvd": 63
+          }
+        },
+        "current_generation": {
+          "content": "a9075554c6da69a5376d139dacbeab793f2c2297cb6a9cd08bf314c3bd862857",
+          "generation": "3047a6531b80fd4f7d37e521b3c81836",
+          "versions": {
+            "bytecode.cvd": 339,
+            "daily.cvd": 28174,
+            "main.cvd": 63
+          }
+        },
+        "old_generation_and_failed_stage_bytes_and_attributes_unchanged": true,
+        "provider_sync": {
+          "provider_hash": "b46dff7a78f79015a1409d374a6d9e2a042ccd4d316180aa730cee8e465c4995",
+          "stage": "stage-d482570c5ad7bda9284eae8bea99dd9b",
+          "status": "synced"
+        },
+        "new_attempt": {
+          "next_attempt": 1794115051.9357188,
+          "pending": false
+        },
+        "new_not_before_japan": "2026-11-08T14:17:31.935719+09:00"
+      },
+      "resume": {
+        "after_recovery_before_update": {
+          "reused": 128,
+          "engine_starts": 0
+        },
+        "after_new_definition": {
+          "engine_counts": {
+            "scanned": 128,
+            "infected": 0,
+            "errors": 0
+          },
+          "batch": {
+            "finished": 128,
+            "pending": 0,
+            "reused": 0,
+            "grouping": {
+              "schema": 1,
+              "mode": "enabled",
+              "engine_starts": 2,
+              "committed_jobs": 2,
+              "fallback_targets": 0,
+              "active_targets": 0
+            }
+          }
+        },
+        "subsequent": {
+          "engine_counts": {
+            "scanned": 128,
+            "infected": 0,
+            "errors": 0
+          },
+          "batch": {
+            "finished": 128,
+            "pending": 0,
+            "reused": 128,
+            "grouping": {
+              "schema": 1,
+              "mode": "enabled",
+              "engine_starts": 0,
+              "committed_jobs": 0,
+              "fallback_targets": 0,
+              "active_targets": 0
+            }
+          }
+        }
+      },
+      "local_transport": {
+        "tls": true,
+        "http_requests": 10,
+        "daily_full_download_bytes": 23447610,
+        "all_requests_localhost": true
+      },
+      "private_owner_mode_guards_passed": true
+    },
+    {
+      "phase": "body",
+      "case": "https_stall",
+      "observed_at": "2026-11-07T05:18:33.240780+00:00",
+      "original_attempt": {
+        "next_attempt": 1793980964.5070374,
+        "pending": true
+      },
+      "original_not_before_japan": "2026-11-07T01:02:44.507037+09:00",
+      "original_state_matches_prior_acceptance": true,
+      "expired_pending_update": {
+        "status": "error",
+        "published": false,
+        "updater_invocations": 0
+      },
+      "owner_recovery": {
+        "status": "completed",
+        "recovered": true,
+        "acknowledged_not_before": "2026-11-06T16:02:45+00:00",
+        "attempt_after": {
+          "next_attempt": 1793980965.0,
+          "pending": false
+        },
+        "deadline_round_up_seconds": 0.492963,
+        "old_generation_pointer_provider_and_failed_stage_unchanged": true,
+        "engine_or_updater_invocations": 0
+      },
+      "provider_state_handoff": {
+        "sha256": "4cb732884df4cb191c57375862684a14e10973bbbd697c24be2a8995f37a418c",
+        "same_bytes_passed_to_actual_freshclam": true
+      },
+      "successful_retry": {
+        "freshclam_invocations": 1,
+        "freshclam_exit": 0,
+        "status": "completed",
+        "update_status": "updated",
+        "published": true,
+        "signature_check": {
+          "engine": "1.5.4",
+          "version": 28174,
+          "built_at": "2026-11-05T06:26:24+00:00",
+          "freshness": "fresh"
+        },
+        "real_cli_elapsed_seconds": 28.004,
+        "all_three_sigtool_verifications_and_clamscan_validation_succeeded": true,
+        "previous_generation": {
+          "content": "d6646b922ad2ff65ffd660dc01ad5e11079189cb239deae2798f8030782fc43a",
+          "generation": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "versions": {
+            "bytecode.cvd": 339,
+            "daily.cvd": 28172,
+            "main.cvd": 63
+          }
+        },
+        "current_generation": {
+          "content": "a9075554c6da69a5376d139dacbeab793f2c2297cb6a9cd08bf314c3bd862857",
+          "generation": "14716c43b04106fffaa424eafa6438e2",
+          "versions": {
+            "bytecode.cvd": 339,
+            "daily.cvd": 28174,
+            "main.cvd": 63
+          }
+        },
+        "old_generation_and_failed_stage_bytes_and_attributes_unchanged": true,
+        "provider_sync": {
+          "provider_hash": "4cb732884df4cb191c57375862684a14e10973bbbd697c24be2a8995f37a418c",
+          "stage": "stage-5fd9d424da7eb8cebbbeca4d05e3f8c8",
+          "status": "synced"
+        },
+        "new_attempt": {
+          "next_attempt": 1794115117.3724887,
+          "pending": false
+        },
+        "new_not_before_japan": "2026-11-08T14:18:37.372489+09:00"
+      },
+      "resume": {
+        "after_recovery_before_update": {
+          "reused": 128,
+          "engine_starts": 0
+        },
+        "after_new_definition": {
+          "engine_counts": {
+            "scanned": 128,
+            "infected": 0,
+            "errors": 0
+          },
+          "batch": {
+            "finished": 128,
+            "pending": 0,
+            "reused": 0,
+            "grouping": {
+              "schema": 1,
+              "mode": "enabled",
+              "engine_starts": 2,
+              "committed_jobs": 2,
+              "fallback_targets": 0,
+              "active_targets": 0
+            }
+          }
+        },
+        "subsequent": {
+          "engine_counts": {
+            "scanned": 128,
+            "infected": 0,
+            "errors": 0
+          },
+          "batch": {
+            "finished": 128,
+            "pending": 0,
+            "reused": 128,
+            "grouping": {
+              "schema": 1,
+              "mode": "enabled",
+              "engine_starts": 0,
+              "committed_jobs": 0,
+              "fallback_targets": 0,
+              "active_targets": 0
+            }
+          }
+        }
+      },
+      "local_transport": {
+        "tls": true,
+        "http_requests": 10,
+        "daily_full_download_bytes": 23447610,
+        "all_requests_localhost": true
+      },
+      "private_owner_mode_guards_passed": true
+    }
+  ],
+  "summary": {
+    "case_count": 6,
+    "header_cases": 3,
+    "full_download_cases": 3,
+    "http_cases": 2,
+    "https_cases": 4,
+    "pending_guard_blocks_updates_even_after_deadline_without_owner_recovery": true,
+    "all_recoveries_without_engine_or_updater_start": true,
+    "all_saved_provider_states_passed_unchanged_to_actual_freshclam": true,
+    "actual_successful_freshclam_retries": 6,
+    "all_versions": "daily 28172 -> 28174, main 63 and bytecode 339 retained",
+    "all_signed_validation_publication_freshness_checks_passed": true,
+    "all_old_generation_and_failed_stage_bytes_and_attributes_preserved": true,
+    "each_fixture_new_definition_rescanned": 128,
+    "each_fixture_subsequently_reused": 128,
+    "each_fixture_subsequent_engine_starts": 0,
+    "each_fixture_final_counts": {
+      "scanned": 128,
+      "infected": 0,
+      "errors": 0
+    },
+    "all_waits_and_provider_journals_preserved_after_scans": true,
+    "generation_and_stage_count_per_store": 3,
+    "selected_deletions": 0,
+    "remaining_engine_processes_before_stop": 0
+  },
+  "harness_correction": {
+    "issue": "First case verifier read data.scanned instead of data.engine_counts.scanned and stopped after successful update and rescan.",
+    "resolution": "Compared actual saved JSON to documented output shape, corrected verifier, validated saved first-case update/rescan and then ran its reuse check; continuation skipped that case.",
+    "production_code_changed": false,
+    "duplicate_update_to_repair_verifier": false,
+    "duplicate_rescan_to_repair_verifier": false
+  },
+  "regressions": {
+    "command": "bdo proxy .venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
+    "python": "3.15.2",
+    "platform": "macOS",
+    "total": 62,
+    "passed": 62,
+    "skipped": 0,
+    "failures": 0,
+    "errors": 0,
+    "seconds": 8.229,
+    "includes": "owner recovery/wait preservation, cross-process generation protection, empty/incomplete generation classification and actual MCP SDK signature checks",
+    "full_suite_rerun": false,
+    "reason": "Acceptance scripts and documentation only; runtime and repository tests unchanged. Android, Windows and unrelated full-suite coverage not rerun here."
+  },
+  "preservation": {
+    "personal_folders_mounted": false,
+    "personal_files_scanned": false,
+    "os_definitions_or_host_trust_settings_changed": false,
+    "other_mac_linux_stores_or_containers_changed": false,
+    "old_stages_or_generations_deleted": false,
+    "old_waits_reset_or_shortened": false,
+    "automatic_update_design_and_installation": "remains deferred"
+  },
+  "cleanup": {
+    "fixture_container_stopped": true,
+    "fixture_container_retained": true,
+    "network_mode": "none",
+    "mounts": [],
+    "published_ports": [],
+    "old_stages_new_definitions_and_new_waits": "retained privately in the same six fixture stores"
+  },
+  "limitations": [
+    "Success was from a controlled localhost mirror serving already acquired signed CVDs; not a fresh fetch or induced fault on official infrastructure.",
+    "Actual HTTP 429/Retry-After, provider-specific cooldowns, TLS handshake/unknown-CA faults and production timeout timing remain separate.",
+    "This completes natural-expiry recovery and local successful retry only for the six previous HTTP/TLS fixtures; official unchanged confirmation remains open."
+  ],
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false,
+  "final_verification": {
+    "verified_at": "2026-11-07T05:20:10.941674+00:00",
+    "case_count": 6,
+    "remaining_engines": [],
+    "all_old_generation_and_failed_stage_attributes_unchanged": true,
+    "all_new_pointers_waits_and_provider_journals_unchanged_after_scans": true,
+    "actual_freshclam_runs": 6,
+    "sigtool_verifications": 18,
+    "clamscan_validation_runs": 6,
+    "retained_directories_per_store": 3
+  },
+  "static_checks": {
+    "acceptance_record_field_test": {
+      "command": "bdo proxy .venv-dev/bin/python -m unittest discover -s tests -p 'test_compliance.py' -k AcceptanceRecordTests -q",
+      "total": 1,
+      "passed": 1,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 0.013
+    },
+    "six_case_invariants_and_previous_state_correspondence": true,
+    "original_acceptance_fields_preserved_except_appended_follow_up": true,
+    "backlog_design_and_predecessor_links_exist": true,
+    "git_diff_check": "passed"
+  }
+}
