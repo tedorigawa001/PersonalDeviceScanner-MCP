@@ -641,7 +641,7 @@
       "body-http-seconds",
       "full-http-seconds"
     ],
-    "first": "Initial public CVD copy retained host UID 501/mode 0600 and was unreadable to UID 10001. Corrected a new public fixture file to UID 10001/0600 and reverified its signature. The failed store and 24h guard were preserved; no retry there.",
+    "first": "Initial public CVD copy retained the host user's UID/mode 0600 and was unreadable to UID 10001. Corrected a new public fixture file to UID 10001/0600 and reverified its signature. The failed store and 24h guard were preserved; no retry there.",
     "second": "An exploratory full fixture returned daily header for all database names; the observed exit-zero behavior was retested with correct per-database headers in distinct download-* stores. Exploratory store and wait retained.",
     "no_wait_reset_to_repair_fixture": true,
     "total_retained_test_stores": 10,
@@ -653,7 +653,7 @@
     }
   },
   "regressions": {
-    "command": "bdo proxy .venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
+    "command": ".venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
     "platform": "macOS",
     "python": "3.15.2",
     "total": 62,
@@ -697,7 +697,7 @@
   "push_performed_during_recording": false,
   "static_checks": {
     "acceptance_record_field_test": {
-      "command": "bdo proxy .venv-dev/bin/python -m unittest discover -s tests -p 'test_compliance.py' -k AcceptanceRecordTests -q",
+      "command": ".venv-dev/bin/python -m unittest discover -s tests -p 'test_compliance.py' -k AcceptanceRecordTests -q",
       "total": 1,
       "passed": 1,
       "failures": 0,

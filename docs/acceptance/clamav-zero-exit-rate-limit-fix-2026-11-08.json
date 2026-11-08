@@ -42,7 +42,7 @@
       "test_actual_zero_exit_child_cooldown_is_captured_and_preserved"
     ],
     "red_before_fix": {
-      "command": "bdo proxy .venv-dev/bin/python -m unittest discover -s tests -p 'test_signature_update.py' -k zero_exit -q",
+      "command": ".venv-dev/bin/python -m unittest discover -s tests -p 'test_signature_update.py' -k zero_exit -q",
       "methods_run": 4,
       "assertion_failures_including_subtests": 5,
       "errors": 0,
@@ -51,7 +51,7 @@
     },
     "after_fix_five_methods": "passed as part of the 67-test signature subset and both complete suites",
     "signature_subset": {
-      "command": "bdo proxy .venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
+      "command": ".venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
       "total": 67,
       "passed": 67,
       "skipped": 0,
@@ -73,7 +73,7 @@
   },
   "full_python_suites": {
     "3.14.10": {
-      "command": "bdo proxy .venv/bin/python -m unittest discover -s tests -v",
+      "command": ".venv/bin/python -m unittest discover -s tests -v",
       "total": 758,
       "passed": 741,
       "skipped": 17,
@@ -92,7 +92,7 @@
       "android_and_actual_mcp_sdk_included": true
     },
     "3.15.2": {
-      "command": "bdo proxy .venv-dev/bin/python -m unittest discover -s tests -v",
+      "command": ".venv-dev/bin/python -m unittest discover -s tests -v",
       "total": 758,
       "passed": 741,
       "skipped": 17,
@@ -112,7 +112,7 @@
     }
   },
   "npm": {
-    "command": "bdo proxy env npm_config_cache=<private temporary cache> PC_SCANNER_NPM_E2E=1 PC_SCANNER_NPM_EXPECT_HASHED=1 PC_SCANNER_PYTHON=<Python 3.15.2> npm test",
+    "command": "env npm_config_cache=<private temporary cache> PC_SCANNER_NPM_E2E=1 PC_SCANNER_NPM_EXPECT_HASHED=1 PC_SCANNER_PYTHON=<Python 3.15.2> npm test",
     "total": 34,
     "passed": 34,
     "skipped": 0,
@@ -145,7 +145,7 @@
   },
   "remaining": [
     "Post-fix actual freshclam 429/cooldown acceptance, including natural expiry boundaries, remains separate.",
-    "Windows-specific 17 tests and new Windows CI were not executed on this Mac; no push or CI dispatch.",
+    "Windows-specific 17 tests and Windows CI for this change were not run on this Mac.",
     "Recognition uses known English FreshClam diagnostic phrases. Changed diagnostic formats in future engines need validation."
   ],
   "commit_created_during_recording": false,

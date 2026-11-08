@@ -294,6 +294,41 @@ class UpdateTests(unittest.TestCase):
         with self.assertRaises(ProcessLookupError):
             os.kill(int(marker.read_text()), 0)
 
+    def test_nonzero_exit_provider_wait_is_still_rate_limited_and_pending(self):
+        # A provider wait notice decides the result whatever the exit code, e.g. a 403 cool-down or a failing 429.
+        self.do_update()
+        pointer = (self.root / "current.json").read_bytes()
+        cases = [(1, "WARNING: FreshClam received error code 429 from the ClamAV Content Delivery Network (CDN).\n"),
+                 (11, "WARNING: You are on cool-down until after: 2026-11-10 00:00:00\n")]
+        for code, err in cases:
+            with self.subTest(code=code):
+                self.allow_next()
+                provider = b"opaque provider wait after exit " + str(code).encode()
+                stages_before = set(self.root.glob("stage-*"))
+
+                def waiting(argv, *args, **kwargs):
+                    if not any(a.startswith("--datadir=") for a in argv):
+                        return self.engine(argv, *args, **kwargs)
+                    self.calls.append(argv)
+                    db = Path(next(a.split("=", 1)[1] for a in argv if a.startswith("--datadir=")))
+                    (db / "freshclam.dat").write_bytes(provider)
+                    return code, "", err
+
+                with patch.object(update, "MAX_GENERATIONS", 32):
+                    report = self.do_update(waiting)
+                self.assertEqual((report["status"], report["data"]["update_status"]), ("partial", "rate_limited"), report)
+                self.assertTrue(report["data"]["recovery_required"])
+                self.assertFalse(report["data"]["published"])
+                self.assertEqual((self.root / "current.json").read_bytes(), pointer)
+                self.assertTrue(update.read_json(self.root / "attempt.json")["pending"])
+                new_stages = set(self.root.glob("stage-*")) - stages_before
+                self.assertEqual(len(new_stages), 1)
+                stage = new_stages.pop()
+                self.assertEqual((stage / "db/freshclam.dat").read_bytes(), provider)
+                self.assertEqual((self.root / "provider.dat").read_bytes(), provider)
+                sync = update.read_json(self.root / "provider-sync.json")
+                self.assertEqual((sync["status"], sync["stage"]), ("synced", stage.name))
+
     def test_generation_pin_survives_publication_and_supports_parallel_readers(self):
         self.do_update()
         scanner = self.scanner()
