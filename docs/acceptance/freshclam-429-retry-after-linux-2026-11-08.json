@@ -1,0 +1,721 @@
+{
+  "date": "2026-11-08",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "native_freshclam_429_retry_after_acceptance",
+  "status": "partial: all 8 long-wait persistence and early request suppression checks passed; false completed/unchanged reporting reproduced in 4 download cases",
+  "source_commit": "7f97ced89bbb8e425463964abbbd9242fe0f0f41",
+  "runtime_source_changed": false,
+  "environment": {
+    "container": "pc-scanner-freshclam-429-acceptance",
+    "container_id": "b2ef561be7511f691b17423d9b1c5116a4947c3344aa4901b264c3634024d874",
+    "image": "sha256:20fd8ed13f28e2b3e10a54c9b2fe018c8e8d5a2549a79fc3b55fc1ea82021ada",
+    "os": "Ubuntu 24.04 aarch64",
+    "python": "3.15.2",
+    "engines": "real freshclam/sigtool/clamscan 1.5.4",
+    "uid_gid": "10001:10001",
+    "network_mode": "none",
+    "mounts": [],
+    "published_ports": [],
+    "capabilities_dropped": [
+      "ALL"
+    ],
+    "security_options": [
+      "no-new-privileges"
+    ],
+    "memory_bytes": 2684354560,
+    "cpus": 2,
+    "pids_limit": 256,
+    "runtime_module_count_verified_against_checkout": 28
+  },
+  "fixture": {
+    "fresh_new_store_per_matrix_case": true,
+    "formats": [
+      "Retry-After: 172800",
+      "Retry-After: HTTP-date 48 hours in future"
+    ],
+    "matrix": "header/body x HTTP/HTTPS x seconds/HTTP-date",
+    "headers": "Header failures respond 429 with empty body. Download failures serve each database its own actual CVD header (daily 28174, main 63, bytecode 339), then return 429 for the full daily download.",
+    "seed": "Previously signed public main 63/daily 28172/bytecode 339 embedded in existing image, reverified by real sigtool. 128 harmless synthetic input files per store.",
+    "new_header": "Previously acquired signed daily 28174 copied from a private local acceptance archive into a new fixture file, reverified with real sigtool. No original store changed.",
+    "transport_adapter": "Rewrites generated mirror to localhost and short connect/receive timeouts (3/5 sec), then execs actual freshclam --no-dns. No mocked clocks, exit codes or scanner decisions.",
+    "tls_verification": "Enabled; existing dedicated image test CA only, no host trust changes.",
+    "updater_cli_timeout_seconds": 60,
+    "public_provider_requests": 0,
+    "no_binary_provider_state_parsing": "freshclam.dat kept opaque; long native wait confirmed from real freshclam cooldown diagnostics and zero server requests, not a custom decoder.",
+    "store_private_file_mode": "0700 directories, 0600 files; owned by UID 10001"
+  },
+  "cases": [
+    {
+      "case": "http-seconds",
+      "phase": "cvd_header_response",
+      "tls": false,
+      "retry_after_format": "seconds",
+      "retry_after_header": "172800",
+      "429_response_count": 2,
+      "instructed_not_before_japan": "2026-11-10T09:28:12.618237+09:00",
+      "freshclam_invocations_in_cli": 1,
+      "freshclam_exit": 11,
+      "application_update_result": {
+        "status": "error",
+        "update_status": "failed",
+        "published": false,
+        "warnings": [
+          "Signature operation did not complete; check the private store and owner configuration. No administrator credentials were requested."
+        ]
+      },
+      "application_initial_guard": {
+        "next_attempt": 1794184092.5713928,
+        "pending": true
+      },
+      "owner_48h_acknowledgement": {
+        "status": "partial",
+        "extended_to_48h": true,
+        "attempt_after": {
+          "next_attempt": 1794270493.0,
+          "pending": true
+        },
+        "note": "Owner explicitly acknowledges all provider waits; future recovery refused and longer deadline saved"
+      },
+      "provider_sha256": "434d62dd9765a9f08f5eaf4aaf40c60c07b8cd84ebdfe17577fa97bb00c00653",
+      "provider_sync": {
+        "provider_hash": "434d62dd9765a9f08f5eaf4aaf40c60c07b8cd84ebdfe17577fa97bb00c00653",
+        "stage": "stage-0d2ee1593f17cd2578b7d098599911ce",
+        "status": "synced"
+      },
+      "native_cooldown_until_utc": "2026-11-10T00:28:12+00:00",
+      "native_cooldown_until_japan": "2026-11-10T09:28:12+09:00",
+      "after_actual_container_restart": {
+        "store_content_and_metadata_snapshot_equal": true,
+        "early_cli_update_status": "error",
+        "early_cli_update_kind": "failed",
+        "early_cli_freshclam_invocations": 0,
+        "early_cli_http_requests": 0,
+        "early_owner_recovery_status": "partial",
+        "native_probe_exit": 0,
+        "native_probe_input_provider_exact": true,
+        "native_probe_http_requests": 0,
+        "native_remaining_cooldown_seconds": 172247,
+        "source_store_unchanged_by_probe": true
+      },
+      "old_generation_and_pointer_preserved": true,
+      "failure_stage_retained": true,
+      "provider_bytes_preserved": true,
+      "resume": {
+        "engine_counts": {
+          "scanned": 128,
+          "infected": 0,
+          "errors": 0
+        },
+        "reused": 128,
+        "new_engine_starts": 0
+      },
+      "classification_acceptance": "passed wait preservation; diagnostic reports malformed short CVD header instead of 429"
+    },
+    {
+      "case": "http-http_date",
+      "phase": "cvd_header_response",
+      "tls": false,
+      "retry_after_format": "http_date",
+      "retry_after_header": "Tue, 10 Nov 2026 00:28:15 GMT",
+      "429_response_count": 2,
+      "instructed_not_before_japan": "2026-11-10T09:28:15+09:00",
+      "freshclam_invocations_in_cli": 1,
+      "freshclam_exit": 11,
+      "application_update_result": {
+        "status": "error",
+        "update_status": "failed",
+        "published": false,
+        "warnings": [
+          "Signature operation did not complete; check the private store and owner configuration. No administrator credentials were requested."
+        ]
+      },
+      "application_initial_guard": {
+        "next_attempt": 1794184106.0325246,
+        "pending": true
+      },
+      "owner_48h_acknowledgement": {
+        "status": "partial",
+        "extended_to_48h": true,
+        "attempt_after": {
+          "next_attempt": 1794270495.0,
+          "pending": true
+        },
+        "note": "Owner explicitly acknowledges all provider waits; future recovery refused and longer deadline saved"
+      },
+      "provider_sha256": "654781ddef0c48b40850b58dfc53b319059877dc0afe729c0345709c3081be13",
+      "provider_sync": {
+        "provider_hash": "654781ddef0c48b40850b58dfc53b319059877dc0afe729c0345709c3081be13",
+        "stage": "stage-e716ba6094e7577f4514cddae25565db",
+        "status": "synced"
+      },
+      "native_cooldown_until_utc": "2026-11-10T00:28:15+00:00",
+      "native_cooldown_until_japan": "2026-11-10T09:28:15+09:00",
+      "after_actual_container_restart": {
+        "store_content_and_metadata_snapshot_equal": true,
+        "early_cli_update_status": "error",
+        "early_cli_update_kind": "failed",
+        "early_cli_freshclam_invocations": 0,
+        "early_cli_http_requests": 0,
+        "early_owner_recovery_status": "partial",
+        "native_probe_exit": 0,
+        "native_probe_input_provider_exact": true,
+        "native_probe_http_requests": 0,
+        "native_remaining_cooldown_seconds": 172250,
+        "source_store_unchanged_by_probe": true
+      },
+      "old_generation_and_pointer_preserved": true,
+      "failure_stage_retained": true,
+      "provider_bytes_preserved": true,
+      "resume": {
+        "engine_counts": {
+          "scanned": 128,
+          "infected": 0,
+          "errors": 0
+        },
+        "reused": 128,
+        "new_engine_starts": 0
+      },
+      "classification_acceptance": "passed wait preservation; diagnostic reports malformed short CVD header instead of 429"
+    },
+    {
+      "case": "https-seconds",
+      "phase": "cvd_header_response",
+      "tls": true,
+      "retry_after_format": "seconds",
+      "retry_after_header": "172800",
+      "429_response_count": 2,
+      "instructed_not_before_japan": "2026-11-10T09:28:39.029746+09:00",
+      "freshclam_invocations_in_cli": 1,
+      "freshclam_exit": 11,
+      "application_update_result": {
+        "status": "error",
+        "update_status": "failed",
+        "published": false,
+        "warnings": [
+          "Signature operation did not complete; check the private store and owner configuration. No administrator credentials were requested."
+        ]
+      },
+      "application_initial_guard": {
+        "next_attempt": 1794184118.9697428,
+        "pending": true
+      },
+      "owner_48h_acknowledgement": {
+        "status": "partial",
+        "extended_to_48h": true,
+        "attempt_after": {
+          "next_attempt": 1794270520.0,
+          "pending": true
+        },
+        "note": "Owner explicitly acknowledges all provider waits; future recovery refused and longer deadline saved"
+      },
+      "provider_sha256": "25c1d11de4a59784a2e9617449a9833f0edd68b49ae3350124092c0bd010419d",
+      "provider_sync": {
+        "provider_hash": "25c1d11de4a59784a2e9617449a9833f0edd68b49ae3350124092c0bd010419d",
+        "stage": "stage-da2d904dc0f8531fd57919a320bc4279",
+        "status": "synced"
+      },
+      "native_cooldown_until_utc": "2026-11-10T00:28:39+00:00",
+      "native_cooldown_until_japan": "2026-11-10T09:28:39+09:00",
+      "after_actual_container_restart": {
+        "store_content_and_metadata_snapshot_equal": true,
+        "early_cli_update_status": "error",
+        "early_cli_update_kind": "failed",
+        "early_cli_freshclam_invocations": 0,
+        "early_cli_http_requests": 0,
+        "early_owner_recovery_status": "partial",
+        "native_probe_exit": 0,
+        "native_probe_input_provider_exact": true,
+        "native_probe_http_requests": 0,
+        "native_remaining_cooldown_seconds": 172274,
+        "source_store_unchanged_by_probe": true
+      },
+      "old_generation_and_pointer_preserved": true,
+      "failure_stage_retained": true,
+      "provider_bytes_preserved": true,
+      "resume": {
+        "engine_counts": {
+          "scanned": 128,
+          "infected": 0,
+          "errors": 0
+        },
+        "reused": 128,
+        "new_engine_starts": 0
+      },
+      "classification_acceptance": "passed wait preservation; diagnostic reports malformed short CVD header instead of 429"
+    },
+    {
+      "case": "https-http_date",
+      "phase": "cvd_header_response",
+      "tls": true,
+      "retry_after_format": "http_date",
+      "retry_after_header": "Tue, 10 Nov 2026 00:28:42 GMT",
+      "429_response_count": 2,
+      "instructed_not_before_japan": "2026-11-10T09:28:42+09:00",
+      "freshclam_invocations_in_cli": 1,
+      "freshclam_exit": 11,
+      "application_update_result": {
+        "status": "error",
+        "update_status": "failed",
+        "published": false,
+        "warnings": [
+          "Signature operation did not complete; check the private store and owner configuration. No administrator credentials were requested."
+        ]
+      },
+      "application_initial_guard": {
+        "next_attempt": 1794184131.02569,
+        "pending": true
+      },
+      "owner_48h_acknowledgement": {
+        "status": "partial",
+        "extended_to_48h": true,
+        "attempt_after": {
+          "next_attempt": 1794270522.0,
+          "pending": true
+        },
+        "note": "Owner explicitly acknowledges all provider waits; future recovery refused and longer deadline saved"
+      },
+      "provider_sha256": "8f53f794fe1d4b50262928800f7144c4fcc5afb0d6f818f75909e3e245eefaa7",
+      "provider_sync": {
+        "provider_hash": "8f53f794fe1d4b50262928800f7144c4fcc5afb0d6f818f75909e3e245eefaa7",
+        "stage": "stage-dcdf604f4706a413afdb6831ef1e8769",
+        "status": "synced"
+      },
+      "native_cooldown_until_utc": "2026-11-10T00:28:42+00:00",
+      "native_cooldown_until_japan": "2026-11-10T09:28:42+09:00",
+      "after_actual_container_restart": {
+        "store_content_and_metadata_snapshot_equal": true,
+        "early_cli_update_status": "error",
+        "early_cli_update_kind": "failed",
+        "early_cli_freshclam_invocations": 0,
+        "early_cli_http_requests": 0,
+        "early_owner_recovery_status": "partial",
+        "native_probe_exit": 0,
+        "native_probe_input_provider_exact": true,
+        "native_probe_http_requests": 0,
+        "native_remaining_cooldown_seconds": 172277,
+        "source_store_unchanged_by_probe": true
+      },
+      "old_generation_and_pointer_preserved": true,
+      "failure_stage_retained": true,
+      "provider_bytes_preserved": true,
+      "resume": {
+        "engine_counts": {
+          "scanned": 128,
+          "infected": 0,
+          "errors": 0
+        },
+        "reused": 128,
+        "new_engine_starts": 0
+      },
+      "classification_acceptance": "passed wait preservation; diagnostic reports malformed short CVD header instead of 429"
+    },
+    {
+      "case": "download-http-seconds",
+      "phase": "full_database_download",
+      "tls": false,
+      "retry_after_format": "seconds",
+      "retry_after_header": "172800",
+      "429_response_count": 3,
+      "instructed_not_before_japan": "2026-11-10T09:34:09.755652+09:00",
+      "freshclam_invocations_in_cli": 1,
+      "freshclam_exit": 0,
+      "application_update_result": {
+        "status": "completed",
+        "update_status": "unchanged",
+        "published": false,
+        "warnings": []
+      },
+      "application_initial_guard": {
+        "next_attempt": 1794184449.6900706,
+        "pending": false
+      },
+      "owner_48h_acknowledgement": {
+        "status": "error",
+        "extended_to_48h": false,
+        "attempt_after": {
+          "next_attempt": 1794184449.6900706,
+          "pending": false
+        },
+        "note": "No pending update to recover: extension unavailable after false completed/unchanged"
+      },
+      "provider_sha256": "ff890767450b383d6013fb3de7abac6eda75c9a3177e5290d88ede46b7f3a263",
+      "provider_sync": {
+        "provider_hash": "ff890767450b383d6013fb3de7abac6eda75c9a3177e5290d88ede46b7f3a263",
+        "stage": "stage-5751bd1a4be06699957097770ecbe175",
+        "status": "synced"
+      },
+      "native_cooldown_until_utc": "2026-11-10T00:34:09+00:00",
+      "native_cooldown_until_japan": "2026-11-10T09:34:09+09:00",
+      "after_actual_container_restart": {
+        "store_content_and_metadata_snapshot_equal": true,
+        "early_cli_update_status": "partial",
+        "early_cli_update_kind": "rate_limited",
+        "early_cli_freshclam_invocations": 0,
+        "early_cli_http_requests": 0,
+        "early_owner_recovery_status": "error",
+        "native_probe_exit": 0,
+        "native_probe_input_provider_exact": true,
+        "native_probe_http_requests": 0,
+        "native_remaining_cooldown_seconds": 172604,
+        "source_store_unchanged_by_probe": true
+      },
+      "old_generation_and_pointer_preserved": true,
+      "failure_stage_retained": false,
+      "provider_bytes_preserved": true,
+      "resume": {
+        "engine_counts": {
+          "scanned": 128,
+          "infected": 0,
+          "errors": 0
+        },
+        "reused": 128,
+        "new_engine_starts": 0
+      },
+      "classification_acceptance": "failed: 429 misleadingly completed/unchanged with pending cleared and stage deleted"
+    },
+    {
+      "case": "download-http-http_date",
+      "phase": "full_database_download",
+      "tls": false,
+      "retry_after_format": "http_date",
+      "retry_after_header": "Tue, 10 Nov 2026 00:34:17 GMT",
+      "429_response_count": 3,
+      "instructed_not_before_japan": "2026-11-10T09:34:17+09:00",
+      "freshclam_invocations_in_cli": 1,
+      "freshclam_exit": 0,
+      "application_update_result": {
+        "status": "completed",
+        "update_status": "unchanged",
+        "published": false,
+        "warnings": []
+      },
+      "application_initial_guard": {
+        "next_attempt": 1794184466.731557,
+        "pending": false
+      },
+      "owner_48h_acknowledgement": {
+        "status": "error",
+        "extended_to_48h": false,
+        "attempt_after": {
+          "next_attempt": 1794184466.731557,
+          "pending": false
+        },
+        "note": "No pending update to recover: extension unavailable after false completed/unchanged"
+      },
+      "provider_sha256": "a3d925934f1ea36fe38bf9015b14b4b1459bb34ea12b073cb3622b756d517e46",
+      "provider_sync": {
+        "provider_hash": "a3d925934f1ea36fe38bf9015b14b4b1459bb34ea12b073cb3622b756d517e46",
+        "stage": "stage-1db6b8e8a336ba294ad59746541225f7",
+        "status": "synced"
+      },
+      "native_cooldown_until_utc": "2026-11-10T00:34:17+00:00",
+      "native_cooldown_until_japan": "2026-11-10T09:34:17+09:00",
+      "after_actual_container_restart": {
+        "store_content_and_metadata_snapshot_equal": true,
+        "early_cli_update_status": "partial",
+        "early_cli_update_kind": "rate_limited",
+        "early_cli_freshclam_invocations": 0,
+        "early_cli_http_requests": 0,
+        "early_owner_recovery_status": "error",
+        "native_probe_exit": 0,
+        "native_probe_input_provider_exact": true,
+        "native_probe_http_requests": 0,
+        "native_remaining_cooldown_seconds": 172612,
+        "source_store_unchanged_by_probe": true
+      },
+      "old_generation_and_pointer_preserved": true,
+      "failure_stage_retained": false,
+      "provider_bytes_preserved": true,
+      "resume": {
+        "engine_counts": {
+          "scanned": 128,
+          "infected": 0,
+          "errors": 0
+        },
+        "reused": 128,
+        "new_engine_starts": 0
+      },
+      "classification_acceptance": "failed: 429 misleadingly completed/unchanged with pending cleared and stage deleted"
+    },
+    {
+      "case": "download-https-seconds",
+      "phase": "full_database_download",
+      "tls": true,
+      "retry_after_format": "seconds",
+      "retry_after_header": "172800",
+      "429_response_count": 3,
+      "instructed_not_before_japan": "2026-11-10T09:34:44.431218+09:00",
+      "freshclam_invocations_in_cli": 1,
+      "freshclam_exit": 0,
+      "application_update_result": {
+        "status": "completed",
+        "update_status": "unchanged",
+        "published": false,
+        "warnings": []
+      },
+      "application_initial_guard": {
+        "next_attempt": 1794184484.3067644,
+        "pending": false
+      },
+      "owner_48h_acknowledgement": {
+        "status": "error",
+        "extended_to_48h": false,
+        "attempt_after": {
+          "next_attempt": 1794184484.3067644,
+          "pending": false
+        },
+        "note": "No pending update to recover: extension unavailable after false completed/unchanged"
+      },
+      "provider_sha256": "b9e2086866e4e23e6f61a199a2964a623e7b94304b9b705aa4d9db3c88a4a7db",
+      "provider_sync": {
+        "provider_hash": "b9e2086866e4e23e6f61a199a2964a623e7b94304b9b705aa4d9db3c88a4a7db",
+        "stage": "stage-4edd19cbd16b9c77dbba97f22bd52d89",
+        "status": "synced"
+      },
+      "native_cooldown_until_utc": "2026-11-10T00:34:44+00:00",
+      "native_cooldown_until_japan": "2026-11-10T09:34:44+09:00",
+      "after_actual_container_restart": {
+        "store_content_and_metadata_snapshot_equal": true,
+        "early_cli_update_status": "partial",
+        "early_cli_update_kind": "rate_limited",
+        "early_cli_freshclam_invocations": 0,
+        "early_cli_http_requests": 0,
+        "early_owner_recovery_status": "error",
+        "native_probe_exit": 0,
+        "native_probe_input_provider_exact": true,
+        "native_probe_http_requests": 0,
+        "native_remaining_cooldown_seconds": 172639,
+        "source_store_unchanged_by_probe": true
+      },
+      "old_generation_and_pointer_preserved": true,
+      "failure_stage_retained": false,
+      "provider_bytes_preserved": true,
+      "resume": {
+        "engine_counts": {
+          "scanned": 128,
+          "infected": 0,
+          "errors": 0
+        },
+        "reused": 128,
+        "new_engine_starts": 0
+      },
+      "classification_acceptance": "failed: 429 misleadingly completed/unchanged with pending cleared and stage deleted"
+    },
+    {
+      "case": "download-https-http_date",
+      "phase": "full_database_download",
+      "tls": true,
+      "retry_after_format": "http_date",
+      "retry_after_header": "Tue, 10 Nov 2026 00:34:53 GMT",
+      "429_response_count": 3,
+      "instructed_not_before_japan": "2026-11-10T09:34:53+09:00",
+      "freshclam_invocations_in_cli": 1,
+      "freshclam_exit": 0,
+      "application_update_result": {
+        "status": "completed",
+        "update_status": "unchanged",
+        "published": false,
+        "warnings": []
+      },
+      "application_initial_guard": {
+        "next_attempt": 1794184501.9088151,
+        "pending": false
+      },
+      "owner_48h_acknowledgement": {
+        "status": "error",
+        "extended_to_48h": false,
+        "attempt_after": {
+          "next_attempt": 1794184501.9088151,
+          "pending": false
+        },
+        "note": "No pending update to recover: extension unavailable after false completed/unchanged"
+      },
+      "provider_sha256": "36226ece100375b33945baed9c0b840385499fbcca82df7fe3c8e91349b2a385",
+      "provider_sync": {
+        "provider_hash": "36226ece100375b33945baed9c0b840385499fbcca82df7fe3c8e91349b2a385",
+        "stage": "stage-6abf637ab26a1bb694ef508cbd68fddb",
+        "status": "synced"
+      },
+      "native_cooldown_until_utc": "2026-11-10T00:34:53+00:00",
+      "native_cooldown_until_japan": "2026-11-10T09:34:53+09:00",
+      "after_actual_container_restart": {
+        "store_content_and_metadata_snapshot_equal": true,
+        "early_cli_update_status": "partial",
+        "early_cli_update_kind": "rate_limited",
+        "early_cli_freshclam_invocations": 0,
+        "early_cli_http_requests": 0,
+        "early_owner_recovery_status": "error",
+        "native_probe_exit": 0,
+        "native_probe_input_provider_exact": true,
+        "native_probe_http_requests": 0,
+        "native_remaining_cooldown_seconds": 172648,
+        "source_store_unchanged_by_probe": true
+      },
+      "old_generation_and_pointer_preserved": true,
+      "failure_stage_retained": false,
+      "provider_bytes_preserved": true,
+      "resume": {
+        "engine_counts": {
+          "scanned": 128,
+          "infected": 0,
+          "errors": 0
+        },
+        "reused": 128,
+        "new_engine_starts": 0
+      },
+      "classification_acceptance": "failed: 429 misleadingly completed/unchanged with pending cleared and stage deleted"
+    }
+  ],
+  "summary": {
+    "matrix_case_count": 8,
+    "header_cases": 4,
+    "download_cases": 4,
+    "all_native_cooldown_times_match_48h_response_within_two_seconds": true,
+    "all_native_cooldown_remaining_over_24_hours_at_probe": true,
+    "all_native_post_restart_http_requests": 0,
+    "all_cli_early_retry_engine_starts": 0,
+    "all_cli_early_retry_http_requests": 0,
+    "owner_explicit_long_guard_extension_passed": 4,
+    "owner_long_guard_extension_unavailable_because_pending_false": 4,
+    "incorrect_completed_unchanged_results": 4,
+    "unexpected_success_cleanup_of_failure_stage": 4,
+    "all_prior_published_generation_bytes_preserved": true,
+    "definitions_published": 0,
+    "all_resumed_synthetic_counts": {
+      "scanned": 128,
+      "infected": 0,
+      "errors": 0,
+      "reused": 128,
+      "new_engine_starts": 0
+    }
+  },
+  "finding": {
+    "priority": "P2",
+    "status": "open; documented, not fixed in this acceptance",
+    "title": "Real freshclam 429/cooldown exit zero is reported as completed/unchanged",
+    "trigger": "Valid newer daily header followed by 429 Retry-After 48h; reproduced in all four corrected HTTP/HTTPS seconds/date download fixtures.",
+    "observed": "freshclam saves the 48h cooldown, warns on stderr and exits 0. Scanner validates the still-current signed databases, reports completed/unchanged with no warning, clears pending and deletes the stage. Application guard remains 24h and owner recovery refuses extension because no pending update exists.",
+    "cause": "signature_update.update run() accepts only the native exit code as success and discards successful stdout/stderr for decision-making; unchanged content is then interpreted as a successful remote check.",
+    "impact": "Users may treat an incomplete remote update check as successful. Native provider cooldown still prevents traffic in all restart probes; no bypass or early external request observed.",
+    "needed": "Distinguish a native 429/cooldown from a successful unchanged check; align report, owner wait guidance and pending/stage preservation without weakening native waits. Add regression coverage with exit 0 plus cooldown diagnostics.",
+    "not_claimed": "No production fix, official-CDN reproduction, wait shortening or 24h-to-48h boundary passage in this turn."
+  },
+  "upstream_source_review": [
+    {
+      "url": "https://github.com/Cisco-Talos/clamav/blob/clamav-1.5.4/libfreshclam/libfreshclam_internal.c#L988-L1039",
+      "observation": "Header 429 saves retry-after, then continues CVD-body parsing; empty body overwrites returned status as malformed header while the cooldown remains persisted."
+    },
+    {
+      "url": "https://github.com/Cisco-Talos/clamav/blob/clamav-1.5.4/libfreshclam/libfreshclam.c#L720-L754",
+      "observation": "The database update path handles FC_ERETRYLATER by logging the cooldown and jumping to a success return, consistent with the observed exit zero."
+    }
+  ],
+  "real_restart": {
+    "same_container_id": true,
+    "started_before": "2026-11-08T00:25:18.226887458Z",
+    "started_after": "2026-11-08T00:35:51.362376585Z",
+    "actual_stop_and_start": true,
+    "all_eight_store_snapshots_equal_after_restart": true,
+    "snapshot_fields": [
+      "SHA-256 of every regular file",
+      "type/mode",
+      "owner uid/gid",
+      "inode",
+      "size",
+      "nlink",
+      "mtime_ns",
+      "ctime_ns"
+    ]
+  },
+  "native_probe": {
+    "purpose": "Separate actual freshclam retention from the application early guard. Copy each newly generated provider.dat byte-for-byte and its old signed CVDs into a new isolated probe DB after restart; use the same loopback endpoint.",
+    "probe_count": 8,
+    "native_exit_zero_despite_waiting": 8,
+    "http_requests": 0,
+    "original_test_store_modified": false,
+    "future_expiry_not_accelerated": true
+  },
+  "test_preparation_notes": {
+    "excluded_store_count": 2,
+    "excluded_cases": [
+      "body-http-seconds",
+      "full-http-seconds"
+    ],
+    "first": "Initial public CVD copy retained host UID 501/mode 0600 and was unreadable to UID 10001. Corrected a new public fixture file to UID 10001/0600 and reverified its signature. The failed store and 24h guard were preserved; no retry there.",
+    "second": "An exploratory full fixture returned daily header for all database names; the observed exit-zero behavior was retested with correct per-database headers in distinct download-* stores. Exploratory store and wait retained.",
+    "no_wait_reset_to_repair_fixture": true,
+    "total_retained_test_stores": 10,
+    "actual_freshclam_processes_total": 18,
+    "process_breakdown": {
+      "matrix_updates": 8,
+      "post_restart_native_probes": 8,
+      "excluded_preparation_exploratory_updates": 2
+    }
+  },
+  "regressions": {
+    "command": "bdo proxy .venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
+    "platform": "macOS",
+    "python": "3.15.2",
+    "total": 62,
+    "passed": 62,
+    "skipped": 0,
+    "failures": 0,
+    "errors": 0,
+    "seconds": 6.799,
+    "includes": "Actual MCP SDK signature tools, owner recovery/wait/lease protection, incomplete-generation handling",
+    "does_not_cover_discovered_issue": "Existing passing regressions do not model the observed native exit-zero 429 behavior; new product regression is required with its eventual fix.",
+    "full_android_mcp_suite_rerun": false,
+    "reason": "Acceptance and documentation only; runtime and repository tests unchanged."
+  },
+  "preservation": {
+    "existing_mac_linux_stores_written": false,
+    "existing_containers_started_or_changed": false,
+    "os_normal_definitions_updated": false,
+    "host_trust_or_service_settings_changed": false,
+    "personal_folders_mounted_or_scanned": false,
+    "clocks_mocked_or_changed": false,
+    "waits_reset_or_shortened": false,
+    "old_published_test_generations_preserved": true,
+    "opaque_provider_states_preserved": true,
+    "automatic_update_and_OneDrive_deferrals": "unchanged"
+  },
+  "cleanup": {
+    "new_container_stopped": true,
+    "container_retained": true,
+    "network_mode": "none",
+    "mounts": [],
+    "published_ports": [],
+    "remaining_engine_processes": [],
+    "test_waits_and_evidence": "All 10 new test stores retained, including preparation waits. No original container/store used for writes."
+  },
+  "remaining": [
+    "Fix the exit-zero 429/cooldown false completed/unchanged result, pending and stage handling.",
+    "Natural passage of the 24h and 48h boundaries and post-cooldown success are not observed; retain guards until real deadlines.",
+    "Real official-provider 429, TLS handshake/unknown-CA faults and production timeout timing remain separate."
+  ],
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false,
+  "static_checks": {
+    "acceptance_record_field_test": {
+      "command": "bdo proxy .venv-dev/bin/python -m unittest discover -s tests -p 'test_compliance.py' -k AcceptanceRecordTests -q",
+      "total": 1,
+      "passed": 1,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 0.01
+    },
+    "eight_case_matrix_and_four_open_reporting_failures_verified": true,
+    "source_hashes_all_28_match_checkout": true,
+    "local_backlog_link_exists": true,
+    "unrelated_pending_documents_unchanged": true,
+    "git_diff_check": "passed"
+  },
+  "implementation_follow_up": {
+    "date": "2026-11-08",
+    "record": "clamav-zero-exit-rate-limit-fix-2026-11-08.json",
+    "status": "implementation fixed and regression verified; actual post-fix freshclam acceptance not rerun",
+    "behavior": "Known zero-exit 429/cooldown notices now yield partial/rate_limited and recovery_required=true after provider synchronization, with pending/stage retained.",
+    "verification": "5 new regressions; 67 signature tests; Python 3.14/3.15 each 741 passed and 17 Windows-only skipped out of 758; npm hash-checked install and MCP round trip 34 passed.",
+    "preservation": "Original 8-case observations, open-at-recording finding and stored waits were not rewritten or retested; all existing acceptance stores/containers left untouched."
+  }
+}
