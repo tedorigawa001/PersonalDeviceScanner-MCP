@@ -348,7 +348,7 @@
       "actual_freshclam_preflight_exit_each": 0
     },
     "regressions": {
-      "command": "bdo proxy .venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
+      "command": ".venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
       "total": 68,
       "passed": 68,
       "skipped": 0,

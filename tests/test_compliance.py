@@ -272,6 +272,43 @@ class AcceptanceRecordTests(unittest.TestCase):
                                      "use commit_created_during_recording and push_performed_during_recording")
         self.assertGreater(checked, 0)
 
+    # From this date a reader must be able to run each command in a fresh checkout, so no local shell proxy
+    # prefixes it, and a record describes only the recording, so it carries no note about pushing.
+    TEXT_SINCE = "2026-11-07"
+    LOCAL_PROXY = re.compile(r"\s*bdo(?:\s|$)")
+    PUSH_NOTE = re.compile(r"\bno push\b|\bnot pushed\b|\bwithout push|push(?:は|を)?(?:行わ|しない|なし|していない)", re.IGNORECASE)
+
+    def texts(self, value, key=""):
+        if isinstance(value, dict):
+            return [pair for k, v in value.items() for pair in self.texts(v, k)]
+        if isinstance(value, list):
+            return [pair for item in value for pair in self.texts(item, key)]
+        return [(key, value)] if isinstance(value, str) else []
+
+    def text_problems(self, record):
+        found = []
+        for key, text in self.texts(record):
+            if "command" in key and self.LOCAL_PROXY.match(text):
+                found.append(key + ": local proxy prefix")
+            if self.PUSH_NOTE.search(text):
+                found.append(key + ": push note")
+        return found
+
+    def test_new_records_hold_runnable_commands_and_no_push_notes(self):
+        sample = {"checks": [{"command": "bdo proxy .venv/bin/python -m unittest"}, {"command": ".venv/bin/python -m unittest"}],
+                  "remaining": ["Windows CI was not run; no push or CI dispatch."], "note": "pushは行わず記録した",
+                  "push_performed_during_recording": False, "url": "https://example.invalid/bdo"}
+        self.assertEqual(self.text_problems(sample), ["command: local proxy prefix", "remaining: push note", "note: push note"])
+        checked = 0
+        for path in sorted((ROOT / "docs/acceptance").glob("*.json")):
+            day = re.search(r"(\d{4}-\d{2}-\d{2})\.json$", path.name)
+            if day and day.group(1) >= self.TEXT_SINCE:
+                checked += 1
+                with self.subTest(record=path.name):
+                    self.assertEqual(self.text_problems(json.loads(path.read_text(encoding="utf-8"))), [],
+                                     "write commands without the local proxy and leave pushing out of the record")
+        self.assertGreater(checked, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
