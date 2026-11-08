@@ -1,0 +1,421 @@
+{
+  "date": "2026-11-08",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "native_freshclam_tls_handshake_ca_hostname_failure_acceptance",
+  "status": "passed: three real freshclam TLS failures reject the connection and retain old definitions, pending, stage and provider state",
+  "source_commit": "884f1335574d7b04041abcb0ebdd22ecdd46057d",
+  "runtime_source_changed": false,
+  "source_modules_hash_matched": 28,
+  "environment": {
+    "container": "pc-scanner-tls-negative-20261108-l7jjb4af",
+    "container_id": "a5a669db3a348ec7990ef782535c64b629dd04ffab35411f6e59e03bc429e87b",
+    "image": "sha256:20fd8ed13f28e2b3e10a54c9b2fe018c8e8d5a2549a79fc3b55fc1ea82021ada",
+    "os": "Ubuntu 24.04 aarch64",
+    "python": "3.15.2",
+    "engines": "real freshclam/sigtool/clamscan 1.5.4 from immutable fixture image",
+    "uid_gid": "10001:10001",
+    "network_mode": "none; loopback fixture only",
+    "mounts": [],
+    "published_ports": [],
+    "cap_drop": [
+      "ALL"
+    ],
+    "security_options": [
+      "no-new-privileges"
+    ],
+    "memory_bytes": 2684354560,
+    "cpus": 2.0,
+    "pids_limit": 256
+  },
+  "fixture": {
+    "inputs": "Eight harmless synthetic text files per case; no personal files or folders copied or mounted.",
+    "CVDs": "Previously acquired signed public main 63/daily 28172/bytecode 339, embedded in the immutable image. All three reverified by real sigtool before cases.",
+    "normal_preflight": "Each case starts real freshclam against a trusted, matching localhost HTTPS server with the same CVD versions; it exits zero and creates real freshclam.dat. Seed that case store with those exact provider bytes. Three header requests plus optional detached-signature checks; unavailable detached signatures return HTTP 404 in final fixture.",
+    "handshake_interrupted": "A loopback TCP listener receives the TLS ClientHello and closes before ServerHello; no TLS certificate or HTTP response is sent.",
+    "untrusted_ca": "A new self-signed RSA certificate has localhost/127.0.0.1 SANs and is not added to any trust store. Real freshclam rejects it with curl 60; independent OpenSSL verification yields error 18 (self-signed certificate).",
+    "hostname_mismatch": "Serve the same image-trusted certificate that passes localhost preflight, but address it as 127.0.0.2. Certificate SANs are localhost and 127.0.0.1. Real freshclam reports curl 60; independent OpenSSL verification yields error 64 (IP address mismatch).",
+    "verification_enabled": true,
+    "test_CA_sha256": "f4ff8c1a77588307525d2810272c6dac5732785e8ee0953e0db35dafc1d5fd62",
+    "trust_store_change": "none; use only the existing test CA inside the immutable image; do not add the untrusted certificate",
+    "adapter": "Owner-approved test executable rewrites only generated mirror to loopback HTTPS and connect/receive timeouts to 3/5 seconds, then execs /usr/bin/freshclam --no-dns. No disabled TLS flags, exit/output mocks, or application decision changes.",
+    "updater_deadline_seconds": 60,
+    "public_network_requests": 0,
+    "server_HTTP_requests_during_failure_cases": 0,
+    "native_provider_binary_parsed": false
+  },
+  "observations": [
+    {
+      "case": "handshake_interrupted",
+      "native_freshclam_exit": 11,
+      "cli_exit": 2,
+      "elapsed_seconds": 0.85974,
+      "result": {
+        "schema_version": 1,
+        "source": "clamav",
+        "status": "error",
+        "observed_at": "2026-11-08T11:42:58.499199+00:00",
+        "findings": [],
+        "warnings": [
+          "Signature operation did not complete; check the private store and owner configuration. No administrator credentials were requested."
+        ],
+        "data": {
+          "update_status": "failed",
+          "published": false,
+          "previous_preserved": true,
+          "resume_recheck_required": false,
+          "progress": {
+            "stage": "error",
+            "finished": null,
+            "pending": null,
+            "reused": null,
+            "checkpoint": "not_applicable",
+            "saved_parts": null,
+            "elapsed_seconds": 0.374
+          }
+        }
+      },
+      "old_pointer_and_generation_attributes_unchanged": true,
+      "old_versions": {
+        "main.cvd": 63,
+        "daily.cvd": 28172,
+        "bytecode.cvd": 339
+      },
+      "pending": {
+        "next_attempt": 1794224578.2472398,
+        "pending": true
+      },
+      "minimum_not_before_japan": "2026-11-09T20:42:58.247240+09:00",
+      "stage": "stage-4cc3258968608866359febfeecd9d1b9",
+      "provider_input_sha256": "6430f8a8af14e5763a02bc832261076d0573eba9691451484f15e815756c1f4c",
+      "provider_final_sha256": "6430f8a8af14e5763a02bc832261076d0573eba9691451484f15e815756c1f4c",
+      "provider_bytes_unchanged": true,
+      "provider_sync_status": "synced",
+      "canonical_provider_matches_stage_and_journal": true,
+      "staged_CVDs_match_old_signed_CVDs": true,
+      "candidate_validation_publication_or_success_cleanup": false,
+      "early_retry_new_engine_processes": 0,
+      "stage_inventory": {
+        "deletable": false,
+        "reason": "pending_recovery"
+      },
+      "old_definition_resume": {
+        "reused": 8,
+        "engine_starts": 0
+      },
+      "server_events": [
+        {
+          "client_hello_received": true,
+          "received_bytes": 517,
+          "http_request": false
+        },
+        {
+          "client_hello_received": true,
+          "received_bytes": 517,
+          "http_request": false
+        }
+      ],
+      "trusted_native_preflight": {
+        "exit": 0,
+        "https_header_requests": 3,
+        "provider_state_created_by_real_freshclam": true
+      },
+      "independent_certificate_check": null,
+      "permissions_verified": "UID/GID 10001:10001, directories 0700, files 0600"
+    },
+    {
+      "case": "untrusted_ca",
+      "native_freshclam_exit": 11,
+      "cli_exit": 2,
+      "elapsed_seconds": 0.62319,
+      "result": {
+        "schema_version": 1,
+        "source": "clamav",
+        "status": "error",
+        "observed_at": "2026-11-08T11:44:13.868232+00:00",
+        "findings": [],
+        "warnings": [
+          "Signature operation did not complete; check the private store and owner configuration. No administrator credentials were requested."
+        ],
+        "data": {
+          "update_status": "failed",
+          "published": false,
+          "previous_preserved": true,
+          "resume_recheck_required": false,
+          "progress": {
+            "stage": "error",
+            "finished": null,
+            "pending": null,
+            "reused": null,
+            "checkpoint": "not_applicable",
+            "saved_parts": null,
+            "elapsed_seconds": 0.243
+          }
+        }
+      },
+      "old_pointer_and_generation_attributes_unchanged": true,
+      "old_versions": {
+        "main.cvd": 63,
+        "daily.cvd": 28172,
+        "bytecode.cvd": 339
+      },
+      "pending": {
+        "next_attempt": 1794224653.731423,
+        "pending": true
+      },
+      "minimum_not_before_japan": "2026-11-09T20:44:13.731423+09:00",
+      "stage": "stage-2d8f69142a270732605455e3b45a174d",
+      "provider_input_sha256": "5bf1929fe75deb940361a2cd9d13a2bb6b8eb269287ba88459f4f645bc69699d",
+      "provider_final_sha256": "5bf1929fe75deb940361a2cd9d13a2bb6b8eb269287ba88459f4f645bc69699d",
+      "provider_bytes_unchanged": true,
+      "provider_sync_status": "synced",
+      "canonical_provider_matches_stage_and_journal": true,
+      "staged_CVDs_match_old_signed_CVDs": true,
+      "candidate_validation_publication_or_success_cleanup": false,
+      "early_retry_new_engine_processes": 0,
+      "stage_inventory": {
+        "deletable": false,
+        "reason": "pending_recovery"
+      },
+      "old_definition_resume": {
+        "reused": 8,
+        "engine_starts": 0
+      },
+      "server_events": [
+        {
+          "tls_rejected_before_http": true,
+          "ssl_error": "TLSV1_ALERT_UNKNOWN_CA"
+        },
+        {
+          "tls_rejected_before_http": true,
+          "ssl_error": "TLSV1_ALERT_UNKNOWN_CA"
+        },
+        {
+          "tls_rejected_before_http": true,
+          "ssl_error": "TLSV1_ALERT_UNKNOWN_CA"
+        }
+      ],
+      "trusted_native_preflight": {
+        "exit": 0,
+        "https_header_requests": 3,
+        "provider_state_created_by_real_freshclam": true
+      },
+      "independent_certificate_check": {
+        "exit": 2,
+        "expected_verify_code": 18
+      },
+      "permissions_verified": "UID/GID 10001:10001, directories 0700, files 0600"
+    },
+    {
+      "case": "hostname_mismatch",
+      "native_freshclam_exit": 11,
+      "cli_exit": 2,
+      "elapsed_seconds": 1.748786,
+      "result": {
+        "schema_version": 1,
+        "source": "clamav",
+        "status": "error",
+        "observed_at": "2026-11-08T11:45:22.118114+00:00",
+        "findings": [],
+        "warnings": [
+          "Signature operation did not complete; check the private store and owner configuration. No administrator credentials were requested."
+        ],
+        "data": {
+          "update_status": "failed",
+          "published": false,
+          "previous_preserved": true,
+          "resume_recheck_required": false,
+          "progress": {
+            "stage": "error",
+            "finished": null,
+            "pending": null,
+            "reused": null,
+            "checkpoint": "not_applicable",
+            "saved_parts": null,
+            "elapsed_seconds": 1.406
+          }
+        }
+      },
+      "old_pointer_and_generation_attributes_unchanged": true,
+      "old_versions": {
+        "main.cvd": 63,
+        "daily.cvd": 28172,
+        "bytecode.cvd": 339
+      },
+      "pending": {
+        "next_attempt": 1794224720.802333,
+        "pending": true
+      },
+      "minimum_not_before_japan": "2026-11-09T20:45:20.802333+09:00",
+      "stage": "stage-da52823aaa829f07b24302a988438b69",
+      "provider_input_sha256": "f9f183ccf12ec1891ab37880e2ddd684d47f61d9ac875e212eb91d4c5b16545f",
+      "provider_final_sha256": "f9f183ccf12ec1891ab37880e2ddd684d47f61d9ac875e212eb91d4c5b16545f",
+      "provider_bytes_unchanged": true,
+      "provider_sync_status": "synced",
+      "canonical_provider_matches_stage_and_journal": true,
+      "staged_CVDs_match_old_signed_CVDs": true,
+      "candidate_validation_publication_or_success_cleanup": false,
+      "early_retry_new_engine_processes": 0,
+      "stage_inventory": {
+        "deletable": false,
+        "reason": "pending_recovery"
+      },
+      "old_definition_resume": {
+        "reused": 8,
+        "engine_starts": 0
+      },
+      "server_events": [],
+      "trusted_native_preflight": {
+        "exit": 0,
+        "https_header_requests": 3,
+        "provider_state_created_by_real_freshclam": true
+      },
+      "independent_certificate_check": {
+        "exit": 2,
+        "expected_verify_code": 64
+      },
+      "permissions_verified": "UID/GID 10001:10001, directories 0700, files 0600"
+    }
+  ],
+  "summary": {
+    "accepted_cases": 3,
+    "native_exit_11": 3,
+    "CLI_error_failed_exit_2": 3,
+    "false_completed_or_unchanged": 0,
+    "definitions_published": 0,
+    "pending_retained": 3,
+    "stages_retained": 3,
+    "provider_bytes_unchanged": 3,
+    "provider_sync_synced": 3,
+    "early_retry_new_engine_processes": 0,
+    "each_resume_reused": 8,
+    "each_resume_engine_starts": 0,
+    "update_locks_available": 3,
+    "remaining_engine_processes": []
+  },
+  "restart": {
+    "actual_stop_start_of_only_new_container": true,
+    "all_three_store_snapshots_equal_before_after": true,
+    "fields": [
+      "file SHA-256",
+      "mode/type",
+      "uid/gid",
+      "nlink",
+      "inode",
+      "size",
+      "mtime_ns",
+      "ctime_ns"
+    ],
+    "atime_compared": false,
+    "pending_guards_not_shortened_or_reset": true,
+    "excluded_native_failure_store_also_unchanged": true
+  },
+  "verification": {
+    "independent_final_checked_at_utc": "2026-11-08T11:46:04.415752+00:00",
+    "checks": [
+      {
+        "case": "handshake_interrupted",
+        "native_exit": 11,
+        "pending_and_guard_unchanged": true,
+        "snapshot_unchanged": true,
+        "provider_matches_stage_and_journal": true,
+        "old_pointer_and_generation_unchanged": true,
+        "update_lock_available": true,
+        "private_permissions_verified": true
+      },
+      {
+        "case": "untrusted_ca",
+        "native_exit": 11,
+        "pending_and_guard_unchanged": true,
+        "snapshot_unchanged": true,
+        "provider_matches_stage_and_journal": true,
+        "old_pointer_and_generation_unchanged": true,
+        "update_lock_available": true,
+        "private_permissions_verified": true
+      },
+      {
+        "case": "hostname_mismatch",
+        "native_exit": 11,
+        "pending_and_guard_unchanged": true,
+        "snapshot_unchanged": true,
+        "provider_matches_stage_and_journal": true,
+        "old_pointer_and_generation_unchanged": true,
+        "update_lock_available": true,
+        "private_permissions_verified": true
+      }
+    ],
+    "matching_trusted_certificate_control": {
+      "openssl_exit": 0,
+      "actual_freshclam_preflight_exit_each": 0
+    },
+    "regressions": {
+      "command": "bdo proxy .venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
+      "total": 68,
+      "passed": 68,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 13.232,
+      "includes": "actual MCP SDK signature tools, updater wait/recovery and maintenance regressions"
+    },
+    "full_suite_rerun": false,
+    "reason": "Runtime/test sources unchanged; native acceptance plus documentation only. Android/full suite and npm were not rerun in this task.",
+    "static_checks": {
+      "record_field_test": {
+        "total": 1,
+        "passed": 1,
+        "failures": 0,
+        "errors": 0,
+        "seconds": 0.015
+      },
+      "three_case_result_state_scope_invariants": true,
+      "backlog_link_resolves": true,
+      "git_diff_check": "passed"
+    }
+  },
+  "setup_exclusions": [
+    {
+      "name": "setup-excluded-request-count",
+      "reason": "Harness initially assumed exactly three requests; real freshclam additionally checks detached signatures. Native successful setup only; no application update or pending created."
+    },
+    {
+      "name": "setup-excluded-server-address",
+      "reason": "Raw TCP test listener exposes server_address rather than HTTP server_port; corrected harness before application update. Seed store retained; no pending created."
+    },
+    {
+      "name": "excluded-diagnostic-string",
+      "reason": "First untrusted-CA application attempt correctly failed with native exit 11 and curl 60, but harness expected a more specific diagnostic string. Excluded from the three accepted cases. Its separate old generation, pending, stage and provider state are retained and were independently checked across restart."
+    },
+    {
+      "name": "setup-excluded-python-strict-validator",
+      "reason": "Python 3.15 supplemental verification rejected the image-trusted leaf for Missing Authority Key Identifier (code 85) before checking its name. Native freshclam localhost preflight succeeded. Supplemental final discrimination uses OpenSSL CA/name verification without disabling certificate checks. No application update or pending was created in this setup."
+    }
+  ],
+  "preservation": {
+    "existing_stores_accessed_or_changed": false,
+    "existing_48_hour_waits_accessed_or_changed": false,
+    "prior_acceptance_containers_started_or_changed": false,
+    "host_certificate_settings_changed": false,
+    "OS_normal_definitions_changed": false,
+    "system_time_or_waits_shortened": false,
+    "automatic_updates_or_OneDrive_deferrals_changed": false
+  },
+  "cleanup": {
+    "new_container_stopped": true,
+    "retained": true,
+    "network": "none",
+    "mounts": [],
+    "ports": [],
+    "pending_stores_retained": 4,
+    "note": "Three accepted cases plus one excluded diagnostic-string attempt retain their own 24h minimum guards, stages and provider state. No recovery/reset/deletion attempted. Raw outputs and before/after snapshots remain in the new container and private local evidence folder."
+  },
+  "limitations": [
+    "Controlled localhost faults, not an induced official-CDN TLS fault or a new official download.",
+    "ClientHello interruption covers a handshake failure. Previously accepted TLS response/body interruptions remain separate evidence.",
+    "Real freshclam reports common curl 60 for both certificate cases; CA versus name discrimination is additionally supported by fixture construction, trusted native preflight and independent OpenSSL checks.",
+    "No HTTP request was handled during the failure cases; hostname case does not record a failed server handshake event because the client can reject the name after the cryptographic handshake.",
+    "Natural expiry, owner recovery and successful retry of these newly retained 24h guards have not been observed. Existing 48h waits are untouched.",
+    "Accelerated fixture timeouts do not establish production-default timeout performance, Windows behavior, other engine versions, Android or full-suite results."
+  ],
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false
+}
