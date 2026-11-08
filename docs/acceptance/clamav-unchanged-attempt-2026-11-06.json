@@ -1,0 +1,294 @@
+{
+  "date": "2026-11-06",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "real_freshclam_unchanged_acceptance_attempt",
+  "status": "both single attempts updated to newer definitions; official unchanged path remains unconfirmed",
+  "source_commit": "23835698f0c361e28f8a5378b63f84a6a0e3e110",
+  "runtime_source_changed": false,
+  "purpose": "Try real owner CLI update after natural wait expiry; record actual provider outcome without forcing unchanged or resetting wait state",
+  "matrix": [
+    {
+      "platform": "macOS arm64",
+      "python": "3.15.2",
+      "before_attempt": {
+        "next_attempt": 1793701346.30438,
+        "pending": false
+      },
+      "old_versions": {
+        "bytecode.cvd": 339,
+        "daily.cvd": 28172,
+        "main.cvd": 63
+      },
+      "new_versions": {
+        "bytecode.cvd": 339,
+        "daily.cvd": 28174,
+        "main.cvd": 63
+      },
+      "update": {
+        "schema_version": 1,
+        "source": "clamav",
+        "status": "completed",
+        "observed_at": "2026-11-05T15:42:59.733716+00:00",
+        "findings": [],
+        "warnings": [],
+        "data": {
+          "update_status": "updated",
+          "published": true,
+          "previous_preserved": true,
+          "resume_recheck_required": true,
+          "signature_check": {
+            "engine": "1.5.4",
+            "version": 28174,
+            "built_at": "2026-11-05T06:26:24+00:00",
+            "freshness": "fresh"
+          },
+          "next_attempt_at": 1793979768.138112,
+          "cancellation_requested_after_publication": false,
+          "progress": {
+            "stage": "completed",
+            "finished": null,
+            "pending": null,
+            "reused": null,
+            "checkpoint": "not_applicable",
+            "saved_parts": null,
+            "elapsed_seconds": 11.645
+          }
+        }
+      },
+      "unchanged_observed": false,
+      "post_update_resume": {
+        "status": "completed",
+        "counts": {
+          "scanned": 128,
+          "infected": 0,
+          "errors": 0
+        },
+        "batch": {
+          "finished": 128,
+          "pending": 0,
+          "reused": 0,
+          "grouping": {
+            "schema": 1,
+            "mode": "enabled",
+            "engine_starts": 2,
+            "committed_jobs": 2,
+            "fallback_targets": 0,
+            "active_targets": 0
+          }
+        }
+      },
+      "subsequent_reuse": {
+        "status": "completed",
+        "counts": {
+          "scanned": 128,
+          "infected": 0,
+          "errors": 0
+        },
+        "batch": {
+          "finished": 128,
+          "pending": 0,
+          "reused": 128,
+          "grouping": {
+            "schema": 1,
+            "mode": "enabled",
+            "engine_starts": 0,
+            "committed_jobs": 0,
+            "fallback_targets": 0,
+            "active_targets": 0
+          }
+        }
+      },
+      "freshness": {
+        "engine": "1.5.4",
+        "version": 28174,
+        "built_at": "2026-11-05T06:26:24+00:00",
+        "age_days": 0.4,
+        "max_age_days": 7,
+        "freshness": "fresh",
+        "checked_at": "2026-11-05T15:43:11.663747+00:00",
+        "update_performed": false,
+        "update_steps": [
+          "The owner may explicitly run CLI update-clamav-signatures with the enabled private-store configuration. No administrator password is used and MCP cannot update definitions.",
+          "Recheck freshness after updating; resume re-evaluates results when definition contents change."
+        ],
+        "update_mode": "private_owner_cli"
+      },
+      "provider_sync": {
+        "provider_hash": "c108d679b928022f555e2973272ca3cfdfaf8d20bbbc4d886d36f78db4691cec",
+        "stage": "stage-4876bd180e0f1357260e43e0dcdeb25f",
+        "status": "synced"
+      },
+      "old_generation_bytes_preserved": true,
+      "freshclam_calls": 1,
+      "next_attempt_jst_rounded_up": "2026-11-07T00:42:49+09:00",
+      "generation_capacity": "4 of 4; three retained generation directories before update plus one new published generation. Mac directory count independently confirmed 4. No deletion performed."
+    },
+    {
+      "platform": "Linux aarch64",
+      "python": "3.12.3",
+      "before_attempt": {
+        "next_attempt": 1793720442.095563,
+        "pending": false
+      },
+      "old_versions": {
+        "bytecode.cvd": 339,
+        "daily.cvd": 28172,
+        "main.cvd": 63
+      },
+      "new_versions": {
+        "bytecode.cvd": 339,
+        "daily.cvd": 28174,
+        "main.cvd": 63
+      },
+      "update": {
+        "schema_version": 1,
+        "source": "clamav",
+        "status": "completed",
+        "observed_at": "2026-11-05T15:41:23.265415+00:00",
+        "findings": [],
+        "warnings": [],
+        "data": {
+          "update_status": "updated",
+          "published": true,
+          "previous_preserved": true,
+          "resume_recheck_required": true,
+          "signature_check": {
+            "engine": "1.5.4",
+            "version": 28174,
+            "built_at": "2026-11-05T06:26:24+00:00",
+            "freshness": "fresh"
+          },
+          "next_attempt_at": 1793979673.9253254,
+          "cancellation_requested_after_publication": false,
+          "progress": {
+            "stage": "completed",
+            "finished": null,
+            "pending": null,
+            "reused": null,
+            "checkpoint": "not_applicable",
+            "saved_parts": null,
+            "elapsed_seconds": 9.378
+          }
+        }
+      },
+      "unchanged_observed": false,
+      "post_update_resume": {
+        "status": "completed",
+        "counts": {
+          "scanned": 128,
+          "infected": 0,
+          "errors": 0
+        },
+        "batch": {
+          "finished": 128,
+          "pending": 0,
+          "reused": 0,
+          "grouping": {
+            "schema": 1,
+            "mode": "enabled",
+            "engine_starts": 2,
+            "committed_jobs": 2,
+            "fallback_targets": 0,
+            "active_targets": 0
+          }
+        }
+      },
+      "subsequent_reuse": {
+        "status": "completed",
+        "counts": {
+          "scanned": 128,
+          "infected": 0,
+          "errors": 0
+        },
+        "batch": {
+          "finished": 128,
+          "pending": 0,
+          "reused": 128,
+          "grouping": {
+            "schema": 1,
+            "mode": "enabled",
+            "engine_starts": 0,
+            "committed_jobs": 0,
+            "fallback_targets": 0,
+            "active_targets": 0
+          }
+        }
+      },
+      "freshness": {
+        "engine": "1.5.4",
+        "version": 28174,
+        "built_at": "2026-11-05T06:26:24+00:00",
+        "age_days": 0.4,
+        "max_age_days": 7,
+        "freshness": "fresh",
+        "checked_at": "2026-11-05T15:41:33.227206+00:00",
+        "update_performed": false,
+        "update_steps": [
+          "The owner may explicitly run CLI update-clamav-signatures with the enabled private-store configuration. No administrator password is used and MCP cannot update definitions.",
+          "Recheck freshness after updating; resume re-evaluates results when definition contents change."
+        ],
+        "update_mode": "private_owner_cli"
+      },
+      "provider_sync": {
+        "provider_hash": "0b8862757f0473a96d6e61318e1961e289575a4ecde5f45113d74358a21e4114",
+        "stage": "stage-a2811ab4b9383a7d279b9e34d046f019",
+        "status": "synced"
+      },
+      "old_generation_bytes_preserved": true,
+      "freshclam_calls": 1,
+      "next_attempt_jst_rounded_up": "2026-11-07T00:41:14+09:00",
+      "generation_capacity": "4 of 4; three retained generation directories before update plus one new published generation. Mac directory count independently confirmed 4. No deletion performed."
+    }
+  ],
+  "inputs": "128 harmless synthetic files per environment; no personal files",
+  "mac_setup_note": "Retained store existed but its former scanner.toml was absent. First local preparation stopped before freshclam because config was missing; new private synthetic config/root/history created separately. A new batch checkpoint was then established before resume. No deleted prior config was restored or wait state reset.",
+  "linux_environment": "Previously retained Ubuntu 24.04 aarch64 container, Python 3.12.3, real ClamAV 1.5.4; committed source exported to a separate follow-up folder",
+  "mac_environment": "This Mac, Python 3.15.2, real installed ClamAV 1.5.4; retained private signature store",
+  "verification": {
+    "reused_before_each_update": 128,
+    "reused_immediately_after_update": 0,
+    "engine_starts_after_update": 2,
+    "subsequent_reused": 128,
+    "subsequent_engine_starts": 0,
+    "each_final_count": {
+      "scanned": 128,
+      "infected": 0,
+      "errors": 0
+    },
+    "regressions": {
+      "total": 61,
+      "passed": 61,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 6.513
+    },
+    "full_suite_rerun": false,
+    "reason": "No implementation changes; native acceptance documentation only",
+    "static_checks": [
+      "Acceptance JSON and links",
+      "git diff --check"
+    ]
+  },
+  "preservation": {
+    "real_wait_or_clock_reset": false,
+    "updates_per_store": 1,
+    "admin_passwords_handled": false,
+    "os_normal_definitions_written": false,
+    "os_automatic_update_setup": "deferred at owner request; existing audit documentation preserved",
+    "separate_recovery_container": "not started/execed/modified",
+    "linux_personal_mounts": false
+  },
+  "cleanup": {
+    "linux_update_container": "network disconnected and stopped; retained with new wait and definitions",
+    "mac_synthetic_config_and_evidence": "retained privately",
+    "old_generations_deleted": false
+  },
+  "remaining": [
+    "Actual official unchanged response after a future natural interval; cannot claim from updated results or simulated same-content fixtures",
+    "Both stores now at generation capacity 4; inspect owner CLI inventory and obtain/select appropriate cleanup before another actual update attempt",
+    "No early retry, guard bypass or artificial provider response used to obtain unchanged"
+  ],
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false
+}

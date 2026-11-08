@@ -1,0 +1,220 @@
+{
+  "date": "2026-11-05",
+  "kind": "macos_clamav_os_autoupdate_read_only_audit",
+  "status": "inspection completed; automatic update activation and recent automated success not confirmed",
+  "source_commit": "23835698f0c361e28f8a5378b63f84a6a0e3e110",
+  "checked_at_utc": "2026-11-05T14:33:41.617541+00:00",
+  "scope": "Read-only inspection of installed Mac ClamAV, standard launchd locations/domains, current-user cron, package receipts, engine processes and normal definition freshness. No freshclam update executed.",
+  "installed": {
+    "engine": "ClamAV 1.5.4",
+    "binary": "/usr/local/clamav/bin/clamscan",
+    "freshclam": "/usr/local/clamav/bin/freshclam",
+    "config": "/usr/local/clamav/etc/freshclam.conf",
+    "package_receipts": [
+      "com.cisco.ClamAV.programs",
+      "com.cisco.ClamAV.libraries",
+      "com.cisco.ClamAV.documentation"
+    ],
+    "scheduler_files_in_receipts": 0
+  },
+  "effective_configuration": {
+    "active_file_directives": {
+      "DatabaseMirror": "database.clamav.net"
+    },
+    "compiled_or_default_database_directory": "/usr/local/clamav/share/clamav",
+    "database_owner_setting": "clamav",
+    "owner_name_resolution": {
+      "clamav": "_clamav",
+      "_clamav": "_clamav",
+      "uid": 82,
+      "gid": 82
+    },
+    "database_directory_mode": "0755",
+    "database_file_modes": "0644",
+    "directory_and_files_owned_by": "_clamav",
+    "checks_per_day": 12,
+    "checks_meaning": "Daemon-mode check frequency, every two hours by default; setting does not itself register/start a scheduler",
+    "persistent_update_log": "disabled",
+    "pid_file": "disabled",
+    "evidence": "installed clamconf output, installed freshclam help and distributed sample config comments"
+  },
+  "scheduling": {
+    "matching_plists": 0,
+    "plist_locations": [
+      "/Library/LaunchDaemons",
+      "/Library/LaunchAgents",
+      "current-user ~/Library/LaunchAgents"
+    ],
+    "matching_loaded_jobs_system_domain": 0,
+    "matching_loaded_jobs_current_user_gui_domain": 0,
+    "matching_current_user_launchctl_list": 0,
+    "current_user_crontab": "none",
+    "etc_crontab": "absent",
+    "etc_cron_d": "absent",
+    "etc_periodic_matching_scripts": 0,
+    "running_freshclam_clamd_clamscan": 0,
+    "scope_note": "Matching names or program arguments containing clamav/freshclam/clamscan/clamd; indirect custom wrappers and other accounts are not exhaustively covered"
+  },
+  "execution_history": {
+    "persistent_freshclam_log": "UpdateLogFile disabled; no ClamAV-named logs found in inspected standard locations",
+    "log_locations": [
+      "/var/log/clamav",
+      "/usr/local/clamav/var/log",
+      "/usr/local/var/log"
+    ],
+    "unified_log_query": "process == \"freshclam\", last 7 days",
+    "unified_log_matching_entries": 0,
+    "last_automated_success": null,
+    "last_automated_failure": null,
+    "prior_positive_evidence": "2026-11-01 owner-reported manual update followed by independent version/freshness confirmation; not an automatic-update log",
+    "prior_record": "clamav-definition-update-downloads-rescan-2026-11-01.json",
+    "daily_cld_filesystem_mtime_jst": "2026-11-01T10:12:29.964712+09:00",
+    "mtime_limit": "File modification time does not establish freshclam execution or automatic-update success time"
+  },
+  "scanner_alignment": {
+    "probe": "temporary owner configuration with explicit installed clamscan, no database override, private updates disabled, history disabled",
+    "production_scanner_toml_in_repository_root": "not found; scanner-test.toml also absent",
+    "freshclam_effective_directory": "/usr/local/clamav/share/clamav",
+    "clamscan_compiled_directory": "/usr/local/clamav/share/clamav",
+    "directories_match": true,
+    "cli_exit": 0,
+    "cli_signature_check": {
+      "engine": "1.5.4",
+      "version": 28170,
+      "built_at": "2026-10-31T06:24:42+00:00",
+      "age_days": 5.4,
+      "max_age_days": 7,
+      "freshness": "fresh",
+      "checked_at": "2026-11-05T14:31:41.927188+00:00",
+      "update_performed": false,
+      "update_steps": [
+        "Use the owner's configured official freshclam update service, or run freshclam with the owner-approved configuration and permissions for the database clamscan actually uses.",
+        "If permission is denied, ask the administrator to update it; do not change database ownership or permissions automatically. No update is run by this check.",
+        "After updating, run CLI check-clamav-signatures or MCP check_clamav_signatures again. Old ClamAV stderr warnings can prevent batch result reuse until definitions are updated."
+      ],
+      "update_mode": "os_managed"
+    },
+    "normal_os_daily_version": 28170,
+    "latest_version_observed_in_separate_linux_acceptance": 28174,
+    "comparison": "normal OS definitions lag the separately verified official version; age-based fresh at 7 days does not establish latest available version",
+    "private_store_limit": "Dedicated private generation configurations use their own stores; OS freshclam does not update those stores"
+  },
+  "limitations": [
+    "Root cron spool /usr/lib/cron/tabs could not be read without administrator rights; no password or sudo used",
+    "Other users, nonstandard schedulers, MDM and indirectly named wrapper scripts were not exhaustively inspected",
+    "No production scanner config beyond repository-root presence check; directory agreement applies to tested standard/default configuration",
+    "No reliable automatic success/failure timestamp available from the observed logs; absence of log entries does not prove no prior execution"
+  ],
+  "preservation": {
+    "config_and_all_normal_database_files_unchanged_across_repeat_read_only_check": true,
+    "compared_fields": [
+      "SHA-256",
+      "size",
+      "mode",
+      "uid/gid",
+      "inode",
+      "mtime_ns",
+      "ctime_ns"
+    ],
+    "atime_compared": false,
+    "file_snapshots": {
+      "/usr/local/clamav/etc/freshclam.conf": {
+        "sha256": "a1e1c08b8da3f38653f9491ab84f65f160e3f6aa660fb16b7488984ef44d15e8",
+        "mode": "0o644",
+        "uid": 0,
+        "gid": 0,
+        "inode": 140668208,
+        "size": 7959,
+        "mtime_ns": 1792368170081569527,
+        "ctime_ns": 1792368170081890527
+      },
+      "/usr/local/clamav/share/clamav/bytecode-339.cvd.sign": {
+        "sha256": "94eb76eff8cf3ab90ec3a67992727e84f9be257f294d72504228e89fa566592f",
+        "mode": "0o644",
+        "uid": 82,
+        "gid": 82,
+        "inode": 140668398,
+        "size": 9078,
+        "mtime_ns": 1792368233999800350,
+        "ctime_ns": 1792368233999800350
+      },
+      "/usr/local/clamav/share/clamav/bytecode.cvd": {
+        "sha256": "6d4aa01f219e988060fc419f495d07f27e0cdf1a2cccc065971da922c76f7ffb",
+        "mode": "0o644",
+        "uid": 82,
+        "gid": 82,
+        "inode": 134495172,
+        "size": 281702,
+        "mtime_ns": 1791801283804593678,
+        "ctime_ns": 1792368225339387116
+      },
+      "/usr/local/clamav/share/clamav/daily.cld": {
+        "sha256": "c6f090fa3e0f065b31a4a03c2f024b5a5a8ba3844f11ad0406e0f23b01caef54",
+        "mode": "0o644",
+        "uid": 82,
+        "gid": 82,
+        "inode": 164428580,
+        "size": 86446080,
+        "mtime_ns": 1793495549964711968,
+        "ctime_ns": 1793495551659502906
+      },
+      "/usr/local/clamav/share/clamav/freshclam.dat": {
+        "sha256": "c4db01b89ea1ac42903111ffe5a11f27f8cb6620dbbb0797bd1cd5c958c3933f",
+        "mode": "0o644",
+        "uid": 82,
+        "gid": 82,
+        "inode": 140668343,
+        "size": 90,
+        "mtime_ns": 1792368228050412764,
+        "ctime_ns": 1792368228050412764
+      },
+      "/usr/local/clamav/share/clamav/main-63.cvd.sign": {
+        "sha256": "c030a2235e0ac8b53f95bc6f79563c2b3ddfdcf4fd1d722634578a79530898e2",
+        "mode": "0o644",
+        "uid": 82,
+        "gid": 82,
+        "inode": 140668397,
+        "size": 9078,
+        "mtime_ns": 1792368233473265437,
+        "ctime_ns": 1792368233473265437
+      },
+      "/usr/local/clamav/share/clamav/main.cvd": {
+        "sha256": "0b2182d229f46981ec8f535382222f7c9dfdd656b250ad47988b910a8d302365",
+        "mode": "0o644",
+        "uid": 82,
+        "gid": 82,
+        "inode": 134495174,
+        "size": 89072577,
+        "mtime_ns": 1791801283952979010,
+        "ctime_ns": 1792368225339354992
+      }
+    },
+    "freshclam_update_invoked": false,
+    "scheduler_installed_started_stopped_or_modified": false,
+    "ownership_or_acl_modified": false,
+    "private_signature_stores_or_waiting_containers_accessed": false,
+    "personal_files_scanned": false
+  },
+  "next_steps": [
+    "Prepare reviewable launchd automatic-update configuration using the existing _clamav owner and the normal database directory",
+    "Plan persistent bounded/rotated logging and first successful update verification",
+    "After authorized setup, confirm launchd runtime identity, real successful update and scanner readback on the same normal directory"
+  ],
+  "verification": {
+    "native_checks": [
+      "clamconf effective settings and compiled directory",
+      "freshclam --help and installed sample defaults",
+      "clamscan --version and CLI read-only signature check",
+      "standard launchd/cron/process/package/log inspection",
+      "repeat-check content and metadata preservation"
+    ],
+    "static_checks": [
+      "JSON and local links",
+      "git diff --check"
+    ],
+    "tests_rerun": false,
+    "reason": "Read-only operational audit and documentation only; no implementation or scheduler changes"
+  },
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false
+}
