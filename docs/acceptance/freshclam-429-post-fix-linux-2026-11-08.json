@@ -1,0 +1,575 @@
+{
+  "date": "2026-11-08",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "post_fix_native_freshclam_zero_exit_429_cooldown_acceptance",
+  "status": "passed: four real download-429 and four real already-cooling-down CLI cases preserve pending/stage/provider and return partial/rate_limited with native exit zero",
+  "source_commit": "00d69ddcbc1bc3ca2b558f8d20bb0b4672c39b77",
+  "code_under_test": "Committed 00d69ddcbc1bc3ca2b558f8d20bb0b4672c39b77 exported into a brand-new container. All 28 pc_scanner Python source hashes match this checkout; no runtime patch, mocked exit code or changed decision logic.",
+  "runtime_source_changed": false,
+  "predecessor_records": [
+    "freshclam-429-retry-after-linux-2026-11-08.json",
+    "clamav-zero-exit-rate-limit-fix-2026-11-08.json"
+  ],
+  "environment": {
+    "container": "pc-scanner-429-fixed-20261108-0gcbtl35",
+    "container_id": "edc99f1af84639a186befe4b584ee547c739f03813e8b353d4617f50f2ba8529",
+    "image": "sha256:20fd8ed13f28e2b3e10a54c9b2fe018c8e8d5a2549a79fc3b55fc1ea82021ada",
+    "os": "Ubuntu 24.04 aarch64",
+    "python": "3.15.2",
+    "engines": "real freshclam/sigtool/clamscan 1.5.4",
+    "uid_gid": "10001:10001",
+    "network_mode": "none; loopback fixture only",
+    "mounts": [],
+    "published_ports": [],
+    "capabilities_dropped": [
+      "ALL"
+    ],
+    "security_options": [
+      "no-new-privileges"
+    ],
+    "memory_bytes": 2684354560,
+    "cpus": 2,
+    "pids_limit": 256
+  },
+  "fixture": {
+    "original_source_stores": 4,
+    "separate_cached_probe_stores": 4,
+    "cases": "Four full daily-download 429 cases: HTTP/HTTPS x seconds/HTTP-date. Four more actual CLI invocations with their newly generated provider state demonstrate already-cooling-down exit zero. These eight are not the previous header/body eight-case matrix.",
+    "response_wait_seconds": 172800,
+    "header_response": "Correct database-specific 512-byte ranges from previously signed public CVDs: daily 28174, main 63 and bytecode 339; only the full daily request returns 429.",
+    "seed": "Previously signed public main 63/daily 28172/bytecode 339 embedded in the image, verified with real sigtool. 128 harmless synthetic files per original store.",
+    "new_daily_input_sha256": "40b9c404e7a3d443b3a517b39aa76b789912cc1b3913f025ce537954609170bf",
+    "public_CVD_copies_reverified_before_cases": 4,
+    "adapter": "Owner-controlled test executable rewrites only generated mirror and 3/5-second connect/receive timeouts, then execs real freshclam --no-dns. Standard update, synchronization, locks and reporting unchanged.",
+    "updater_timeout_seconds": 60,
+    "tls": "Verification enabled with existing test CA in the immutable dedicated image only. No host trust-store change.",
+    "cached_probe": "After restarting this new container, copy each provider.dat generated in this run byte-for-byte and its signed old CVDs into a distinct new probe store. Same loopback endpoint. No prior acceptance store/state used, no source guard reset and no clock changes.",
+    "provider_binary_parsed_by_test_or_app": false,
+    "log_time_validation": "Test harness confirms displayed native UTC cooldown agrees with the received 48h directive within two seconds; application does not parse the local-time date.",
+    "public_provider_requests": 0,
+    "fresh_old_store_retry_before_expiry": false
+  },
+  "observations": [
+    {
+      "case": "http-seconds",
+      "kind": "body_429",
+      "tls": false,
+      "retry_after_format": "seconds",
+      "retry_after_header": "172800",
+      "actual_freshclam_invocations": 1,
+      "actual_freshclam_exit": 0,
+      "cli_exit": 2,
+      "application_result": {
+        "status": "partial",
+        "update_status": "rate_limited",
+        "published": false,
+        "recovery_required": true,
+        "warnings": [
+          "FreshClam reported rate limiting or an active provider cooldown; a successful update check was not confirmed. Pending state, work stage and any saved provider state were retained. Confirm all provider waits, which may exceed the stored minimum, before using the owner recovery CLI."
+        ]
+      },
+      "application_pending_preserved": true,
+      "work_stage": "stage-c685575d4277c20352dc37c5335b9f1c",
+      "provider_sha256": "38287649f126a010401bf1fe47578ccc68b6142300aff8e077308336350c29c5",
+      "provider_sync_status": "synced",
+      "stage_provider_matches_canonical": true,
+      "current_version_unchanged": {
+        "main.cvd": 63,
+        "daily.cvd": 28172,
+        "bytecode.cvd": 339
+      },
+      "owner_acknowledged_not_before_japan": "2026-11-10T20:02:14+09:00",
+      "native_cooldown_until_utc": "2026-11-10T11:02:13+00:00",
+      "no_validation_or_publication_or_success_cleanup_after_wait": true,
+      "cached_input_provider_byte_identical": null,
+      "http_requests_in_cached_case": null,
+      "private_ownership_and_permissions_verified": true
+    },
+    {
+      "case": "http-seconds",
+      "kind": "cached_cooldown",
+      "tls": false,
+      "retry_after_format": "seconds",
+      "retry_after_header": "172800",
+      "actual_freshclam_invocations": 1,
+      "actual_freshclam_exit": 0,
+      "cli_exit": 2,
+      "application_result": {
+        "status": "partial",
+        "update_status": "rate_limited",
+        "published": false,
+        "recovery_required": true,
+        "warnings": [
+          "FreshClam reported rate limiting or an active provider cooldown; a successful update check was not confirmed. Pending state, work stage and any saved provider state were retained. Confirm all provider waits, which may exceed the stored minimum, before using the owner recovery CLI."
+        ]
+      },
+      "application_pending_preserved": true,
+      "work_stage": "stage-72cab714ac327da6b9292072a04eb3be",
+      "provider_sha256": "38287649f126a010401bf1fe47578ccc68b6142300aff8e077308336350c29c5",
+      "provider_sync_status": "synced",
+      "stage_provider_matches_canonical": true,
+      "current_version_unchanged": {
+        "main.cvd": 63,
+        "daily.cvd": 28172,
+        "bytecode.cvd": 339
+      },
+      "owner_acknowledged_not_before_japan": "2026-11-10T20:02:14+09:00",
+      "native_cooldown_until_utc": "2026-11-10T11:02:13+00:00",
+      "no_validation_or_publication_or_success_cleanup_after_wait": true,
+      "cached_input_provider_byte_identical": true,
+      "http_requests_in_cached_case": 0,
+      "private_ownership_and_permissions_verified": true
+    },
+    {
+      "case": "http-http_date",
+      "kind": "body_429",
+      "tls": false,
+      "retry_after_format": "http_date",
+      "retry_after_header": "Tue, 10 Nov 2026 11:02:16 GMT",
+      "actual_freshclam_invocations": 1,
+      "actual_freshclam_exit": 0,
+      "cli_exit": 2,
+      "application_result": {
+        "status": "partial",
+        "update_status": "rate_limited",
+        "published": false,
+        "recovery_required": true,
+        "warnings": [
+          "FreshClam reported rate limiting or an active provider cooldown; a successful update check was not confirmed. Pending state, work stage and any saved provider state were retained. Confirm all provider waits, which may exceed the stored minimum, before using the owner recovery CLI."
+        ]
+      },
+      "application_pending_preserved": true,
+      "work_stage": "stage-cdd909dcafc37786e91829ec2624a75e",
+      "provider_sha256": "85317b6dad96d484f4455d16073eb9cbb7042a5aeffb838b8407bfbfbfc8658f",
+      "provider_sync_status": "synced",
+      "stage_provider_matches_canonical": true,
+      "current_version_unchanged": {
+        "main.cvd": 63,
+        "daily.cvd": 28172,
+        "bytecode.cvd": 339
+      },
+      "owner_acknowledged_not_before_japan": "2026-11-10T20:02:16+09:00",
+      "native_cooldown_until_utc": "2026-11-10T11:02:16+00:00",
+      "no_validation_or_publication_or_success_cleanup_after_wait": true,
+      "cached_input_provider_byte_identical": null,
+      "http_requests_in_cached_case": null,
+      "private_ownership_and_permissions_verified": true
+    },
+    {
+      "case": "http-http_date",
+      "kind": "cached_cooldown",
+      "tls": false,
+      "retry_after_format": "http_date",
+      "retry_after_header": "Tue, 10 Nov 2026 11:02:16 GMT",
+      "actual_freshclam_invocations": 1,
+      "actual_freshclam_exit": 0,
+      "cli_exit": 2,
+      "application_result": {
+        "status": "partial",
+        "update_status": "rate_limited",
+        "published": false,
+        "recovery_required": true,
+        "warnings": [
+          "FreshClam reported rate limiting or an active provider cooldown; a successful update check was not confirmed. Pending state, work stage and any saved provider state were retained. Confirm all provider waits, which may exceed the stored minimum, before using the owner recovery CLI."
+        ]
+      },
+      "application_pending_preserved": true,
+      "work_stage": "stage-a2fe19b706da3a5f728ce3e2ed2aaf95",
+      "provider_sha256": "85317b6dad96d484f4455d16073eb9cbb7042a5aeffb838b8407bfbfbfc8658f",
+      "provider_sync_status": "synced",
+      "stage_provider_matches_canonical": true,
+      "current_version_unchanged": {
+        "main.cvd": 63,
+        "daily.cvd": 28172,
+        "bytecode.cvd": 339
+      },
+      "owner_acknowledged_not_before_japan": "2026-11-10T20:02:16+09:00",
+      "native_cooldown_until_utc": "2026-11-10T11:02:16+00:00",
+      "no_validation_or_publication_or_success_cleanup_after_wait": true,
+      "cached_input_provider_byte_identical": true,
+      "http_requests_in_cached_case": 0,
+      "private_ownership_and_permissions_verified": true
+    },
+    {
+      "case": "https-seconds",
+      "kind": "body_429",
+      "tls": true,
+      "retry_after_format": "seconds",
+      "retry_after_header": "172800",
+      "actual_freshclam_invocations": 1,
+      "actual_freshclam_exit": 0,
+      "cli_exit": 2,
+      "application_result": {
+        "status": "partial",
+        "update_status": "rate_limited",
+        "published": false,
+        "recovery_required": true,
+        "warnings": [
+          "FreshClam reported rate limiting or an active provider cooldown; a successful update check was not confirmed. Pending state, work stage and any saved provider state were retained. Confirm all provider waits, which may exceed the stored minimum, before using the owner recovery CLI."
+        ]
+      },
+      "application_pending_preserved": true,
+      "work_stage": "stage-6b3ff13e5599a04ea21721fbbba03065",
+      "provider_sha256": "7a6a83e9e32dcdce2f59041fb3e580dfb89b41fb220fb487b8ae7b27eff8674d",
+      "provider_sync_status": "synced",
+      "stage_provider_matches_canonical": true,
+      "current_version_unchanged": {
+        "main.cvd": 63,
+        "daily.cvd": 28172,
+        "bytecode.cvd": 339
+      },
+      "owner_acknowledged_not_before_japan": "2026-11-10T20:02:39+09:00",
+      "native_cooldown_until_utc": "2026-11-10T11:02:38+00:00",
+      "no_validation_or_publication_or_success_cleanup_after_wait": true,
+      "cached_input_provider_byte_identical": null,
+      "http_requests_in_cached_case": null,
+      "private_ownership_and_permissions_verified": true
+    },
+    {
+      "case": "https-seconds",
+      "kind": "cached_cooldown",
+      "tls": true,
+      "retry_after_format": "seconds",
+      "retry_after_header": "172800",
+      "actual_freshclam_invocations": 1,
+      "actual_freshclam_exit": 0,
+      "cli_exit": 2,
+      "application_result": {
+        "status": "partial",
+        "update_status": "rate_limited",
+        "published": false,
+        "recovery_required": true,
+        "warnings": [
+          "FreshClam reported rate limiting or an active provider cooldown; a successful update check was not confirmed. Pending state, work stage and any saved provider state were retained. Confirm all provider waits, which may exceed the stored minimum, before using the owner recovery CLI."
+        ]
+      },
+      "application_pending_preserved": true,
+      "work_stage": "stage-15882f8d7ed42b99a9ed5a8fba9d1ede",
+      "provider_sha256": "7a6a83e9e32dcdce2f59041fb3e580dfb89b41fb220fb487b8ae7b27eff8674d",
+      "provider_sync_status": "synced",
+      "stage_provider_matches_canonical": true,
+      "current_version_unchanged": {
+        "main.cvd": 63,
+        "daily.cvd": 28172,
+        "bytecode.cvd": 339
+      },
+      "owner_acknowledged_not_before_japan": "2026-11-10T20:02:39+09:00",
+      "native_cooldown_until_utc": "2026-11-10T11:02:38+00:00",
+      "no_validation_or_publication_or_success_cleanup_after_wait": true,
+      "cached_input_provider_byte_identical": true,
+      "http_requests_in_cached_case": 0,
+      "private_ownership_and_permissions_verified": true
+    },
+    {
+      "case": "https-http_date",
+      "kind": "body_429",
+      "tls": true,
+      "retry_after_format": "http_date",
+      "retry_after_header": "Tue, 10 Nov 2026 11:02:41 GMT",
+      "actual_freshclam_invocations": 1,
+      "actual_freshclam_exit": 0,
+      "cli_exit": 2,
+      "application_result": {
+        "status": "partial",
+        "update_status": "rate_limited",
+        "published": false,
+        "recovery_required": true,
+        "warnings": [
+          "FreshClam reported rate limiting or an active provider cooldown; a successful update check was not confirmed. Pending state, work stage and any saved provider state were retained. Confirm all provider waits, which may exceed the stored minimum, before using the owner recovery CLI."
+        ]
+      },
+      "application_pending_preserved": true,
+      "work_stage": "stage-c2958968ef1ff12964937ad5979ffb99",
+      "provider_sha256": "55f811ad0503a91cdfaca1c0e5474052c216e70ff9049100c0f6cea8d8d6aa61",
+      "provider_sync_status": "synced",
+      "stage_provider_matches_canonical": true,
+      "current_version_unchanged": {
+        "main.cvd": 63,
+        "daily.cvd": 28172,
+        "bytecode.cvd": 339
+      },
+      "owner_acknowledged_not_before_japan": "2026-11-10T20:02:41+09:00",
+      "native_cooldown_until_utc": "2026-11-10T11:02:41+00:00",
+      "no_validation_or_publication_or_success_cleanup_after_wait": true,
+      "cached_input_provider_byte_identical": null,
+      "http_requests_in_cached_case": null,
+      "private_ownership_and_permissions_verified": true
+    },
+    {
+      "case": "https-http_date",
+      "kind": "cached_cooldown",
+      "tls": true,
+      "retry_after_format": "http_date",
+      "retry_after_header": "Tue, 10 Nov 2026 11:02:41 GMT",
+      "actual_freshclam_invocations": 1,
+      "actual_freshclam_exit": 0,
+      "cli_exit": 2,
+      "application_result": {
+        "status": "partial",
+        "update_status": "rate_limited",
+        "published": false,
+        "recovery_required": true,
+        "warnings": [
+          "FreshClam reported rate limiting or an active provider cooldown; a successful update check was not confirmed. Pending state, work stage and any saved provider state were retained. Confirm all provider waits, which may exceed the stored minimum, before using the owner recovery CLI."
+        ]
+      },
+      "application_pending_preserved": true,
+      "work_stage": "stage-ff772a61d233bd4ecf79945db28019f3",
+      "provider_sha256": "55f811ad0503a91cdfaca1c0e5474052c216e70ff9049100c0f6cea8d8d6aa61",
+      "provider_sync_status": "synced",
+      "stage_provider_matches_canonical": true,
+      "current_version_unchanged": {
+        "main.cvd": 63,
+        "daily.cvd": 28172,
+        "bytecode.cvd": 339
+      },
+      "owner_acknowledged_not_before_japan": "2026-11-10T20:02:41+09:00",
+      "native_cooldown_until_utc": "2026-11-10T11:02:41+00:00",
+      "no_validation_or_publication_or_success_cleanup_after_wait": true,
+      "cached_input_provider_byte_identical": true,
+      "http_requests_in_cached_case": 0,
+      "private_ownership_and_permissions_verified": true
+    }
+  ],
+  "summary": {
+    "actual_freshclam_exit_zero_cases": 8,
+    "body_429_cases": 4,
+    "already_cooling_down_cases": 4,
+    "pending_records_retained": 8,
+    "stages_retained": 8,
+    "canonical_and_stage_provider_state_matches": 8,
+    "all_provider_sync_status": "synced",
+    "successful_unchanged_reports": 0,
+    "definitions_published": 0,
+    "successful_stage_cleanup_after_wait": 0,
+    "owner_48h_extension_saved_and_early_recovery_refused": 8,
+    "each_original_store_resume": {
+      "scanned": 128,
+      "infected": 0,
+      "errors": 0,
+      "reused": 128,
+      "new_engine_starts": 0
+    },
+    "all_early_retries_new_updater_invocations": 0,
+    "all_post_restart_http_requests": 0,
+    "private_permissions": "UID 10001, directories 0700, files 0600 for all 8 stores",
+    "remaining_engine_processes": [],
+    "all_eight_native_invocation_reports": {
+      "status": "partial",
+      "update_status": "rate_limited",
+      "recovery_required": true,
+      "published": false
+    }
+  },
+  "restart": {
+    "actual_stop_and_start_same_new_container": true,
+    "started_before": "2026-11-08T10:59:04.977037333Z",
+    "started_after": "2026-11-08T11:04:09.599650544Z",
+    "original_store_snapshots_equal_after_restart": 4,
+    "snapshot_fields": [
+      "regular file SHA-256",
+      "type/mode",
+      "uid/gid",
+      "nlink",
+      "inode",
+      "size",
+      "mtime_ns",
+      "ctime_ns"
+    ],
+    "original_stores_unchanged_by_all_cached_probes": true,
+    "scope_note": "Cached-probe stores are new fixtures created after the restart, not reused or reset existing application stores."
+  },
+  "verification": {
+    "independent_final_check": {
+      "verified_at_utc": "2026-11-08T11:05:47.772635+00:00",
+      "cases": [
+        {
+          "case": "http-seconds",
+          "kind": "body_429",
+          "stage": "stage-c685575d4277c20352dc37c5335b9f1c",
+          "provider_sha256": "38287649f126a010401bf1fe47578ccc68b6142300aff8e077308336350c29c5",
+          "pending": true,
+          "owner_deadline_utc": "2026-11-10T11:02:14+00:00",
+          "native_cooldown_until_utc": "2026-11-10T11:02:13+00:00",
+          "actual_freshclam_exit": 0,
+          "application_status": "partial",
+          "update_status": "rate_limited",
+          "published": false,
+          "source_definition_version": 28172,
+          "private_permissions_verified": true
+        },
+        {
+          "case": "http-seconds",
+          "kind": "cached_cooldown",
+          "stage": "stage-72cab714ac327da6b9292072a04eb3be",
+          "provider_sha256": "38287649f126a010401bf1fe47578ccc68b6142300aff8e077308336350c29c5",
+          "pending": true,
+          "owner_deadline_utc": "2026-11-10T11:02:14+00:00",
+          "native_cooldown_until_utc": "2026-11-10T11:02:13+00:00",
+          "actual_freshclam_exit": 0,
+          "application_status": "partial",
+          "update_status": "rate_limited",
+          "published": false,
+          "source_definition_version": 28172,
+          "private_permissions_verified": true
+        },
+        {
+          "case": "http-http_date",
+          "kind": "body_429",
+          "stage": "stage-cdd909dcafc37786e91829ec2624a75e",
+          "provider_sha256": "85317b6dad96d484f4455d16073eb9cbb7042a5aeffb838b8407bfbfbfc8658f",
+          "pending": true,
+          "owner_deadline_utc": "2026-11-10T11:02:16+00:00",
+          "native_cooldown_until_utc": "2026-11-10T11:02:16+00:00",
+          "actual_freshclam_exit": 0,
+          "application_status": "partial",
+          "update_status": "rate_limited",
+          "published": false,
+          "source_definition_version": 28172,
+          "private_permissions_verified": true
+        },
+        {
+          "case": "http-http_date",
+          "kind": "cached_cooldown",
+          "stage": "stage-a2fe19b706da3a5f728ce3e2ed2aaf95",
+          "provider_sha256": "85317b6dad96d484f4455d16073eb9cbb7042a5aeffb838b8407bfbfbfc8658f",
+          "pending": true,
+          "owner_deadline_utc": "2026-11-10T11:02:16+00:00",
+          "native_cooldown_until_utc": "2026-11-10T11:02:16+00:00",
+          "actual_freshclam_exit": 0,
+          "application_status": "partial",
+          "update_status": "rate_limited",
+          "published": false,
+          "source_definition_version": 28172,
+          "private_permissions_verified": true
+        },
+        {
+          "case": "https-seconds",
+          "kind": "body_429",
+          "stage": "stage-6b3ff13e5599a04ea21721fbbba03065",
+          "provider_sha256": "7a6a83e9e32dcdce2f59041fb3e580dfb89b41fb220fb487b8ae7b27eff8674d",
+          "pending": true,
+          "owner_deadline_utc": "2026-11-10T11:02:39+00:00",
+          "native_cooldown_until_utc": "2026-11-10T11:02:38+00:00",
+          "actual_freshclam_exit": 0,
+          "application_status": "partial",
+          "update_status": "rate_limited",
+          "published": false,
+          "source_definition_version": 28172,
+          "private_permissions_verified": true
+        },
+        {
+          "case": "https-seconds",
+          "kind": "cached_cooldown",
+          "stage": "stage-15882f8d7ed42b99a9ed5a8fba9d1ede",
+          "provider_sha256": "7a6a83e9e32dcdce2f59041fb3e580dfb89b41fb220fb487b8ae7b27eff8674d",
+          "pending": true,
+          "owner_deadline_utc": "2026-11-10T11:02:39+00:00",
+          "native_cooldown_until_utc": "2026-11-10T11:02:38+00:00",
+          "actual_freshclam_exit": 0,
+          "application_status": "partial",
+          "update_status": "rate_limited",
+          "published": false,
+          "source_definition_version": 28172,
+          "private_permissions_verified": true
+        },
+        {
+          "case": "https-http_date",
+          "kind": "body_429",
+          "stage": "stage-c2958968ef1ff12964937ad5979ffb99",
+          "provider_sha256": "55f811ad0503a91cdfaca1c0e5474052c216e70ff9049100c0f6cea8d8d6aa61",
+          "pending": true,
+          "owner_deadline_utc": "2026-11-10T11:02:41+00:00",
+          "native_cooldown_until_utc": "2026-11-10T11:02:41+00:00",
+          "actual_freshclam_exit": 0,
+          "application_status": "partial",
+          "update_status": "rate_limited",
+          "published": false,
+          "source_definition_version": 28172,
+          "private_permissions_verified": true
+        },
+        {
+          "case": "https-http_date",
+          "kind": "cached_cooldown",
+          "stage": "stage-ff772a61d233bd4ecf79945db28019f3",
+          "provider_sha256": "55f811ad0503a91cdfaca1c0e5474052c216e70ff9049100c0f6cea8d8d6aa61",
+          "pending": true,
+          "owner_deadline_utc": "2026-11-10T11:02:41+00:00",
+          "native_cooldown_until_utc": "2026-11-10T11:02:41+00:00",
+          "actual_freshclam_exit": 0,
+          "application_status": "partial",
+          "update_status": "rate_limited",
+          "published": false,
+          "source_definition_version": 28172,
+          "private_permissions_verified": true
+        }
+      ],
+      "actual_freshclam_invocations": 8,
+      "retained_stages": 8,
+      "all_eight_pending_and_provider_states_preserved": true,
+      "original_four_stores_equal_across_restart_and_cached_probes": true,
+      "post_restart_http_requests": 0,
+      "remaining_engine_processes": [],
+      "runtime_timezone": [
+        "UTC",
+        "UTC"
+      ]
+    },
+    "source_module_hashes_verified": 28,
+    "regressions": {
+      "command": "bdo proxy .venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
+      "total": 68,
+      "passed": 68,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 6.945,
+      "includes": "actual MCP SDK signature tools, zero/nonzero-exit wait regressions, owner guards and incomplete-generation handling"
+    },
+    "full_suite_rerun": false,
+    "reason": "No runtime/test changes. This turn adds native acceptance and documentation; previous CI remains separate evidence, not a replay of real freshclam.",
+    "static_checks": {
+      "record_field_test": {
+        "total": 1,
+        "passed": 1,
+        "failures": 0,
+        "errors": 0,
+        "seconds": 0.024
+      },
+      "eight_native_result_invariants_and_four_by_two_matrix": true,
+      "prior_record_observations_unchanged_except_appended_follow_up": true,
+      "local_links_resolve": true,
+      "git_diff_check": "passed"
+    }
+  },
+  "preservation": {
+    "existing_mac_linux_stores_written": false,
+    "existing_48h_waits_read_or_changed": false,
+    "prior_acceptance_containers_started_or_changed": false,
+    "provider_state_from_prior_waiting_stores_copied_for_retry": false,
+    "os_normal_definitions_updated": false,
+    "personal_folders_mounted_copied_or_scanned": false,
+    "host_trust_or_service_settings_changed": false,
+    "system_time_or_persisted_wait_shortened": false,
+    "automatic_update_and_OneDrive_deferrals": "unchanged"
+  },
+  "cleanup": {
+    "new_container_stopped": true,
+    "new_container_retained": true,
+    "final_state": "exited",
+    "final_network": "none",
+    "final_mounts": [],
+    "final_ports": [],
+    "new_stores_retained": 8,
+    "new_stages_and_pending_48h_guards": "retained in all eight new stores; provider cooldown source remains opaque",
+    "raw_fixture_logs": "retained privately in this new container and local temporary evidence folder"
+  },
+  "limitations": [
+    "Controlled localhost mirror and previously acquired public CVDs; no induced official-provider fault or new official download.",
+    "Natural expiry of the new 24h/48h guards, owner recovery after expiry and successful retry are not observed.",
+    "Header-response 429 short-body classification, TLS handshake/unknown-CA faults and production-default timeout performance are outside this reacceptance.",
+    "This confirms the known real FreshClam 1.5.4 English diagnostics; other versions/diagnostic formats remain separate."
+  ],
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false
+}

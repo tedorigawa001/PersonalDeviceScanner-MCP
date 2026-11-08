@@ -732,5 +732,14 @@
     "npm_launcher": "12 of 12 jobs passed (Node 22, 24, 26); macOS and Ubuntu 34 of 34, Windows 32 passed with 2 POSIX-only tests skipped",
     "distributions": "verified",
     "limit": "CI uses fake engines; it does not repeat this record's native Docker freshclam runs, 48-hour waits or restart probes, and post-fix native 429 acceptance remains open"
+  },
+  "post_fix_native_acceptance": {
+    "date": "2026-11-08",
+    "record": "freshclam-429-post-fix-linux-2026-11-08.json",
+    "source_commit": "00d69ddcbc1bc3ca2b558f8d20bb0b4672c39b77",
+    "result": "Passed in a brand-new Docker: four real full-download 429 and four actual cached-cooldown CLI invocations, all native exit zero and partial/rate_limited with pending, stage and synchronized provider state retained.",
+    "restart_and_preservation": "Original four new stores unchanged across actual restart and cached probes. Existing acceptance stores and old 48h guards were neither accessed nor changed. New 8 stores/guards retained in the new stopped network-none container.",
+    "regressions": "68 signature tests passed; no runtime/test changes or full-suite rerun.",
+    "scope": "Previous observations and remaining fields describe the original run. This subsequent native acceptance closes the post-fix exit-zero reporting gap; natural expiry, post-expiry success and official-provider faults remain separate."
   }
 }

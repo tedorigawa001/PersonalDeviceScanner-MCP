@@ -174,5 +174,14 @@
     "candidate_hashes_still_match_tested_files": true,
     "record_counts_and_local_links_checked": true,
     "unrelated_pending_acceptance_records_unchanged": true
+  },
+  "post_fix_native_acceptance": {
+    "date": "2026-11-08",
+    "record": "freshclam-429-post-fix-linux-2026-11-08.json",
+    "source_commit": "00d69ddcbc1bc3ca2b558f8d20bb0b4672c39b77",
+    "result": "Passed in a brand-new Docker: four real full-download 429 and four actual cached-cooldown CLI invocations, all native exit zero and partial/rate_limited with pending, stage and synchronized provider state retained.",
+    "restart_and_preservation": "Original four new stores unchanged across actual restart and cached probes. Existing acceptance stores and old 48h guards were neither accessed nor changed. New 8 stores/guards retained in the new stopped network-none container.",
+    "regressions": "68 signature tests passed; no runtime/test changes or full-suite rerun.",
+    "scope": "Previous observations and remaining fields describe the original run. This subsequent native acceptance closes the post-fix exit-zero reporting gap; natural expiry, post-expiry success and official-provider faults remain separate."
   }
 }
