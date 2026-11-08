@@ -148,6 +148,20 @@
     "Windows-specific 17 tests and Windows CI for this change were not run on this Mac.",
     "Recognition uses known English FreshClam diagnostic phrases. Changed diagnostic formats in future engines need validation."
   ],
+  "ci_follow_up": {
+    "date": "2026-11-08",
+    "run": 42466853699,
+    "url": "https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/runs/42466853699",
+    "commit": "646aaa5",
+    "started_at": "2026-11-08T09:21:40Z",
+    "finished_at": "2026-11-08T09:24:27Z",
+    "result": "22 of 22 jobs passed",
+    "python_tests": "759 per Python (3.11, 3.14, 3.15) on each OS: the 758 above plus the non-zero-exit wait regression added in 646aaa5; skipped macOS 17, Ubuntu 36, Windows 158",
+    "rate_limit_regressions": "all six (five from a02498a and one from 646aaa5) passed on macOS and Ubuntu with each Python; skipped on Windows as 'non-root POSIX private updater' because the private updater is POSIX-only",
+    "npm_launcher": "12 of 12 jobs passed (Node 22, 24, 26); macOS and Ubuntu 34 of 34, Windows 32 passed with 2 POSIX-only tests skipped",
+    "distributions": "verified",
+    "limit": "CI reruns repository tests with fake engines; real freshclam, provider contact and a Windows updater are not exercised, and post-fix native 429 acceptance remains separate"
+  },
   "commit_created_during_recording": false,
   "push_performed_during_recording": false,
   "static_checks": {

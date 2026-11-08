@@ -717,5 +717,20 @@
     "behavior": "Known zero-exit 429/cooldown notices now yield partial/rate_limited and recovery_required=true after provider synchronization, with pending/stage retained.",
     "verification": "5 new regressions; 67 signature tests; Python 3.14/3.15 each 741 passed and 17 Windows-only skipped out of 758; npm hash-checked install and MCP round trip 34 passed.",
     "preservation": "Original 8-case observations, open-at-recording finding and stored waits were not rewritten or retested; all existing acceptance stores/containers left untouched."
+  },
+  "ci_follow_up": {
+    "date": "2026-11-08",
+    "run": 42466853699,
+    "url": "https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/runs/42466853699",
+    "commit": "646aaa5",
+    "started_at": "2026-11-08T09:21:40Z",
+    "finished_at": "2026-11-08T09:24:27Z",
+    "result": "22 of 22 jobs passed",
+    "scope": "Covers the implementation follow-up above (a02498a) and its non-zero-exit regression (646aaa5)",
+    "python_tests": "759 per Python (3.11, 3.14, 3.15) on each OS; skipped macOS 17, Ubuntu 36, Windows 158",
+    "rate_limit_regressions": "all six (five from a02498a and one from 646aaa5) passed on macOS and Ubuntu with each Python; skipped on Windows as 'non-root POSIX private updater' because the private updater is POSIX-only",
+    "npm_launcher": "12 of 12 jobs passed (Node 22, 24, 26); macOS and Ubuntu 34 of 34, Windows 32 passed with 2 POSIX-only tests skipped",
+    "distributions": "verified",
+    "limit": "CI uses fake engines; it does not repeat this record's native Docker freshclam runs, 48-hour waits or restart probes, and post-fix native 429 acceptance remains open"
   }
 }
