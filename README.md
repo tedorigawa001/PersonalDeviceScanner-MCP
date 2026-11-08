@@ -429,7 +429,10 @@ changes in private generations do not invalidate it. Other processes under the s
 the store; this is protection from other users, not a boundary against same-user malware.
 
 The conservative 24-hour interval remains enforced; failed/interrupted attempts block downloads until explicit
-owner recovery. Use `pc-scanner --config scanner.toml clamav-signature-store list` for JSON entries and revisions.
+owner recovery. FreshClam 429 or active-cooldown diagnostics produce `partial` / `rate_limited` with
+`recovery_required=true`, even when freshclam exits zero. Pending state, the work stage and saved provider state
+are retained; this is not a successful unchanged check. The stored minimum does not replace a longer provider wait.
+Use `pc-scanner --config scanner.toml clamav-signature-store list` for JSON entries and revisions.
 After investigating the failure and all provider wait instructions, use `clamav-signature-store recover
 --revision RECOVERY_REVISION --not-before '2026-11-03T12:00:00+00:00'` with your actual deadline.
 The timestamp must include a timezone, must not precede the persisted deadline, and must have elapsed before recovery.

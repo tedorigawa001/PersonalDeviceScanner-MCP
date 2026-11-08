@@ -1,0 +1,164 @@
+{
+  "date": "2026-11-08",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "freshclam_zero_exit_429_cooldown_fix_verification",
+  "status": "implementation fixed; new regressions and both complete local Python suites plus npm end-to-end passed",
+  "base_commit": "7f97ced89bbb8e425463964abbbd9242fe0f0f41",
+  "candidate": "uncommitted working-tree implementation and tests on the base commit",
+  "candidate_sha256": {
+    "pc_scanner/signature_update.py": "b38072790e5cb9b3360e62efd1f893ac3d9ad4dc6910e49f7ac05bcad6feb0fa",
+    "tests/test_signature_update.py": "86b567eac9345e942f76bfc8a5b3a06127e94fb74162a977f4c9e251ff60b363"
+  },
+  "predecessor_acceptance": "freshclam-429-retry-after-linux-2026-11-08.json",
+  "cause": "The updater treated freshclam exit zero as a successful check, despite actual 1.5.4 returning zero with a 429/cooldown diagnostic. Unchanged old CVDs then triggered completed/unchanged, cleared pending and removed the work stage.",
+  "change": {
+    "updater_output": "Inspect both bounded stdout and stderr for known FreshClam received-429 and You-are-(still)-on-cool-down notices; updater invocation only.",
+    "result": {
+      "status": "partial",
+      "update_status": "rate_limited",
+      "published": false,
+      "recovery_required": true
+    },
+    "ordering": "Always finish and verify provider state synchronization in finally before reporting rate_limited. A synchronization failure follows the existing error/failed path and leaves the new stage and pending synchronization journal.",
+    "preserved": [
+      "pending=true",
+      "work stage with any partially downloaded CVDs and freshclam.dat",
+      "durably synchronized opaque provider.dat and provider-sync.json",
+      "old current.json and generation bytes",
+      "cross-process locks and owner-recovery protections"
+    ],
+    "no_publication_or_success_cleanup_on_wait": true,
+    "wait_semantics": "The stored 24h guard stays a minimum. Neither binary provider state nor a human local-time log date is decoded. Static warning requires owner confirmation of all provider waits, which may exceed that minimum; the pending state prevents even a post-24h automatic download until owner recovery. Owner CLI may persist a longer explicit deadline.",
+    "privacy": "Only static warnings/structured state are returned. Raw logs, credentials, private paths and provider binary bytes are not echoed.",
+    "normal_behavior": "A genuine normal unchanged check still completes and cleans its successful work stage; routine DNS/404 fallback warnings and a version number 429 are not classified as waiting."
+  },
+  "regressions": {
+    "new_test_methods": 5,
+    "names": [
+      "test_zero_exit_provider_wait_preserves_stage_and_requires_recovery",
+      "test_zero_exit_wait_allows_longer_owner_guard_but_not_early_recovery",
+      "test_provider_save_failure_during_zero_exit_wait_stays_failed_and_pending",
+      "test_ordinary_zero_exit_messages_still_allow_successful_unchanged",
+      "test_actual_zero_exit_child_cooldown_is_captured_and_preserved"
+    ],
+    "red_before_fix": {
+      "command": "bdo proxy .venv-dev/bin/python -m unittest discover -s tests -p 'test_signature_update.py' -k zero_exit -q",
+      "methods_run": 4,
+      "assertion_failures_including_subtests": 5,
+      "errors": 0,
+      "observed": "Four stdout/stderr message variants yielded completed/updated or completed/unchanged; owner long-guard test also failed. Save-failure and ordinary-unchanged controls passed.",
+      "test_fixture_preparation_note": "Initial mock only handled updater argv and raised StopIteration on validation before the fix. Added normal validation fallback, then confirmed the intended behavior-level assertion failures above."
+    },
+    "after_fix_five_methods": "passed as part of the 67-test signature subset and both complete suites",
+    "signature_subset": {
+      "command": "bdo proxy .venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
+      "total": 67,
+      "passed": 67,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 6.48
+    },
+    "contracts_checked": [
+      "stdout/stderr rate-limit and active-cooldown messages with exit zero",
+      "partial download not published after another DB is throttled",
+      "pending and stage preserved; immediate new Scanner cannot retry",
+      "exact provider state handoff and synchronized preservation",
+      "48-hour owner extension, shortening refusal, early recovery refusal and stage deletion protection",
+      "provider save failure remains failed/pending with exact new source retained",
+      "normal unchanged success and ordinary warning compatibility",
+      "real child process exits zero, stderr is captured, provider bytes preserved and child reaped",
+      "private path and credential text is not returned"
+    ]
+  },
+  "full_python_suites": {
+    "3.14.10": {
+      "command": "bdo proxy .venv/bin/python -m unittest discover -s tests -v",
+      "total": 758,
+      "passed": 741,
+      "skipped": 17,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 90.959,
+      "skip_reasons": {
+        "native Windows Winsock": 1,
+        "Best-fit command line conversion happens only on Windows": 1,
+        "Legacy profile junctions exist only on Windows": 1,
+        "Real junctions exist only on Windows": 1,
+        "Native Windows filesystem/APIs required": 10,
+        "Windows security APIs": 3
+      },
+      "android_methods": 38,
+      "android_and_actual_mcp_sdk_included": true
+    },
+    "3.15.2": {
+      "command": "bdo proxy .venv-dev/bin/python -m unittest discover -s tests -v",
+      "total": 758,
+      "passed": 741,
+      "skipped": 17,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 90.592,
+      "skip_reasons": {
+        "native Windows Winsock": 1,
+        "Best-fit command line conversion happens only on Windows": 1,
+        "Legacy profile junctions exist only on Windows": 1,
+        "Real junctions exist only on Windows": 1,
+        "Native Windows filesystem/APIs required": 10,
+        "Windows security APIs": 3
+      },
+      "android_methods": 38,
+      "android_and_actual_mcp_sdk_included": true
+    }
+  },
+  "npm": {
+    "command": "bdo proxy env npm_config_cache=<private temporary cache> PC_SCANNER_NPM_E2E=1 PC_SCANNER_NPM_EXPECT_HASHED=1 PC_SCANNER_PYTHON=<Python 3.15.2> npm test",
+    "total": 34,
+    "passed": 34,
+    "skipped": 0,
+    "failures": 0,
+    "seconds": 6.096495334,
+    "includes": [
+      "packed distribution file set",
+      "first-use hash-checked macOS arm64 CPython 3.15 profile install",
+      "actual stdio MCP round trip",
+      "cache reuse and tampered-lock refusal"
+    ]
+  },
+  "environment_retries": {
+    "initial_full_suites": "Each ran 758 methods but reported 17 PermissionError subtest/errors for loopback TLS/mDNS listeners; rerun with local communication allowed, without product changes for those errors.",
+    "initial_npm": "Default npm cache could not be written; reran with a dedicated temporary npm cache. The next attempt reached PyPI setup but DNS was restricted; final run allowed public dependency downloads and passed 34/34.",
+    "unrelated_environment_or_test_code_modified": false
+  },
+  "native_acceptance_after_fix": {
+    "rerun": false,
+    "note": "Existing 48h wait acceptance stores/containers were neither started nor changed. Verification used new disposable synthetic unit fixtures, a real zero-exit child, actual MCP SDK and npm first-use environment. Repeat actual freshclam 429 acceptance separately in new stores or after authorized natural expiry."
+  },
+  "preservation": {
+    "existing_mac_linux_definition_stores_written": false,
+    "existing_acceptance_containers_started_or_changed": false,
+    "os_normal_definitions_updated": false,
+    "waits_in_existing_stores_shortened_reset_or_copied_for_retry": false,
+    "personal_files_scanned_or_sent": false,
+    "mcp_update_tools_added": false,
+    "automatic_update_and_OneDrive_deferrals": "unchanged"
+  },
+  "remaining": [
+    "Post-fix actual freshclam 429/cooldown acceptance, including natural expiry boundaries, remains separate.",
+    "Windows-specific 17 tests and new Windows CI were not executed on this Mac; no push or CI dispatch.",
+    "Recognition uses known English FreshClam diagnostic phrases. Changed diagnostic formats in future engines need validation."
+  ],
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false,
+  "static_checks": {
+    "acceptance_record_field_test": {
+      "total": 1,
+      "passed": 1,
+      "seconds": 0.007
+    },
+    "git_diff_check": "passed",
+    "candidate_hashes_still_match_tested_files": true,
+    "record_counts_and_local_links_checked": true,
+    "unrelated_pending_acceptance_records_unchanged": true
+  }
+}

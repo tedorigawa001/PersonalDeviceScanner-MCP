@@ -19,6 +19,9 @@ DATABASES = ("main.cvd", "daily.cvd", "bytecode.cvd")
 GEN = re.compile(r"[0-9a-f]{32}\Z")
 MAX_BYTES = 2 * 1024 ** 3
 MAX_GENERATIONS = 4  # No automatic deletion in phase one; never remove a pinned generation.
+PROVIDER_WAIT = re.compile(
+    r"\bFreshClam (?:previously )?received error code 429\b"
+    r"|\bYou are(?: still)? on cool-down until after:", re.IGNORECASE)
 
 
 def configure(scanner):
@@ -219,12 +222,16 @@ def update(scanner, cancel=None, progress=None):
         progress.update(stage="preparing", checkpoint="not_applicable")
     published = False
     data = dict(update_status="failed", published=False, previous_preserved=False, resume_recheck_required=False)
-    def run(argv):
+    def run(argv, *, provider_check=False):
         core.check_cancel(cancel)
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise core.ScannerError("Signature update timed out")
         rc, out, err = core.run_bounded(argv, remaining, scanner.limit, cancel)
+        # FreshClam can exit zero after a 429 or while already cooling down.
+        # Inspect both streams only for the updater; never treat this as a successful check.
+        if provider_check and PROVIDER_WAIT.search(out + "\n" + err):
+            return None
         if rc != 0:
             raise core.ScannerError("Signature update or validation failed; active definitions were not replaced")
         return out
@@ -278,10 +285,18 @@ def update(scanner, cancel=None, progress=None):
                 history.replace_private(db / "freshclam.dat", signature_maintenance.provider_bytes(provider))
             signature_maintenance.begin_provider_sync(path, stage.name)
             try:
-                run([freshclam, "--config-file=" + str(config), "--datadir=" + str(db)])
+                fetched = run([freshclam, "--config-file=" + str(config), "--datadir=" + str(db)], provider_check=True)
             finally:
                 # Provider cooldown survives errors, recovery, stage deletion and the next freshclam invocation.
                 signature_maintenance.finish_provider_sync(path, stage.name)
+            if fetched is None:
+                # Only report the retained wait after provider synchronization succeeds. Its binary
+                # format and the log's local-time date stay opaque; the owner confirms all deadlines.
+                data.update(update_status="rate_limited", next_attempt_at=now + 86400, recovery_required=True)
+                return core.result("clamav", "partial", data=data, warnings=[
+                    "FreshClam reported rate limiting or an active provider cooldown; a successful update check was not confirmed. "
+                    "Pending state, work stage and any saved provider state were retained. "
+                    "Confirm all provider waits, which may exceed the stored minimum, before using the owner recovery CLI."])
             if progress:
                 progress.update(stage="validating")
             # Move only the required databases to a private candidate. Bookkeeping stays in the unpublished stage.

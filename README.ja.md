@@ -425,6 +425,9 @@ OSの定義・所有者・権限も変更しません。MCPからの更新操作
 他ユーザーから保護する保存先であり、同じユーザーで動くプロセスからの改ざんは防げません。
 
 更新間隔は保守的に24時間で、失敗・中断後は所有者が明示的に復旧するまで取得を停止します。
+freshclamが終了0でも、429・待機中の通知を検出した場合は `partial`／`rate_limited` と
+`recovery_required=true` を返します。正常な「変更なし」とは扱わず、pending・作業stage・保存済みの配布元状態を保持します。
+表示する保存済みの最短期限より、配布元の待機指示が長い場合はそちらを優先してください。
 `pc-scanner --config scanner.toml clamav-signature-store list` で一覧・確認用の版・待機状態をJSON表示します。
 原因と配布元の待機指示を確認した後、`clamav-signature-store recover --revision RECOVERY_REVISION
 --not-before '2026-11-03T12:00:00+00:00'` を実際の期限に置き換えて実行します。

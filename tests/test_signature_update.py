@@ -130,6 +130,170 @@ class UpdateTests(unittest.TestCase):
                 self.do_update()
                 self.assertEqual(count, len(self.calls))
 
+    def test_zero_exit_provider_wait_preserves_stage_and_requires_recovery(self):
+        self.do_update()
+        pointer = (self.root / "current.json").read_bytes()
+        generation = self.root / json.loads(pointer)["generation"]
+        original = {p.name: p.read_bytes() for p in generation.iterdir()}
+        messages = [
+            ("", "WARNING: FreshClam received error code 429 from the ClamAV Content Delivery Network (CDN).\n"),
+            ("WARNING: FreshClam previously received error code 429 or 403 from the CDN.\n", ""),
+            ("", "WARNING: You are still on cool-down until after: 2026-11-10 00:00:00\n"),
+            ("WARNING: You are on cool-down until after: 2026-11-10 00:00:00\n", ""),
+        ]
+        for index, (out, err) in enumerate(messages):
+            with self.subTest(index=index):
+                self.allow_next()  # This test owns only its synthetic temporary store.
+                previous_provider = b"previous opaque provider state"
+                history.replace_private(self.root / "provider.dat", previous_provider)
+                saved_provider = b"new opaque 48-hour provider state " + str(index).encode()
+                stages_before = set(self.root.glob("stage-*"))
+
+                def waiting(argv, *args, **kwargs):
+                    if not any(a.startswith("--datadir=") for a in argv):
+                        return self.engine(argv, *args, **kwargs)
+                    self.calls.append(argv)
+                    db = Path(next(a.split("=", 1)[1] for a in argv if a.startswith("--datadir=")))
+                    self.assertEqual((db / "freshclam.dat").read_bytes(), previous_provider)
+                    (db / "freshclam.dat").write_bytes(saved_provider)
+                    # A later database may be throttled after an earlier one was downloaded.
+                    (db / "daily.cvd").write_bytes(b"ClamAV-VDB:date:2:100:".ljust(512, b" ") + b"newer")
+                    return 0, out + "private proxy credentials", err + str(self.root)
+
+                with patch.object(update, "MAX_GENERATIONS", 32):
+                    report = self.do_update(waiting)
+                self.assertEqual((report["status"], report["data"]["update_status"]), ("partial", "rate_limited"), report)
+                self.assertTrue(report["data"]["recovery_required"])
+                self.assertFalse(report["data"]["published"])
+                self.assertNotIn("private proxy", json.dumps(report))
+                self.assertNotIn(str(self.root), json.dumps(report))
+                self.assertTrue(any("provider" in w.lower() for w in report["warnings"]))
+                self.assertEqual((self.root / "current.json").read_bytes(), pointer)
+                self.assertEqual({p.name: p.read_bytes() for p in generation.iterdir()}, original)
+                new_stages = set(self.root.glob("stage-*")) - stages_before
+                self.assertEqual(len(new_stages), 1)
+                stage = new_stages.pop()
+                self.assertEqual((stage / "db/freshclam.dat").read_bytes(), saved_provider)
+                self.assertEqual((self.root / "provider.dat").read_bytes(), saved_provider)
+                sync = update.read_json(self.root / "provider-sync.json")
+                self.assertEqual((sync["status"], sync["stage"]), ("synced", stage.name))
+                pending = (self.root / "attempt.json").read_bytes()
+                self.assertTrue(json.loads(pending)["pending"])
+                calls_before = len(self.calls)
+                self.do_update()
+                self.assertEqual(len(self.calls), calls_before)
+                self.assertEqual((self.root / "attempt.json").read_bytes(), pending)
+
+    def test_zero_exit_wait_allows_longer_owner_guard_but_not_early_recovery(self):
+        from pc_scanner import signature_maintenance as maintenance
+        self.do_update()
+        self.allow_next()
+        provider = b"opaque provider cooldown lasting 48 hours"
+
+        def waiting(argv, *args, **kwargs):
+            if not any(a.startswith("--datadir=") for a in argv):
+                return self.engine(argv, *args, **kwargs)
+            self.calls.append(argv)
+            db = Path(next(a.split("=", 1)[1] for a in argv if a.startswith("--datadir=")))
+            (db / "freshclam.dat").write_bytes(provider)
+            return 0, "", "WARNING: FreshClam received error code 429 from the CDN.\n"
+
+        report = self.do_update(waiting)
+        self.assertEqual(report["data"]["update_status"], "rate_limited", report)
+        listing = maintenance.manage(self.scanner(), "list")["data"]
+        stage = next(r for r in listing["entries"] if r["kind"] == "stage")
+        self.assertEqual(stage["reason"], "pending_recovery")
+        with self.assertRaises(core.ScannerError):
+            maintenance.manage(self.scanner(), "delete", stage["id"], stage["revision"])
+        until = int(time.time()) + 172800
+        ack = datetime.fromtimestamp(until, timezone.utc).isoformat()
+        result = maintenance.manage(self.scanner(), "recover", revision=listing["recovery_revision"], not_before=ack)
+        self.assertFalse(result["data"]["recovered"])
+        self.assertEqual(update.read_json(self.root / "attempt.json"), {"pending": True, "next_attempt": until})
+        listing = maintenance.manage(self.scanner(), "list")["data"]
+        result = maintenance.manage(self.scanner(), "recover", revision=listing["recovery_revision"],
+                                    not_before=datetime.now(timezone.utc).isoformat())
+        self.assertFalse(result["data"]["recovered"])
+        self.assertEqual(update.read_json(self.root / "attempt.json")["next_attempt"], until)
+        count = len(self.calls)
+        self.do_update()  # A new Scanner instance must retain the durable pending guard.
+        self.assertEqual(len(self.calls), count)
+        self.assertEqual((self.root / "provider.dat").read_bytes(), provider)
+        self.assertEqual((self.root / stage["id"] / "db/freshclam.dat").read_bytes(), provider)
+        with history.locked(self.root / "update", attempts=1), history.locked(self.root / "publish", attempts=1):
+            pass
+
+    def test_provider_save_failure_during_zero_exit_wait_stays_failed_and_pending(self):
+        self.do_update()
+        self.allow_next()
+        pointer = (self.root / "current.json").read_bytes()
+        old_provider = b"old provider state"
+        history.replace_private(self.root / "provider.dat", old_provider)
+        new_provider = b"new provider cooldown state"
+
+        def waiting(argv, *args, **kwargs):
+            self.calls.append(argv)
+            db = Path(next(a.split("=", 1)[1] for a in argv if a.startswith("--datadir=")))
+            (db / "freshclam.dat").write_bytes(new_provider)
+            return 0, "", "WARNING: You are on cool-down until after: 2026-11-10 00:00:00\n"
+
+        with patch("pc_scanner.signature_maintenance.preserve_provider", side_effect=OSError("synthetic save failure")):
+            report = self.do_update(waiting)
+        self.assertEqual((report["status"], report["data"]["update_status"]), ("error", "failed"), report)
+        self.assertEqual((self.root / "provider.dat").read_bytes(), old_provider)
+        self.assertEqual((self.root / "current.json").read_bytes(), pointer)
+        self.assertTrue(update.read_json(self.root / "attempt.json")["pending"])
+        sync = update.read_json(self.root / "provider-sync.json")
+        self.assertEqual(sync["status"], "pending")
+        self.assertEqual((self.root / sync["stage"] / "db/freshclam.dat").read_bytes(), new_provider)
+
+    def test_ordinary_zero_exit_messages_still_allow_successful_unchanged(self):
+        self.do_update()
+        self.allow_next()
+
+        def ordinary(argv, *args, **kwargs):
+            answer = self.engine(argv, *args, **kwargs)
+            if any(a.startswith("--datadir=") for a in argv):
+                return 0, "daily.cvd is up-to-date (version: 429, sigs: 100)\n", (
+                    "WARNING: DNS Update Info disabled. Falling back to HTTP mode.\n"
+                    "WARNING: remote_cvdhead: file not found: https://localhost/daily.cld\n")
+            return answer
+
+        report = self.do_update(ordinary)
+        self.assertEqual((report["status"], report["data"]["update_status"]), ("completed", "unchanged"), report)
+        self.assertFalse(update.read_json(self.root / "attempt.json")["pending"])
+        self.assertFalse(list(self.root.glob("stage-*")))
+
+    def test_actual_zero_exit_child_cooldown_is_captured_and_preserved(self):
+        self.do_update()
+        self.allow_next()
+        pointer = (self.root / "current.json").read_bytes()
+        child = self.base / "synthetic-cooldown.py"
+        marker = self.base / "child.pid"
+        child.write_text(
+            "import os,sys\nfrom pathlib import Path\n"
+            f"Path({str(marker)!r}).write_text(str(os.getpid()))\n"
+            "db=Path(next(a.split('=',1)[1] for a in sys.argv if a.startswith('--datadir=')))\n"
+            "(db/'freshclam.dat').write_bytes(b'opaque synthetic 48-hour wait')\n"
+            "print('WARNING: You are still on cool-down until after: 2026-11-10 00:00:00', file=sys.stderr)\n")
+        real = core.run_bounded
+
+        def engine(argv, timeout, limit, cancel=None):
+            if any(a.startswith("--datadir=") for a in argv):
+                self.calls.append(argv)
+                return real([sys.executable, str(child), *argv[1:]], timeout, limit, cancel)
+            return self.engine(argv, timeout, limit, cancel)
+
+        report = self.do_update(engine)
+        self.assertEqual((report["status"], report["data"]["update_status"]), ("partial", "rate_limited"), report)
+        self.assertEqual((self.root / "current.json").read_bytes(), pointer)
+        self.assertTrue(update.read_json(self.root / "attempt.json")["pending"])
+        stage = next(self.root.glob("stage-*"))
+        self.assertEqual((self.root / "provider.dat").read_bytes(), b"opaque synthetic 48-hour wait")
+        self.assertEqual((stage / "db/freshclam.dat").read_bytes(), b"opaque synthetic 48-hour wait")
+        with self.assertRaises(ProcessLookupError):
+            os.kill(int(marker.read_text()), 0)
+
     def test_generation_pin_survives_publication_and_supports_parallel_readers(self):
         self.do_update()
         scanner = self.scanner()
