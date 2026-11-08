@@ -517,7 +517,7 @@
     },
     "source_module_hashes_verified": 28,
     "regressions": {
-      "command": "bdo proxy .venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
+      "command": ".venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
       "total": 68,
       "passed": 68,
       "skipped": 0,

@@ -85,6 +85,12 @@
   HTTPSは前回と同じ試験用CAで検証有効。外部通信なしで、既取得の署名付きCVDを返す試験であり、公式配布元からの実取得や429／Retry-Afterの確認ではない。
   元の失敗stage・旧世代と新しい待機・配布元同期を残し、通信なしで停止保存。関連回帰62件成功。TLSハンドシェイク／未信頼CAの障害と本番timeoutの確認は別途。
 
+- [2026-11-08の実freshclam429／48時間待機の受入](acceptance/freshclam-429-retry-after-linux-2026-11-08.json)では、ローカルmirrorのヘッダー／本体×HTTP／HTTPS×秒数／HTTP日時の8ケースで、
+  実freshclamが48時間の配布元待機を保存し、再起動後も通信しないことを確認した。一方、本体429の4件は終了0となり、スキャナーがcompleted／unchangedと誤報告した。
+  [修正](acceptance/clamav-zero-exit-rate-limit-fix-2026-11-08.json)では既知の429／cool-down通知を終了コードによらず待機として扱い、`partial`／`rate_limited`・`recovery_required=true` とした。
+  [修正後の再受入](acceptance/freshclam-429-post-fix-linux-2026-11-08.json)では、本体429の4件と待機中の4件のすべてで、pending・stage・同期済みの配布元状態を保持した。
+  ヘッダー429の短い本文は修正前の受入で通常の失敗（error／failed）となり、修正後の判定は未確認。待機が自然に明けた後の復旧・再試行と、実配布元での429も別途。
+
 以下は将来段階を含む設計。上記の保守的な制限は保持・復旧運用を実装してから拡張する。
 
 ### 所有者向け復旧・世代整理CLI（2026-11-01）
@@ -275,4 +281,5 @@ Linuxは個人フォルダーをマウントしないDockerで、WindowsはCIと
 自動更新設定は変更していない。Macは異なる公式定義版への実更新と再開失効まで確認済み。
 Linux Docker aarch64も異なる版への更新・再開失効まで確認済み。
 ローカルの制御した配布元でのHTTP／HTTPS転送障害からは、期限後の復旧と再試行の成功まで確認済み。
-他のLinux環境・Windowsの受入、実配布元での障害と429／Retry-Afterなどの配布元固有の待機は残る。
+ローカルの制御した配布元での429／Retry-Afterは、48時間の配布元待機の保持と、修正後の `partial`／`rate_limited` 判定まで確認済み。
+他のLinux環境・Windowsの受入、429の待機が自然に明けた後の復旧・再試行、実配布元での障害と待機は残る。

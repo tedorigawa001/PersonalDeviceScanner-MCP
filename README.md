@@ -460,9 +460,11 @@ These maintenance commands are local CLI only, without administrator credentials
 macOS CLI recovery/cleanup and storage-failure recovery passed native acceptance with test wait deadlines;
 Linux Docker (Ubuntu 24.04 aarch64) also passed a real update, recovery and cleanup, and after a real freshclam DNS
 failure, recovery and a successful retry once its wait had elapsed. After HTTP/HTTPS transfer failures from a
-controlled local mirror, recovery and a successful retry also passed once their waits had elapsed. Faults on the real
-provider, provider-specific waits such as 429/Retry-After, other Linux environments, Windows support/acceptance and
-MCP writes remain pending.
+controlled local mirror, recovery and a successful retry also passed once their waits had elapsed. With
+429/Retry-After from a controlled local mirror, real freshclam kept the 48-hour provider wait, and after the
+zero-exit fix the CLI reported `partial` / `rate_limited` while keeping pending state. Recovery and retry after a 429
+wait naturally expires, faults and waits on the real provider, other Linux environments, Windows support/acceptance
+and MCP writes remain pending.
 See the [operational design](docs/clamav-signature-update-design.md).
 
 ### Checking for engine updates

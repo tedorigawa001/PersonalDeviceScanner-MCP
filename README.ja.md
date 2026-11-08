@@ -452,7 +452,9 @@ Macでの復旧・整理と保存障害からの復旧は、試験用の待機�
 Linux Docker（Ubuntu 24.04 aarch64）でも実更新・復旧・整理の受入を済ませ、実freshclamのDNS失敗からも、
 待機期限の経過後に復旧して再試行に成功しました。
 ローカルの制御した配布元でのHTTP／HTTPS転送障害からも、待機期限の経過後に復旧して再試行に成功しています。
-実配布元での障害、429／Retry-Afterなどの配布元固有の待機、他のLinux環境、Windows対応と受入、MCP更新は残課題です。
+ローカルの制御した配布元での429／Retry-Afterでは、実freshclamが48時間の配布元待機を保ち、終了0の誤判定の修正後は
+`partial`／`rate_limited` としてpendingを保持することも確認しています。
+429の待機が自然に明けた後の復旧・再試行、実配布元での障害と待機、他のLinux環境、Windows対応と受入、MCP更新は残課題です。
 詳細は[運用設計](docs/clamav-signature-update-design.md)を参照してください。
 
 ### エンジンの更新を確かめる場合
