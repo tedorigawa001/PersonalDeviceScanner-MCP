@@ -237,7 +237,7 @@
       "old_generation_bytes_preserved": true,
       "freshclam_calls": 1,
       "next_attempt_jst_rounded_up": "2026-11-07T00:41:14+09:00",
-      "generation_capacity": "4 of 4; three retained generation directories before update plus one new published generation. Mac directory count independently confirmed 4. No deletion performed."
+      "generation_capacity": "4 of 4; three retained generation directories before update plus one new published generation. The Linux count of 4 was confirmed again before the same-day selected cleanup (clamav-generation-cleanup-linux-2026-11-06.json). No deletion performed in this attempt."
     }
   ],
   "inputs": "128 harmless synthetic files per environment; no personal files",
@@ -289,6 +289,21 @@
     "Both stores now at generation capacity 4; inspect owner CLI inventory and obtain/select appropriate cleanup before another actual update attempt",
     "No early retry, guard bypass or artificial provider response used to obtain unchanged"
   ],
+  "generation_follow_up": {
+    "date": "2026-11-06",
+    "linux": {
+      "record": "clamav-generation-cleanup-linux-2026-11-06.json",
+      "result": "Same-day owner CLI selected deletion of exactly two old generations; 4 entries became 2 (current and last previous)."
+    },
+    "mac": {
+      "performed_at_japan": "2026-11-06 20:58",
+      "classification": "With the incomplete-folder classification committed unchanged afterwards as 50c33ab, the four entries were current daily 28174, the protected last previous daily 28172 and two empty incomplete folders without definition files (0 bytes). The three retained directories above therefore held only one complete generation.",
+      "action": "Owner CLI list, then deletion of only the two incomplete folders, each with its freshly listed revision; 4 entries became 2.",
+      "preserved": "SHA-256 of all 12 retained files (both generations' definitions, current.json, attempt.json, provider.dat, provider-sync.json and the two lock files) identical before and after; next attempt 2026-11-07 00:42:48 JST unchanged.",
+      "engines_started": 0,
+      "store_path_recorded": false
+    }
+  },
   "commit_created_during_recording": false,
   "push_performed_during_recording": false
 }
