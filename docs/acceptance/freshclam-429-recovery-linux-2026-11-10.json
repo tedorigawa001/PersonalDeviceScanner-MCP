@@ -1432,7 +1432,7 @@
     ],
     "atime_compared": false,
     "update_locks_available": 8,
-    "private_permissions": "All eight stores and the independent control: UID10001, directories0700, files0600. The unsupported CLD remains private and untouched.",
+    "private_permissions": "All eight stores and the independent control: UID 10001, directories 0700, files 0600. The unsupported CLD remains private and untouched.",
     "pinned_source_regressions": {
       "source_commit": "7d9fef6eb78387caa94ff664cb5e4fede55bd558",
       "command": ".venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
@@ -1461,7 +1461,7 @@
       "failures": 0,
       "errors": 0,
       "seconds": 7.693,
-      "scope": "Current committed038af02 plus documentation edits only. This regression result does not re-label the pinned7d9fef6 real-engine acceptance as a038af02 acceptance."
+      "scope": "Current committed 038af02 plus documentation edits only. This regression result does not re-label the pinned 7d9fef6 real-engine acceptance as a 038af02 acceptance."
     },
     "static_checks": {
       "record_format_tests": {
@@ -1478,7 +1478,7 @@
   "setup_exclusions": [
     {
       "name": "excluded-stale-native-warning-baseline",
-      "result": "The old daily28172 is now 8.4 days old. A test-only 14-day freshness limit does not suppress ClamAV native >7-day stderr warnings. Group results were unconfirmed and fell back; the 120-second preparation scan returned partial with its checkpoint saved. No owner recovery, download or wait modification occurred in this preparation. Its history/config/checkpoint remain separate. All actual retry/resume configs use the original 7-day default.",
+      "result": "The old daily 28172 is now 8.4 days old. A test-only 14-day freshness limit does not suppress ClamAV native >7-day stderr warnings. Group results were unconfirmed and fell back; the 120-second preparation scan returned partial with its checkpoint saved. No owner recovery, download or wait modification occurred in this preparation. Its history/config/checkpoint remain separate. All actual retry/resume configs use the original 7-day default.",
       "handling": "Keep the original 128 completed checkpoints unchanged, copy their bytes into task histories and test post-update reinspection/reuse instead of pretending the old engine remains fresh."
     },
     {
@@ -1487,7 +1487,7 @@
     },
     {
       "name": "CLD_fixture_mistakes",
-      "result": "First HTTP-seconds body store got full CVD bytes at a CLD path; real freshclam exited0 and left daily.cld, which the CVD-only application rejected. Second HTTP-seconds cached store got an advertised CLD header but a404 body; real freshclam exited11 without falling back to CVD. Both actual failed retries are included in the partial outcome, not silently excluded or repeated."
+      "result": "First HTTP-seconds body store got full CVD bytes at a CLD path; real freshclam exited 0 and left daily.cld, which the CVD-only application rejected. Second HTTP-seconds cached store got an advertised CLD header but a 404 body; real freshclam exited 11 without falling back to CVD. Both actual failed retries are included in the partial outcome, not silently excluded or repeated."
     }
   ],
   "preservation": {
@@ -1516,11 +1516,11 @@
   },
   "limitations": [
     "This is partial acceptance: six original stores succeeded; two new waits and all their stages remain. Do not report all eight as successful.",
-    "HTTP seconds-format successful recovery-plus-publication for the two existing stores remains unconfirmed; normal publication was verified only in a new independent control without historical429 state.",
+    "HTTP seconds-format successful recovery-plus-publication for the two existing stores remains unconfirmed; normal publication was verified only in a new independent control without historical 429 state.",
     "The CLD-containing stage is listed unavailable and is not automatically deletable. After its new wait expires, investigate the preserved stage before attempting owner recovery.",
-    "Old definitions independently exceeded the default seven-day freshness age. This run does not establish that old results were reusable immediately before update. It confirms changed definition/context, zero old reuse with the new definitions, full128-target reinspection and subsequent128-target reuse.",
+    "Old definitions independently exceeded the default seven-day freshness age. This run does not establish that old results were reusable immediately before update. It confirms changed definition/context, zero old reuse with the new definitions, full 128-target reinspection and subsequent 128-target reuse.",
     "Local mirror with previously signed public CVDs; no new official download, induced official-provider fault or fresh production-default timeout acceptance.",
-    "Native runs use pinned7d9fef6; concurrently added038af02 and its new rollback protection were not reaccepted with the real engine in this task.",
+    "Native runs use pinned 7d9fef6; concurrently added 038af02 and its new rollback protection were not reaccepted with the real engine in this task.",
     "TLS-failure expiry recovery, other OS/CPU acceptance, Windows update support, OS automatic update rollout and OneDrive remain separate."
   ],
   "commit_created_during_recording": false,

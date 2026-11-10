@@ -467,8 +467,10 @@ controlled local mirror, recovery and a successful retry also passed once their 
 429/Retry-After from a controlled local mirror, real freshclam kept the 48-hour provider wait, and after the
 zero-exit fix the CLI reported `partial` / `rate_limited` while keeping pending state. Local TLS handshake
 interruption, an untrusted CA and a certificate name mismatch each stopped the update as `error` / `failed` with
-pending state kept. Recovery and retry after a 429 wait naturally expires, faults and waits on the real provider,
-other Linux environments, Windows support/acceptance and MCP writes remain pending.
+pending state kept. After a 429 wait expired naturally, owner recovery and a successful retry passed for six of
+eight stores; the other two failed on test-fixture mistakes and keep their new waits. Recovery and retry of those
+two, faults and waits on the real provider, other Linux environments, Windows support/acceptance and MCP writes
+remain pending.
 See the [operational design](docs/clamav-signature-update-design.md).
 
 ### Checking for engine updates
