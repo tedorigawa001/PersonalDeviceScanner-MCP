@@ -495,6 +495,13 @@ class UpdateTests(unittest.TestCase):
             self.assertEqual(self.do_update()["status"], "error")
         self.assertEqual(len(self.calls), calls)
         empty.rmdir()
+        # So does a work folder the owner CLI cannot manage; its listing reports these (maintenance tests).
+        junk = self.root / "stage-junk"
+        junk.mkdir(mode=0o700)
+        with patch.object(update, "MAX_GENERATIONS", 2):
+            self.assertEqual(self.do_update()["status"], "error")
+        self.assertEqual(len(self.calls), calls)
+        junk.rmdir()
         self.version = 2
         original = update.write_json
         def fail(path, obj):

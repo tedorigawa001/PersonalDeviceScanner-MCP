@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -95,6 +96,49 @@ class MaintenanceTests(unittest.TestCase):
             self.assertEqual(maintenance.manage(self.scanner, "delete", name, row["revision"])["status"], "completed")
             self.assertFalse((self.root / name).exists())
         self.assertEqual(self.entry(self.previous)["reason"], "last_previous")
+
+    def test_only_a_verified_folder_stands_beside_the_last_previous_generation(self):
+        # These hold three regular files by name, yet none could replace the current generation.
+        maintenance.manage(self.scanner, "delete", self.removable, self.entry(self.removable)["revision"])
+        outside = self.base / "outside"
+        outside.mkdir(mode=0o700)
+        for db in update.DATABASES:
+            history.replace_private(outside / db, b"ClamAV-VDB:date:1:10:90:hash:sig".ljust(512, b" ") + b"synthetic")
+        def linked(folder):
+            folder.symlink_to(outside, target_is_directory=True)
+        def finder_file(folder):
+            shutil.copytree(outside, folder)
+            history.replace_private(folder / ".DS_Store", b"\0\0\0\1Bud1")
+        def malformed(folder):
+            folder.mkdir(mode=0o700)
+            for db in update.DATABASES:
+                history.replace_private(folder / db, b"x")
+        for label, make, listed in (("linked", linked, "unavailable"), ("finder_file", finder_file, "unavailable"),
+                                    ("malformed", malformed, None)):
+            with self.subTest(label):
+                folder = self.root / secrets.token_hex(16)
+                make(folder)
+                self.assertTrue(maintenance.complete(folder))
+                real = self.entry(self.previous)
+                self.assertEqual((real["deletable"], real["reason"]), (False, "last_previous"))
+                with self.assertRaises(core.ScannerError):
+                    maintenance.manage(self.scanner, "delete", self.previous, real["revision"])
+                self.assertEqual(self.entry(folder.name)["reason"], listed)
+                folder.unlink() if folder.is_symlink() else shutil.rmtree(folder)
+        self.assertTrue((self.root / self.previous / "main.cvd").exists())
+
+    def test_unmanaged_stage_names_are_counted_and_reported(self):
+        listing = maintenance.manage(self.scanner, "list")
+        self.assertEqual((listing["data"]["unrecognized_entries"], listing["warnings"]), (0, []))
+        for name in ("stage-junk", "stage-" + "A" * 32, "0" * 31):
+            (self.root / name).mkdir(mode=0o700)
+        listing = maintenance.manage(self.scanner, "list")
+        # Only the two stage-* names take an updater slot; a short hex name is neither counted nor listed.
+        self.assertEqual(listing["data"]["unrecognized_entries"], 2)
+        self.assertIn("count toward the generation limit", listing["warnings"][0])
+        self.assertNotIn("stage-junk", [r["id"] for r in listing["data"]["entries"]])
+        counted = sorted(p.name for p in self.root.iterdir() if update.counts_toward_capacity(p.name))
+        self.assertEqual(counted, sorted([self.active, self.previous, self.removable, "stage-junk", "stage-" + "A" * 32]))
 
     def test_listing_never_exclusively_locks_the_current_generation(self):
         real, locked = maintenance.exclusive_lease, []

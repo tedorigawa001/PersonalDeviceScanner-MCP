@@ -19,9 +19,16 @@ DATABASES = ("main.cvd", "daily.cvd", "bytecode.cvd")
 GEN = re.compile(r"[0-9a-f]{32}\Z")
 MAX_BYTES = 2 * 1024 ** 3
 MAX_GENERATIONS = 4  # No automatic deletion in phase one; never remove a pinned generation.
+# FreshClam also prints each database header's "builder" name on its normal update lines, so that name can match
+# too. Such a match stops without publishing and keeps pending; missing a real 429 would be worse.
 PROVIDER_WAIT = re.compile(
     r"\bFreshClam (?:previously )?received error code 429\b"
     r"|\bYou are(?: still)? on cool-down until after:", re.IGNORECASE)
+
+
+def counts_toward_capacity(name):
+    """Every generation or work stage name, even one the owner CLI cannot manage, holds space until inspected."""
+    return bool(GEN.fullmatch(name)) or name.startswith("stage-")
 
 
 def configure(scanner):
@@ -254,7 +261,7 @@ def update(scanner, cancel=None, progress=None):
                 if now < until:
                     data.update(update_status="rate_limited", next_attempt_at=until)
                     return core.result("clamav", "partial", data=data, warnings=["Update retry interval has not elapsed"])
-            generations = [p for p in path.iterdir() if GEN.fullmatch(p.name) or p.name.startswith("stage-")]
+            generations = [p for p in path.iterdir() if counts_toward_capacity(p.name)]
             if len(generations) >= MAX_GENERATIONS or shutil.disk_usage(path).free < MAX_BYTES * 2:
                 raise core.ScannerError("Private signature store capacity exhausted; owner maintenance is required")
             # Persist a conservative 24h guard before any network call. Includes failures/cancellation/429.

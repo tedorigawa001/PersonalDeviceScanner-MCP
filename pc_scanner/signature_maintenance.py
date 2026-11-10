@@ -187,6 +187,16 @@ def complete(folder):
         return False
 
 
+def usable(folder, deadline):
+    """A rollback must pass the checks applied to the current generation. A linked, unknown-file or malformed
+    folder must not count beside the last usable one, or that one could be deleted."""
+    try:
+        update.digest_directory(folder, deadline)
+        return True
+    except OSError:
+        return False
+
+
 def inventory(path, deadline):
     state, current = attempt(path), update.pointer(path)
     names = []
@@ -195,7 +205,9 @@ def inventory(path, deadline):
             raise OSError("Signature inventory limit")
         names.append(f.name)
     managed = sorted(n for n in names if ENTRY.fullmatch(n))
-    previous = [n for n in managed if update.GEN.fullmatch(n) and (not current or n != current["generation"]) and complete(path / n)]
+    previous = [n for n in managed if update.GEN.fullmatch(n) and (not current or n != current["generation"]) and usable(path / n, deadline)]
+    # The updater counts these toward its limit, but this CLI neither lists nor deletes them.
+    unrecognized = sum(1 for n in names if update.counts_toward_capacity(n) and not ENTRY.fullmatch(n))
     rows = []
     for name in managed:
         row = dict(id=name, kind="stage" if name.startswith("stage-") else "generation", revision=None,
@@ -223,7 +235,7 @@ def inventory(path, deadline):
     sync = provider_sync(path)
     token = [state, current, rows, sync, hashlib.sha256(provider_bytes(provider)).hexdigest() if provider.exists() or provider.is_symlink() else None]
     revision = hashlib.sha256(json.dumps(token, sort_keys=True).encode()).hexdigest()
-    return dict(entries=rows, attempt=state, recovery_revision=revision,
+    return dict(entries=rows, unrecognized_entries=unrecognized, attempt=state, recovery_revision=revision,
                 next_attempt_at=state["next_attempt"] if state else None,
                 minimum_not_before=datetime.fromtimestamp(math.ceil(state["next_attempt"]), timezone.utc).isoformat() if state else None,
                 provider_sync=sync,
@@ -273,7 +285,9 @@ def manage(scanner, action, entry_id=None, revision=None, not_before=None):
         with update.root(scanner) as path, history.locked(path / "update", attempts=1):
             info = inventory(path, deadline)
             if action == "list":
-                return core.result("clamav", "completed", data=info)
+                return core.result("clamav", "completed", data=info, warnings=[
+                    "Entries named stage-* that this CLI cannot manage count toward the generation limit; inspect them manually"
+                ] if info["unrecognized_entries"] else [])
             if action == "recover":
                 if revision != info["recovery_revision"]:
                     raise core.ScannerError("Signature recovery state changed; list again")
