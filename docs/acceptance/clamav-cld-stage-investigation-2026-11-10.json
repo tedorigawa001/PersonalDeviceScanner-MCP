@@ -2,7 +2,7 @@
   "date": "2026-11-10",
   "date_timezone": "Asia/Tokyo",
   "kind": "read_only_investigation_of_preserved_CLD_named_stage_and_recovery_design",
-  "status": "read-only investigation passed; preserved file is byte-identical to signed public CVD28174; recovery design proposed, not implemented or executed",
+  "status": "read-only investigation passed; preserved file is byte-identical to signed public CVD 28174; recovery design proposed, not implemented or executed",
   "implementation_reviewed_commit": "2c10928bdb39903591e083a5ef9bf1ef73b38632",
   "related_records": [
     "freshclam-429-recovery-linux-2026-11-10.json",
@@ -131,7 +131,7 @@
   },
   "signature_verification": {
     "platform": "Mac, using existing installed sigtool on source copies",
-    "verifier": "sigtool1.5.4",
+    "verifier": "sigtool 1.5.4",
     "signature_inputs": [
       {
         "relative": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/bytecode.cvd",
@@ -352,7 +352,7 @@
     "scope": "Readonly structural and cryptographic checks of the exact known stage pattern, followed only after all waits by explicit stage/revision acknowledgement. Recheck provider synchronization and all other unavailable entries.",
     "future_change_on_success": "Only durable pending=false after wait confirmation; old CVDs, stage, current and provider state remain unchanged.",
     "future_signature_validation": "Use equal-hash CVD-named private copies and approved bounded sigtool; no freshclam/clamscan/network call during inspection/recovery.",
-    "capacity": "Retained stage continues to count. Initial3 managed entries become4 after eventual successful publication; later cleanup needs separate owner decision.",
+    "capacity": "Retained stage continues to count. Initial 3 managed entries become 4 after eventual successful publication; later cleanup needs separate owner decision.",
     "not_yet_verified": "Implementation, regression plan, live descriptor ACL/link validation, exceptional recovery and a successful retry of the remaining two original stores."
   },
   "preservation": {
@@ -369,16 +369,16 @@
   "initial_staging": {
     "at_task_start_staged_patch_bytes": 0,
     "head": "2c10928bdb39903591e083a5ef9bf1ef73b38632",
-    "note": "The previously reported five staged documentation files were already committed as2c10928 before this task began. They are not edited by this investigation."
+    "note": "The previously reported five staged documentation files were already committed as 2c10928 before this task began. They are not edited by this investigation."
   },
   "setup_observation": {
-    "original_extension_signature_line_assumption": "The first batch check expected a Digital signature line under the CLD name and stopped when it was absent. No source changes occurred. A separate identical CVD-named copy then passed the required signature confirmation; all9 inputs were rechecked under the documented procedure."
+    "original_extension_signature_line_assumption": "The first batch check expected a Digital signature line under the CLD name and stopped when it was absent. No source changes occurred. A separate identical CVD-named copy then passed the required signature confirmation; all 9 inputs were rechecked under the documented procedure."
   },
   "limitations": [
     "Original stopped-container state was observed through Docker TAR, not live descriptor/ACL/inode/nlink checks. Those checks remain prerequisites before any future recovery mutation.",
-    "Signature verification used host Mac sigtool1.5.4 on private copies, not a new real-engine recovery run inside the Linux source container.",
+    "Signature verification used host Mac sigtool 1.5.4 on private copies, not a new real-engine recovery run inside the Linux source container.",
     "Proposed owner CLI flags are unimplemented. Current regular recover remains blocked for the CLD-containing stage.",
-    "The6-success/2-unfinished acceptance status and both future waits are unchanged."
+    "The 6-success/2-unfinished acceptance status and both future waits are unchanged."
   ],
   "commit_created_during_recording": false,
   "push_performed_during_recording": false
