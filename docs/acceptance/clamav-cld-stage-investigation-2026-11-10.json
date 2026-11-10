@@ -1,0 +1,385 @@
+{
+  "date": "2026-11-10",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "read_only_investigation_of_preserved_CLD_named_stage_and_recovery_design",
+  "status": "read-only investigation passed; preserved file is byte-identical to signed public CVD28174; recovery design proposed, not implemented or executed",
+  "implementation_reviewed_commit": "2c10928bdb39903591e083a5ef9bf1ef73b38632",
+  "related_records": [
+    "freshclam-429-recovery-linux-2026-11-10.json",
+    "freshclam-429-post-fix-linux-2026-11-08.json"
+  ],
+  "design": "../clamav-preserved-stage-recovery-design.md",
+  "acceptance_status_unchanged": {
+    "successful_existing_stores": 6,
+    "unfinished_existing_stores": 2
+  },
+  "scope": {
+    "container": "pc-scanner-429-fixed-20261108-0gcbtl35",
+    "expected_container_id": "edc99f1af84639a186befe4b584ee547c739f03813e8b353d4617f50f2ba8529",
+    "container_state_at_start": "exited",
+    "network": "none",
+    "mounts": [],
+    "published_ports": [],
+    "target_stage": "stage-144558a2c2a5df12bd72db4e0533534e",
+    "target_store": "http-seconds",
+    "comparison_store": "http-seconds-cached",
+    "source_container_started": false,
+    "source_container_exec_used": false,
+    "live_owner_CLI_list_recover_update_or_delete_called": false,
+    "method": "Two raw Docker-cp TAR streams from the stopped source container; signature verification only on independent private Mac copies; no mounts or file changes inside source container."
+  },
+  "findings": {
+    "file_role": "CVD bytes served under daily.cld name by the prior local mirror fixture",
+    "bytes": 23447610,
+    "sha256": "40b9c404e7a3d443b3a517b39aa76b789912cc1b3913f025ce537954609170bf",
+    "header_magic": "ClamAV-VDB",
+    "version": 28174,
+    "signature_count": 355841,
+    "matches_previous_signed_public_CVD_input": true,
+    "old_current_daily": 28172,
+    "candidate_empty": true,
+    "stage_contents": [
+      {
+        "relative": "candidate",
+        "type": "directory",
+        "mode": "0o700",
+        "uid": 10001,
+        "gid": 10001,
+        "size": 0,
+        "sha256": null
+      },
+      {
+        "relative": "db",
+        "type": "directory",
+        "mode": "0o700",
+        "uid": 10001,
+        "gid": 10001,
+        "size": 0,
+        "sha256": null
+      },
+      {
+        "relative": "db/bytecode.cvd",
+        "type": "file",
+        "mode": "0o600",
+        "uid": 10001,
+        "gid": 10001,
+        "size": 281702,
+        "sha256": "6d4aa01f219e988060fc419f495d07f27e0cdf1a2cccc065971da922c76f7ffb"
+      },
+      {
+        "relative": "db/daily.cld",
+        "type": "file",
+        "mode": "0o600",
+        "uid": 10001,
+        "gid": 10001,
+        "size": 23447610,
+        "sha256": "40b9c404e7a3d443b3a517b39aa76b789912cc1b3913f025ce537954609170bf"
+      },
+      {
+        "relative": "db/freshclam.dat",
+        "type": "file",
+        "mode": "0o600",
+        "uid": 10001,
+        "gid": 10001,
+        "size": 90,
+        "sha256": "d1cff6220551a5498551abc20e3049bc53b4387d88a66517d21892be76e6e89d"
+      },
+      {
+        "relative": "db/main.cvd",
+        "type": "file",
+        "mode": "0o600",
+        "uid": 10001,
+        "gid": 10001,
+        "size": 89072577,
+        "sha256": "0b2182d229f46981ec8f535382222f7c9dfdd656b250ad47988b910a8d302365"
+      },
+      {
+        "relative": "freshclam.conf",
+        "type": "file",
+        "mode": "0o600",
+        "uid": 10001,
+        "gid": 10001,
+        "size": 135,
+        "sha256": "1b7f9302a0cd9bcf3f382a678a6d78745a8d78140e74de5cc282439c48eba6b9"
+      }
+    ],
+    "provider": {
+      "journal": {
+        "provider_hash": "d1cff6220551a5498551abc20e3049bc53b4387d88a66517d21892be76e6e89d",
+        "stage": "stage-144558a2c2a5df12bd72db4e0533534e",
+        "status": "synced"
+      },
+      "canonical_sha256": "d1cff6220551a5498551abc20e3049bc53b4387d88a66517d21892be76e6e89d",
+      "stage_source_sha256": "d1cff6220551a5498551abc20e3049bc53b4387d88a66517d21892be76e6e89d",
+      "all_three_match": true,
+      "binary_state_parsed_or_modified": false
+    },
+    "ownership_permissions": {
+      "uid_gid": "10001:10001",
+      "directories": "0700",
+      "regular_files": "0600",
+      "archive_link_or_special_entries": 0,
+      "scope": "TAR-visible permissions/ownership verified for both stores; source live ACL, inode, ctime and nlink were not independently revalidated."
+    },
+    "blocker": {
+      "tree_function": "pc_scanner.signature_maintenance.tree",
+      "reason": "daily.cld is outside the managed filename allowlist; metadata validation raises Unknown signature maintenance entry",
+      "classification": "unavailable; deletable=false",
+      "after_wait": "Existing recover still refuses if any stage is unavailable, even after the pending deadline naturally expires.",
+      "not_inferred": "A valid CVD signature is not approval to publish this stage or bypass provider waits."
+    }
+  },
+  "signature_verification": {
+    "platform": "Mac, using existing installed sigtool on source copies",
+    "verifier": "sigtool1.5.4",
+    "signature_inputs": [
+      {
+        "relative": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/bytecode.cvd",
+        "header_magic": "ClamAV-VDB",
+        "version": 339,
+        "signatures": 80,
+        "sha256": "6d4aa01f219e988060fc419f495d07f27e0cdf1a2cccc065971da922c76f7ffb",
+        "bytes": 281702,
+        "sigtool_exit": 0,
+        "checked_via_identical_CVD_named_copy": false,
+        "digital_signature_present": true,
+        "verification_OK": true,
+        "local_copy_unchanged": true
+      },
+      {
+        "relative": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/daily.cvd",
+        "header_magic": "ClamAV-VDB",
+        "version": 28172,
+        "signatures": 355841,
+        "sha256": "e20ea9523d0f1812a98baaecc4ac84776650b338f02ef70610dc5080a62ab84c",
+        "bytes": 23447601,
+        "sigtool_exit": 0,
+        "checked_via_identical_CVD_named_copy": false,
+        "digital_signature_present": true,
+        "verification_OK": true,
+        "local_copy_unchanged": true
+      },
+      {
+        "relative": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/main.cvd",
+        "header_magic": "ClamAV-VDB",
+        "version": 63,
+        "signatures": 3287027,
+        "sha256": "0b2182d229f46981ec8f535382222f7c9dfdd656b250ad47988b910a8d302365",
+        "bytes": 89072577,
+        "sigtool_exit": 0,
+        "checked_via_identical_CVD_named_copy": false,
+        "digital_signature_present": true,
+        "verification_OK": true,
+        "local_copy_unchanged": true
+      },
+      {
+        "relative": "stage-144558a2c2a5df12bd72db4e0533534e/db/bytecode.cvd",
+        "header_magic": "ClamAV-VDB",
+        "version": 339,
+        "signatures": 80,
+        "sha256": "6d4aa01f219e988060fc419f495d07f27e0cdf1a2cccc065971da922c76f7ffb",
+        "bytes": 281702,
+        "sigtool_exit": 0,
+        "checked_via_identical_CVD_named_copy": false,
+        "digital_signature_present": true,
+        "verification_OK": true,
+        "local_copy_unchanged": true
+      },
+      {
+        "relative": "stage-144558a2c2a5df12bd72db4e0533534e/db/daily.cld",
+        "header_magic": "ClamAV-VDB",
+        "version": 28174,
+        "signatures": 355841,
+        "sha256": "40b9c404e7a3d443b3a517b39aa76b789912cc1b3913f025ce537954609170bf",
+        "bytes": 23447610,
+        "sigtool_exit": 0,
+        "checked_via_identical_CVD_named_copy": true,
+        "digital_signature_present": true,
+        "verification_OK": true,
+        "local_copy_unchanged": true
+      },
+      {
+        "relative": "stage-144558a2c2a5df12bd72db4e0533534e/db/main.cvd",
+        "header_magic": "ClamAV-VDB",
+        "version": 63,
+        "signatures": 3287027,
+        "sha256": "0b2182d229f46981ec8f535382222f7c9dfdd656b250ad47988b910a8d302365",
+        "bytes": 89072577,
+        "sigtool_exit": 0,
+        "checked_via_identical_CVD_named_copy": false,
+        "digital_signature_present": true,
+        "verification_OK": true,
+        "local_copy_unchanged": true
+      },
+      {
+        "relative": "stage-c685575d4277c20352dc37c5335b9f1c/db/bytecode.cvd",
+        "header_magic": "ClamAV-VDB",
+        "version": 339,
+        "signatures": 80,
+        "sha256": "6d4aa01f219e988060fc419f495d07f27e0cdf1a2cccc065971da922c76f7ffb",
+        "bytes": 281702,
+        "sigtool_exit": 0,
+        "checked_via_identical_CVD_named_copy": false,
+        "digital_signature_present": true,
+        "verification_OK": true,
+        "local_copy_unchanged": true
+      },
+      {
+        "relative": "stage-c685575d4277c20352dc37c5335b9f1c/db/daily.cvd",
+        "header_magic": "ClamAV-VDB",
+        "version": 28172,
+        "signatures": 355841,
+        "sha256": "e20ea9523d0f1812a98baaecc4ac84776650b338f02ef70610dc5080a62ab84c",
+        "bytes": 23447601,
+        "sigtool_exit": 0,
+        "checked_via_identical_CVD_named_copy": false,
+        "digital_signature_present": true,
+        "verification_OK": true,
+        "local_copy_unchanged": true
+      },
+      {
+        "relative": "stage-c685575d4277c20352dc37c5335b9f1c/db/main.cvd",
+        "header_magic": "ClamAV-VDB",
+        "version": 63,
+        "signatures": 3287027,
+        "sha256": "0b2182d229f46981ec8f535382222f7c9dfdd656b250ad47988b910a8d302365",
+        "bytes": 89072577,
+        "sigtool_exit": 0,
+        "checked_via_identical_CVD_named_copy": false,
+        "digital_signature_present": true,
+        "verification_OK": true,
+        "local_copy_unchanged": true
+      }
+    ],
+    "verified_definition_files": 9,
+    "original_CLD_name_result": {
+      "exit": 0,
+      "Verification_OK": true,
+      "digital_signature_line": false,
+      "accepted_alone_as_future_recovery_evidence": false
+    },
+    "CVD_named_private_copy_result": {
+      "bytes_identical": true,
+      "source_renamed": false,
+      "exit": 0,
+      "digital_signature_line": true,
+      "Verification_OK": true
+    },
+    "derived_tamper_controls": [
+      {
+        "extension": ".cld",
+        "exit": 1,
+        "digital_signature_line": false,
+        "Verification_OK": false
+      },
+      {
+        "extension": ".cvd",
+        "exit": 1,
+        "digital_signature_line": true,
+        "Verification_OK": false
+      }
+    ],
+    "all_source_and_unmodified_analysis_copies_unchanged": true,
+    "limitation": "This single CLD-named artifact contains an entire signed CVD. No claim is made about revalidating signatures of ordinary compiled CLD databases."
+  },
+  "waits_unchanged": [
+    {
+      "label": "http-seconds",
+      "attempt": {
+        "next_attempt": 1794406084.5473938,
+        "pending": true
+      },
+      "minimum_not_before_japan": "2026-11-11T23:08:04.547394+09:00"
+    },
+    {
+      "label": "http-seconds-cached",
+      "attempt": {
+        "next_attempt": 1794406205.1409826,
+        "pending": true
+      },
+      "minimum_not_before_japan": "2026-11-11T23:10:05.140983+09:00"
+    }
+  ],
+  "verification": {
+    "archive_before_checked_at_utc": "2026-11-10T14:42:56.798682+00:00",
+    "archive_after_checked_at_utc": "2026-11-10T14:48:53.344366+00:00",
+    "two_source_store_archives_equal": true,
+    "compared_fields": [
+      "complete member paths and types",
+      "regular-file SHA-256 and size",
+      "mode",
+      "UID/GID",
+      "second-resolution mtime",
+      "attempt/current/provider synchronization content"
+    ],
+    "all_previous_acceptance_file_hashes_modes_UID_GID_and_quantized_mtimes_match": true,
+    "target_regular_files": 20,
+    "mtime_precision": "Docker TAR supplied no subsecond PAX fields; source mtime compared at one-second resolution.",
+    "atime_compared_or_restored": false,
+    "live_inode_ctime_nlink_or_ACL_in_TAR": false,
+    "code_boundary_reproduction": {
+      "result": "reproduced",
+      "exception": "Unknown signature maintenance entry",
+      "input": "separate empty synthetic metadata tree, not the copied database or original stage",
+      "implementation": "current signature_maintenance.tree",
+      "original_store_accessed": false
+    },
+    "original_definitions_reloaded_or_scanned": false,
+    "full_Android_MCP_suite_or_npm_rerun": false,
+    "reason": "Investigation and documentation only; no runtime or test source change and no recovery action.",
+    "static_checks": {
+      "record_format_tests": {
+        "total": 2,
+        "passed": 2,
+        "failures": 0,
+        "errors": 0,
+        "seconds": 0.015
+      },
+      "links_scope_and_source_archive_equality": "passed",
+      "git_index_contents_unchanged": "passed",
+      "git_diff_check": "passed",
+      "final_source_container_state": "exited, network none, no mounts or published ports"
+    }
+  },
+  "recovery_design": {
+    "status": "proposal only",
+    "original_stage_kept_in_place": true,
+    "CVD_only_publication_policy_preserved": true,
+    "provider_state_and_waits_preserved": true,
+    "new_owner_only_inspection_and_acknowledgement_required": true,
+    "MCP_exposed": false,
+    "normal_recover_behavior_unchanged": true,
+    "scope": "Readonly structural and cryptographic checks of the exact known stage pattern, followed only after all waits by explicit stage/revision acknowledgement. Recheck provider synchronization and all other unavailable entries.",
+    "future_change_on_success": "Only durable pending=false after wait confirmation; old CVDs, stage, current and provider state remain unchanged.",
+    "future_signature_validation": "Use equal-hash CVD-named private copies and approved bounded sigtool; no freshclam/clamscan/network call during inspection/recovery.",
+    "capacity": "Retained stage continues to count. Initial3 managed entries become4 after eventual successful publication; later cleanup needs separate owner decision.",
+    "not_yet_verified": "Implementation, regression plan, live descriptor ACL/link validation, exceptional recovery and a successful retry of the remaining two original stores."
+  },
+  "preservation": {
+    "wait_state_reset_shortened_removed_or_recovered": false,
+    "source_store_files_renamed_removed_or_modified": false,
+    "provider_state_rewritten": false,
+    "current_or_generation_promoted": false,
+    "original_stage_quarantined_or_moved": false,
+    "source_container_started_or_stopped": false,
+    "host_CA_or_normal_definitions_changed": false,
+    "personal_files_or_traffic_used": false,
+    "git_index_changed_by_task": false
+  },
+  "initial_staging": {
+    "at_task_start_staged_patch_bytes": 0,
+    "head": "2c10928bdb39903591e083a5ef9bf1ef73b38632",
+    "note": "The previously reported five staged documentation files were already committed as2c10928 before this task began. They are not edited by this investigation."
+  },
+  "setup_observation": {
+    "original_extension_signature_line_assumption": "The first batch check expected a Digital signature line under the CLD name and stopped when it was absent. No source changes occurred. A separate identical CVD-named copy then passed the required signature confirmation; all9 inputs were rechecked under the documented procedure."
+  },
+  "limitations": [
+    "Original stopped-container state was observed through Docker TAR, not live descriptor/ACL/inode/nlink checks. Those checks remain prerequisites before any future recovery mutation.",
+    "Signature verification used host Mac sigtool1.5.4 on private copies, not a new real-engine recovery run inside the Linux source container.",
+    "Proposed owner CLI flags are unimplemented. Current regular recover remains blocked for the CLD-containing stage.",
+    "The6-success/2-unfinished acceptance status and both future waits are unchanged."
+  ],
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false
+}
