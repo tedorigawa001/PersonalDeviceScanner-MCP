@@ -417,5 +417,15 @@
     "Accelerated fixture timeouts do not establish production-default timeout performance, Windows behavior, other engine versions, Android or full-suite results."
   ],
   "commit_created_during_recording": false,
-  "push_performed_during_recording": false
+  "push_performed_during_recording": false,
+  "follow_up_2026_11_11": {
+    "record": "freshclam-tls-recovery-linux-2026-11-11.json",
+    "status": "passed: three accepted TLS-failure stores recovered after natural expiry and normally updated to daily 28174; rechecked 8/reused 8 each",
+    "source_commit": "f86c18d7424cf7435d9f8678596a514f4721b2bc",
+    "original_generations_and_failure_stages_preserved": 3,
+    "original_histories_unchanged": true,
+    "excluded_preparation_failure_store_unchanged": true,
+    "protected429_stores_accessed": false,
+    "note": "Original Nov8 observations are point-in-time evidence; the three accepted stores now have pending=false after successful retries, while the excluded preparation-failure store remains untouched."
+  }
 }

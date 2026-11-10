@@ -1,0 +1,891 @@
+{
+  "date": "2026-11-11",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "native_freshclam_TLS_failure_natural_expiry_recovery_and_successful_retry_acceptance",
+  "status": "passed: all three preserved TLS-failure stores recovered with owner CLI, updated signed CVDs, rechecked 8 synthetic targets and then reused 8",
+  "source_commit": "f86c18d7424cf7435d9f8678596a514f4721b2bc",
+  "runtime_source_changed_by_this_task": false,
+  "code_under_test": "Pinned task-start current commit f86c18d, including 038af02 generation-usability/capacity fixes. Exported to a new source folder; all 28 module hashes match that exact commit.",
+  "predecessor_record": "freshclam-tls-handshake-ca-hostname-linux-2026-11-08.json",
+  "environment": {
+    "container": "pc-scanner-tls-negative-20261108-l7jjb4af",
+    "container_id": "a5a669db3a348ec7990ef782535c64b629dd04ffab35411f6e59e03bc429e87b",
+    "image": "sha256:20fd8ed13f28e2b3e10a54c9b2fe018c8e8d5a2549a79fc3b55fc1ea82021ada",
+    "os": "Ubuntu 24.04 aarch64",
+    "python": "3.15.2",
+    "engines": "real freshclam/sigtool/clamscan 1.5.4",
+    "uid_gid": "10001:10001",
+    "network": "none; HTTPS localhost fixture only",
+    "mounts": [],
+    "published_ports": [],
+    "cap_drop": [
+      "ALL"
+    ],
+    "security_options": [
+      "no-new-privileges"
+    ],
+    "memory_bytes": 2684354560,
+    "cpus": 2.0,
+    "pids_limit": 256
+  },
+  "preflight": {
+    "checked_at_utc": "2026-11-10T15:17:35.652633+00:00",
+    "stored_pending_states_matching_previous": 3,
+    "full_stored_snapshots_equal_previous": 3,
+    "owner_waits_naturally_elapsed": 3,
+    "prior_minimum_waits_japan": [
+      "2026-11-09T20:42:58.247240+09:00",
+      "2026-11-09T20:44:13.731423+09:00",
+      "2026-11-09T20:45:20.802333+09:00"
+    ],
+    "provider_hashes_equal_prior_canonical_stage_and_journal": 3,
+    "initial_new_and_image_CVD_signature_rechecks": 4,
+    "excluded_prior_preparation_failure_store_unchanged": true
+  },
+  "fixture": {
+    "data": "Existing 8 harmless synthetic files per accepted case. No personal files or folders copied, mounted or scanned.",
+    "signed_databases": "Previously acquired public main 63/daily 28172/bytecode 339, plus newer signed daily 28174. No new official download in this task.",
+    "new_daily_sha256": "40b9c404e7a3d443b3a517b39aa76b789912cc1b3913f025ce537954609170bf",
+    "new_daily_source": "Standalone previously acquired public fixture CVD; no protected429 store or wait file opened.",
+    "normal_mirror": "Only exact /daily.cvd, /main.cvd and /bytecode.cvd paths. All .cld requests including header probes and all detached-signature requests return404. CVD header ranges206; full CVD200.",
+    "HTTPS": "Matching localhost certificate and test CA already in the immutable image; verification enabled. Host trust store unchanged.",
+    "test_CA_sha256": "f4ff8c1a77588307525d2810272c6dac5732785e8ee0953e0db35dafc1d5fd62",
+    "adapter": "New owner-approved task adapter rewrites generated mirror and 3/5-second connect/receive timeouts, then execs real freshclam --no-dns. No changed decisions, mocked output/exit, disabled certificate checks or clock manipulation.",
+    "owner_update_deadline_seconds": 60,
+    "signature_age_limit_days": 7,
+    "old_histories": "Keep original histories/checkpoints untouched; copy original8-target completed checkpoint bytes into separate task histories before post-update resume.",
+    "independent_control": {
+      "source": "New store seeded from immutable image public CVDs, with no copied pending/provider state.",
+      "completed_before_any_accepted_store_recovery": true,
+      "result": {
+        "schema_version": 1,
+        "source": "clamav",
+        "status": "completed",
+        "observed_at": "2026-11-10T15:18:27.625043+00:00",
+        "findings": [],
+        "warnings": [],
+        "data": {
+          "update_status": "updated",
+          "published": true,
+          "previous_preserved": true,
+          "resume_recheck_required": true,
+          "signature_check": {
+            "engine": "1.5.4",
+            "version": 28174,
+            "built_at": "2026-11-05T06:26:24+00:00",
+            "freshness": "fresh"
+          },
+          "next_attempt_at": 1794410292.4873157,
+          "cancellation_requested_after_publication": false,
+          "progress": {
+            "stage": "completed",
+            "finished": null,
+            "pending": null,
+            "reused": null,
+            "checkpoint": "not_applicable",
+            "saved_parts": null,
+            "elapsed_seconds": 15.254
+          }
+        }
+      },
+      "CLI_exit": 0,
+      "server_events": [
+        {
+          "at": 1794323893.0104802,
+          "path": "/daily.cld",
+          "range": "bytes=0-511",
+          "tls": true,
+          "status": 404
+        },
+        {
+          "at": 1794323893.0461268,
+          "path": "/daily.cvd",
+          "range": "bytes=0-511",
+          "tls": true,
+          "status": 206,
+          "bytes": 512
+        },
+        {
+          "at": 1794323893.086356,
+          "path": "/daily.cvd",
+          "range": null,
+          "tls": true,
+          "status": 200,
+          "bytes": 23447610
+        },
+        {
+          "at": 1794323893.1948268,
+          "path": "/daily-28174.cvd.sign",
+          "range": null,
+          "tls": true,
+          "status": 404
+        },
+        {
+          "at": 1794323898.1786194,
+          "path": "/main.cld",
+          "range": "bytes=0-511",
+          "tls": true,
+          "status": 404
+        },
+        {
+          "at": 1794323898.19574,
+          "path": "/main.cvd",
+          "range": "bytes=0-511",
+          "tls": true,
+          "status": 206,
+          "bytes": 512
+        },
+        {
+          "at": 1794323898.2124476,
+          "path": "/main-63.cvd.sign",
+          "range": null,
+          "tls": true,
+          "status": 404
+        },
+        {
+          "at": 1794323898.2281823,
+          "path": "/bytecode.cld",
+          "range": "bytes=0-511",
+          "tls": true,
+          "status": 404
+        },
+        {
+          "at": 1794323898.242916,
+          "path": "/bytecode.cvd",
+          "range": "bytes=0-511",
+          "tls": true,
+          "status": 206,
+          "bytes": 512
+        },
+        {
+          "at": 1794323898.2580874,
+          "path": "/bytecode-339.cvd.sign",
+          "range": null,
+          "tls": true,
+          "status": 404
+        }
+      ],
+      "counted_as_original_case": false,
+      "private_permissions_verified": true
+    }
+  },
+  "observations": [
+    {
+      "case": "handshake_interrupted",
+      "prior_pending_attempt": {
+        "next_attempt": 1794224578.2472398,
+        "pending": true
+      },
+      "owner_acknowledged_not_before_utc": "2026-11-09T11:42:59+00:00",
+      "acknowledgement_extension_seconds": 0.7527601718902588,
+      "owner_recovery": {
+        "schema_version": 1,
+        "source": "clamav",
+        "status": "completed",
+        "observed_at": "2026-11-10T15:19:30.827340+00:00",
+        "findings": [],
+        "warnings": [],
+        "data": {
+          "recovered": true,
+          "next_attempt_at": 1794224579.0,
+          "provider_state_preserved": true,
+          "update_performed": false
+        }
+      },
+      "recovery_native_engine_starts": 0,
+      "expired_pending_refused_before_recovery": true,
+      "native_updater_invocations": 1,
+      "native_updater_exit": 0,
+      "CLI_exit": 0,
+      "update": {
+        "schema_version": 1,
+        "source": "clamav",
+        "status": "completed",
+        "observed_at": "2026-11-10T15:19:41.364313+00:00",
+        "findings": [],
+        "warnings": [],
+        "data": {
+          "update_status": "updated",
+          "published": true,
+          "previous_preserved": true,
+          "resume_recheck_required": true,
+          "signature_check": {
+            "engine": "1.5.4",
+            "version": 28174,
+            "built_at": "2026-11-05T06:26:24+00:00",
+            "freshness": "fresh"
+          },
+          "next_attempt_at": 1794410371.6058247,
+          "cancellation_requested_after_publication": false,
+          "progress": {
+            "stage": "completed",
+            "finished": null,
+            "pending": null,
+            "reused": null,
+            "checkpoint": "not_applicable",
+            "saved_parts": null,
+            "elapsed_seconds": 9.837
+          }
+        }
+      },
+      "update_seconds": 10.329400213000042,
+      "old_daily": 28172,
+      "new_daily": 28174,
+      "old_generation_and_original_failure_stage_bytes_attributes_unchanged": true,
+      "original_failed_stage": "stage-4cc3258968608866359febfeecd9d1b9",
+      "original_provider_input_sha256": "6430f8a8af14e5763a02bc832261076d0573eba9691451484f15e815756c1f4c",
+      "new_provider_sync": {
+        "provider_hash": "6430f8a8af14e5763a02bc832261076d0573eba9691451484f15e815756c1f4c",
+        "stage": "stage-a53c6f37ba7f21804c80600c947432ac",
+        "status": "synced"
+      },
+      "new_attempt": {
+        "next_attempt": 1794410371.6058247,
+        "pending": false
+      },
+      "provider_preservation": "Original opaque canonical bytes passed unchanged to real freshclam; refreshed canonical hash matches the synced journal. Original failure stage retains its prior opaque provider bytes.",
+      "old_checkpoint_copy": {
+        "sha256": "b095e0b71f495ad71d0a3b94b6a8866742f5fc018e6979dc9f1ea90ed12cc18d",
+        "context": "294247b15b9cb62e0d8c53fd0e3d12387b6c5bb286f9fe3c2c96c5e3847e7285",
+        "completed_targets": 8,
+        "copied_byte_for_byte": true
+      },
+      "new_definition_resume": {
+        "reused": 0,
+        "scanned": 8,
+        "infected": 0,
+        "errors": 0,
+        "engine_starts": 1
+      },
+      "next_resume": {
+        "reused": 8,
+        "scanned": 8,
+        "engine_starts": 0
+      },
+      "current_and_last_previous_protection": [
+        {
+          "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "reason": "last_previous",
+          "deletable": false
+        },
+        {
+          "id": "d019ef5ab53d1cdaf92422a6ba9f8cb9",
+          "reason": "current",
+          "deletable": false
+        }
+      ],
+      "original_history_unchanged": true,
+      "server_events": [
+        {
+          "at": 1794323971.7504284,
+          "path": "/daily.cld",
+          "range": "bytes=0-511",
+          "tls": true,
+          "status": 404
+        },
+        {
+          "at": 1794323971.7812743,
+          "path": "/daily.cvd",
+          "range": "bytes=0-511",
+          "tls": true,
+          "status": 206,
+          "bytes": 512
+        },
+        {
+          "at": 1794323971.8003101,
+          "path": "/daily.cvd",
+          "range": null,
+          "tls": true,
+          "status": 200,
+          "bytes": 23447610
+        },
+        {
+          "at": 1794323971.8549762,
+          "path": "/daily-28174.cvd.sign",
+          "range": null,
+          "tls": true,
+          "status": 404
+        },
+        {
+          "at": 1794323974.4761424,
+          "path": "/main.cld",
+          "range": "bytes=0-511",
+          "tls": true,
+          "status": 404
+        },
+        {
+          "at": 1794323974.4891162,
+          "path": "/main.cvd",
+          "range": "bytes=0-511",
+          "tls": true,
+          "status": 206,
+          "bytes": 512
+        },
+        {
+          "at": 1794323974.5022576,
+          "path": "/main-63.cvd.sign",
+          "range": null,
+          "tls": true,
+          "status": 404
+        },
+        {
+          "at": 1794323974.515888,
+          "path": "/bytecode.cld",
+          "range": "bytes=0-511",
+          "tls": true,
+          "status": 404
+        },
+        {
+          "at": 1794323974.5302055,
+          "path": "/bytecode.cvd",
+          "range": "bytes=0-511",
+          "tls": true,
+          "status": 206,
+          "bytes": 512
+        },
+        {
+          "at": 1794323974.542602,
+          "path": "/bytecode-339.cvd.sign",
+          "range": null,
+          "tls": true,
+          "status": 404
+        }
+      ]
+    },
+    {
+      "case": "untrusted_ca",
+      "prior_pending_attempt": {
+        "next_attempt": 1794224653.731423,
+        "pending": true
+      },
+      "owner_acknowledged_not_before_utc": "2026-11-09T11:44:14+00:00",
+      "acknowledgement_extension_seconds": 0.26857709884643555,
+      "owner_recovery": {
+        "schema_version": 1,
+        "source": "clamav",
+        "status": "completed",
+        "observed_at": "2026-11-10T15:19:50.880407+00:00",
+        "findings": [],
+        "warnings": [],
+        "data": {
+          "recovered": true,
+          "next_attempt_at": 1794224654.0,
+          "provider_state_preserved": true,
+          "update_performed": false
+        }
+      },
+      "recovery_native_engine_starts": 0,
+      "expired_pending_refused_before_recovery": true,
+      "native_updater_invocations": 1,
+      "native_updater_exit": 0,
+      "CLI_exit": 0,
+      "update": {
+        "schema_version": 1,
+        "source": "clamav",
+        "status": "completed",
+        "observed_at": "2026-11-10T15:20:00.020879+00:00",
+        "findings": [],
+        "warnings": [],
+        "data": {
+          "update_status": "updated",
+          "published": true,
+          "previous_preserved": true,
+          "resume_recheck_required": true,
+          "signature_check": {
+            "engine": "1.5.4",
+            "version": 28174,
+            "built_at": "2026-11-05T06:26:24+00:00",
+            "freshness": "fresh"
+          },
+          "next_attempt_at": 1794410391.3328326,
+          "cancellation_requested_after_publication": false,
+          "progress": {
+            "stage": "completed",
+            "finished": null,
+            "pending": null,
+            "reused": null,
+            "checkpoint": "not_applicable",
+            "saved_parts": null,
+            "elapsed_seconds": 8.793
+          }
+        }
+      },
+      "update_seconds": 9.04781850400002,
+      "old_daily": 28172,
+      "new_daily": 28174,
+      "old_generation_and_original_failure_stage_bytes_attributes_unchanged": true,
+      "original_failed_stage": "stage-2d8f69142a270732605455e3b45a174d",
+      "original_provider_input_sha256": "5bf1929fe75deb940361a2cd9d13a2bb6b8eb269287ba88459f4f645bc69699d",
+      "new_provider_sync": {
+        "provider_hash": "5bf1929fe75deb940361a2cd9d13a2bb6b8eb269287ba88459f4f645bc69699d",
+        "stage": "stage-e530022f60d428cca9b5061c91d0d733",
+        "status": "synced"
+      },
+      "new_attempt": {
+        "next_attempt": 1794410391.3328326,
+        "pending": false
+      },
+      "provider_preservation": "Original opaque canonical bytes passed unchanged to real freshclam; refreshed canonical hash matches the synced journal. Original failure stage retains its prior opaque provider bytes.",
+      "old_checkpoint_copy": {
+        "sha256": "77427e8df0956b9218e75254558066862e879cdc39e1657ba4281d79d5675219",
+        "context": "5f280c3a828c920665ca5ae30c041c1d26ce7fda4c24d72bf6d4722437f1387e",
+        "completed_targets": 8,
+        "copied_byte_for_byte": true
+      },
+      "new_definition_resume": {
+        "reused": 0,
+        "scanned": 8,
+        "infected": 0,
+        "errors": 0,
+        "engine_starts": 1
+      },
+      "next_resume": {
+        "reused": 8,
+        "scanned": 8,
+        "engine_starts": 0
+      },
+      "current_and_last_previous_protection": [
+        {
+          "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "reason": "last_previous",
+          "deletable": false
+        },
+        {
+          "id": "efa23216cde896b2a187fd02dfa1ac07",
+          "reason": "current",
+          "deletable": false
+        }
+      ],
+      "original_history_unchanged": true,
+      "server_events": [
+        {
+          "at": 1794323991.4140139,
+          "path": "/daily.cld",
+          "range": "bytes=0-511",
+          "tls": true,
+          "status": 404
+        },
+        {
+          "at": 1794323991.426377,
+          "path": "/daily.cvd",
+          "range": "bytes=0-511",
+          "tls": true,
+          "status": 206,
+          "bytes": 512
+        },
+        {
+          "at": 1794323991.4395256,
+          "path": "/daily.cvd",
+          "range": null,
+          "tls": true,
+          "status": 200,
+          "bytes": 23447610
+        },
+        {
+          "at": 1794323991.4665804,
+          "path": "/daily-28174.cvd.sign",
+          "range": null,
+          "tls": true,
+          "status": 404
+        },
+        {
+          "at": 1794323993.8439965,
+          "path": "/main.cld",
+          "range": "bytes=0-511",
+          "tls": true,
+          "status": 404
+        },
+        {
+          "at": 1794323993.855295,
+          "path": "/main.cvd",
+          "range": "bytes=0-511",
+          "tls": true,
+          "status": 206,
+          "bytes": 512
+        },
+        {
+          "at": 1794323993.8663344,
+          "path": "/main-63.cvd.sign",
+          "range": null,
+          "tls": true,
+          "status": 404
+        },
+        {
+          "at": 1794323993.8773706,
+          "path": "/bytecode.cld",
+          "range": "bytes=0-511",
+          "tls": true,
+          "status": 404
+        },
+        {
+          "at": 1794323993.888124,
+          "path": "/bytecode.cvd",
+          "range": "bytes=0-511",
+          "tls": true,
+          "status": 206,
+          "bytes": 512
+        },
+        {
+          "at": 1794323993.8989637,
+          "path": "/bytecode-339.cvd.sign",
+          "range": null,
+          "tls": true,
+          "status": 404
+        }
+      ]
+    },
+    {
+      "case": "hostname_mismatch",
+      "prior_pending_attempt": {
+        "next_attempt": 1794224720.802333,
+        "pending": true
+      },
+      "owner_acknowledged_not_before_utc": "2026-11-09T11:45:21+00:00",
+      "acknowledgement_extension_seconds": 0.19766688346862793,
+      "owner_recovery": {
+        "schema_version": 1,
+        "source": "clamav",
+        "status": "completed",
+        "observed_at": "2026-11-10T15:20:07.088759+00:00",
+        "findings": [],
+        "warnings": [],
+        "data": {
+          "recovered": true,
+          "next_attempt_at": 1794224721.0,
+          "provider_state_preserved": true,
+          "update_performed": false
+        }
+      },
+      "recovery_native_engine_starts": 0,
+      "expired_pending_refused_before_recovery": true,
+      "native_updater_invocations": 1,
+      "native_updater_exit": 0,
+      "CLI_exit": 0,
+      "update": {
+        "schema_version": 1,
+        "source": "clamav",
+        "status": "completed",
+        "observed_at": "2026-11-10T15:20:15.453284+00:00",
+        "findings": [],
+        "warnings": [],
+        "data": {
+          "update_status": "updated",
+          "published": true,
+          "previous_preserved": true,
+          "resume_recheck_required": true,
+          "signature_check": {
+            "engine": "1.5.4",
+            "version": 28174,
+            "built_at": "2026-11-05T06:26:24+00:00",
+            "freshness": "fresh"
+          },
+          "next_attempt_at": 1794410407.3972116,
+          "cancellation_requested_after_publication": false,
+          "progress": {
+            "stage": "completed",
+            "finished": null,
+            "pending": null,
+            "reused": null,
+            "checkpoint": "not_applicable",
+            "saved_parts": null,
+            "elapsed_seconds": 8.1
+          }
+        }
+      },
+      "update_seconds": 8.285134378999999,
+      "old_daily": 28172,
+      "new_daily": 28174,
+      "old_generation_and_original_failure_stage_bytes_attributes_unchanged": true,
+      "original_failed_stage": "stage-da52823aaa829f07b24302a988438b69",
+      "original_provider_input_sha256": "f9f183ccf12ec1891ab37880e2ddd684d47f61d9ac875e212eb91d4c5b16545f",
+      "new_provider_sync": {
+        "provider_hash": "f9f183ccf12ec1891ab37880e2ddd684d47f61d9ac875e212eb91d4c5b16545f",
+        "stage": "stage-e8bb6c1be0c7155db5c5dffd76f25445",
+        "status": "synced"
+      },
+      "new_attempt": {
+        "next_attempt": 1794410407.3972116,
+        "pending": false
+      },
+      "provider_preservation": "Original opaque canonical bytes passed unchanged to real freshclam; refreshed canonical hash matches the synced journal. Original failure stage retains its prior opaque provider bytes.",
+      "old_checkpoint_copy": {
+        "sha256": "40c17bd3c074139f135d5c0928d7d06e8f8647d1542f227f72d713dbd07cdc22",
+        "context": "768ef2f505fd9545ca7a4123a2660e1af31b8172af92677fa2e6f335268779ee",
+        "completed_targets": 8,
+        "copied_byte_for_byte": true
+      },
+      "new_definition_resume": {
+        "reused": 0,
+        "scanned": 8,
+        "infected": 0,
+        "errors": 0,
+        "engine_starts": 1
+      },
+      "next_resume": {
+        "reused": 8,
+        "scanned": 8,
+        "engine_starts": 0
+      },
+      "current_and_last_previous_protection": [
+        {
+          "id": "5b93dcb110ae24b38c79acf7ab9991d9",
+          "reason": "current",
+          "deletable": false
+        },
+        {
+          "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "reason": "last_previous",
+          "deletable": false
+        }
+      ],
+      "original_history_unchanged": true,
+      "server_events": [
+        {
+          "at": 1794324007.443696,
+          "path": "/daily.cld",
+          "range": "bytes=0-511",
+          "tls": true,
+          "status": 404
+        },
+        {
+          "at": 1794324007.4529803,
+          "path": "/daily.cvd",
+          "range": "bytes=0-511",
+          "tls": true,
+          "status": 206,
+          "bytes": 512
+        },
+        {
+          "at": 1794324007.462182,
+          "path": "/daily.cvd",
+          "range": null,
+          "tls": true,
+          "status": 200,
+          "bytes": 23447610
+        },
+        {
+          "at": 1794324007.4825926,
+          "path": "/daily-28174.cvd.sign",
+          "range": null,
+          "tls": true,
+          "status": 404
+        },
+        {
+          "at": 1794324009.2562292,
+          "path": "/main.cld",
+          "range": "bytes=0-511",
+          "tls": true,
+          "status": 404
+        },
+        {
+          "at": 1794324009.2653883,
+          "path": "/main.cvd",
+          "range": "bytes=0-511",
+          "tls": true,
+          "status": 206,
+          "bytes": 512
+        },
+        {
+          "at": 1794324009.2746437,
+          "path": "/main-63.cvd.sign",
+          "range": null,
+          "tls": true,
+          "status": 404
+        },
+        {
+          "at": 1794324009.2836514,
+          "path": "/bytecode.cld",
+          "range": "bytes=0-511",
+          "tls": true,
+          "status": 404
+        },
+        {
+          "at": 1794324009.2927842,
+          "path": "/bytecode.cvd",
+          "range": "bytes=0-511",
+          "tls": true,
+          "status": 206,
+          "bytes": 512
+        },
+        {
+          "at": 1794324009.30197,
+          "path": "/bytecode-339.cvd.sign",
+          "range": null,
+          "tls": true,
+          "status": 404
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "accepted_TLS_failure_cases": 3,
+    "owner_recoveries": 3,
+    "recovery_freshclam_clamscan_sigtool_starts": 0,
+    "owner_waits_shortened": 0,
+    "successful_native_retries": 3,
+    "native_retries_per_original_store": 1,
+    "native_exit_each": 0,
+    "CLI_exit_each": 0,
+    "updated_daily": "28172 -> 28174",
+    "native_CVD_signature_checks_for_original_stores": 9,
+    "old_generations_preserved": 3,
+    "original_failed_stages_preserved": 3,
+    "original_histories_and_checkpoints_unchanged": 3,
+    "input_provider_bytes_preserved": 3,
+    "canonical_provider_matches_refreshed_sync": 3,
+    "each_store_new_definition_resume": {
+      "reused": 0,
+      "scanned": 8,
+      "infected": 0,
+      "errors": 0
+    },
+    "each_store_next_resume": {
+      "reused": 8,
+      "scanned": 8,
+      "engine_starts": 0
+    },
+    "cumulative_files_per_store": 8,
+    "current_and_last_previous_protected": 3,
+    "remaining_engine_processes": [],
+    "additional_independent_control_publications": 1
+  },
+  "verification": {
+    "independent_before_and_after_actual_container_restart": true,
+    "final_checked_at_utc": "2026-11-10T15:22:38.890245+00:00",
+    "checks": [
+      {
+        "case": "handshake_interrupted",
+        "old_generation_and_failure_stage_content_and_attributes_unchanged": true,
+        "original_history_and_checkpoint_unchanged": true,
+        "one_real_updater_exit_zero": true,
+        "input_provider_matches_original_state": true,
+        "new_provider_matches_journal": true,
+        "new_generation_daily": 28174,
+        "new_pending_false_and_interval_retained": true,
+        "failed_stage_retained_and_only_success_stage_cleaned": true,
+        "rescanned": 8,
+        "next_reused": 8,
+        "context_changed": true,
+        "no_double_counting": true,
+        "current_and_last_previous_protected": true,
+        "private_permissions_verified": true,
+        "update_lock_available": true
+      },
+      {
+        "case": "untrusted_ca",
+        "old_generation_and_failure_stage_content_and_attributes_unchanged": true,
+        "original_history_and_checkpoint_unchanged": true,
+        "one_real_updater_exit_zero": true,
+        "input_provider_matches_original_state": true,
+        "new_provider_matches_journal": true,
+        "new_generation_daily": 28174,
+        "new_pending_false_and_interval_retained": true,
+        "failed_stage_retained_and_only_success_stage_cleaned": true,
+        "rescanned": 8,
+        "next_reused": 8,
+        "context_changed": true,
+        "no_double_counting": true,
+        "current_and_last_previous_protected": true,
+        "private_permissions_verified": true,
+        "update_lock_available": true
+      },
+      {
+        "case": "hostname_mismatch",
+        "old_generation_and_failure_stage_content_and_attributes_unchanged": true,
+        "original_history_and_checkpoint_unchanged": true,
+        "one_real_updater_exit_zero": true,
+        "input_provider_matches_original_state": true,
+        "new_provider_matches_journal": true,
+        "new_generation_daily": 28174,
+        "new_pending_false_and_interval_retained": true,
+        "failed_stage_retained_and_only_success_stage_cleaned": true,
+        "rescanned": 8,
+        "next_reused": 8,
+        "context_changed": true,
+        "no_double_counting": true,
+        "current_and_last_previous_protected": true,
+        "private_permissions_verified": true,
+        "update_lock_available": true
+      }
+    ],
+    "snapshot_fields": [
+      "file SHA-256",
+      "mode/type",
+      "uid/gid",
+      "nlink",
+      "inode",
+      "size",
+      "mtime_ns",
+      "ctime_ns"
+    ],
+    "atime_compared": false,
+    "source_modules_matched": 28,
+    "excluded_prior_TLS_failure_store_unchanged": true,
+    "independent_control_snapshot_unchanged": true,
+    "update_locks_available": 3,
+    "private_permissions": "UID 10001, directories 0700 and files 0600; checked on live descriptors inside the Linux container.",
+    "regressions": {
+      "source_commit": "f86c18d7424cf7435d9f8678596a514f4721b2bc",
+      "command": ".venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
+      "execution": "Isolated exact source export, existing Python 3.15 environment and actual MCP SDK.",
+      "total": 70,
+      "passed": 70,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 10.215
+    },
+    "full_Android_MCP_suite_and_npm_rerun": false,
+    "reason": "No runtime/test changes; targeted signature/MCP regressions plus native acceptance only. Full suite, Android-specific tests, npm and Windows were not rerun in this task.",
+    "static_checks": {
+      "record_format_tests": {
+        "total": 2,
+        "passed": 2,
+        "failures": 0,
+        "errors": 0,
+        "seconds": 0.015
+      },
+      "three_case_result_preservation_and_protection_invariants": "passed",
+      "previous_TLS_record_append_only": "passed",
+      "429_record_bytes_unchanged": "passed",
+      "links_resolve": "passed",
+      "git_diff_check": "passed"
+    }
+  },
+  "preservation": {
+    "protected_429_store_or_container_accessed": false,
+    "protected_429_waits_modified": false,
+    "429_acceptance_status_changed": false,
+    "system_time_or_TLS_wait_shortened": false,
+    "old_TLS_generation_or_failure_stage_deleted": false,
+    "old_TLS_history_or_checkpoint_modified": false,
+    "provider_state_reset_before_native_retry": false,
+    "excluded_TLS_preparation_failure_recovered_or_changed": false,
+    "host_CA_or_normal_definitions_changed": false,
+    "OS_automatic_update_or_OneDrive_deferrals_changed": false,
+    "personal_data_used": false
+  },
+  "cleanup": {
+    "TLS_container_stopped": true,
+    "retained": true,
+    "network": "none",
+    "mounts": [],
+    "ports": [],
+    "accepted_stores_retained": 3,
+    "original_failed_stages_retained": 3,
+    "successful_work_stages_cleaned_by_updater": 3,
+    "new_independent_control_retained": true,
+    "new24h_intervals_retained_in_accepted_stores_and_control": 4,
+    "prior_excluded_pending_store": "Unchanged and excluded from the3-case recovery scope; not reported as recovered. Other initial setup directories were also not used for retries.",
+    "raw_logs_and_snapshots": "Retained privately in this TLS container and local temporary evidence folder."
+  },
+  "limitations": [
+    "Normal retry served by controlled matching-cert HTTPS localhost mirror with previously acquired public CVDs; no induced official-provider fault or new official download.",
+    "Old daily 28172 independently aged beyond the default 7-day freshness limit. We do not claim those results were reusable immediately before update. The saved contexts changed, all 8 targets were inspected with new definitions and the next resume reused 8.",
+    "New successful-update 24h guards have not naturally expired; no additional native retry was attempted.",
+    "Accelerated 3/5-second fixture network timeouts do not establish production-default timeout performance, other engine versions or other OS/CPU behavior.",
+    "The prior excluded TLS preparation failure remains pending and unchanged. Protected429 cases remain 6 successful/2 unfinished; this result does not complete those cases."
+  ],
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false
+}
