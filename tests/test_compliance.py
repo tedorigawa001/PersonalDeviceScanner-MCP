@@ -309,6 +309,41 @@ class AcceptanceRecordTests(unittest.TestCase):
                                      "write commands without the local proxy and leave pushing out of the record")
         self.assertGreater(checked, 0)
 
+    # From this date English text keeps a space between a word and a number ("exited 0", not "exited0"), including
+    # a dated follow-up appended to an older record. Hashes or IDs of 7, 32, 40 or 64 hex digits and common
+    # technical names are not joins; commands are code and are left alone.
+    JOIN_SINCE = "2026-11-10"
+    JOINED = re.compile(r"(?<![0-9A-Za-z_./:-])[A-Za-z]+[0-9][0-9A-Za-z_]*")
+    NOT_JOINED = re.compile(r"(?:[0-9a-f]{7}|[0-9a-f]{32}|[0-9a-f]{40}|[0-9a-f]{64})\Z"
+                            r"|(?i:arm64|aarch64|x86_64|universal2|sha(?:1|256|512)\w*|md5|base64|cp3\d+|py(?:thon)?3\d*"
+                            r"|v\d+|IPv[46]|TLSv1\w*|u[0-9a-f]{4}|x[0-9a-f]{2}|(?:py)?win32\w*|sqlite3|h11|E2E|[LP]\d+)\Z")
+    FOLLOW_UP = re.compile(r"follow_up_(\d{4})_(\d{2})_(\d{2})\Z")
+
+    def joined_words(self, record, day):
+        parts = [record] if day >= self.JOIN_SINCE else [
+            value for key, value in record.items()
+            if (match := self.FOLLOW_UP.match(key)) and "-".join(match.groups()) >= self.JOIN_SINCE]
+        return [word for part in parts for key, text in self.texts(part) if "command" not in key
+                for word in self.JOINED.findall(text) if not self.NOT_JOINED.match(word)]
+
+    def test_new_records_keep_a_space_between_words_and_numbers(self):
+        sample = {"note": "exited0 and a404 body; committed038af02 or added038af02, the3-case",
+                  "ok": "aarch64 sha256 v1 efa23216cde896b2a187fd02dfa1ac07 exited 0 in stage-144558a2c2a5df12bd72db4e0533534e",
+                  "command": "python3.15 -m unittest && sha256sum x1"}
+        self.assertEqual(self.joined_words(sample, "2026-11-10"),
+                         ["exited0", "a404", "committed038af02", "added038af02", "the3"])
+        older = {"note": "Nov8 is older text", "follow_up_2026_11_09": {"note": "Nov7"}, "follow_up_2026_11_11": {"note": "Nov8"}}
+        self.assertEqual(self.joined_words(older, "2026-11-08"), ["Nov8"])
+        checked = 0
+        for path in sorted((ROOT / "docs/acceptance").glob("*.json")):
+            day = re.search(r"(\d{4}-\d{2}-\d{2})\.json$", path.name)
+            if day:
+                checked += 1
+                with self.subTest(record=path.name):
+                    self.assertEqual(self.joined_words(json.loads(path.read_text(encoding="utf-8")), day.group(1)), [],
+                                     "put a space between a word and a number")
+        self.assertGreater(checked, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

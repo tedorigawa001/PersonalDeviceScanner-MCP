@@ -426,6 +426,6 @@
     "original_histories_unchanged": true,
     "excluded_preparation_failure_store_unchanged": true,
     "protected429_stores_accessed": false,
-    "note": "Original Nov8 observations are point-in-time evidence; the three accepted stores now have pending=false after successful retries, while the excluded preparation-failure store remains untouched."
+    "note": "Original 2026-11-08 observations are point-in-time evidence; the three accepted stores now have pending=false after successful retries, while the excluded preparation-failure store remains untouched."
   }
 }

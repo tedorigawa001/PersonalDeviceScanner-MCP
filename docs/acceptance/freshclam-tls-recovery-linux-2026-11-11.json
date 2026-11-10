@@ -46,14 +46,14 @@
     "data": "Existing 8 harmless synthetic files per accepted case. No personal files or folders copied, mounted or scanned.",
     "signed_databases": "Previously acquired public main 63/daily 28172/bytecode 339, plus newer signed daily 28174. No new official download in this task.",
     "new_daily_sha256": "40b9c404e7a3d443b3a517b39aa76b789912cc1b3913f025ce537954609170bf",
-    "new_daily_source": "Standalone previously acquired public fixture CVD; no protected429 store or wait file opened.",
-    "normal_mirror": "Only exact /daily.cvd, /main.cvd and /bytecode.cvd paths. All .cld requests including header probes and all detached-signature requests return404. CVD header ranges206; full CVD200.",
+    "new_daily_source": "Standalone previously acquired public fixture CVD; no protected 429 store or wait file opened.",
+    "normal_mirror": "Only exact /daily.cvd, /main.cvd and /bytecode.cvd paths. All .cld requests including header probes and all detached-signature requests return 404. CVD header ranges 206; full CVD 200.",
     "HTTPS": "Matching localhost certificate and test CA already in the immutable image; verification enabled. Host trust store unchanged.",
     "test_CA_sha256": "f4ff8c1a77588307525d2810272c6dac5732785e8ee0953e0db35dafc1d5fd62",
     "adapter": "New owner-approved task adapter rewrites generated mirror and 3/5-second connect/receive timeouts, then execs real freshclam --no-dns. No changed decisions, mocked output/exit, disabled certificate checks or clock manipulation.",
     "owner_update_deadline_seconds": 60,
     "signature_age_limit_days": 7,
-    "old_histories": "Keep original histories/checkpoints untouched; copy original8-target completed checkpoint bytes into separate task histories before post-update resume.",
+    "old_histories": "Keep original histories/checkpoints untouched; copy original 8-target completed checkpoint bytes into separate task histories before post-update resume.",
     "independent_control": {
       "source": "New store seeded from immutable image public CVDs, with no copied pending/provider state.",
       "completed_before_any_accepted_store_recovery": true,
@@ -876,7 +876,7 @@
     "successful_work_stages_cleaned_by_updater": 3,
     "new_independent_control_retained": true,
     "new24h_intervals_retained_in_accepted_stores_and_control": 4,
-    "prior_excluded_pending_store": "Unchanged and excluded from the3-case recovery scope; not reported as recovered. Other initial setup directories were also not used for retries.",
+    "prior_excluded_pending_store": "Unchanged and excluded from the 3-case recovery scope; not reported as recovered. Other initial setup directories were also not used for retries.",
     "raw_logs_and_snapshots": "Retained privately in this TLS container and local temporary evidence folder."
   },
   "limitations": [
@@ -884,7 +884,7 @@
     "Old daily 28172 independently aged beyond the default 7-day freshness limit. We do not claim those results were reusable immediately before update. The saved contexts changed, all 8 targets were inspected with new definitions and the next resume reused 8.",
     "New successful-update 24h guards have not naturally expired; no additional native retry was attempted.",
     "Accelerated 3/5-second fixture network timeouts do not establish production-default timeout performance, other engine versions or other OS/CPU behavior.",
-    "The prior excluded TLS preparation failure remains pending and unchanged. Protected429 cases remain 6 successful/2 unfinished; this result does not complete those cases."
+    "The prior excluded TLS preparation failure remains pending and unchanged. Protected 429 cases remain 6 successful/2 unfinished; this result does not complete those cases."
   ],
   "commit_created_during_recording": false,
   "push_performed_during_recording": false
