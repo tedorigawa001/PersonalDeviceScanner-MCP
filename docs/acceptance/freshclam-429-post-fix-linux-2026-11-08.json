@@ -571,5 +571,14 @@
     "This confirms the known real FreshClam 1.5.4 English diagnostics; other versions/diagnostic formats remain separate."
   ],
   "commit_created_during_recording": false,
-  "push_performed_during_recording": false
+  "push_performed_during_recording": false,
+  "follow_up_2026_11_10": {
+    "record": "freshclam-429-recovery-linux-2026-11-10.json",
+    "status": "partial: all eight owner recoveries; six normal retries/reinspection/reuse; two fixture-induced failures retained under new24h waits",
+    "source_commit": "7d9fef6eb78387caa94ff664cb5e4fede55bd558",
+    "original_48h_waits_shortened": false,
+    "original_generations_and_429_stages_preserved": 8,
+    "new_pending_stores": 2,
+    "note": "The earlier Nov8 observations remain point-in-time evidence; these states are no longer all pending429 after the authorized Nov10 continuation."
+  }
 }
