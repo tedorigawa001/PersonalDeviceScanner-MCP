@@ -1,0 +1,458 @@
+{
+  "date": "2026-11-12",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "offline_native_CVD_normal_delivery_signature_load_and_batch_reuse_rehearsal",
+  "status": "passed for single-version offline rehearsal; two-version preparation remains incomplete; no 429 case or 48 hour wait started",
+  "source_commit": "df9327f8fbd0c0bf0b966c11df4c213db4a11ff6",
+  "source_module_count": 28,
+  "source_export_and_import_hashes_match": true,
+  "design": "../clamav-preserved-stage-recovery-design.md",
+  "related_records": [
+    "clamav-readmission-cvd-inputs-2026-11-12.json",
+    "clamav-evidence-preservation-rehearsal-2026-11-11.json",
+    "freshclam-429-recovery-linux-2026-11-10.json"
+  ],
+  "environment": {
+    "container_id": "080b27008f89979ef29e95929bd0140d6083870f84ddbb3e4ddd72703ebdbaf1",
+    "container_role": "New dedicated offline rehearsal container; existing containers not inspected, started or executed",
+    "image": "sha256:20fd8ed13f28e2b3e10a54c9b2fe018c8e8d5a2549a79fc3b55fc1ea82021ada",
+    "image_pulled": false,
+    "platform": "Ubuntu 24.04 aarch64",
+    "python": "3.15.2",
+    "engine": "Real freshclam/sigtool/clamscan 1.5.4",
+    "uid_gid": "10001:10001",
+    "network": "none; localhost HTTPS inside this container only",
+    "mounts": [],
+    "published_ports": {},
+    "cap_drop": [
+      "ALL"
+    ],
+    "security_options": [
+      "no-new-privileges"
+    ],
+    "memory_bytes": 2684354560,
+    "cpus": 2.0,
+    "pids_limit": 256,
+    "final_container_status": "exited; preserved",
+    "processes_before_stop": "Only PID 1 sleep remained; no freshclam, clamscan, sigtool or HTTPS server worker remained"
+  },
+  "scope": {
+    "frozen_original_store_accessed_or_changed": false,
+    "existing_pending_or_wait_accessed_or_modified": false,
+    "existing_containers_accessed": false,
+    "new_official_download_performed": false,
+    "personal_folders_mounted_or_scanned": false,
+    "host_certificate_settings_modified": false,
+    "runtime_source_changed": false,
+    "synthetic_input_files": 8,
+    "native_all_clamscan_calls_use_explicit_new_store_database": true,
+    "old_image_fixture_CVDs_used": false
+  },
+  "inputs": {
+    "acquisition_record_hashes_rechecked_before_and_after": true,
+    "verified_CVD_files": {
+      "bytecode.cvd": {
+        "bytes": 281702,
+        "detached": true,
+        "embedded": true,
+        "sha256": "6d4aa01f219e988060fc419f495d07f27e0cdf1a2cccc065971da922c76f7ffb"
+      },
+      "daily.cvd": {
+        "bytes": 23448742,
+        "detached": true,
+        "embedded": true,
+        "sha256": "80d80ef32f10f168154df52114c39735e057500bb45a495eba9db2f5496e1437"
+      },
+      "main.cvd": {
+        "bytes": 89072577,
+        "detached": true,
+        "embedded": true,
+        "sha256": "0b2182d229f46981ec8f535382222f7c9dfdd656b250ad47988b910a8d302365"
+      }
+    },
+    "detached_signature_files_copied": 3,
+    "distinct_daily_versions": 1,
+    "two_version_preparation_complete": false,
+    "update_daily_version": null,
+    "raw_original_acquisition_CVD_files_changed": false
+  },
+  "local_mirror": {
+    "allowed_paths": [
+      "/daily.cvd",
+      "/main.cvd",
+      "/bytecode.cvd",
+      "/daily-28180.cvd.sign",
+      "/main-63.cvd.sign",
+      "/bytecode-339.cvd.sign"
+    ],
+    "cld_GET_header_and_HEAD_status": 404,
+    "unlisted_path_status": 404,
+    "CVD_header_range_status": 206,
+    "CVD_header_bytes": 512,
+    "Content_Range_validated": true,
+    "full_CVD_status": 200,
+    "full_CVD_sizes_and_hashes_match_inputs": true,
+    "detached_signature_status": 200,
+    "transport": "HTTPS; matching localhost certificate and independent synthetic CA created only in this container",
+    "TLS_verification_disabled": false,
+    "test_CA_sha256": "8d56d9a80001315de15a71a08f5df686d4f967a59f141f888951ddf6415d40cb",
+    "adapter": "Owner-approved fixture adapter replaces only the generated mirror with PrivateMirror https://localhost and shortens connect/receive timeouts to 5/10 seconds; execs real freshclam --no-dns with CURL_CA_BUNDLE pointing only to the private fixture CA. No mocked response, exit code, signed bytes, clock or freshness threshold.",
+    "observer": "Clamscan wrapper records arguments then execs real /usr/bin/clamscan without changing arguments or results.",
+    "request_count": 16,
+    "server_events": [
+      {
+        "content_length": 0,
+        "method": "HEAD",
+        "path": "/daily.cld",
+        "range": null,
+        "sent_bytes": 0,
+        "status": 404,
+        "tls": true
+      },
+      {
+        "content_length": 0,
+        "method": "GET",
+        "path": "/daily.cld",
+        "range": "bytes=0-511",
+        "sent_bytes": 0,
+        "status": 404,
+        "tls": true
+      },
+      {
+        "content_length": 512,
+        "method": "GET",
+        "path": "/daily.cvd",
+        "range": "bytes=0-511",
+        "sent_bytes": 512,
+        "status": 206,
+        "tls": true
+      },
+      {
+        "content_length": 0,
+        "method": "GET",
+        "path": "/unlisted.cvd",
+        "range": null,
+        "sent_bytes": 0,
+        "status": 404,
+        "tls": true
+      },
+      {
+        "content_length": 0,
+        "method": "GET",
+        "path": "/daily.cld",
+        "range": "bytes=0-511",
+        "sent_bytes": 0,
+        "status": 404,
+        "tls": true
+      },
+      {
+        "content_length": 512,
+        "method": "GET",
+        "path": "/daily.cvd",
+        "range": "bytes=0-511",
+        "sent_bytes": 512,
+        "status": 206,
+        "tls": true
+      },
+      {
+        "content_length": 23448742,
+        "method": "GET",
+        "path": "/daily.cvd",
+        "range": null,
+        "sent_bytes": 23448742,
+        "status": 200,
+        "tls": true
+      },
+      {
+        "content_length": 9078,
+        "method": "GET",
+        "path": "/daily-28180.cvd.sign",
+        "range": null,
+        "sent_bytes": 9078,
+        "status": 200,
+        "tls": true
+      },
+      {
+        "content_length": 0,
+        "method": "GET",
+        "path": "/main.cld",
+        "range": "bytes=0-511",
+        "sent_bytes": 0,
+        "status": 404,
+        "tls": true
+      },
+      {
+        "content_length": 512,
+        "method": "GET",
+        "path": "/main.cvd",
+        "range": "bytes=0-511",
+        "sent_bytes": 512,
+        "status": 206,
+        "tls": true
+      },
+      {
+        "content_length": 89072577,
+        "method": "GET",
+        "path": "/main.cvd",
+        "range": null,
+        "sent_bytes": 89072577,
+        "status": 200,
+        "tls": true
+      },
+      {
+        "content_length": 9078,
+        "method": "GET",
+        "path": "/main-63.cvd.sign",
+        "range": null,
+        "sent_bytes": 9078,
+        "status": 200,
+        "tls": true
+      },
+      {
+        "content_length": 0,
+        "method": "GET",
+        "path": "/bytecode.cld",
+        "range": "bytes=0-511",
+        "sent_bytes": 0,
+        "status": 404,
+        "tls": true
+      },
+      {
+        "content_length": 512,
+        "method": "GET",
+        "path": "/bytecode.cvd",
+        "range": "bytes=0-511",
+        "sent_bytes": 512,
+        "status": 206,
+        "tls": true
+      },
+      {
+        "content_length": 281702,
+        "method": "GET",
+        "path": "/bytecode.cvd",
+        "range": null,
+        "sent_bytes": 281702,
+        "status": 200,
+        "tls": true
+      },
+      {
+        "content_length": 9078,
+        "method": "GET",
+        "path": "/bytecode-339.cvd.sign",
+        "range": null,
+        "sent_bytes": 9078,
+        "status": 200,
+        "tls": true
+      }
+    ],
+    "all_HTTP_responses_TLS": true,
+    "HTTP_429_responses": 0,
+    "server_stopped_before_reuse": true
+  },
+  "normal_acquisition": {
+    "freshclam_invocations": 1,
+    "CLI_status": "completed",
+    "update_status": "updated",
+    "published": true,
+    "initial_private_store_was_empty": true,
+    "real_database_load_validation_exit": 0,
+    "published_daily": 28180,
+    "freshness": "fresh",
+    "generation_content": "c94fcc66c143686973994401824d5e66bb3faf2e6adb48e9a99594071f1f634b",
+    "real_embedded_signature_checks_before_update": 3,
+    "real_detached_signature_checks_before_update": 3,
+    "updater_embedded_signature_checks": 3,
+    "successful_work_stage_cleaned_by_normal_implementation": true,
+    "cleanup_note": "Only this new successful work stage was removed by the ordinary updater; no preserved failed stage or frozen store was a target.",
+    "provider_sync": {
+      "provider_hash": "ba98e96ff2c474c5278568b17a938c6c63971fd48fdc279ace3b7d7f20c1bb7d",
+      "stage": "stage-d0f97484db036ae541f9fbf4afb3d947",
+      "status": "synced"
+    },
+    "canonical_provider_matches_journal_hash": true,
+    "synced_source_stage_after_success": "Not retained by the normal successful updater; source-stage byte comparison is not claimed after cleanup.",
+    "new_store_attempt": {
+      "next_attempt": 1794497590.716767,
+      "pending": false
+    },
+    "new_store_next_attempt_jst_rounded_up": "2026-11-13T00:33:11+09:00",
+    "normal_24_hour_interval_retained": true,
+    "new_429_or_48_hour_wait_started": false
+  },
+  "synthetic_scans": {
+    "first": {
+      "status": "completed",
+      "counts": {
+        "errors": 0,
+        "infected": 0,
+        "scanned": 8
+      },
+      "batch": {
+        "finished": 8,
+        "grouping": {
+          "active_targets": 0,
+          "committed_jobs": 1,
+          "engine_starts": 1,
+          "fallback_targets": 0,
+          "mode": "enabled",
+          "schema": 1
+        },
+        "pending": 0,
+        "reused": 0
+      },
+      "independently_observed_scan_engine_starts": 1
+    },
+    "resume": {
+      "status": "completed",
+      "counts": {
+        "errors": 0,
+        "infected": 0,
+        "scanned": 8
+      },
+      "batch": {
+        "finished": 8,
+        "grouping": {
+          "active_targets": 0,
+          "committed_jobs": 0,
+          "engine_starts": 0,
+          "fallback_targets": 0,
+          "mode": "enabled",
+          "schema": 1
+        },
+        "pending": 0,
+        "reused": 8
+      },
+      "independently_observed_scan_engine_starts": 0,
+      "freshclam_calls": 0,
+      "mirror_running": false
+    },
+    "both_final_totals": 8,
+    "counts_doubled": false,
+    "pending_targets": 0,
+    "findings": 0,
+    "checkpoint_parts": 8,
+    "checkpoint_revision_before": 4,
+    "checkpoint_revision_after": 14,
+    "scan_group_id_unchanged": true,
+    "checkpoint_content_changed_normally": "Attempt/revision metadata advances during resume; byte-for-byte checkpoint equality is not claimed.",
+    "warning": "Signature-based detection only; lack of findings is not proof of safety."
+  },
+  "private_store_checks": {
+    "current_generation_count": 1,
+    "current_generation_deletable": false,
+    "owner_list_status": "completed",
+    "metadata_and_hash_snapshot_unchanged_during_list": true,
+    "directories_mode": "0700",
+    "regular_files_mode": "0600",
+    "owner_matches_non_administrator_user": true,
+    "live_acl_and_single_link_checks": "Existing product private-file checks passed on the new store only",
+    "post_stop_wait_current_journal_and_canonical_verified": {
+      "attempt.json": {
+        "sha256": "57d589a9cce4b95847e11c3632e970543e2f4ee43db75d0064df6300869c5f55",
+        "bytes": 53,
+        "mode": "0o600",
+        "uid": 10001,
+        "gid": 10001
+      },
+      "current.json": {
+        "sha256": "e6d0243b675c37edba4e2d2aa5d7efa1411c314f4cfa9683bf927ccb13c2c443",
+        "bytes": 200,
+        "mode": "0o600",
+        "uid": 10001,
+        "gid": 10001
+      },
+      "provider-sync.json": {
+        "sha256": "ccfcdb680d192699815ca1ee407409cba2b74155a398b39114c47cc2156cdf02",
+        "bytes": 156,
+        "mode": "0o600",
+        "uid": 10001,
+        "gid": 10001
+      },
+      "provider.dat": {
+        "sha256": "ba98e96ff2c474c5278568b17a938c6c63971fd48fdc279ace3b7d7f20c1bb7d",
+        "bytes": 90,
+        "mode": "0o600",
+        "uid": 10001,
+        "gid": 10001
+      }
+    },
+    "new_wait_matches_original_success_output": true,
+    "normal_resume_or_list_did_not_change_new_wait": true
+  },
+  "harness_diagnostics": {
+    "initial_CA_preflight": "The first synthetic CA lacked a required keyUsage extension. Python strict TLS and openssl verify -x509_strict rejected it before owner update or store creation. The failed fixture was preserved, and a new separate fixture used CA basicConstraints/keyCertSign/cRLSign and leaf SAN/basicConstraints/keyUsage. Verification was never disabled.",
+    "result_assertion_corrections": "The harness originally read counts and signature fields at older locations and expected a successful work stage to remain. It was corrected to engine_counts, data.signature_check and the existing successful-stage cleanup contract. Completed update/scan outputs were retained and reused for continuation.",
+    "actual_normal_download_calls_across_all_harness_runs": 1,
+    "actual_first_batch_scan_calls": 1,
+    "actual_resume_calls": 1,
+    "product_implementation_changed": false,
+    "original_or_new_wait_reset_for_harness_retry": false
+  },
+  "preservation": {
+    "original_acceptance_history": {
+      "successful": 6,
+      "unfinished": 2
+    },
+    "two_version_preparation_incomplete": true,
+    "protected_record_hashes": {
+      "docs/acceptance/freshclam-429-recovery-linux-2026-11-10.json": "94f52f5a69c4358da1cabac702a1934042f353358ab744d01e5d89864c35d230",
+      "docs/acceptance/freshclam-429-post-fix-linux-2026-11-08.json": "7ecec20e10fd879b7c949944d7f256ae43f4e1e9883fbad140fd97e1b3f2100d",
+      "docs/acceptance/clamav-cld-stage-investigation-2026-11-10.json": "ab6c9bec81d52d3c8fd33f74a3fcceae7bf22888c7a630cbcb59a6bd9d014376",
+      "docs/acceptance/clamav-readmission-cvd-inputs-2026-11-12.json": "f17b281ba05687aeec5094062457594a25c73453e742bc8de6e1c1e481765e98"
+    },
+    "protected_records_unchanged": true,
+    "original_acquisition_input_hashes_unchanged": true,
+    "frozen_store_metadata_not_remeasured": true,
+    "new_test_results_not_added_to_original_8_case_success_count": true,
+    "new_container_only_stopped_and_retained": true,
+    "unrelated_test_file_edit_left_unchanged": true
+  },
+  "verification": {
+    "related_signature_regressions": {
+      "command": ".venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
+      "total": 70,
+      "passed": 70,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "includes_real_MCP_SDK": true
+    },
+    "acceptance_record_format_tests": {
+      "command": ".venv-dev/bin/python -m unittest discover -s tests -p 'test_compliance.py' -k AcceptanceRecordTests -q",
+      "total": 4,
+      "passed": 4,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0
+    },
+    "diff_whitespace_check": {
+      "command": "git diff --check",
+      "exit_code": 0
+    },
+    "full_Android_or_npm_suite_rerun": false,
+    "actual_MCP_scan_acceptance_this_task": false
+  },
+  "evidence": {
+    "checked_at_utc": "2026-11-11T15:37:49.806953+00:00",
+    "local_location": "Private local rehearsal directory; actual host path retained only locally",
+    "retained": "Input archives, pinned source manifest, harness and diagnostics, all CLI JSON/stdout/stderr, mirror events, store hash/metadata snapshot, isolation/process inspection, post-stop small-file verification; stopped container holds the synthetic store and checkpoint.",
+    "sha256": {
+      "runner.py": "35ac2b136f23491552277544410bceeb4f83ed2a21ed4ec3a3f87ea6a3d98143",
+      "continue.py": "2463cd3e53b4546c5f1d2e54f70cd66bb886b0ec9c45ed689858f5a3d99beaa7",
+      "finalize.py": "b377dc5cd20e7d0e17d746108db64f00870b789007eeac5de9e8d50c48b339d9",
+      "source.tar": "b6ced713eb8e984c977a3fc4cf3d2dc8c40fc4a9569d265904678a3aef09cc25",
+      "output.tar": "bc86dab751bc2895e795fc2717b96df751b8862d205dfe4f8b9fafccf1668661",
+      "output/result.json": "acf3a7026635b866e01e0036d1a87e90125f8ad22826abeb662667201caa8ff0",
+      "output/server-events.json": "c8e1dc73f23994b18391c173b6f974d08707936247c975cb0fca4ee902579247",
+      "output/store-snapshot.json": "b0c44cf13fe6f6b0a052486d1625df0fce096b9bf0e5da0d6a3e675c6cbbd092",
+      "post-stop-metadata-verification.json": "8912848a3a1dfb08a67c1005051d94c022c5e2560874b3938637164c18d050b0"
+    }
+  },
+  "remaining": [
+    "Update daily CVD still not acquired. Honor the existing official acquisition interval, obtain a strictly newer signed full CVD, and check both versions at the actual retry time.",
+    "This rehearsal proves normal one-version transfer, load and same-definition reuse. It does not prove changed-definition invalidation or an actual 429 wait/recovery/retry.",
+    "Do not start the separate 48 hour case until both input versions and timing are ready. Frozen original stores, existing waits and 6 successful / 2 unfinished historical cases remain unchanged."
+  ],
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false
+}
