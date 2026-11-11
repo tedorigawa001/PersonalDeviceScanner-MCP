@@ -469,10 +469,10 @@ zero-exit fix the CLI reported `partial` / `rate_limited` while keeping pending 
 interruption, an untrusted CA and a certificate name mismatch each stopped the update as `error` / `failed` with
 pending state kept; after their waits elapsed, owner recovery and a successful retry passed for all three.
 After a 429 wait expired naturally, owner recovery and a successful retry passed for six of
-eight stores; the other two failed on test-fixture mistakes and keep their new waits. One is kept frozen as evidence
-and its case will be re-accepted in a new store; that re-acceptance, normal recovery and retry of the other store,
-faults and waits on the real provider, other Linux environments, Windows support/acceptance and MCP writes remain
-pending.
+eight stores; the other two failed on test-fixture mistakes. One is kept frozen as evidence and its case will be
+re-accepted in a new store; the other recovered and retried successfully in a follow-up on 2026-11-12. That
+re-acceptance, faults and waits on the real provider, other Linux environments, Windows support/acceptance and MCP
+writes remain pending.
 See the [operational design](docs/clamav-signature-update-design.md).
 
 ### Checking for engine updates
