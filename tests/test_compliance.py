@@ -344,6 +344,28 @@ class AcceptanceRecordTests(unittest.TestCase):
                                      "put a space between a word and a number")
         self.assertGreater(checked, 0)
 
+    # A public record never names a person's folders, commands included: no macOS per-user temporary folder and
+    # no home folder under /Users, /home or C:\Users. Placeholders such as /Users/you or /home/<user> stay allowed.
+    # Failures name the key only, so the path itself never reaches test output or CI logs.
+    PERSONAL_PATH = re.compile(r"/var/folders/|/(?:Users|home)/(?!you\b|<)[^/\s\"]|[A-Za-z]:\\+Users\\+(?!you\b|<)[^\\\s\"]")
+
+    def personal_paths(self, record):
+        return [key for key, text in self.texts(record) if self.PERSONAL_PATH.search(text)]
+
+    def test_records_name_no_personal_folders(self):
+        sample = {"root": "/private/var/folders/ab/cd/T/case", "checks": [{"command": "ls /Users/someone/case"}],
+                  "windows": "C:\\Users\\someone\\case", "linux": "/home/someone/case",
+                  "ok": "/Users/you/case, C:\\Users\\you\\case, /home/<user>/case, ~/Library and "
+                        "<macOS per-user temporary folder>/case"}
+        self.assertEqual(self.personal_paths(sample), ["root", "command", "windows", "linux"])
+        checked = 0
+        for path in sorted((ROOT / "docs/acceptance").glob("*.json")):
+            checked += 1
+            with self.subTest(record=path.name):
+                self.assertEqual(self.personal_paths(json.loads(path.read_text(encoding="utf-8"))), [],
+                                 "replace a personal folder with a placeholder such as <macOS per-user temporary folder>")
+        self.assertGreater(checked, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
