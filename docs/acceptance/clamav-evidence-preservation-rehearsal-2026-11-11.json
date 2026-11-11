@@ -1,0 +1,361 @@
+{
+  "date": "2026-11-11",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "synthetic_evidence_inventory_archive_restore_and_capacity_rehearsal",
+  "status": "passed for the synthetic rehearsal only; no frozen original store was accessed or archived",
+  "implementation_commit": "5c43809a298e2d639a29201c6267f6083ee9a533",
+  "checked_at_utc": "2026-11-11T12:04:01.721801+00:00",
+  "design": "../clamav-preserved-stage-recovery-design.md",
+  "related_records": [
+    "clamav-cld-stage-investigation-2026-11-10.json",
+    "freshclam-429-recovery-linux-2026-11-10.json",
+    "freshclam-429-post-fix-linux-2026-11-08.json"
+  ],
+  "original_acceptance_history_unchanged": {
+    "successful_existing_stores": 6,
+    "unfinished_existing_stores": 2,
+    "historical_record_hashes_unchanged": true,
+    "synthetic_success_does_not_resolve_either_unfinished_case": true
+  },
+  "scope": {
+    "environment": "macOS, non-administrator owner, Python 3.15.2",
+    "synthetic_only": true,
+    "genuine_signed_CVDs": false,
+    "native_engine_calls": 0,
+    "network_calls": 0,
+    "docker_calls": 0,
+    "frozen_original_store_or_wait_accessed": false,
+    "original_attribute_or_content_changes": false,
+    "recover_update_delete_or_promotion_performed": false,
+    "product_code_changed": false,
+    "private_artifacts": "<macOS per-user temporary folder>/pc-scanner-evidence-rehearsal-20261111-p12t4ouu",
+    "local_artifacts_retained": [
+      "source-case",
+      "source-manifest.json",
+      "whole-case.tar",
+      "restored-case",
+      "negative",
+      "rehearsal.py",
+      "result.json",
+      "verification.json"
+    ]
+  },
+  "fixture": {
+    "source_entries": 32,
+    "source_regular_files": 23,
+    "generation_id": "11111111111111111111111111111111",
+    "older_stage": "stage-22222222222222222222222222222222",
+    "unsupported_latest_stage": "stage-33333333333333333333333333333333",
+    "layout": "Whole synthetic store plus inert configuration and corresponding synthetic logs. Current generation has main.cvd, daily.cvd, bytecode.cvd; latest stage substitutes daily.cld and has an empty candidate directory.",
+    "database_bytes": "Harmless metadata fixtures with ClamAV-VDB headers; not cryptographically signed databases and never executed.",
+    "attempt": {
+      "pending": true,
+      "next_attempt_epoch": 1794571441.576014,
+      "wait_hours_at_creation": 48,
+      "before_and_after_equal": true,
+      "interpretation": "An independent synthetic future guard only; not a measurement or replacement of either real case deadline."
+    },
+    "all_existing_lock_and_lease_files_precreated_before_baseline": true
+  },
+  "catalog": {
+    "manifest_sha256": "fbc75487f0fe803792793f22ab847dea5bd1a56b9c7b34aaed0bdaf5c274aa3b",
+    "location": "Outside the synthetic source case",
+    "bounded_items": 128,
+    "bounded_payload_bytes": 8388608,
+    "enumeration_deadline_seconds": 30,
+    "fields": [
+      "relative path",
+      "kind",
+      "SHA-256 for regular file bytes",
+      "size",
+      "UID",
+      "GID",
+      "mode",
+      "device",
+      "inode",
+      "nlink",
+      "mtime_ns",
+      "ctime_ns",
+      "live extended ACL presence",
+      "xattr names, values and SHA-256"
+    ],
+    "directories_mode": "0700",
+    "regular_files_mode": "0600",
+    "owner": "Matches effective local owner",
+    "all_regular_files_single_link": true,
+    "live_extended_ACL_entries": 0,
+    "observed_xattrs": [
+      "com.apple.provenance"
+    ],
+    "cloud_link_or_special_files_followed": false,
+    "source_fingerprint_includes_ctime_and_inode": true,
+    "atime_compared_or_restored": false
+  },
+  "archive_and_restore": {
+    "format": "Uncompressed PAX TAR; exact nanosecond mtime and xattr evidence in PAX headers, with a separately hashed source manifest",
+    "archive_sha256": "ff0b61def48eec487826d57b45525ad68f6a5c5621383f088de77d1856508fd6",
+    "archive_bytes": 71680,
+    "archive_mode": "0600",
+    "source_payload_bytes": 5705,
+    "restored_payload_bytes": 5705,
+    "destination": "Separate private analysis directory, never activated as a scanner definition store",
+    "validation_before_any_output": [
+      "archive digest and size bound",
+      "canonical relative member paths under case prefix",
+      "complete unique member set",
+      "regular files or directories only",
+      "exact owner, mode, size, mtime and xattr manifest",
+      "all regular file content hashes"
+    ],
+    "whole_input_validated_before_destination_creation": true,
+    "portable_metadata_matches": true,
+    "observed_xattr_values_match": true,
+    "xattr_limit": "The observed com.apple.provenance values were inherited unchanged and verified on this Mac. Arbitrary xattr restoration and nonempty ACL restoration were not tested.",
+    "original_device_inode_ctime_not_claimed_for_restored_copy": true,
+    "source_exact_before_and_after_match": true,
+    "separate_independent_hash_mode_owner_mtime_inode_check_passed": true,
+    "source_permissions_or_timestamps_restored_to_hide_changes": false
+  },
+  "provider_references": {
+    "journal": {
+      "provider_hash": "9a91c9128d742abeb498cf6a9e0e9534b224d6ea2842d8cb0113f72170296dc6",
+      "stage": "stage-33333333333333333333333333333333",
+      "status": "synced"
+    },
+    "canonical_and_latest_stage_bytes_equal": true,
+    "canonical_and_journal_sha256_equal": true,
+    "older_stage_provider_different": true,
+    "latest_stage_relative_name_preserved": true,
+    "binary_state_decoded_or_reinitialized": false,
+    "older_provider_substituted": false,
+    "current_pointer_content_manifest_valid_before_and_after_restore": true,
+    "negative_cases": [
+      "canonical mismatch",
+      "referenced stage file missing",
+      "journal references absent stage",
+      "older provider substituted",
+      "journal remains pending"
+    ]
+  },
+  "capacity_accounting": {
+    "source_generation_slots": 1,
+    "source_stage_slots": 2,
+    "source_total_slots_before_archive": 3,
+    "source_total_slots_after_archive": 3,
+    "unsupported_stage_counted_slots": 1,
+    "restored_copy_independent_slots": 3,
+    "counter_uses_actual_product_function": true,
+    "unrecognized_stage_added_to_separate_copy_gives_slots": 4,
+    "production_limit": 4,
+    "archive_or_move_did_not_free_original_slots": true,
+    "byte_ledger": {
+      "source-case": {
+        "regular_files": 23,
+        "logical_file_bytes": 5705,
+        "allocated_file_bytes": 81920
+      },
+      "source-case/store": {
+        "regular_files": 20,
+        "logical_file_bytes": 5547,
+        "allocated_file_bytes": 69632
+      },
+      "whole-case.tar": {
+        "regular_files": 1,
+        "logical_file_bytes": 71680,
+        "allocated_file_bytes": 73728
+      },
+      "restored-case": {
+        "regular_files": 23,
+        "logical_file_bytes": 5705,
+        "allocated_file_bytes": 81920
+      },
+      "source-manifest.json": {
+        "regular_files": 1,
+        "logical_file_bytes": 20407,
+        "allocated_file_bytes": 20480
+      },
+      "negative": {
+        "regular_files": 169,
+        "logical_file_bytes": 684923,
+        "allocated_file_bytes": 1232896
+      },
+      "rehearsal.py": {
+        "regular_files": 1,
+        "logical_file_bytes": 18688,
+        "allocated_file_bytes": 20480
+      }
+    },
+    "ledger_notes": [
+      "source-case/store is included in source-case, not an additional summand.",
+      "Allocated file bytes use st_blocks times 512 and exclude directory allocation, filesystem metadata, shared extents and snapshots; they are not exact physical space or reclaimable space.",
+      "Archive, manifest, analysis copies and negative controls occupy additional storage outside the source store and are not subtracted from its 3 slots."
+    ]
+  },
+  "rehearsal_checks": {
+    "passed": 23,
+    "failed": 0,
+    "rejection_controls": 15,
+    "checks": [
+      {
+        "detail": "1 generation+2 stages=3; unsupported stage unavailable and counted; all pending/current entries protected",
+        "name": "product_inventory_and_capacity",
+        "passed": true
+      },
+      {
+        "detail": "full paths/hash/type/mode/owner/times/inode/nlink; live ACL empty; bounded xattr values and hashes captured; originals fingerprinted outside source",
+        "name": "bounded_private_catalog",
+        "passed": true
+      },
+      {
+        "detail": "all store files, both stages, original wait and matching synthetic logs packaged; archive outside active root",
+        "name": "whole_case_archive",
+        "passed": true
+      },
+      {
+        "detail": "all member bytes, modes, uid/gid, exact ns mtime, empty ACL and observed xattr values match; inode/ctime intentionally distinguished",
+        "name": "restore_roundtrip",
+        "passed": true
+      },
+      {
+        "detail": "current content manifest valid; latest stage matches canonical+journal; older stage provider differs and was not substituted",
+        "name": "provider_graph_and_current",
+        "passed": true
+      },
+      {
+        "detail": "source remains 3; restored analysis copy also contains 3; archive outside root did not free a slot",
+        "name": "capacity_after_archive_and_restore",
+        "passed": true
+      },
+      {
+        "detail": "Rejected:archive_hash_or_size",
+        "name": "archive_digest_change",
+        "passed": true
+      },
+      {
+        "detail": "Rejected:member_content_hash",
+        "name": "payload_change",
+        "passed": true
+      },
+      {
+        "detail": "Rejected:unsafe_member_path",
+        "name": "unsafe_path",
+        "passed": true
+      },
+      {
+        "detail": "Rejected:link_or_special_member",
+        "name": "symlink_member",
+        "passed": true
+      },
+      {
+        "detail": "Rejected:link_or_special_member",
+        "name": "hardlink_member",
+        "passed": true
+      },
+      {
+        "detail": "Rejected:member_metadata_mismatch",
+        "name": "nonprivate_mode",
+        "passed": true
+      },
+      {
+        "detail": "Rejected:member_metadata_mismatch",
+        "name": "wrong_owner",
+        "passed": true
+      },
+      {
+        "detail": "Rejected:missing_member",
+        "name": "missing_member",
+        "passed": true
+      },
+      {
+        "detail": "Rejected:duplicate_member",
+        "name": "duplicate_member",
+        "passed": true
+      },
+      {
+        "detail": "Rejected:provider_hash_mismatch",
+        "name": "canonical_mismatch",
+        "passed": true
+      },
+      {
+        "detail": "Rejected:provider_source_missing",
+        "name": "source_missing",
+        "passed": true
+      },
+      {
+        "detail": "Rejected:provider_source_missing",
+        "name": "journal_source_missing",
+        "passed": true
+      },
+      {
+        "detail": "Rejected:provider_hash_mismatch",
+        "name": "older_provider_downgrade",
+        "passed": true
+      },
+      {
+        "detail": "Rejected:provider_sync_not_synced",
+        "name": "pending_provider_sync",
+        "passed": true
+      },
+      {
+        "detail": "added stage-junk in separate copy gives 4; unsupported .cld stage not exempted",
+        "name": "unrecognized_stage_still_counts",
+        "passed": true
+      },
+      {
+        "detail": "Rejected:source_changed_since_catalog",
+        "name": "stale_catalog",
+        "passed": true
+      },
+      {
+        "detail": "source exact snapshot including inode/ctime unchanged; attempt/current/provider/stages/logs unchanged; valid restore unchanged",
+        "name": "source_and_baseline_preservation",
+        "passed": true
+      }
+    ]
+  },
+  "local_evidence_digests": {
+    "rehearsal_script_sha256": "f8e2bab730f3d513cbec151455da35406da68d821e3cf7d69df74c3a409f25f0",
+    "raw_result_sha256": "8cc9693fb492d8495710b98260322809de98115e63da6aeb8b32e5ad61100cb9"
+  },
+  "harness_preflight": {
+    "attempts_before_completed_run": 4,
+    "failures": [
+      "Two preflight runs encountered the macOS /var alias; the real owner CLI refused the symlink ancestor. A fresh synthetic fixture under its resolved /private/var path was used.",
+      "The macOS Python os module lacks listxattr. Descriptor-based native flistxattr/fgetxattr was used.",
+      "Native inspection found com.apple.provenance on generated entries, so the harness captured and compared actual values instead of assuming empty xattrs."
+    ],
+    "scope": "Only disposable synthetic rehearsal locations were involved; failed fixtures were retained. No production behavior was loosened."
+  },
+  "verification": {
+    "implementation_files_match_recorded_commit": true,
+    "protected_historical_record_hashes_match_initial_values": true,
+    "git_index_matches_initial_value": true,
+    "targeted_maintenance_tests": {
+      "command": ".venv-dev/bin/python -m unittest discover -s tests -p 'test_signature_maintenance.py' -q",
+      "total": 23,
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0
+    },
+    "acceptance_record_format_tests": {
+      "command": ".venv-dev/bin/python -m unittest discover -s tests -p 'test_compliance.py' -k AcceptanceRecordTests -q",
+      "total": 3,
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    "diff_whitespace_check": {
+      "command": "git diff --check",
+      "exit_code": 0
+    },
+    "full_Android_MCP_npm_or_native_engine_suite_rerun": false
+  },
+  "limitations_and_remaining": [
+    "This is a synthetic Mac rehearsal of the preservation workflow, not a new production archive, cryptographic signature acceptance or successful recovery of an original case.",
+    "Archive and restored copy share this Mac failure domain; independent media replication, durability after restart, original attribute acquisition and the future minimum 30 day retention condition remain unverified.",
+    "No original store cleanup is authorized or performed. Real pending/provider state and deadlines were not read, changed, shortened or cleared.",
+    "Original 6 successful and 2 unfinished cases remain unchanged. The normal cached-case recovery and the separate new case with fresh signed baseline/update CVD inputs and its own natural 48 hour wait remain separate work."
+  ],
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false
+}
