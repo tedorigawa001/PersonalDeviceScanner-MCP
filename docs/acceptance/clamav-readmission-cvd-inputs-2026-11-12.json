@@ -1,0 +1,308 @@
+{
+  "date": "2026-11-12",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "official_signed_CVD_inputs_preparation_for_separate_429_readmission",
+  "status": "partial: baseline daily 28180 and common main/bytecode acquired and verified; distinct update daily version not acquired; two-version preparation remains incomplete",
+  "source_commit": "9862c7bb9f6396c418d900cb92a04a388b767846",
+  "design": "../clamav-preserved-stage-recovery-design.md",
+  "related_records": [
+    "clamav-evidence-preservation-rehearsal-2026-11-11.json",
+    "freshclam-429-recovery-linux-2026-11-10.json",
+    "clamav-cld-stage-investigation-2026-11-10.json"
+  ],
+  "two_version_readiness": {
+    "requested_distinct_daily_versions": 2,
+    "verified_distinct_daily_versions": 1,
+    "baseline_daily_version": 28180,
+    "update_daily_version": null,
+    "both_versions_ready": false,
+    "no_duplicate_or_header_edit_counted_as_second_version": true,
+    "old_daily_28172_and_28174_not_used_as_fresh_baseline": true,
+    "pending": "After the dedicated acquisition interval and any provider wait, obtain a strictly newer complete signed daily CVD, retain baseline unchanged, and calculate freshness for both at the planned 48 hour retry time.",
+    "historical_version_endpoint": "The reviewed supported official documentation describes latest database updates; no supported historical full-CVD endpoint was established. Guessed version URLs, alternate IPs or third-party mirrors were not tried.",
+    "next_publication_available_or_time_guaranteed": false
+  },
+  "official_sources": [
+    {
+      "url": "https://docs.clamav.net/faq/faq-freshclam.html",
+      "relevance": "FreshClam and cvdupdate are supported download methods; obey CDN limits and cooling instructions."
+    },
+    {
+      "url": "https://docs.clamav.net/faq/faq-cvd.html",
+      "relevance": "FreshClam maintains the current database; releases usually occur once or twice a day, without a guaranteed next publication time."
+    },
+    {
+      "url": "https://github.com/Cisco-Talos/cvdupdate/blob/main/README.md",
+      "relevance": "Describes downloading latest databases and replacement of previous CVD versions; no two-version historical selection was established."
+    }
+  ],
+  "scope": {
+    "environment": "This Mac, real installed freshclam/sigtool/clamscan 1.5.4",
+    "dedicated_private_acquisition_root": "<macOS per-user temporary folder>/pc-scanner-cvd-inputs-20261112-01iwbm6y",
+    "existing_private_stores_or_containers_accessed": false,
+    "frozen_original_accessed_or_changed": false,
+    "existing_pending_or_deadline_changed": false,
+    "normal_OS_database_or_configuration_written": false,
+    "host_certificate_configuration_modified": false,
+    "system_clock_or_freshness_threshold_modified": false,
+    "personal_files_used": false,
+    "synthetic_scan_input_files": 1,
+    "new_429_wait_started": false,
+    "product_code_changed": false
+  },
+  "acquisition": {
+    "official_mirror": "https://database.clamav.net",
+    "config": {
+      "ScriptedUpdates": "no",
+      "TestDatabases": "yes",
+      "MaxAttempts": 1,
+      "ConnectTimeout": 15,
+      "ReceiveTimeout": 60
+    },
+    "freshclam_invocations_total": 2,
+    "initial_restricted_environment_attempt": {
+      "returncode": 11,
+      "timed_out": false,
+      "elapsed_seconds": 0.129,
+      "finished_at_utc": "2026-11-11T15:11:24.620883+00:00"
+    },
+    "initial_failure": "DNS resolution failed before any CDN HTTP connection. The new freshclam.dat and the raw log were retained.",
+    "environment_diagnosis": "The same official hostname resolved in the normal network environment; the authorized acquisition continued in the same dedicated directory with the same config, without deleting provider state or changing the original acquisition guard.",
+    "provider_connected_invocations": 1,
+    "connected_result": {
+      "returncode": 0,
+      "timed_out": false,
+      "elapsed_seconds": 42.974,
+      "finished_at_utc": "2026-11-11T15:12:53.031733+00:00"
+    },
+    "provider_HTTP_status_codes": [
+      "200",
+      "200",
+      "200",
+      "200",
+      "200",
+      "200"
+    ],
+    "TLS_certificate_verified_connections": 6,
+    "TLS_host_and_chain_verification_enabled": true,
+    "provider_403_429_or_cooldown_observed": false,
+    "freshclam_test_databases_passed": true,
+    "retained_provider_state": "download/freshclam.dat retained; binary not decoded, reset or substituted",
+    "dedicated_interval": {
+      "pending_after_successful_signature_and_load_validation": false,
+      "next_attempt_epoch": 1794496373.031733,
+      "next_attempt_jst_rounded_up": "2026-11-13T00:12:54+09:00",
+      "minimum_seconds_after_successful_connected_acquisition": 86400,
+      "reason": "A conservative local acquisition interval aligned with the owner-update workflow; not a Retry-After sent by the CDN.",
+      "pre_completion_guard_preserved_as": "acquisition-attempt-before-completion.json",
+      "guard_shortened": false,
+      "future_downloads_or_jobs_scheduled": false
+    }
+  },
+  "verified_CVD_files": [
+    {
+      "file": "bytecode.cvd",
+      "source_url": "https://database.clamav.net/bytecode.cvd",
+      "version": 339,
+      "build_time_utc": "2025-09-11T12:29:19+00:00",
+      "build_time_jst": "2025-09-11T21:29:19+09:00",
+      "signatures": 80,
+      "functionality_level": 90,
+      "bytes": 281702,
+      "sha256": "6d4aa01f219e988060fc419f495d07f27e0cdf1a2cccc065971da922c76f7ffb",
+      "embedded_signature_present": true,
+      "embedded_sigtool_info_exit": 0,
+      "embedded_verification_OK": true,
+      "detached_sigtool_verify_exit": 0,
+      "detached_signer": "ClamAV_datafiles_release",
+      "baseline_mode": "0o600"
+    },
+    {
+      "file": "daily.cvd",
+      "source_url": "https://database.clamav.net/daily.cvd",
+      "version": 28180,
+      "build_time_utc": "2026-11-11T06:24:27+00:00",
+      "build_time_jst": "2026-11-11T15:24:27+09:00",
+      "signatures": 355854,
+      "functionality_level": 90,
+      "bytes": 23448742,
+      "sha256": "80d80ef32f10f168154df52114c39735e057500bb45a495eba9db2f5496e1437",
+      "embedded_signature_present": true,
+      "embedded_sigtool_info_exit": 0,
+      "embedded_verification_OK": true,
+      "detached_sigtool_verify_exit": 0,
+      "detached_signer": "ClamAV_datafiles_release",
+      "baseline_mode": "0o600"
+    },
+    {
+      "file": "main.cvd",
+      "source_url": "https://database.clamav.net/main.cvd",
+      "version": 63,
+      "build_time_utc": "2025-12-16T23:18:22+00:00",
+      "build_time_jst": "2025-12-17T08:18:22+09:00",
+      "signatures": 3287027,
+      "functionality_level": 90,
+      "bytes": 89072577,
+      "sha256": "0b2182d229f46981ec8f535382222f7c9dfdd656b250ad47988b910a8d302365",
+      "embedded_signature_present": true,
+      "embedded_sigtool_info_exit": 0,
+      "embedded_verification_OK": true,
+      "detached_sigtool_verify_exit": 0,
+      "detached_signer": "ClamAV_datafiles_release",
+      "baseline_mode": "0o600"
+    }
+  ],
+  "baseline_file_manifest": {
+    "daily.cvd": {
+      "bytes": 23448742,
+      "sha256": "80d80ef32f10f168154df52114c39735e057500bb45a495eba9db2f5496e1437",
+      "mode": "0o600",
+      "owner_matches": true,
+      "nlink": 1
+    },
+    "main-63.cvd.sign": {
+      "bytes": 9078,
+      "sha256": "c030a2235e0ac8b53f95bc6f79563c2b3ddfdcf4fd1d722634578a79530898e2",
+      "mode": "0o600",
+      "owner_matches": true,
+      "nlink": 1
+    },
+    "main.cvd": {
+      "bytes": 89072577,
+      "sha256": "0b2182d229f46981ec8f535382222f7c9dfdd656b250ad47988b910a8d302365",
+      "mode": "0o600",
+      "owner_matches": true,
+      "nlink": 1
+    },
+    "daily-28180.cvd.sign": {
+      "bytes": 9078,
+      "sha256": "5812a1c47f332b841639c4cec5a8a0a764095efe1332b4bdecf4746d193f6d40",
+      "mode": "0o600",
+      "owner_matches": true,
+      "nlink": 1
+    },
+    "bytecode.cvd": {
+      "bytes": 281702,
+      "sha256": "6d4aa01f219e988060fc419f495d07f27e0cdf1a2cccc065971da922c76f7ffb",
+      "mode": "0o600",
+      "owner_matches": true,
+      "nlink": 1
+    },
+    "bytecode-339.cvd.sign": {
+      "bytes": 9078,
+      "sha256": "94eb76eff8cf3ab90ec3a67992727e84f9be257f294d72504228e89fa566592f",
+      "mode": "0o600",
+      "owner_matches": true,
+      "nlink": 1
+    }
+  },
+  "verification": {
+    "real_sigtool_embedded_passed": 3,
+    "real_sigtool_detached_passed": 3,
+    "daily_tampered_copy": {
+      "change": "One payload byte at offset 1024 changed only in a separate copy; correct original detached signature copied alongside it",
+      "embedded_sigtool_exit": 1,
+      "detached_sigtool_exit": 1,
+      "both_rejected": true
+    },
+    "real_clamscan_synthetic_load_scan": {
+      "exit_code": 0,
+      "synthetic_files": 1,
+      "warnings_or_errors": false
+    },
+    "baseline_hashes_unchanged_after_checks": true,
+    "private_directory_modes": "0700",
+    "private_baseline_file_modes": "0600",
+    "private_owner_and_ACL_checks_passed": true,
+    "acceptance_record_format_tests": {
+      "command": ".venv-dev/bin/python -m unittest discover -s tests -p 'test_compliance.py' -k AcceptanceRecordTests -q",
+      "total": 3,
+      "passed": 3,
+      "skipped": 0,
+      "failed": 0
+    },
+    "diff_whitespace_check": {
+      "command": "git diff --check",
+      "exit_code": 0
+    },
+    "full_Android_MCP_npm_suite_rerun": false,
+    "signature_regressions": {
+      "command": ".venv-dev/bin/python -m unittest discover -s tests -p 'test_signatures.py' -q",
+      "total": 15,
+      "passed": 15,
+      "skipped": 0,
+      "failed": 0,
+      "includes_real_MCP_SDK": true
+    }
+  },
+  "freshness": {
+    "checked_at_utc": "2026-11-11T15:15:06.025197+00:00",
+    "engine": "1.5.4",
+    "daily_version": 28180,
+    "built_at_utc": "2026-11-11T06:24:27+00:00",
+    "checked_plus_48_hours_utc": "2026-11-13T15:15:06.025197+00:00",
+    "age_seconds_now": 31839.025197,
+    "age_seconds_after_48_hours": 204639.025197,
+    "max_signature_age_seconds": 604800,
+    "fresh_now": true,
+    "fresh_after_48_hours_if_started_at_check": true,
+    "freshness_valid_through_utc": "2026-11-18T06:24:27+00:00",
+    "latest_48_hour_start_utc": "2026-11-16T06:24:27+00:00",
+    "note": "Calculated from actual signed daily timestamp; no system clock, freshness threshold or stored wait modified. This does not mean 48 hours have actually elapsed or both versions are ready.",
+    "build_time_jst": "2026-11-11T15:24:27+09:00",
+    "checked_at_jst": "2026-11-12T00:15:06.025197+09:00",
+    "checked_plus_48_hours_jst": "2026-11-14T00:15:06.025197+09:00",
+    "freshness_valid_through_jst": "2026-11-18T15:24:27+09:00",
+    "latest_48_hour_start_jst": "2026-11-16T15:24:27+09:00",
+    "applies_to": "daily CVD timestamp, matching the existing scanner freshness policy; old main/bytecode build dates are not the daily-age criterion",
+    "both_versions_after_48_hours_confirmed": false,
+    "actual_48_hour_wait_elapsed": false,
+    "deadline_inclusive": true,
+    "operational_margin": "Latest start is the mathematical boundary for exactly 48 hours only. Allow time for preparation, recovery, update and rescan, and recheck both dates at the actual planned retry time.",
+    "conditional_next_acquisition_plan": {
+      "hypothesis": "A different signed update daily version is available at or after the retained next acquisition deadline, and the separate 48 hour case starts immediately then; actual publication, readiness and case start were not observed.",
+      "hypothetical_retry_time_jst": "2026-11-15T00:12:53.031733+09:00",
+      "baseline_age_days_at_that_time": 3.366968,
+      "baseline_within_7_days_at_that_time": true,
+      "update_version_freshness_confirmed": false
+    }
+  },
+  "preservation": {
+    "successful_original_stores": 6,
+    "unfinished_original_stores": 2,
+    "historical_record_hashes_unchanged": true,
+    "protected_record_sha256": {
+      "docs/acceptance/freshclam-429-recovery-linux-2026-11-10.json": "94f52f5a69c4358da1cabac702a1934042f353358ab744d01e5d89864c35d230",
+      "docs/acceptance/freshclam-429-post-fix-linux-2026-11-08.json": "7ecec20e10fd879b7c949944d7f256ae43f4e1e9883fbad140fd97e1b3f2100d",
+      "docs/acceptance/clamav-cld-stage-investigation-2026-11-10.json": "ab6c9bec81d52d3c8fd33f74a3fcceae7bf22888c7a630cbcb59a6bd9d014376"
+    },
+    "git_index_unchanged_during_recording": true,
+    "original_store_metadata_not_remeasured": true,
+    "baseline_only_success_does_not_close_original_cases": true
+  },
+  "local_evidence": {
+    "manifest": "baseline-manifest.json",
+    "calculation": "freshness-calculation.json",
+    "signature_outputs": "signature-results.json and per-file logs",
+    "provider_log": "freshclam-network.log",
+    "negative_control": "negative-results.json; tampered copy kept separately",
+    "raw_log_note": "Raw verbose bytes retained privately; diagnostic display decodes with replacement where necessary.",
+    "evidence_sha256": {
+      "freshclam-network.log": "b85e5af17e5918812770a53f2287a732423f9535419e67a4ffd188ed20fe9cec",
+      "signature-results.json": "b867c1f08520a30a1539731aa6695925371a8bd2dfebe9f24de3c2dab114d916",
+      "baseline-manifest.json": "fe902e51acbef8681cc4b54fac24a95bc04c31c7e16cf18c080961945dc24b43",
+      "freshness-calculation.json": "aac9219e46c64d3465a06360bfcf95c7d5d000d05693a4fdf6ff17a7e6a23b46",
+      "load-validation.json": "092329f275119ab7c1a9d9e9c504909dfcf5b97ef23b0534f401644a46499099",
+      "negative-results.json": "1886193eea472e0e1dce458262ef94c1614654a9a21c9a2317d9b3ac59cf0bcb",
+      "download/freshclam.dat": "81c16adb0845dfea1414411c9306c6d61a128417ea10dadf05271a4e21e2dac9"
+    }
+  },
+  "remaining": [
+    "Obtain a second, strictly newer complete signed daily CVD after the retained acquisition guard and any additional provider instruction. Current acquisition only verified one daily version.",
+    "Verify second version, detached and embedded signatures, hash and load; re-evaluate both versions for the actual 48 hour retry time before starting the separate case.",
+    "If baseline would expire before final retry/validation, acquire a later baseline and adjust the schedule; do not change signed bytes, clocks or freshness limits.",
+    "Keep the frozen original and 6 successful / 2 unfinished historical results; normal cached-case recovery and independent new-case 429 acceptance remain separate."
+  ],
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false
+}
