@@ -209,7 +209,7 @@ npm パッケージに入っているのは、小さな起動用スクリプト�
   "mcpServers": {
     "personal-device-scanner": {
       "command": "npx",
-      "args": ["-y", "personal-device-scanner-mcp@0.11.0", "--config", "/absolute/path/to/scanner.toml", "serve"]
+      "args": ["-y", "personal-device-scanner-mcp@0.11.1", "--config", "/absolute/path/to/scanner.toml", "serve"]
     }
   }
 }
@@ -220,7 +220,7 @@ npm パッケージに入っているのは、小さな起動用スクリプト�
 - 初回の起動時に、キャッシュフォルダーへ専用の仮想環境を作り、Python のパッケージを導入します
   （macOS：`~/Library/Caches/personal-device-scanner-mcp`、Linux：`~/.cache/personal-device-scanner-mcp`、
   Windows：`%LOCALAPPDATA%\personal-device-scanner-mcp`）。クライアントがサーバーの起動を待つ時間より長くかかることがあるため、
-  先に一度 `npx -y personal-device-scanner-mcp@0.11.0 setup` を実行してください。
+  先に一度 `npx -y personal-device-scanner-mcp@0.11.1 setup` を実行してください。
 - Windows x64・macOS（Intel / Apple シリコン）・Linux x86_64／aarch64 の CPython 3.14 と、
   Apple シリコン（macOS 11以降）・Linux x86_64／aarch64 の CPython 3.15 では
   （Linux は glibc 2.34以上）、同梱のロックファイルのハッシュで検証して導入します（`pip --require-hashes`）。musl や古い glibc では、
@@ -236,10 +236,10 @@ npm パッケージに入っているのは、小さな起動用スクリプト�
   指定する場合は `PC_SCANNER_PYTHON` に絶対パスを設定します。`PC_SCANNER_CACHE_DIR`（絶対パス）でキャッシュの場所を変えられます。
   Python を探すときに Python を導入することはありません（Windows の Python install manager は、まだ何も導入されていないと、
   要求された版を自動で導入するため、これを止めています）。適した Python がなければ、その旨を示して止まります。
-- 更新を自分で判断できるよう、バージョンは固定（`@0.11.0`）してください。バージョンと Python ごとに別の環境を作るので、
+- 更新を自分で判断できるよう、バージョンは固定（`@0.11.1`）してください。バージョンと Python ごとに別の環境を作るので、
   キャッシュフォルダー内の古い環境（`<バージョン>-<ハッシュ>` のような名前のフォルダー）は削除してかまいません。フォルダーごとは削除しないでください。
   Windows では、同じフォルダーにスキャン履歴も入っています。
-- CLI も同じように使えます。例：`npx -y personal-device-scanner-mcp@0.11.0 --config scanner.toml status`
+- CLI も同じように使えます。例：`npx -y personal-device-scanner-mcp@0.11.1 --config scanner.toml status`
 - Windows のクライアントが `npx` を直接起動できない場合は、`"command": "cmd"`、`"args": ["/c", "npx", ...]` とします。
 
 ### Wazuh を使う場合
