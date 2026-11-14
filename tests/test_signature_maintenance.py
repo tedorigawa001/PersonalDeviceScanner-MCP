@@ -44,7 +44,8 @@ class MaintenanceTests(unittest.TestCase):
         folder = self.root / name
         folder.mkdir(mode=0o700)
         for db in update.DATABASES:
-            history.replace_private(folder / db, b"ClamAV-VDB:date:1:10:90:hash:sig".ljust(512, b" ") + b"synthetic")
+            # Each published generation differs from the others; an unchanged update never publishes a copy.
+            history.replace_private(folder / db, b"ClamAV-VDB:date:1:10:90:hash:sig".ljust(512, b" ") + name.encode())
         return name
 
     def stage(self):
@@ -113,8 +114,15 @@ class MaintenanceTests(unittest.TestCase):
             folder.mkdir(mode=0o700)
             for db in update.DATABASES:
                 history.replace_private(folder / db, b"x")
+        def non_ascii_header(folder):
+            folder.mkdir(mode=0o700)
+            for db in update.DATABASES:
+                history.replace_private(folder / db, b"ClamAV-VDB:\xff\xfe:1:10:90".ljust(512, b" ") + b"synthetic")
+        def duplicate_of_current(folder):
+            shutil.copytree(self.root / self.active, folder)
         for label, make, listed in (("linked", linked, "unavailable"), ("finder_file", finder_file, "unavailable"),
-                                    ("malformed", malformed, None)):
+                                    ("malformed", malformed, None), ("non_ascii_header", non_ascii_header, None),
+                                    ("duplicate_of_current", duplicate_of_current, None)):
             with self.subTest(label):
                 folder = self.root / secrets.token_hex(16)
                 make(folder)
@@ -126,6 +134,24 @@ class MaintenanceTests(unittest.TestCase):
                 self.assertEqual(self.entry(folder.name)["reason"], listed)
                 folder.unlink() if folder.is_symlink() else shutil.rmtree(folder)
         self.assertTrue((self.root / self.previous / "main.cvd").exists())
+
+    def test_damaged_headers_fail_closed_instead_of_crashing_maintenance(self):
+        broken = self.root / secrets.token_hex(16)
+        broken.mkdir(mode=0o700)
+        for db in update.DATABASES:
+            history.replace_private(broken / db, b"ClamAV-VDB:\xff\xfe:1:10:90".ljust(512, b" ") + b"synthetic")
+        with self.assertRaises(OSError):
+            update.digest_directory(broken, time.monotonic() + 30)
+        # A damaged previous generation is listed and can be removed like any other unusable folder.
+        row = self.entry(broken.name)
+        self.assertEqual(maintenance.manage(self.scanner, "delete", broken.name, row["revision"])["status"], "completed")
+        # A current generation damaged after publication stops maintenance with the ordinary error, not a crash.
+        main = self.root / self.active / "main.cvd"
+        history.replace_private(main, b"ClamAV-VDB:\xff:1:10:90".ljust(512, b" ") + b"synthetic")
+        row = self.entry(self.removable)
+        with self.assertRaisesRegex(core.ScannerError, "Signature maintenance could not complete"):
+            maintenance.manage(self.scanner, "delete", self.removable, row["revision"])
+        self.assertTrue((self.root / self.removable).exists())
 
     def test_unmanaged_stage_names_are_counted_and_reported(self):
         listing = maintenance.manage(self.scanner, "list")

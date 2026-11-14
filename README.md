@@ -453,8 +453,9 @@ Current/in-use generations, the last previous generation, unrecovered failed sta
 storage are refused. There is no arbitrary path or force-delete option. At most four generations/failed stages are
 retained; use selected cleanup before reaching this limit. No automatic deletion or disk quota is implemented.
 A folder without all three definition files is listed as `incomplete`: it counts toward the limit and can be deleted.
-Only a folder passing the same checks as the current generation (exactly the three private databases, with valid
-headers and sizes) counts as the last previous generation; linked, unknown-file or malformed folders never do.
+Only a folder holding exactly the three private databases, with valid headers and sizes, and content different from
+the current generation counts as the last previous generation; linked, unknown-file, malformed or duplicate folders
+never do. Database bodies are not checked against a record, so damage after a valid header is not detected there.
 Folders named `stage-*` that the CLI cannot manage also count toward the limit; the listing reports their number as
 `unrecognized_entries` with a warning, so inspect them manually.
 Deletion may be partial after an I/O failure; list again to inspect the remainder. Invalid permissions, unknown

@@ -130,7 +130,11 @@ def digest_directory(path, deadline, cancel=None):
             total += before.st_size
             if total > MAX_BYTES:
                 raise OSError("Database size limit")
-            header = os.read(fd, 512).decode("ascii").split(":")
+            try:
+                header = os.read(fd, 512).decode("ascii").split(":")
+            except UnicodeDecodeError:
+                # A damaged header is invalid data like any other, so callers fail closed instead of crashing.
+                raise OSError("Invalid CVD header") from None
             if len(header) < 4 or header[0] != "ClamAV-VDB" or not header[2].isdigit():
                 raise OSError("Invalid CVD header")
             versions[name] = int(header[2])

@@ -187,14 +187,16 @@ def complete(folder):
         return False
 
 
-def usable(folder, deadline):
-    """A rollback must pass the checks applied to the current generation. A linked, unknown-file or malformed
-    folder must not count beside the last usable one, or that one could be deleted."""
+def usable(folder, deadline, current=None):
+    """Count a folder as a rollback only if digest_directory accepts its structure (private folder, exactly the three
+    databases, sizes and CVD headers) and its content differs from the current generation. Otherwise a linked,
+    unknown-file, malformed or duplicate folder could stand beside the last real rollback and let it be deleted.
+    Bodies are hashed but not validated against anything, so damage after a valid header still passes."""
     try:
-        update.digest_directory(folder, deadline)
-        return True
+        observed = update.digest_directory(folder, deadline)
     except OSError:
         return False
+    return not current or observed["content"] != current["content"]
 
 
 def inventory(path, deadline):
@@ -205,7 +207,7 @@ def inventory(path, deadline):
             raise OSError("Signature inventory limit")
         names.append(f.name)
     managed = sorted(n for n in names if ENTRY.fullmatch(n))
-    previous = [n for n in managed if update.GEN.fullmatch(n) and (not current or n != current["generation"]) and usable(path / n, deadline)]
+    previous = [n for n in managed if update.GEN.fullmatch(n) and (not current or n != current["generation"]) and usable(path / n, deadline, current)]
     # The updater counts these toward its limit, but this CLI neither lists nor deletes them.
     unrecognized = sum(1 for n in names if update.counts_toward_capacity(n) and not ENTRY.fullmatch(n))
     rows = []
