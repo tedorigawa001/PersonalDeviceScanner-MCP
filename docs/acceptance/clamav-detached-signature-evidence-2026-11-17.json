@@ -54,18 +54,19 @@
   },
   "verification": {
     "syntax": "AST parsing passed for all five changed Python implementation/test files",
-    "focused_command": "bdo proxy env PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -p 'test_signature*.py'",
+    "focused_command": "env PYTHONDONTWRITEBYTECODE=1.venv/bin/python -m unittest discover -s tests -p 'test_signature*.py'",
     "focused": {"total": 89, "passed": 89, "skipped": 0, "failed": 0},
-    "python_3_14_command": "bdo proxy env PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests",
-    "python_3_15_command": "bdo proxy env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests",
+    "python_3_14_command": "env PYTHONDONTWRITEBYTECODE=1.venv/bin/python -m unittest discover -s tests",
+    "python_3_15_command": "env PYTHONDONTWRITEBYTECODE=1.venv-dev/bin/python -m unittest discover -s tests",
     "python_3_14": {"version": "3.14.10", "total": 783, "passed": 766, "skipped": 17, "failed": 0, "seconds": 111.822},
     "python_3_15": {"version": "3.15.2", "total": 783, "passed": 766, "skipped": 17, "failed": 0, "seconds": 110.787},
     "python_skips": "17 Windows-native tests; Android and SDK-backed MCP tests were not skipped",
     "mcp_sdk": "1.30.0 in both Python environments; SDK-backed tests enabled",
-    "npm_command": "bdo proxy env PYTHONDONTWRITEBYTECODE=1 npm test",
+    "npm_command": "env PYTHONDONTWRITEBYTECODE=1npm test",
     "npm": {"total": 34, "passed": 33, "skipped": 1, "failed": 0},
     "npm_skip": "Optional PyPI first-install end-to-end test was not enabled",
-    "diff_check": "bdo git diff --check passed; final record JSON and test-count arithmetic validated"
+    "diff_check": "git diff --check passed; final record JSON and test-count arithmetic validated",
+    "record_correction": "as first committed in 5a062b3, this record gave its commands with the local proxy prefix and used older recording field names, so 2 record-format tests failed; after correcting both, the full suites were run again on Python 3.14.10 and 3.15.2, each 783 total, 766 passed, 17 skipped"
   },
   "privacy_and_preservation": {
     "synthetic_stores_and_inputs_only": true,
@@ -74,9 +75,7 @@
     "existing_private_definition_stores_or_waits_accessed": false,
     "frozen_originals_or_retained_containers_modified": false,
     "administrator_credentials_handled": false,
-    "public_network_downloads": false,
-    "push_performed": false,
-    "commit_created": false
+    "public_network_downloads": false
   },
   "remaining": [
     "Windows CI and physical-device acceptance were not run; the private updater remains POSIX-only",
@@ -85,5 +84,7 @@
     "Maintenance still structurally evaluates previous generations without comparing their bodies to the new evidence record; that design item and legacy previous-generation handling remain open",
     "Power-cut durability was not physically tested",
     "Historical 429 results remain six successes/two unfinished; the separate cached follow-up and the incomplete two-version CVD preparation are unchanged"
-  ]
+  ],
+  "commit_created_during_recording": false,
+  "push_performed_during_recording": false
 }

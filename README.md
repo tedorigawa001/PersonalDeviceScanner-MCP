@@ -1057,13 +1057,16 @@ It does not scan target files, update definitions, perform network lookups or wr
 
 - `fresh`: the definition date is within the limit, including exactly at the limit; `stale`: over the limit.
 - `unknown`: the date is unavailable or in the future. A readable daily stamp does not verify database integrity or PC safety.
+- `unverified`: only with the private definition store (`clamav_updates`). The date is within the limit, but the pinned
+  generation has no saved, matching record of a verified daily detached signature (`.cvd.sign`);
+  `signature_check.detached_signatures` shows the saved status per database.
 - `check_failed`: configuration/startup failure, no valid version response, timeout or cancellation.
   CLI exits 0 for `fresh`, and 2 for the other states.
 
 Normal, batch and resumed malware scans perform the same check before a potentially long directory walk.
 CLI stderr and supported MCP progress notifications carry version/date, freshness and brief update advice.
 The final report retains `data.signature_check` as **pre-scan** evidence; existing per-target and batch-completion freshness checks remain.
-Stale or unknown definitions allow scanning with warnings and keep the result at least `partial`.
+Stale, unknown or unverified definitions allow scanning with warnings and keep the result at least `partial`.
 A failed check prevents scanning. A standalone check is limited to 30 seconds or the shorter configured limit;
 the pre-scan check shares the whole scan deadline.
 
