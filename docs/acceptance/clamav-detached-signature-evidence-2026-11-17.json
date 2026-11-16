@@ -1,0 +1,89 @@
+{
+  "date": "2026-11-17",
+  "kind": "security_fix_regression_verification",
+  "status": "fixed; focused regressions and final full suites passed locally",
+  "base_commit": "fbcfc6f01bbaf852992653ca42f11bcfe66caddc",
+  "files_changed": [
+    "pc_scanner/signature_update.py",
+    "pc_scanner/core.py",
+    "pc_scanner/signature_maintenance.py",
+    "tests/test_signature_update.py",
+    "tests/test_signature_maintenance.py",
+    "README.md",
+    "README.ja.md",
+    "docs/clamav-signature-update-design.md",
+    "docs/backlog.md",
+    "docs/acceptance/clamav-detached-signature-evidence-2026-11-17.json"
+  ],
+  "finding": {
+    "source": "A distribution can omit daily's detached signature while the embedded signature does not authenticate its build time.",
+    "before": "The update CLI returned partial/unverified, but later CLI/MCP checks and malware scans returned completed/fresh from the date alone.",
+    "reproduction_before_fix": "Two new regression methods failed on the base implementation: four check/single/batch/resume subcases returned completed/fresh, and the real MCP SDK check returned completed/fresh.",
+    "invariant": "A private generation cannot establish fresh without retained, content-bound evidence of a verified daily detached signature. Age limits still apply."
+  },
+  "implementation": {
+    "record": "<generation>.verification.json beside the three-CVD generation directory; private regular file, schema 1, content digest, exact database versions and detached-signature statuses",
+    "read_boundary": "pin snapshots the record with the reference and shared lease under the publication lock, then verifies CVD contents outside that lock; core's shared definition-check gate applies the retained result to CLI/MCP and all malware entry points",
+    "missing_or_invalid": "Missing legacy records, invalid/deep JSON, unsupported schemas, extra fields, mismatched content/versions, invalid statuses, unsafe permissions, links, cloud placeholders and unreadable records cannot authenticate freshness; no implicit write or download is attempted",
+    "date_semantics": "A recent date without verified daily evidence is unverified/partial; stale, unknown and future-date handling stays unchanged, including the inclusive age limit and one-microsecond-over boundary",
+    "publication": "Durably write stage/verification.json, flush candidate CVDs, place the generation and evidence and sync the root before switching current.json; pre-switch failures retain the prior pointer and pending/stage",
+    "unchanged": "For identical full CVD content only, preserve matching earlier verified evidence or upgrade the same generation after a new verification; do not transfer proof to different bytes even when versions match",
+    "resume": "CVD-only digest, generation paths and checkpoint identity remain unchanged; metadata-only refresh does not invalidate matching scan results, while reports retain unknown_definitions for unverified evidence",
+    "maintenance": "Generation revision and byte count include the sidecar. Selected deletion validates both objects and removes evidence before the generation under its exclusive lease. A partial deletion leaves any remaining generation unverified. Failed stage verification.json is a recognized maintenance entry.",
+    "compatibility": "Legacy stores stay readable and updatable; a verified unchanged owner update can create their record. OS-managed definition checks keep their existing behavior."
+  },
+  "review": {
+    "investigation": "Independent read-only security-boundary and compatibility investigation before editing",
+    "candidate_review": "One fresh read-only bypass/regression review of the candidate diff found no concrete surviving bypass or regression across publication, unchanged updates, legacy records, pinning, CLI/MCP, scan variants and maintenance",
+    "scope": "The detached-signature evidence lifecycle only; no repository-wide scan, dependency update or OSV re-query"
+  },
+  "regressions": {
+    "added_test_methods": 11,
+    "cases": [
+      "Absent daily signature stays unverified in checks, single scans, batch scans and resume with unknown_definitions",
+      "Real MCP SDK checks and scans preserve the unverified result without disclosing the store path",
+      "Actual CLI subprocess check and scan return exit 2, partial/unverified and unverified progress using a synthetic engine",
+      "Legacy, malformed/deep JSON, schema/content/version/status/extra-field errors, public permissions and linked records cannot establish fresh",
+      "Unchanged updates upgrade or preserve matching proof, repair a missing legacy record, and refuse proof transfer to different bytes with equal versions",
+      "A pinned reader keeps its generation's proof across publication of a new unverified generation",
+      "Exact age limit, one microsecond over and future dates with verified and absent proof",
+      "Record-write and record-placement failures preserve the prior pointer and pending/stage",
+      "Maintenance revision and byte accounting bind the sidecar; stale revisions are refused and selected deletion removes both objects",
+      "Failed stage verification records remain selectable through owner maintenance"
+    ]
+  },
+  "verification": {
+    "syntax": "AST parsing passed for all five changed Python implementation/test files",
+    "focused_command": "bdo proxy env PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -p 'test_signature*.py'",
+    "focused": {"total": 89, "passed": 89, "skipped": 0, "failed": 0},
+    "python_3_14_command": "bdo proxy env PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests",
+    "python_3_15_command": "bdo proxy env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests",
+    "python_3_14": {"version": "3.14.10", "total": 783, "passed": 766, "skipped": 17, "failed": 0, "seconds": 111.822},
+    "python_3_15": {"version": "3.15.2", "total": 783, "passed": 766, "skipped": 17, "failed": 0, "seconds": 110.787},
+    "python_skips": "17 Windows-native tests; Android and SDK-backed MCP tests were not skipped",
+    "mcp_sdk": "1.30.0 in both Python environments; SDK-backed tests enabled",
+    "npm_command": "bdo proxy env PYTHONDONTWRITEBYTECODE=1 npm test",
+    "npm": {"total": 34, "passed": 33, "skipped": 1, "failed": 0},
+    "npm_skip": "Optional PyPI first-install end-to-end test was not enabled",
+    "diff_check": "bdo git diff --check passed; final record JSON and test-count arithmetic validated"
+  },
+  "privacy_and_preservation": {
+    "synthetic_stores_and_inputs_only": true,
+    "real_clamav_or_freshclam_invoked": false,
+    "system_definitions_modified": false,
+    "existing_private_definition_stores_or_waits_accessed": false,
+    "frozen_originals_or_retained_containers_modified": false,
+    "administrator_credentials_handled": false,
+    "public_network_downloads": false,
+    "push_performed": false,
+    "commit_created": false
+  },
+  "remaining": [
+    "Windows CI and physical-device acceptance were not run; the private updater remains POSIX-only",
+    "Real-engine verification of the new per-generation evidence lifecycle is a separate acceptance task",
+    "Whether real freshclam fetches a detached signature for an already up-to-date database remains unconfirmed; matching retained evidence is preserved regardless",
+    "Maintenance still structurally evaluates previous generations without comparing their bodies to the new evidence record; that design item and legacy previous-generation handling remain open",
+    "Power-cut durability was not physically tested",
+    "Historical 429 results remain six successes/two unfinished; the separate cached follow-up and the incomplete two-version CVD preparation are unchanged"
+  ]
+}

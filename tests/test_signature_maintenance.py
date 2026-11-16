@@ -184,6 +184,30 @@ class MaintenanceTests(unittest.TestCase):
         self.assertIn(self.previous + ".lease", locked)
         self.assertEqual(row["reason"], "current")
 
+    def test_generation_evidence_is_in_revision_bytes_and_selected_deletion(self):
+        entry = self.entry(self.removable)
+        folder = self.root / self.removable
+        manifest = update.digest_directory(folder, time.monotonic() + 30)
+        sidecar = self.root / (self.removable + ".verification.json")
+        record = dict(schema=1, **manifest, detached_signatures=dict.fromkeys(update.DATABASES, "verified"))
+        update.write_json(sidecar, record)
+        newer = self.entry(self.removable)
+        self.assertNotEqual(entry["revision"], newer["revision"])
+        self.assertEqual(newer["bytes"], entry["bytes"] + sidecar.stat().st_size)
+        with self.assertRaises(core.ScannerError):
+            maintenance.manage(self.scanner, "delete", self.removable, entry["revision"])
+        self.assertTrue(sidecar.exists())
+        self.assertEqual(maintenance.manage(self.scanner, "delete", self.removable, newer["revision"])["status"], "completed")
+        self.assertFalse(sidecar.exists())
+        self.assertFalse(folder.exists())
+
+    def test_failed_stage_evidence_can_be_selected_after_recovery(self):
+        stage = self.stage()
+        update.write_json(self.root / stage / "verification.json", {"schema": 1})
+        row = self.entry(stage)
+        self.assertTrue(row["deletable"], row)
+        self.assertEqual(maintenance.manage(self.scanner, "delete", stage, row["revision"])["status"], "completed")
+
     def test_current_last_previous_forged_id_and_stale_revision_are_refused(self):
         for name, rev in ((self.active, self.entry(self.active)["revision"]), ("../outside", "0" * 64),
                           (self.removable, "0" * 64)):

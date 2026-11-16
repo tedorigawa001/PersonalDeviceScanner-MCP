@@ -92,6 +92,54 @@ def write_json(path, obj):
     sync_dir(path.parent)
 
 
+def verification_file(generation):
+    return generation.with_name(generation.name + ".verification.json")
+
+
+def verification_snapshot(file):
+    """Private, bounded evidence bytes and identity; missing evidence supports legacy stores."""
+    if not file.exists() and not file.is_symlink():
+        return None
+    if core.cloud_placeholder(file):
+        raise OSError("Cloud signature verification record refused")
+    fd = os.open(file, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    try:
+        before = process_store.Store({}).private(fd)
+        if before.st_size > 65536:
+            raise OSError("Signature verification record size limit")
+        raw = os.read(fd, 65537)
+        after = os.fstat(fd)
+        fields = ("st_dev", "st_ino", "st_mode", "st_uid", "st_nlink", "st_size", "st_mtime_ns", "st_ctime_ns")
+        identity = [getattr(before, k) for k in fields]
+        if len(raw) != before.st_size or identity != [getattr(after, k) for k in fields]:
+            raise OSError("Signature verification record changed")
+        return raw, identity
+    finally:
+        os.close(fd)
+
+
+def detached_evidence(path, obj):
+    """Only a record bound to these exact verified CVD bytes can authenticate their date."""
+    unknown = dict.fromkeys(DATABASES, "unverified")
+    try:
+        snapshot = verification_snapshot(verification_file(path / obj["generation"]))
+        if snapshot is None:
+            return unknown
+        record = json.loads(snapshot[0])
+        if (not isinstance(record, dict) or set(record) != {"schema", "content", "versions", "detached_signatures"}
+                or type(record["schema"]) is not int or record["schema"] != 1
+                or record["content"] != obj["content"] or record["versions"] != obj["versions"]
+                or not isinstance(record["versions"], dict) or set(record["versions"]) != set(DATABASES)
+                or any(type(v) is not int for v in record["versions"].values())
+                or not isinstance(record["detached_signatures"], dict)
+                or set(record["detached_signatures"]) != set(DATABASES)
+                or any(v not in ("verified", "absent") for v in record["detached_signatures"].values())):
+            return unknown
+        return record["detached_signatures"]
+    except (OSError, ValueError, TypeError, RecursionError):
+        return unknown
+
+
 def sync_dir(path):
     fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     try:
@@ -199,12 +247,14 @@ def pin(scanner, cancel=None):
                 raise core.ScannerError("Private signature store has no published generation")
             lease = generation_lease(path / (obj["generation"] + ".lease"))
             lease.__enter__()
+            detached = detached_evidence(path, obj)
         try:
             # The lease keeps this generation; hashing it no longer blocks other scans or publication.
             verify(path, obj, deadline, cancel)
             local = copy.copy(scanner)
             local.local = dict(scanner.local, clamav_database_directory=str(path / obj["generation"]))
             local._signature_generation = obj
+            local._signature_detached = detached
             yield local
         finally:
             lease.__exit__(None, None, None)
@@ -353,6 +403,13 @@ def update(scanner, cancel=None, progress=None):
             observed = digest_directory(candidate, deadline, cancel)
             if old and any(observed["versions"][k] < old["versions"][k] for k in DATABASES):
                 raise core.ScannerError("Definition version rollback refused")
+            unchanged = bool(old and observed["content"] == old["content"])
+            if unchanged:
+                previous = detached_evidence(path, old)
+                # A later freshclam may not fetch .sign for unchanged bytes. Retain their earlier proof,
+                # but never transfer it to a different content digest, even when the versions match.
+                detached = {name: "verified" if previous[name] == "verified" else detached[name] for name in DATABASES}
+            evidence = dict(schema=1, **observed, detached_signatures=detached)
             fixture = stage / "validation.txt"
             history.replace_private(fixture, b"pc-scanner harmless database load validation\n")
             run([binary, "--database=" + str(candidate), "--no-summary", "--", str(fixture)])
@@ -367,10 +424,13 @@ def update(scanner, cancel=None, progress=None):
             data["signature_check"] = {"engine": signatures["engine"], "version": signatures["version"],
                                        "built_at": built.isoformat() if built else None, "freshness": freshness,
                                        "detached_signatures": detached}
-            if old and observed["content"] == old["content"]:
+            if unchanged:
+                with history.locked(path / "publish"):
+                    write_json(verification_file(path / old["generation"]), evidence)
                 data.update(update_status="unchanged")
             else:
                 generation = secrets.token_hex(16)
+                write_json(stage / "verification.json", evidence)
                 if progress:
                     progress.update(stage="publishing")
                 # Flush before taking the publication lock; scans waiting to start only wait for the switch itself.
@@ -386,6 +446,7 @@ def update(scanner, cancel=None, progress=None):
                     if time.monotonic() >= deadline:
                         raise core.ScannerError("Signature update timed out")
                     os.rename(candidate, path / generation)
+                    os.rename(stage / "verification.json", verification_file(path / generation))
                     sync_dir(path)
                     # Once this write starts, cancellation cannot roll back an already published generation.
                     try:

@@ -321,6 +321,193 @@ class UpdateTests(unittest.TestCase):
                 self.assertEqual(old, (self.root / "current.json").read_bytes())
                 self.assertTrue(update.read_json(self.root / "attempt.json")["pending"])
 
+    def without_daily_signature(self, argv, *args, **kwargs):
+        answer = self.engine(argv, *args, **kwargs)
+        for arg in argv:
+            if arg.startswith("--datadir="):
+                (Path(arg.split("=", 1)[1]) / f"daily-{self.version}.cvd.sign").unlink()
+        return answer
+
+    def test_unverified_publication_stays_unverified_in_checks_scans_and_resume(self):
+        self.assertEqual(self.do_update(self.without_daily_signature)["status"], "partial")
+        with patch("pc_scanner.core.run_bounded", side_effect=self.engine):
+            for operation, arguments in (("check_clamav_signatures", {}), ("malware", {"root_alias": "test"}),
+                                         ("malware", {"root_alias": "test", "batch": True}),
+                                         ("malware", {"root_alias": "test", "resume": True})):
+                with self.subTest(operation=operation, arguments=arguments):
+                    report = self.scanner().invoke(operation, **arguments)
+                    self.assertEqual((report["status"], report["data"]["signature_check"]["freshness"]),
+                                     ("partial", "unverified"), report)
+                    self.assertEqual(report["data"]["signature_check"]["detached_signatures"]["daily.cvd"], "absent")
+                    if operation == "malware":
+                        self.assertIn("unknown_definitions", report["data"]["coverage"]["assessment_limits"])
+                    self.assertNotIn(str(self.root), json.dumps(report))
+
+    @unittest.skipUnless(importlib.util.find_spec("mcp"), "agent extra not installed")
+    def test_sdk_mcp_checks_and_scans_keep_unverified_generation_evidence(self):
+        self.do_update(self.without_daily_signature)
+        from mcp.shared.memory import create_connected_server_and_client_session
+        from pc_scanner.server import create_server
+        async def exercise():
+            async with create_connected_server_and_client_session(create_server(self.scanner())) as session:
+                for name, arguments in (("check_clamav_signatures", {}), ("scan_malware", {"root_alias": "test"})):
+                    reply = await session.call_tool(name, arguments)
+                    report = json.loads(reply.content[0].text)
+                    self.assertEqual((report["status"], report["data"]["signature_check"]["freshness"]),
+                                     ("partial", "unverified"), report)
+                    self.assertNotIn(str(self.root), json.dumps(report))
+        with patch("pc_scanner.core.run_bounded", side_effect=self.engine):
+            asyncio.run(exercise())
+
+    def test_actual_cli_check_and_scan_report_unverified_after_publication(self):
+        self.do_update(self.without_daily_signature)
+        engine = self.base / "synthetic-clamscan"
+        engine.write_text(f"#!{sys.executable}\nimport sys\nfrom datetime import datetime\n"
+                          "if '--version' in sys.argv:\n"
+                          " print('ClamAV 1.5.4/1/' + datetime.now().strftime('%a %b %d %H:%M:%S %Y'))\n"
+                          "else:\n print('Scanned files: 1\\nInfected files: 0')\n")
+        engine.chmod(0o700)
+        config = self.base / "cli.toml"
+        config.write_text('[local]\nclamav_binary=' + json.dumps(str(engine)) + '\n[scan_roots]\ntest='
+                          + json.dumps(str(self.inputs)) + '\n[history]\nenabled=false\n[clamav_updates]\nenabled=true\n'
+                          + '\n'.join(k + '=' + json.dumps(self.config["clamav_updates"][k])
+                                      for k in ("directory", "freshclam_binary", "sigtool_binary")) + '\n')
+        for arguments in (("check-clamav-signatures",), ("malware", "test")):
+            result = subprocess.run([sys.executable, "-m", "pc_scanner.cli", "--config", str(config), *arguments],
+                                    capture_output=True, text=True, timeout=15)
+            report = json.loads(result.stdout)
+            self.assertEqual(result.returncode, 2, result.stderr)
+            self.assertEqual((report["status"], report["data"]["signature_check"]["freshness"]), ("partial", "unverified"))
+            self.assertIn("definitions=unverified", result.stderr)
+
+    def test_legacy_invalid_or_mismatched_evidence_never_establishes_freshness(self):
+        self.do_update()
+        current = update.read_json(self.root / "current.json")
+        sidecar = self.root / (current["generation"] + ".verification.json")
+        original = sidecar.read_bytes()
+        record = json.loads(original)
+        bad_content = {**record, "content": "0" * 64}
+        bad_versions = {**record, "versions": {**record["versions"], "daily.cvd": 999}}
+        bad_status = {**record, "detached_signatures": {**record["detached_signatures"], "daily.cvd": True}}
+        for label, contents in (("missing", None), ("json", b"{"), ("nested", b"[" * 2000 + b"]" * 2000),
+                                ("schema", json.dumps({**record, "schema": 2}).encode()),
+                                ("content", json.dumps(bad_content).encode()), ("versions", json.dumps(bad_versions).encode()),
+                                ("status", json.dumps(bad_status).encode()), ("extra", json.dumps({**record, "extra": 1}).encode())):
+            with self.subTest(label=label):
+                sidecar.unlink(missing_ok=True)
+                if contents is not None:
+                    history.replace_private(sidecar, contents)
+                with patch("pc_scanner.core.run_bounded", side_effect=self.engine):
+                    report = self.scanner().invoke("check_clamav_signatures")
+                self.assertEqual((report["status"], report["data"]["signature_check"]["freshness"]),
+                                 ("partial", "unverified"), report)
+        history.replace_private(sidecar, original)
+        sidecar.chmod(0o644)
+        with patch("pc_scanner.core.run_bounded", side_effect=self.engine):
+            self.assertEqual(self.scanner().invoke("check_clamav_signatures")["data"]["signature_check"]["freshness"], "unverified")
+        sidecar.chmod(0o600)
+        outside = self.base / "outside-evidence.json"
+        outside.write_bytes(original)
+        sidecar.unlink()
+        sidecar.symlink_to(outside)
+        with patch("pc_scanner.core.run_bounded", side_effect=self.engine):
+            self.assertEqual(self.scanner().invoke("check_clamav_signatures")["data"]["signature_check"]["freshness"], "unverified")
+
+    def test_unchanged_updates_upgrade_and_preserve_matching_evidence(self):
+        self.do_update(self.without_daily_signature)
+        before = (self.root / "current.json").read_bytes()
+        self.allow_next()
+        upgraded = self.do_update()
+        self.assertEqual((upgraded["status"], upgraded["data"]["update_status"]), ("completed", "unchanged"))
+        self.assertEqual((self.root / "current.json").read_bytes(), before)
+        sidecar = self.root / (json.loads(before)["generation"] + ".verification.json")
+        self.assertEqual(sidecar.stat().st_mode & 0o777, 0o600)
+        self.allow_next()
+        retained = self.do_update(self.without_daily_signature)
+        self.assertEqual((retained["status"], retained["data"]["signature_check"]["freshness"]), ("completed", "fresh"))
+        with patch("pc_scanner.core.run_bounded", side_effect=self.engine):
+            self.assertEqual(self.scanner().invoke("check_clamav_signatures")["status"], "completed")
+        sidecar.unlink()  # A legacy generation can be repaired by the next verified unchanged update.
+        self.allow_next()
+        self.assertEqual(self.do_update()["data"]["update_status"], "unchanged")
+        self.assertEqual((self.root / "current.json").read_bytes(), before)
+        self.allow_next()
+        def different_bytes_same_version(argv, *args, **kwargs):
+            answer = self.without_daily_signature(argv, *args, **kwargs)
+            for arg in argv:
+                if arg.startswith("--datadir="):
+                    daily = Path(arg.split("=", 1)[1]) / "daily.cvd"
+                    daily.write_bytes(daily.read_bytes() + b"different synthetic content")
+            return answer
+        changed = self.do_update(different_bytes_same_version)
+        self.assertEqual((changed["status"], changed["data"]["signature_check"]["freshness"]), ("partial", "unverified"))
+        self.allow_next()
+        self.version += 1
+        changed = self.do_update(self.without_daily_signature)
+        self.assertEqual((changed["status"], changed["data"]["signature_check"]["freshness"]), ("partial", "unverified"))
+
+    def test_pinned_evidence_belongs_to_its_generation_across_publication(self):
+        self.do_update()
+        with update.pin(self.scanner()) as old:
+            self.allow_next()
+            self.version += 1
+            self.do_update(self.without_daily_signature)
+            with patch("pc_scanner.core.run_bounded", side_effect=self.engine):
+                self.assertEqual(old.check_clamav_signatures()["status"], "completed")
+                self.assertEqual(self.scanner().invoke("check_clamav_signatures")["status"], "partial")
+
+    def test_private_evidence_keeps_exact_age_boundary_and_stale_unknown_states(self):
+        from datetime import timedelta
+        now = datetime(2026, 11, 17, 12, tzinfo=timezone.utc)
+        for verified in (True, False):
+            self.version += 1
+            self.do_update(None if verified else self.without_daily_signature)
+            self.allow_next()
+            for delta, expected in ((timedelta(days=7), "fresh" if verified else "unverified"),
+                                    (timedelta(days=7, microseconds=1), "stale"),
+                                    (timedelta(days=-1), "unknown")):
+                with self.subTest(verified=verified, delta=delta), patch("pc_scanner.core.datetime") as clock, patch(
+                        "pc_scanner.core.clamav_signatures", return_value={**self.signatures, "built_at": now - delta}):
+                    clock.now.return_value = now
+                    report = self.scanner().invoke("check_clamav_signatures")
+                    self.assertEqual(report["data"]["signature_check"]["freshness"], expected)
+
+    def test_failed_evidence_publication_keeps_prior_pointer_and_retains_orphan(self):
+        self.do_update()
+        before = (self.root / "current.json").read_bytes()
+        self.allow_next()
+        self.version += 1
+        real = update.os.rename
+        def fail(source, destination):
+            if source.name == "verification.json":
+                raise OSError("synthetic evidence publication failure")
+            return real(source, destination)
+        with patch.object(update.os, "rename", side_effect=fail):
+            report = self.do_update()
+        self.assertEqual(report["status"], "error", report)
+        self.assertEqual((self.root / "current.json").read_bytes(), before)
+        self.assertTrue(update.read_json(self.root / "attempt.json")["pending"])
+        self.assertTrue(any((stage / "verification.json").exists() for stage in self.root.glob("stage-*")))
+        with patch("pc_scanner.core.run_bounded", side_effect=self.engine):
+            self.assertEqual(self.scanner().invoke("check_clamav_signatures")["status"], "completed")
+
+    def test_evidence_write_failure_preserves_current_and_pending_stage(self):
+        self.do_update()
+        before = (self.root / "current.json").read_bytes()
+        self.allow_next()
+        self.version += 1
+        real = update.write_json
+        def fail(path, value):
+            if path.name == "verification.json":
+                raise OSError("synthetic evidence save failure")
+            real(path, value)
+        with patch.object(update, "write_json", side_effect=fail):
+            report = self.do_update()
+        self.assertEqual(report["status"], "error", report)
+        self.assertEqual((self.root / "current.json").read_bytes(), before)
+        self.assertTrue(update.read_json(self.root / "attempt.json")["pending"])
+        self.assertTrue(list(self.root.glob("stage-*")))
+
     def test_actual_zero_exit_child_cooldown_is_captured_and_preserved(self):
         self.do_update()
         self.allow_next()

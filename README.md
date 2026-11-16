@@ -424,7 +424,11 @@ When a detached signature (`<db>-<version>.cvd.sign`) arrives with a database, `
 or nothing is published. The signature embedded in a CVD does not cover its build date, so without a verified daily
 `.sign` a recent-looking date is reported as `freshness: unverified` with `partial`; the definitions are still
 published, and version rollback is still refused. `signature_check.detached_signatures` shows `verified` or `absent`
-per database. `freshclam_binary` and `sigtool_binary` are resolved once to their real files, and those resolved paths
+per database. This evidence is saved per generation, bound to its content digest and versions, and reused by later
+CLI/MCP definition checks and scans. Legacy generations without a record, or invalid, unreadable or mismatched records,
+yield `unverified` evidence and a recent-looking date remains `unverified`/`partial`. An unchanged update preserves
+matching earlier verified evidence and can upgrade the same generation when signatures become available.
+`freshclam_binary` and `sigtool_binary` are resolved once to their real files, and those resolved paths
 are what run. The files and every folder above them must not let other accounts change them, by mode bits or a macOS
 ACL (a root-owned sticky folder is accepted).
 The official [freshclam configuration documentation](https://docs.clamav.net/manual/Usage/Configuration.html)

@@ -138,7 +138,7 @@ def tree(path, deadline):
                 raise OSError("Cloud or linked entry refused")
             folder = stat.S_ISDIR(info.st_mode)
             allowed = (name in {"db", "candidate"} if folder else name in set(update.DATABASES) | {
-                "freshclam.conf", "freshclam.dat", "mirrors.dat", "validation.txt"}
+                "freshclam.conf", "freshclam.dat", "mirrors.dat", "validation.txt", "verification.json"}
                 or re.fullmatch(r"(?:main|daily|bytecode)(?:-[0-9]+)?\.cvd\.sign", name))
             if not allowed:
                 raise OSError("Unknown signature maintenance entry")
@@ -218,8 +218,11 @@ def inventory(path, deadline):
                    current=bool(current and name == current["generation"]), in_use=None, deletable=False)
         try:
             metadata = tree(path / name, deadline)
-            row["revision"] = hashlib.sha256(json.dumps(metadata).encode()).hexdigest()
+            evidence = update.verification_snapshot(update.verification_file(path / name)) if row["kind"] == "generation" else None
+            row["revision"] = entry_revision(metadata, evidence)
             row["bytes"] = sum(r[1][5] for r in metadata if stat.S_ISREG(r[1][2]))
+            if evidence is not None:
+                row["bytes"] += len(evidence[0])
             if row["kind"] == "generation":
                 row["incomplete"] = not complete(path / name)
             row["reason"] = "current" if row["current"] else "pending_recovery" if state and state["pending"] and row["kind"] == "stage" else "last_previous" if current and name in previous and len(previous) == 1 else None
@@ -246,9 +249,21 @@ def inventory(path, deadline):
                 waiting=bool(state and time.time() < state["next_attempt"]))
 
 
-def remove_tree(path, expected, deadline):
-    if hashlib.sha256(json.dumps(tree(path, deadline)).encode()).hexdigest() != expected:
+def entry_revision(metadata, evidence):
+    proof = [hashlib.sha256(evidence[0]).hexdigest(), evidence[1]] if evidence is not None else None
+    return hashlib.sha256(json.dumps([metadata, proof]).encode()).hexdigest()
+
+
+def remove_tree(path, expected, deadline, *, generation=False):
+    sidecar = update.verification_file(path) if generation else None
+    evidence = update.verification_snapshot(sidecar) if sidecar is not None else None
+    if entry_revision(tree(path, deadline), evidence) != expected:
         raise OSError("Selected signature entry changed; list again")
+    # Validate both before the first unlink. Removing proof first is safe if a later directory deletion
+    # fails: the surviving generation becomes unverified, never a falsely fresh orphaned record.
+    if evidence is not None:
+        sidecar.unlink()
+        update.sync_dir(path.parent)
     # All descendants were validated before the first unlink. Only owner-controlled paths can change this tree.
     # Descriptor-relative traversal and NOFOLLOW prevent following a replaced descendant even then.
     def erase(fd):
@@ -327,7 +342,7 @@ def manage(scanner, action, entry_id=None, revision=None, not_before=None):
             if row["kind"] == "generation":
                 lease = path / (entry_id + ".lease")
                 with exclusive_lease(lease):
-                    remove_tree(path / entry_id, revision, deadline)
+                    remove_tree(path / entry_id, revision, deadline, generation=True)
                     # IDs are never reused and only the current generation is ever leased, so nothing can lock
                     # this file again; removing it keeps the store under the inventory limit.
                     lease.unlink()

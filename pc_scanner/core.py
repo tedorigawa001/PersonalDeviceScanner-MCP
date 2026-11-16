@@ -958,6 +958,7 @@ class Scanner:
                     "Old ClamAV stderr warnings can prevent batch result reuse until definitions are updated."]}
         info["update_mode"] = "private_owner_cli" if hasattr(self, "_signature_generation") else "os_managed"
         if hasattr(self, "_signature_generation"):
+            info["detached_signatures"] = dict(getattr(self, "_signature_detached", {}))
             info["update_steps"] = ["The owner may explicitly run CLI update-clamav-signatures with the enabled private-store configuration. No administrator password is used and MCP cannot update definitions.",
                                     "Recheck freshness after updating; resume re-evaluates results when definition contents change."]
         def shown(report):
@@ -983,7 +984,12 @@ class Scanner:
                     age_days=math.ceil(age / 8640) / 10 if age is not None else None,
                     freshness="unknown" if age is None or age < 0 else
                               "stale" if age > self.max_signature_age * 86400 else "fresh")
+        if (info["freshness"] == "fresh" and hasattr(self, "_signature_generation")
+                and info["detached_signatures"].get("daily.cvd") != "verified"):
+            info["freshness"] = "unverified"
         warnings = ([] if info["freshness"] == "fresh" else [
+            "The private daily database has no retained verified detached signature (.cvd.sign); its build date is unverified"
+            if info["freshness"] == "unverified" else
             "Definitions are stale; update with the configured freshclam procedure before a reliable scan"
             if info["freshness"] == "stale" else
             "Definition date is unknown or in the future; check definitions and the system clock",
