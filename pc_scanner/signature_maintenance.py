@@ -56,12 +56,7 @@ def preserve_provider(root, db):
             history.make_private(child)
     file = db / "freshclam.dat"
     if file.exists() or file.is_symlink():
-        history.replace_private(root / "provider.dat", provider_bytes(file, normalize=True))
-        fd = os.open(root / "provider.dat", os.O_RDONLY | os.O_NOFOLLOW)
-        try:
-            os.fsync(fd)
-        finally:
-            os.close(fd)
+        history.replace_private(root / "provider.dat", provider_bytes(file, normalize=True), durable=True)
         update.sync_dir(root)
 
 
@@ -191,12 +186,19 @@ def usable(folder, deadline, current=None):
     """Count a folder as a rollback only if digest_directory accepts its structure (private folder, exactly the three
     databases, sizes and CVD headers) and its content differs from the current generation. Otherwise a linked,
     unknown-file, malformed or duplicate folder could stand beside the last real rollback and let it be deleted.
+    Publication refuses version rollback, so every real earlier generation is at or below the current versions; a
+    newer one was never published (left by a crash before the switch) and does not count either.
     Bodies are hashed but not validated against anything, so damage after a valid header still passes."""
     try:
         observed = update.digest_directory(folder, deadline)
     except OSError:
         return False
-    return not current or observed["content"] != current["content"]
+    if not current:
+        return True
+    # A damaged pointer counts nothing; deletion then stops anyway, because it verifies the current generation first.
+    limit = current["versions"] if isinstance(current["versions"], dict) else {}
+    return observed["content"] != current["content"] and all(
+        type(limit.get(k)) is int and observed["versions"][k] <= limit[k] for k in update.DATABASES)
 
 
 def inventory(path, deadline):

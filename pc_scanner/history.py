@@ -253,10 +253,29 @@ def make_private(name: Path) -> None:
         os.close(fd)
 
 
-def replace_private(path: Path, data: bytes) -> None:
+def flush_to_disk(fd: int) -> None:
+    """Write the file's data to the disk itself.
+
+    On macOS a plain fsync can leave it in the drive's cache, where a power loss may lose it or let a later
+    rename reach the disk first; F_FULLFSYNC asks the drive to write its cache out. Where a filesystem refuses
+    that request, fsync is still done.
+    """
+    full = getattr(fcntl, "F_FULLFSYNC", None) if os.name != "nt" else None
+    if full is not None:
+        try:
+            fcntl.fcntl(fd, full)
+            return
+        except OSError:
+            pass
+    os.fsync(fd)
+
+
+def replace_private(path: Path, data: bytes, durable: bool = False) -> None:
     """Replaces the file in one step with a new one private to the owner.
 
     The new file gets a fresh name, so a link put in the old one's place is replaced, never written through.
+    With durable, the new data reaches the disk before the rename, so a power loss cannot leave the name
+    pointing at a file whose data was never written. The caller still syncs the folder to keep the rename.
     """
     directory_acl(path.parent)
     existing_acl(path)
@@ -266,6 +285,9 @@ def replace_private(path: Path, data: bytes) -> None:
         with f:
             require_private_acl(f.fileno())
             f.write(data)
+            if durable:
+                f.flush()
+                flush_to_disk(f.fileno())
         directory_acl(path.parent)
         existing_acl(path)
         os.replace(temp, path)

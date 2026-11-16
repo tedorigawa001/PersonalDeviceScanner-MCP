@@ -420,6 +420,13 @@ Run `pc-scanner --config scanner.toml update-clamav-signatures` explicitly, then
 `pc-scanner --config scanner.toml check-clamav-signatures`. The updater uses official complete signed CVDs,
 validates them and loads them with clamscan before publication. It never requests an administrator password,
 changes system definitions, or accepts custom download URLs/hooks. The MCP server cannot update definitions.
+When a detached signature (`<db>-<version>.cvd.sign`) arrives with a database, `sigtool --verify` must also succeed,
+or nothing is published. The signature embedded in a CVD does not cover its build date, so without a verified daily
+`.sign` a recent-looking date is reported as `freshness: unverified` with `partial`; the definitions are still
+published, and version rollback is still refused. `signature_check.detached_signatures` shows `verified` or `absent`
+per database. `freshclam_binary` and `sigtool_binary` are resolved once to their real files, and those resolved paths
+are what run. The files and every folder above them must not let other accounts change them, by mode bits or a macOS
+ACL (a root-owned sticky folder is accepted).
 The official [freshclam configuration documentation](https://docs.clamav.net/manual/Usage/Configuration.html)
 describes the underlying updater; this CLI generates its own restricted configuration.
 
@@ -453,9 +460,10 @@ Current/in-use generations, the last previous generation, unrecovered failed sta
 storage are refused. There is no arbitrary path or force-delete option. At most four generations/failed stages are
 retained; use selected cleanup before reaching this limit. No automatic deletion or disk quota is implemented.
 A folder without all three definition files is listed as `incomplete`: it counts toward the limit and can be deleted.
-Only a folder holding exactly the three private databases, with valid headers and sizes, and content different from
-the current generation counts as the last previous generation; linked, unknown-file, malformed or duplicate folders
-never do. Database bodies are not checked against a record, so damage after a valid header is not detected there.
+Only a folder holding exactly the three private databases, with valid headers and sizes, content different from
+the current generation, and no database version newer than the current one counts as the last previous generation;
+linked, unknown-file, malformed or duplicate folders never do, nor does a newer generation that was never published
+(for example, one left by a crash before the switch). Database bodies are not checked against a record, so damage after a valid header is not detected there.
 Folders named `stage-*` that the CLI cannot manage also count toward the limit; the listing reports their number as
 `unrecognized_entries` with a warning, so inspect them manually.
 Deletion may be partial after an I/O failure; list again to inspect the remainder. Invalid permissions, unknown

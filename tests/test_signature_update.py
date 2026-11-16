@@ -5,6 +5,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import stat
 import subprocess
 import sys
 import tempfile
@@ -54,9 +55,13 @@ class UpdateTests(unittest.TestCase):
             for name in update.DATABASES:
                 header = f"ClamAV-VDB:01 Nov 2026 00-00 +0000:{self.version}:100:90:hash:signature:builder:1".encode()
                 (db / name).write_bytes(header.ljust(512, b" ") + b"synthetic")
+                # The official distribution serves a detached signature named for each database version.
+                (db / f"{name.removesuffix('.cvd')}-{self.version}.cvd.sign").write_bytes(b"synthetic detached signature")
             return 0, "", ""
         if any(a.startswith("--info=") for a in argv):
             return 0, "Digital signature: synthetic\nVerification OK.\n", ""
+        if "--verify" in argv:
+            return 0, "verify: Successfully verified file with signature, signed by 'synthetic'\n", ""
         return 0, "Scanned files: 1\nInfected files: 0\n", ""
 
     def do_update(self, engine=None):
@@ -263,6 +268,58 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual((report["status"], report["data"]["update_status"]), ("completed", "unchanged"), report)
         self.assertFalse(update.read_json(self.root / "attempt.json")["pending"])
         self.assertFalse(list(self.root.glob("stage-*")))
+
+    def test_only_a_verified_daily_detached_signature_makes_the_build_date_fresh(self):
+        # The embedded signature does not cover the header's build time; clamscan reports daily's.
+        def withheld(names):
+            def engine(argv, *args, **kwargs):
+                answer = self.engine(argv, *args, **kwargs)
+                db = next((Path(a.split("=", 1)[1]) for a in argv if a.startswith("--datadir=")), None)
+                if db is not None:
+                    for name in names:
+                        (db / f"{name.removesuffix('.cvd')}-{self.version}.cvd.sign").unlink()
+                return answer
+            return engine
+        for label, missing, freshness in (("all_absent", update.DATABASES, "unverified"),
+                                          ("daily_absent", ("daily.cvd",), "unverified"),
+                                          ("only_daily_present", ("main.cvd", "bytecode.cvd"), "fresh"),
+                                          ("all_present", (), "fresh")):
+            with self.subTest(label):
+                self.version += 1
+                self.calls.clear()
+                report = self.do_update(withheld(missing))
+                self.allow_next()
+                check = report["data"]["signature_check"]
+                # Published either way: the embedded signature still refuses a version rollback.
+                self.assertEqual(report["data"]["update_status"], "updated", report)
+                self.assertEqual((report["status"], check["freshness"]), ("completed" if freshness == "fresh" else "partial", freshness))
+                self.assertEqual(check["detached_signatures"], {n: "absent" if n in missing else "verified" for n in update.DATABASES})
+                verified = sorted(Path(call[-1]).name for call in self.calls if "--verify" in call)
+                self.assertEqual(verified, sorted(n for n in update.DATABASES if n not in missing))
+                if freshness == "unverified":
+                    self.assertIn(".cvd.sign", report["warnings"][0])
+
+    def test_a_detached_signature_that_does_not_verify_stops_publication(self):
+        self.do_update()
+        old = (self.root / "current.json").read_bytes()
+        for label in ("rejected", "no_success_line", "named_for_another_version"):
+            with self.subTest(label):
+                self.allow_next()
+                self.version += 1
+                def engine(argv, *args, **kwargs):
+                    answer = self.engine(argv, *args, **kwargs)
+                    db = next((Path(a.split("=", 1)[1]) for a in argv if a.startswith("--datadir=")), None)
+                    if db is not None and label == "named_for_another_version":
+                        # sigtool looks only for the name carrying the header's version, so it reports failure.
+                        (db / f"daily-{self.version}.cvd.sign").rename(db / f"daily-{self.version - 1}.cvd.sign")
+                    if "--verify" in argv and argv[-1].endswith("daily.cvd"):
+                        return (0, "", "") if label == "no_success_line" else (1, "", "ERROR: verify: Failed to verify file")
+                    return answer
+                with patch.object(update, "MAX_GENERATIONS", 32):
+                    report = self.do_update(engine)
+                self.assertEqual((report["status"], report["data"]["update_status"]), ("error", "failed"), report)
+                self.assertEqual(old, (self.root / "current.json").read_bytes())
+                self.assertTrue(update.read_json(self.root / "attempt.json")["pending"])
 
     def test_actual_zero_exit_child_cooldown_is_captured_and_preserved(self):
         self.do_update()
@@ -635,6 +692,96 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual(old, (self.root / "current.json").read_bytes())
         with history.locked(self.root / "update", attempts=1):
             pass
+
+
+@unittest.skipUnless(os.name == "posix" and os.geteuid() != 0, "non-root POSIX updater executables")
+class ExecutableTests(unittest.TestCase):
+    """The real check, without the patch the update tests use."""
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.base = Path(temp.name).resolve()
+        self.bin = self.base / "bin"
+        self.bin.mkdir(mode=0o700)
+        self.tool = self.bin / "freshclam"
+        self.tool.write_text("#!/bin/sh\nexit 0\n")
+        self.tool.chmod(0o700)
+
+    def refused(self):
+        with self.assertRaises(core.ScannerError):
+            update.executable(str(self.tool))
+
+    def test_a_link_is_resolved_once_so_the_checked_file_is_what_runs(self):
+        self.assertEqual(update.executable(str(self.tool)), str(self.tool))
+        # Replacing the link afterwards changes nothing, even in a folder others can write.
+        shared = self.base / "shared"
+        shared.mkdir()
+        shared.chmod(0o777)
+        (shared / "freshclam").symlink_to(self.tool)
+        self.assertEqual(update.executable(str(shared / "freshclam")), str(self.tool))
+
+    def test_files_and_folders_others_could_change_are_refused(self):
+        for mode in (0o770, 0o600):  # group-writable, not executable
+            with self.subTest(file=oct(mode)):
+                self.tool.chmod(mode)
+                self.refused()
+        self.tool.chmod(0o700)
+        for folder, mode in ((self.bin, 0o777), (self.bin, 0o1777), (self.base, 0o777)):
+            # Sticky helps only when root owns the folder; a higher folder could let bin be renamed away and replaced.
+            with self.subTest(folder=folder.name, mode=oct(mode)):
+                folder.chmod(mode)
+                try:
+                    self.refused()
+                finally:
+                    folder.chmod(0o700)
+        self.assertEqual(update.executable(str(self.tool)), str(self.tool))
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS ACL entries apply regardless of the file mode")
+    def test_ancestor_acl_letting_others_change_entries_is_refused(self):
+        subprocess.run(["/bin/chmod", "+a", "everyone allow add_file,delete_child", str(self.bin)], check=True)
+        self.refused()
+
+
+@unittest.skipUnless(os.name == "posix", "POSIX durable state files")
+class DurableStateTests(unittest.TestCase):
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.base = Path(temp.name).resolve()
+
+    def test_new_state_reaches_the_disk_before_the_rename(self):
+        file = self.base / "attempt.json"
+        history.replace_private(file, b"old")
+        seen = []
+        def flush(fd):
+            if stat.S_ISDIR(os.fstat(fd).st_mode):
+                seen.append(("folder", file.read_bytes()))
+            else:
+                # Not yet renamed, and the temporary file already holds the complete new data.
+                temp, = self.base.glob(".attempt.json.*.tmp")
+                self.assertEqual(os.fstat(fd).st_ino, temp.stat().st_ino)
+                seen.append(("file", file.read_bytes(), temp.read_bytes()))
+        with patch.object(history, "flush_to_disk", side_effect=flush):
+            history.replace_private(file, b"new", durable=True)
+            self.assertEqual(seen, [("file", b"old", b"new")])
+            seen.clear()
+            history.replace_private(file, b"plain")
+            self.assertEqual(seen, [])  # other callers keep their plain replacement
+            update.write_json(file, {"pending": True})
+        state = b'{"pending": true}'
+        self.assertEqual(seen, [("file", b"plain", state), ("folder", state)])
+
+    def test_full_flush_where_available_and_fsync_where_it_is_refused(self):
+        calls = []
+        fd = os.open(self.base, os.O_RDONLY)
+        self.addCleanup(os.close, fd)
+        with patch.object(history.os, "fsync", side_effect=lambda f: calls.append("fsync")):
+            with patch.object(history.fcntl, "fcntl", side_effect=lambda f, op: calls.append(op)):
+                history.flush_to_disk(fd)
+            with patch.object(history.fcntl, "fcntl", side_effect=OSError("refused")):
+                history.flush_to_disk(fd)
+        full = getattr(history.fcntl, "F_FULLFSYNC", None)
+        self.assertEqual(calls, [full if full is not None else "fsync", "fsync"])
 
 
 class ConfigTests(unittest.TestCase):

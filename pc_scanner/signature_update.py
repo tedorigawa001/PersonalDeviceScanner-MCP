@@ -87,19 +87,15 @@ def read_json(path):
 
 
 def write_json(path, obj):
-    history.replace_private(path, json.dumps(obj, sort_keys=True).encode())
-    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
-    try:
-        os.fsync(fd)
-    finally:
-        os.close(fd)
+    # Wait and publication state: after a power loss it must read as the last complete write, never an empty file.
+    history.replace_private(path, json.dumps(obj, sort_keys=True).encode(), durable=True)
     sync_dir(path.parent)
 
 
 def sync_dir(path):
     fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     try:
-        os.fsync(fd)
+        history.flush_to_disk(fd)
     finally:
         os.close(fd)
 
@@ -215,11 +211,27 @@ def pin(scanner, cancel=None):
 
 
 def executable(value):
-    p = Path(value)
-    info = p.stat()
-    if not stat.S_ISREG(info.st_mode) or info.st_mode & 0o022 or info.st_uid not in {0, os.geteuid()} or not os.access(p, os.X_OK):
+    """Resolve links once and return the real file, so the path that runs is the path that was checked.
+
+    The file and every folder above it pass the store's rule: owned by this user or root, with no group/other
+    write bit (except a root-owned sticky folder) and no macOS ACL entry letting others change the file or a
+    folder's entries. Other users then cannot replace it between this check and its run. Same-user processes are
+    outside this boundary.
+    """
+    from .posix_acl import acl_allows_redirect
+    real = Path(os.path.realpath(value, strict=True))
+    for folder in [*reversed(real.parents), real]:
+        fd = os.open(folder, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | (0 if folder == real else os.O_DIRECTORY))
+        try:
+            info = os.fstat(fd)
+            if (info.st_uid not in {0, os.geteuid()} or acl_allows_redirect(fd)
+                    or (info.st_mode & 0o022 and not (folder != real and info.st_uid == 0 and info.st_mode & stat.S_ISVTX))):
+                raise core.ScannerError("Updater executable is not owner-approved")
+        finally:
+            os.close(fd)
+    if not stat.S_ISREG(info.st_mode) or not os.access(real, os.X_OK):
         raise core.ScannerError("Updater executable is not owner-approved")
-    return str(p)
+    return str(real)
 
 
 def update(scanner, cancel=None, progress=None):
@@ -314,16 +326,29 @@ def update(scanner, cancel=None, progress=None):
             candidate = stage / "candidate"
             candidate.mkdir(mode=0o700)
             allowed = set(DATABASES) | {"freshclam.dat", "mirrors.dat"}
+            names = []
             for file in db.iterdir():
                 if file.name not in allowed and not re.fullmatch(r"(?:main|daily|bytecode)(?:-[0-9]+)?\.cvd\.sign", file.name):
                     raise OSError("Unexpected updater output")
                 history.make_private(file)
+                names.append(file.name)
+            detached = {}
             for name in DATABASES:
                 file = db / name
                 history.make_private(file)
                 output = run([sigtool, "--info=" + str(file)])
                 if "Digital signature:" not in output or "Verification OK" not in output:
                     raise core.ScannerError("Complete signed CVD verification was not confirmed")
+                # The embedded signature leaves the header's build time uncovered; the detached .sign covers it.
+                # sigtool finds the signature named for the header's version next to the file, so any signature
+                # left for this database must verify, or the update fails closed.
+                stem = name.removesuffix(".cvd")
+                if any(re.fullmatch(re.escape(stem) + r"(?:-[0-9]+)?\.cvd\.sign", n) for n in names):
+                    if "Successfully verified" not in run([sigtool, "--verify", str(file)]):
+                        raise core.ScannerError("Detached CVD signature verification was not confirmed")
+                    detached[name] = "verified"
+                else:
+                    detached[name] = "absent"
                 os.rename(file, candidate / name)
             observed = digest_directory(candidate, deadline, cancel)
             if old and any(observed["versions"][k] < old["versions"][k] for k in DATABASES):
@@ -335,8 +360,13 @@ def update(scanner, cancel=None, progress=None):
             built = signatures["built_at"]
             age = (core.datetime.now(core.timezone.utc) - built).total_seconds() if built else None
             freshness = "unknown" if age is None or age < 0 else "stale" if age > scanner.max_signature_age * 86400 else "fresh"
+            # clamscan reports daily's build time. Without its verified .sign, an old genuine daily could carry a newer
+            # date, so a date that looks fresh is reported as unverified (still published; the version cannot go back).
+            if freshness == "fresh" and detached["daily.cvd"] != "verified":
+                freshness = "unverified"
             data["signature_check"] = {"engine": signatures["engine"], "version": signatures["version"],
-                                       "built_at": built.isoformat() if built else None, "freshness": freshness}
+                                       "built_at": built.isoformat() if built else None, "freshness": freshness,
+                                       "detached_signatures": detached}
             if old and observed["content"] == old["content"]:
                 data.update(update_status="unchanged")
             else:
@@ -347,7 +377,7 @@ def update(scanner, cancel=None, progress=None):
                 for file in candidate.iterdir():
                     fd = os.open(file, os.O_RDONLY | os.O_NOFOLLOW)
                     try:
-                        os.fsync(fd)
+                        history.flush_to_disk(fd)
                     finally:
                         os.close(fd)
                 sync_dir(candidate)
@@ -372,8 +402,11 @@ def update(scanner, cancel=None, progress=None):
             write_json(path / "attempt.json", {"next_attempt": now + 86400, "pending": False})
             shutil.rmtree(stage)
             data["cancellation_requested_after_publication"] = bool(published and cancel is not None and cancel.is_set())
-            return core.result("clamav", "completed" if freshness == "fresh" else "partial", data=data,
-                               warnings=[] if freshness == "fresh" else ["Published definitions are stale or their date is unverified; check freshness before scanning"])
+            return core.result("clamav", "completed" if freshness == "fresh" else "partial", data=data, warnings=
+                               [] if freshness == "fresh" else
+                               ["The daily database has no verified detached signature (.cvd.sign), so its build date is unverified; "
+                                "check freshness before scanning"] if freshness == "unverified" else
+                               ["Published definitions are stale or their date is unverified; check freshness before scanning"])
     except history.Busy:
         data["update_status"] = "busy"
     except (core.ScannerError, OSError, ValueError, KeyError, TypeError):

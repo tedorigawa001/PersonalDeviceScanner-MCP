@@ -120,9 +120,15 @@ class MaintenanceTests(unittest.TestCase):
                 history.replace_private(folder / db, b"ClamAV-VDB:\xff\xfe:1:10:90".ljust(512, b" ") + b"synthetic")
         def duplicate_of_current(folder):
             shutil.copytree(self.root / self.active, folder)
+        def newer_than_current(folder):
+            # Left by a crash after the rename but before current.json: never published, so it cannot be a rollback.
+            folder.mkdir(mode=0o700)
+            for db in update.DATABASES:
+                history.replace_private(folder / db, b"ClamAV-VDB:date:2:10:90:hash:sig".ljust(512, b" ") + b"synthetic")
         for label, make, listed in (("linked", linked, "unavailable"), ("finder_file", finder_file, "unavailable"),
                                     ("malformed", malformed, None), ("non_ascii_header", non_ascii_header, None),
-                                    ("duplicate_of_current", duplicate_of_current, None)):
+                                    ("duplicate_of_current", duplicate_of_current, None),
+                                    ("newer_than_current", newer_than_current, None)):
             with self.subTest(label):
                 folder = self.root / secrets.token_hex(16)
                 make(folder)
@@ -429,8 +435,8 @@ class MaintenanceTests(unittest.TestCase):
             history.replace_private(db / "freshclam.dat", b"new wait")
             return 1, "", "synthetic error"
         real = history.replace_private
-        def broken(path, data):
-            real(path, data)
+        def broken(path, data, **kwargs):
+            real(path, data, **kwargs)
             if path == self.root / "provider.dat":
                 raise OSError("synthetic durability failure after replacement")
         with patch("pc_scanner.signature_update.executable", side_effect=lambda x:x), patch("pc_scanner.core.run_bounded", side_effect=engine), patch("pc_scanner.signature_update.shutil.disk_usage", return_value=SimpleNamespace(free=10*update.MAX_BYTES)), patch.object(history, "replace_private", side_effect=broken):
