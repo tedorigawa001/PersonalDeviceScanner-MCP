@@ -139,7 +139,10 @@ def tree(path, deadline):
             folder = stat.S_ISDIR(info.st_mode)
             allowed = (name in {"db", "candidate"} if folder else name in set(update.DATABASES) | {
                 "freshclam.conf", "freshclam.dat", "mirrors.dat", "validation.txt", "verification.json"}
-                or re.fullmatch(r"(?:main|daily|bytecode)(?:-[0-9]+)?\.cvd\.sign", name))
+                or re.fullmatch(r"(?:main|daily|bytecode)(?:-[0-9]+)?\.cvd\.sign", name)
+                # A kill or power loss inside history.replace_private leaves its private temporary file; it belongs
+                # to the failed stage, which must stay recoverable and deletable.
+                or re.fullmatch(r"\.(?:freshclam\.conf|freshclam\.dat|validation\.txt|verification\.json)\.[0-9a-f]{8}\.tmp", name))
             if not allowed:
                 raise OSError("Unknown signature maintenance entry")
             child = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | (os.O_DIRECTORY if folder else 0), dir_fd=fd)

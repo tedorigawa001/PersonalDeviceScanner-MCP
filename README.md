@@ -413,6 +413,7 @@ OS-managed freshclam remains recommended for shared system definitions. An optio
 `[clamav_updates]` section supports a separate owner-only store on macOS/Linux, under a non-root account.
 Set `enabled=true`, absolute `directory`, `freshclam_binary` and `sigtool_binary` paths, and optionally
 `timeout_seconds` (1..3600, default 1800). The directory's parent must already exist on a local filesystem.
+On macOS that volume must honor ownership; one set to ignore it, as external drives are by default, is refused.
 Folders above it must not let other accounts add, remove or rename entries, by mode bits or a macOS ACL.
 Keep `local.clamav_database_directory` empty; checks and all scans use the published private generation.
 
@@ -428,9 +429,10 @@ per database. This evidence is saved per generation, bound to its content digest
 CLI/MCP definition checks and scans. Legacy generations without a record, or invalid, unreadable or mismatched records,
 yield `unverified` evidence and a recent-looking date remains `unverified`/`partial`. An unchanged update preserves
 matching earlier verified evidence and can upgrade the same generation when signatures become available.
-`freshclam_binary` and `sigtool_binary` are resolved once to their real files, and those resolved paths
-are what run. The files and every folder above them must not let other accounts change them, by mode bits or a macOS
-ACL (a root-owned sticky folder is accepted).
+`freshclam_binary` and `sigtool_binary` are followed one entry at a time to their real files, and those real paths
+are what run. The files, every folder above them and every folder passed on the way, including folders that hold
+links, must not let other accounts change them, by mode bits or a macOS ACL (a root-owned sticky folder is
+accepted), and must not be on a volume that ignores ownership. Each link must be owned by you or root.
 The official [freshclam configuration documentation](https://docs.clamav.net/manual/Usage/Configuration.html)
 describes the underlying updater; this CLI generates its own restricted configuration.
 
@@ -468,10 +470,14 @@ Only a folder holding exactly the three private databases, with valid headers an
 the current generation, and no database version newer than the current one counts as the last previous generation;
 linked, unknown-file, malformed or duplicate folders never do, nor does a newer generation that was never published
 (for example, one left by a crash before the switch). Database bodies are not checked against a record, so damage after a valid header is not detected there.
+One left that way that is not newer than the current generation still counts, so it can take the place of the last
+previous generation that was actually published.
 Folders named `stage-*` that the CLI cannot manage also count toward the limit; the listing reports their number as
 `unrecognized_entries` with a warning, so inspect them manually.
 Deletion may be partial after an I/O failure; list again to inspect the remainder. Invalid permissions, unknown
 files or ambiguous provider state require owner investigation; never clear wait files to force a retry.
+A private temporary file that a killed write leaves in a failed stage (`.<name>.<8 hex digits>.tmp` for one of the
+stage's own files) belongs to that stage, so recovery and selected deletion still work.
 These maintenance commands are local CLI only, without administrator credentials or MCP dispatch.
 macOS CLI recovery/cleanup and storage-failure recovery passed native acceptance with test wait deadlines;
 Linux Docker (Ubuntu 24.04 aarch64) also passed a real update, recovery and cleanup, and after a real freshclam DNS
@@ -612,6 +618,7 @@ The provider sees the updater's public source IP and request timing; observed de
 are never sent. The cache's parent must already exist; choose an absolute `cache_directory` beneath an
 existing private local parent if needed. POSIX uses owner-only 0700/0600 permissions, and on macOS an ACL entry
 that allows access is refused, as is a folder above it whose ACL lets others add, remove or rename entries.
+A macOS volume set to ignore ownership, as external drives are by default, is refused too.
 The Windows cache
 backend requires a local fixed NTFS/ReFS volume and a protected DACL granting access only to the effective
 user and SYSTEM. It pins directory handles, rejects reparse/cloud placeholders and multi-link files,
@@ -687,7 +694,8 @@ The parent must already exist. Directories must be owned and 0700, files 0600; u
 refused, not silently changed. On macOS an ACL entry that allows access, such as one inherited from the parent
 folder, is refused too, as is a folder above the store whose ACL lets others add, remove or rename entries.
 Initial storage supports macOS and recognized local Linux filesystems; Windows
-storage is refused. Known cloud roots/placeholders and unverified network filesystems are refused; not every
+storage is refused. Known cloud roots/placeholders, unverified network filesystems and macOS volumes set to ignore
+ownership (the default for external drives) are refused; not every
 third-party sync arrangement can be detected, so the owner must choose an unsynced location.
 
 The CLI's default save response includes only anonymous states, a random record ID and persistence state;

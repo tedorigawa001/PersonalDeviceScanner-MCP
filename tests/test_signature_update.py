@@ -898,14 +898,57 @@ class ExecutableTests(unittest.TestCase):
         with self.assertRaises(core.ScannerError):
             update.executable(str(self.tool))
 
-    def test_a_link_is_resolved_once_so_the_checked_file_is_what_runs(self):
+    def test_links_are_followed_to_the_checked_real_file_which_is_what_runs(self):
         self.assertEqual(update.executable(str(self.tool)), str(self.tool))
-        # Replacing the link afterwards changes nothing, even in a folder others can write.
+        links = self.base / "links"
+        links.mkdir(mode=0o700)
+        (links / "absolute").symlink_to(self.tool)
+        (links / "relative").symlink_to("../bin/freshclam")
+        (links / "folder").symlink_to(self.bin, target_is_directory=True)
+        (links / "chain").symlink_to("relative")
+        for value in (links / "absolute", links / "relative", links / "folder" / "freshclam", links / "chain"):
+            with self.subTest(value=value.relative_to(links)):
+                self.assertEqual(update.executable(str(value)), str(self.tool))
+
+    def test_a_link_in_a_folder_others_can_change_is_refused(self):
+        # Another account could point it at any program that passes the rule, such as one that downloads nothing.
         shared = self.base / "shared"
         shared.mkdir()
         shared.chmod(0o777)
         (shared / "freshclam").symlink_to(self.tool)
-        self.assertEqual(update.executable(str(shared / "freshclam")), str(self.tool))
+        (shared / "bin").symlink_to(self.bin, target_is_directory=True)
+        (self.bin / "through-shared").symlink_to("../shared/freshclam")
+        for value in (shared / "freshclam", shared / "bin" / "freshclam", self.bin / "through-shared"):
+            with self.subTest(value=value.name):
+                with self.assertRaises(core.ScannerError):
+                    update.executable(str(value))
+
+    def test_a_link_owned_by_another_account_and_link_loops_are_refused(self):
+        # In a root-owned sticky folder, which the rule accepts, a link's owner can still replace it.
+        link = self.bin / "link"
+        link.symlink_to(self.tool)
+        original = os.lstat
+        def lstat(path, *args, **kwargs):
+            info = original(path, *args, **kwargs)
+            if Path(path) == link:
+                values = list(info[:10])
+                values[4] = os.geteuid() + 1000
+                return os.stat_result(values)
+            return info
+        with patch.object(update.os, "lstat", side_effect=lstat), self.assertRaises(core.ScannerError):
+            update.executable(str(link))
+        self.assertEqual(update.executable(str(link)), str(self.tool))
+        (self.bin / "loop").symlink_to("loop")
+        with self.assertRaises(core.ScannerError):
+            update.executable(str(self.bin / "loop"))
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS volumes that ignore ownership")
+    def test_a_volume_that_ignores_ownership_is_refused(self):
+        # External drives default to it: every file there looks owned by whoever asks, so others can change it.
+        flags = process_store.MNT_LOCAL | process_store.MNT_IGNORE_OWNERSHIP
+        with patch.object(process_store, "darwin_mount_flags", return_value=flags):
+            self.refused()
+        self.assertEqual(update.executable(str(self.tool)), str(self.tool))
 
     def test_files_and_folders_others_could_change_are_refused(self):
         for mode in (0o770, 0o600):  # group-writable, not executable

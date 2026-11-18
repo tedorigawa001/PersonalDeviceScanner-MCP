@@ -208,6 +208,37 @@ class MaintenanceTests(unittest.TestCase):
         self.assertTrue(row["deletable"], row)
         self.assertEqual(maintenance.manage(self.scanner, "delete", stage, row["revision"])["status"], "completed")
 
+    def test_a_temporary_file_left_by_a_killed_write_keeps_its_stage_recoverable_and_deletable(self):
+        # history.replace_private writes .<name>.<8 hex>.tmp and renames it; a kill or power loss in between leaves it.
+        # Otherwise the stage would be unavailable, recovery refused and every update blocked until manual removal.
+        for name in ("verification.json", "validation.txt", "freshclam.conf", "db/freshclam.dat"):
+            with self.subTest(name=name):
+                stage = self.stage()
+                file = self.root / stage / name
+                leftover = file.with_name(f".{file.name}.{secrets.token_hex(4)}.tmp")
+                fd = os.open(leftover, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                os.write(fd, b"partial")
+                os.close(fd)
+                past = time.time() - 60
+                update.write_json(self.root / "attempt.json", {"pending": True, "next_attempt": past})
+                info = self.listing()
+                self.assertEqual(self.entry(stage)["reason"], "pending_recovery")
+                stamp = datetime.fromtimestamp(past + 1, timezone.utc).isoformat()
+                result = maintenance.manage(self.scanner, "recover", revision=info["recovery_revision"], not_before=stamp)
+                self.assertEqual(result["status"], "completed", result)
+                row = self.entry(stage)
+                self.assertEqual(maintenance.manage(self.scanner, "delete", stage, row["revision"])["status"], "completed")
+                self.assertFalse((self.root / stage).exists())
+        # Only those names: anything else, or a link under such a name, still stops maintenance for owner review.
+        for name in (".verification.json.zz.tmp", ".verification.json.0123abcd.tmp.extra", ".other.json.0123abcd.tmp", "link"):
+            with self.subTest(other=name):
+                stage = self.stage()
+                if name == "link":
+                    (self.root / stage / ".validation.txt.0123abcd.tmp").symlink_to(self.root / stage / "db")
+                else:
+                    history.replace_private(self.root / stage / name, b"unknown")
+                self.assertEqual(self.entry(stage)["reason"], "unavailable")
+
     def test_current_last_previous_forged_id_and_stale_revision_are_refused(self):
         for name, rev in ((self.active, self.entry(self.active)["revision"]), ("../outside", "0" * 64),
                           (self.removable, "0" * 64)):

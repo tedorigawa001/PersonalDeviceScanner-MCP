@@ -557,6 +557,26 @@ class StoreTests(unittest.TestCase):
         self.assertFalse(list(self.folder.glob('*.tmp')));self.assertFalse(list(self.folder.glob('[0-9a-f]*.json')))
 
 
+@unittest.skipUnless(sys.platform == "darwin", "macOS mount flags")
+class MountFlagTests(unittest.TestCase):
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.fd = os.open(temp.name, os.O_RDONLY | os.O_DIRECTORY)
+        self.addCleanup(os.close, self.fd)
+
+    def test_a_volume_that_ignores_ownership_is_not_a_private_local_store(self):
+        # The temporary folder is on the local system volume, which honors ownership.
+        flags = store.darwin_mount_flags(self.fd)
+        self.assertTrue(flags & store.MNT_LOCAL)
+        self.assertFalse(flags & store.MNT_IGNORE_OWNERSHIP)
+        self.assertTrue(store.local_filesystem(self.fd))
+        self.assertFalse(store.ownership_ignored(self.fd))
+        # External drives default to ignoring ownership: every file looks owned by whoever asks.
+        for value in (store.MNT_LOCAL | store.MNT_IGNORE_OWNERSHIP, None):
+            with self.subTest(flags=value), patch.object(store, "darwin_mount_flags", return_value=value):
+                self.assertFalse(store.local_filesystem(self.fd))
+                self.assertTrue(store.ownership_ignored(self.fd))
 
 
 if __name__ == '__main__': unittest.main()

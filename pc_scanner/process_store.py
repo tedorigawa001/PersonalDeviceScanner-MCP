@@ -205,22 +205,42 @@ def directory(settings):
     return Path(settings["directory"]) if settings["directory"] else history.default_file().parent / "process-review"
 
 
+# Darwin SDK sys/mount.h.
+MNT_LOCAL = 0x00001000
+MNT_IGNORE_OWNERSHIP = 0x00200000
+
+
+def darwin_mount_flags(fd):
+    """The f_flags of the macOS filesystem holding fd, or None when they cannot be read."""
+    import ctypes as c
+    # __DARWIN_STRUCT_STATFS64 prefix.
+    class Prefix(c.Structure):
+        _fields_ = [("bsize", c.c_uint32), ("iosize", c.c_int32),
+                    ("blocks", c.c_uint64 * 5), ("fsid", c.c_int32 * 2),
+                    ("owner", c.c_uint32), ("type", c.c_uint32), ("flags", c.c_uint32)]
+    lib = c.CDLL(None)
+    func = getattr(lib, "fstatfs$INODE64", None) or getattr(lib, "fstatfs64", None)
+    if func is None:
+        return None
+    func.argtypes, func.restype = [c.c_int, c.c_void_p], c.c_int
+    buffer = c.create_string_buffer(4096)
+    return Prefix.from_buffer(buffer).flags if func(fd, buffer) == 0 else None
+
+
+def ownership_ignored(fd):
+    """True on a macOS volume that ignores ownership, the default for external drives. Every file there looks owned by
+    whoever asks, so the owner checks would pass while other accounts can change it. Fails closed."""
+    if sys.platform != "darwin":
+        return False
+    flags = darwin_mount_flags(fd)
+    return flags is None or bool(flags & MNT_IGNORE_OWNERSHIP)
+
+
 def local_filesystem(fd):
-    """Fail closed on unrecognized storage. No network or shell probing."""
+    """Fail closed on unrecognized storage and on a macOS volume that ignores ownership. No network or shell probing."""
     if sys.platform == "darwin":
-        import ctypes as c
-        # Darwin SDK sys/mount.h: __DARWIN_STRUCT_STATFS64 prefix, MNT_LOCAL = 0x1000.
-        class Prefix(c.Structure):
-            _fields_ = [("bsize", c.c_uint32), ("iosize", c.c_int32),
-                        ("blocks", c.c_uint64 * 5), ("fsid", c.c_int32 * 2),
-                        ("owner", c.c_uint32), ("type", c.c_uint32), ("flags", c.c_uint32)]
-        lib = c.CDLL(None)
-        func = getattr(lib, "fstatfs$INODE64", None) or getattr(lib, "fstatfs64", None)
-        if func is None:
-            return False
-        func.argtypes, func.restype = [c.c_int, c.c_void_p], c.c_int
-        buffer = c.create_string_buffer(4096)
-        return func(fd, buffer) == 0 and bool(Prefix.from_buffer(buffer).flags & 0x1000)
+        flags = darwin_mount_flags(fd)
+        return flags is not None and bool(flags & MNT_LOCAL) and not flags & MNT_IGNORE_OWNERSHIP
     if sys.platform.startswith("linux"):
         info = os.fstat(fd)
         device = f"{os.major(info.st_dev)}:{os.minor(info.st_dev)}"

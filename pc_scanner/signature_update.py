@@ -261,25 +261,51 @@ def pin(scanner, cancel=None):
 
 
 def executable(value):
-    """Resolve links once and return the real file, so the path that runs is the path that was checked.
+    """Follow the configured path one entry at a time and return the real file, so the path that runs is the path
+    that was checked.
 
-    The file and every folder above it pass the store's rule: owned by this user or root, with no group/other
-    write bit (except a root-owned sticky folder) and no macOS ACL entry letting others change the file or a
-    folder's entries. Other users then cannot replace it between this check and its run. Same-user processes are
+    Every folder entered on the way, including each folder that holds a link, and the file itself pass the store's
+    rule: owned by this user or root, with no group/other write bit (except a root-owned sticky folder), no macOS ACL
+    entry letting others change the file or a folder's entries, and not on a volume that ignores ownership. Each link
+    must be owned by this user or root, because in a sticky folder its owner can replace it. Other users then cannot
+    replace the file or point a link at another program between this check and its run. Same-user processes are
     outside this boundary.
     """
     from .posix_acl import acl_allows_redirect
-    real = Path(os.path.realpath(value, strict=True))
-    for folder in [*reversed(real.parents), real]:
-        fd = os.open(folder, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | (0 if folder == real else os.O_DIRECTORY))
+
+    def check(path, folder):
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | (os.O_DIRECTORY if folder else 0))
         try:
             info = os.fstat(fd)
-            if (info.st_uid not in {0, os.geteuid()} or acl_allows_redirect(fd)
-                    or (info.st_mode & 0o022 and not (folder != real and info.st_uid == 0 and info.st_mode & stat.S_ISVTX))):
+            if (info.st_uid not in {0, os.geteuid()} or acl_allows_redirect(fd) or process_store.ownership_ignored(fd)
+                    or (info.st_mode & 0o022 and not (folder and info.st_uid == 0 and info.st_mode & stat.S_ISVTX))):
                 raise core.ScannerError("Updater executable is not owner-approved")
+            return info
         finally:
             os.close(fd)
-    if not stat.S_ISREG(info.st_mode) or not os.access(real, os.X_OK):
+
+    real, info, links = Path("/"), None, 0
+    check(real, True)
+    parts = list(Path(value).parts[1:])
+    while parts:
+        name = parts.pop(0)
+        if name == "..":
+            real, info = real.parent, None  # every folder above real was checked on the way in
+            continue
+        entry = real / name
+        found = os.lstat(entry)  # real was checked, so only this user or root can change its entries
+        if stat.S_ISLNK(found.st_mode):
+            links += 1
+            if links > 32 or found.st_uid not in {0, os.geteuid()}:
+                raise core.ScannerError("Updater executable is not owner-approved")
+            target = Path(os.readlink(entry))
+            if target.is_absolute():
+                real = Path("/")
+            parts[:0] = target.parts[1:] if target.is_absolute() else target.parts
+            continue
+        info = check(entry, bool(parts))
+        real = entry
+    if info is None or not stat.S_ISREG(info.st_mode) or not os.access(real, os.X_OK):
         raise core.ScannerError("Updater executable is not owner-approved")
     return str(real)
 
