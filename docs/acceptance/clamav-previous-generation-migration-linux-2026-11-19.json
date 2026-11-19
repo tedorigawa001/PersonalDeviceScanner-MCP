@@ -1,0 +1,91 @@
+{
+  "date": "2026-11-19",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "linux_native_clamav_previous_generation_migration_and_maintenance_acceptance",
+  "status": "passed in Linux Docker for real FreshClam migration, unpublished-generation exclusion, four-slot cleanup and concurrent native scanning",
+  "source_commit": "48e9e572ddaa4f126f6bc26a8f5840b9d82996cb",
+  "source_file_hashes_matched_after_transfer": 28,
+  "design": "../clamav-previous-generation-protection-design.md",
+  "related_records": [
+    "clamav-previous-generation-protection-2026-11-19.json",
+    "clamav-previous-generation-native-macos-2026-11-19.json",
+    "clamav-readmission-cvd-inputs-2026-11-12.json"
+  ],
+  "environment": {
+    "host": "macOS arm64 with Docker",
+    "guest": "Ubuntu 24.04.5 LTS aarch64",
+    "python": "3.15.2",
+    "engines": "Native freshclam, sigtool and clamscan 1.5.4",
+    "image": "sha256:20fd8ed13f28e2b3e10a54c9b2fe018c8e8d5a2549a79fc3b55fc1ea82021ada",
+    "container_id": "65bb57e42c0707ea7bca191a6c5a0bd01e2d4a3fa1de8961687a62f093a44e88",
+    "uid_gid": "10001:10001",
+    "cpus": 2,
+    "memory_bytes": 3221225472,
+    "network": "none; loopback was the only interface up; no IPv4 routes or published ports",
+    "mounts": [],
+    "image_pulled": false
+  },
+  "input_and_mirror": {
+    "source": "Eight archived public files from the prior local Mac acceptance inputs; all SHA-256 values matched the earlier records and the container copies. Five embedded and three detached signatures were reverified by native sigtool.",
+    "seed_daily_versions": [28172, 28174],
+    "served_versions": {"main.cvd": 63, "daily.cvd": 28180, "bytecode.cvd": 339},
+    "served_daily_sha256": "80d80ef32f10f168154df52114c39735e057500bb45a495eba9db2f5496e1437",
+    "transport": "An ephemeral HTTP mirror bound to container loopback. The adapter rewrote the stage mirror line to PrivateMirror and execed real FreshClam with the no DNS option. It kept the product's update rules and engine exit codes. The mirror served only three CVDs and their detached signatures.",
+    "requests": {"total": 10, "cld_404": 3, "cvd_header_206": 3, "full_daily_200": 1, "detached_signature_200": 3},
+    "full_daily_bytes": 23448742,
+    "unchanged_main_and_bytecode_full_downloads": 0,
+    "external_provider_requests": 0
+  },
+  "legacy_migration": {
+    "starting_state": "Four slots with a schema 1 current pointer to daily 28174, a sole distinct older rollback daily 28172, and two copies of the current data under different generation IDs. No attempt or provider state was copied into this new store.",
+    "full_store_guard": "The update stopped for capacity before contacting the mirror or writing an attempt file. The list protected daily 28172 and let the owner delete one duplicate with its exact revision. Only the selected slot was removed and the old current pointer stayed byte-identical.",
+    "changed_update": "Real FreshClam downloaded daily 28180 and the updater verified all three detached signatures using native sigtool. The update returned completed and updated, with three occupied slots before update and four afterwards. The result required a recheck for resumed scans.",
+    "update_seconds": 19.304196,
+    "new_reference": "Schema 2 recorded daily 28180 as current and the exact prior daily 28174 reference as the sole published predecessor. The two other existing IDs went into legacy_untracked.",
+    "immediate_retry": "Reported rate_limited with zero new requests. The new attempt, provider.dat and provider synchronization record were byte-identical through retry, maintenance, concurrent scans and container stop."
+  },
+  "four_slot_maintenance": {
+    "limit_seconds": 30,
+    "legacy_full_list_seconds": 0.769894,
+    "legacy_duplicate_selected_delete_seconds": 0.835764,
+    "migrated_full_list_seconds": [0.322456, 0.294723, 0.322157, 0.317592, 0.3614],
+    "migrated_legacy_selected_delete_seconds": 0.438327,
+    "unpublished_generation_full_list_seconds": 0.360509,
+    "method": "Ungated subprocess wall times include startup. Filesystem caches were not evicted. Deliberate pauses used to prove concurrency are recorded separately.",
+    "protection": "The recorded daily 28174 was the only candidate checked in the protected verdict and its exact-revision delete was refused. An eligible legacy duplicate was selected and removed with its legacy_untracked ID.",
+    "unpublished": "After migration an added generation used intact daily 28172 and content-bound sidecar evidence, with a new ID outside publication history. At four slots it never counted as the protected predecessor or a legacy ID. Its selected deletion removed its directory and sidecar and left the published history unchanged.",
+    "final_slots": 3
+  },
+  "concurrent_scanning": {
+    "method": "For both listing and selected deletion at four slots, a temporary gate paused maintenance after a real 1 MiB read of the protected predecessor. A separate CLI executed native clamscan with the published current generation path and scanned one benign synthetic file. The controller received the engine result before letting the hash verification finish. The gate preserved the bytes read.",
+    "time_columns": ["action", "engine_exec_marker_seconds", "result_received_seconds", "predecessor_verified_seconds"],
+    "seconds_since_first_predecessor_read": [
+      ["list", 0.533022, 6.60832, 6.694349],
+      ["delete", 0.473867, 5.679527, 5.76692]
+    ],
+    "result_per_scan": {"daily_version": 28180, "files_scanned": 1, "findings": 0, "engine_exit": 0, "cli_exit": 2, "cli_status": "partial"},
+    "diagnostic": "The signed fixture was about 8.3 days old. Its freshness check was fresh under the 14-day test setting. LibClamAV emitted its native seven-day warning and the scan retained partial."
+  },
+  "preservation": {
+    "personal_files_used": false,
+    "existing_stores_and_waits_accessed_or_changed": false,
+    "official_CDN_acquisition_or_429_retry_started": false,
+    "separate_429_history_and_two_version_preparation": "Outside this trial.",
+    "public_input_hashes_unchanged": true,
+    "generation_owners_and_modes": "Verified owning UID 10001, directories 0700 and single-linked CVDs and sidecars 0600.",
+    "new_wait_files_after_stop": "The wait and both provider state files retained SHA-256, owner 10001 and mode 0600.",
+    "processes_before_stop": "Only the container entrypoint sleep remained. The dedicated trial container was then stopped and retained.",
+    "evidence": "Raw CLI output, test scripts, input and source manifests, mirror events and the trial store retained locally."
+  },
+  "verification": {
+    "macos_signature_tests_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
+    "macos_signature_tests": {"total": 106, "passed": 106, "skipped": 0, "failed": 0},
+    "initial_environment_check": "The trial initially stopped before creating the store because the guest exposed inactive kernel tunnel interfaces. Docker still reported network none. The harness checked interface up flags and the route table before proceeding. Only loopback was up.",
+    "summary_sha256": "3e33bf456608493036f92eeecf6b044bdff0459bbf3c7cb7f3c3a39efad944c8",
+    "mirror_events_sha256": "305de93b1843bc234209b3fd2b65948e33cb147422f1b973d2470a1f08f38b8d"
+  },
+  "limits": [
+    "Timing applies to this Linux container on this Mac using the archived CVD copies and observed caches.",
+    "The mirror exercised loopback HTTP and real changed publication. The trial did not test CDN or DNS-assisted behavior or a scan using newly dated definitions."
+  ]
+}
