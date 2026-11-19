@@ -37,7 +37,7 @@
     "external_provider_requests": 0
   },
   "legacy_migration": {
-    "starting_state": "Four slots with a schema 1 current pointer to daily 28174, a sole distinct older rollback daily 28172, and two copies of the current data under different generation IDs. No attempt or provider state was copied into this new store.",
+    "starting_state": "Four slots with an earlier-format current pointer without a schema field to daily 28174, a sole distinct older rollback daily 28172, and two copies of the current data under different generation IDs. No attempt or provider state was copied into this new store.",
     "full_store_guard": "The update stopped for capacity before contacting the mirror or writing an attempt file. The list protected daily 28172 and let the owner delete one duplicate with its exact revision. Only the selected slot was removed and the old current pointer stayed byte-identical.",
     "changed_update": "Real FreshClam downloaded daily 28180 and the updater verified all three detached signatures using native sigtool. The update returned completed and updated, with three occupied slots before update and four afterwards. The result required a recheck for resumed scans.",
     "update_seconds": 19.304196,
