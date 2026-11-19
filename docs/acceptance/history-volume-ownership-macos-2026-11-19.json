@@ -1,0 +1,43 @@
+{
+  "date": "2026-11-19",
+  "kind": "security_fix_regression_verification",
+  "base_commit": "acd15cda757b07a88948d1447ae7e185d65c30ed",
+  "scope": "Current and rotated scan history and kept details on macOS",
+  "finding": "When a volume ignores ownership, the owner reported by the filesystem is not enough to establish that the file belongs to the current user. The earlier history ownership fix did not check this volume setting.",
+  "fix": {
+    "mount_flags": "Reuse the existing Darwin mount-flag query for descriptors and add the pathname form. A pathname query allows a search-only storage directory. Missing or unreadable mount flags cannot establish trusted ownership.",
+    "before_changes": "Check the nearest existing parent before creating storage or acquiring the history lock. Check the details directory independently before changing its mode or running retention. Check existing regular history and detail files before moving them in rotation or removing them in retention.",
+    "on_open": "Check the actual descriptor before reading or writing a history payload. Ownership, link count and ACL validation continue to apply. Normal file creation, reads, writes, rotation and retention keep the existing behavior.",
+    "on_refusal": "History reads raise a read error and unsafe details are reported as unreadable. A history write failure follows the existing scan warning path. The macOS-specific check does not run on Linux or Windows."
+  },
+  "regressions": {
+    "added_test_methods": 4,
+    "before_fix": "The normal-volume control passed. Three negative tests failed, including both ignored and unavailable mount flag subcases.",
+    "after_fix": [
+      "Normal local volume: write and read current, rotated and kept-detail records with the real Darwin mount flag query",
+      "Simulated ignored ownership and unavailable flags: refuse history and detail reads/writes, including a missing history parent, with no new entries and existing bytes and modes preserved",
+      "Simulated different volume for the details directory: refuse read and write before permission changes or retention",
+      "Normal pathname flags with unsafe descriptor flags: both readers refuse the actual opened file"
+    ]
+  },
+  "verification": {
+    "platform": "macOS",
+    "syntax_and_imports": "AST parsing and imports passed for the edited modules.",
+    "compatibility_check": "The initial patch failed an existing Windows ownership simulation on macOS when it constructed a WindowsPath. The final opener delegates directly to the original Windows path before the new volume checks. The existing simulation passed afterward.",
+    "history_acl": {"total": 19, "passed": 19, "skipped": 0, "failed": 0},
+    "process_store": {"total": 43, "passed": 43, "skipped": 0, "failed": 0},
+    "windows_owner_module": {"total": 11, "passed": 8, "skipped": 3, "failed": 0},
+    "full_python_3_14": {"version": "3.14.10", "total": 794, "passed": 777, "skipped": 17, "failed": 0, "seconds": 101.440},
+    "full_python_3_15": {"version": "3.15.2", "total": 794, "passed": 777, "skipped": 17, "failed": 0, "seconds": 100.504},
+    "full_suite_coverage": "Both runs included Android and real MCP SDK 1.30.0 tests. The 17 skips were Windows-specific tests.",
+    "full_suite_commands": [
+      "env PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests",
+      "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests"
+    ],
+    "npm": {"total": 34, "passed": 33, "skipped": 1, "failed": 0, "skip_reason": "Optional first-install test from PyPI"}
+  },
+  "remaining": [
+    "The ignored-ownership flag and an unavailable query were simulated. No real external volume or disk image was mounted or reconfigured.",
+    "Native Windows CI and a new Linux run were outside this verification. The earlier Linux ownership and hard-link verification is recorded separately."
+  ]
+}

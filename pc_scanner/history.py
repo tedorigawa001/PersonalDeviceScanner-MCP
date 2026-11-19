@@ -236,15 +236,44 @@ def _require_owned_file(fd: int) -> os.stat_result:
     return info
 
 
-def _history_read_opener(name, flags: int) -> int:
-    fd = opener(name, flags)
-    # The Windows opener already checks file type, ownership and links.
-    if os.name != "nt":
+def _require_ownership_volume(location: Path | int) -> None:
+    if sys.platform != "darwin":
+        return
+    from .process_store import ownership_ignored
+    if ownership_ignored(location):
+        raise OSError("History volume ignores ownership or could not be verified")
+
+
+def _check_history_parent(folder: Path) -> None:
+    """Check the volume before creating anything, even below missing directories."""
+    if sys.platform != "darwin":
+        return
+    while True:
         try:
+            folder.stat()
+        except FileNotFoundError:
+            if folder == folder.parent:
+                raise
+            folder = folder.parent
+        else:
+            _require_ownership_volume(folder)
+            return
+
+
+def _history_opener(name, flags: int) -> int:
+    # The Windows opener already checks file type, ownership and links.
+    if os.name == "nt":
+        return opener(name, flags)
+    if sys.platform == "darwin":
+        _check_history_parent(Path(os.fsdecode(name)).parent)
+    fd = opener(name, flags)
+    try:
+        _require_ownership_volume(fd)
+        if (flags & os.O_ACCMODE) == os.O_RDONLY:
             _require_owned_file(fd)
-        except BaseException:
-            os.close(fd)
-            raise
+    except BaseException:
+        os.close(fd)
+        raise
     return fd
 
 
@@ -395,10 +424,12 @@ def grouping_fields(data):
 
 def save_details(path: Path, report: dict, max_bytes: int) -> str:
     """Keeps a full result, then removes the oldest ones until all fit in max_bytes; the newest always stays."""
+    _check_history_parent(path.parent)
     directory_acl(path.parent)
     folder = details_folder(path)
     folder.mkdir(exist_ok=True, mode=0o700)
     info = folder.lstat()
+    _require_ownership_volume(folder)
     directory_acl(folder)
     if os.name == "nt":
         from .windows_owner import owns_directory
@@ -413,8 +444,11 @@ def save_details(path: Path, report: dict, max_bytes: int) -> str:
     for child in folder.iterdir():
         if child.suffix == ".json" and DETAILS_ID.fullmatch(child.stem):
             try:
+                info = child.lstat()
+                if stat.S_ISREG(info.st_mode):
+                    _require_ownership_volume(child)
                 existing_acl(child)
-                kept.append((child.name, child.lstat().st_size, child))
+                kept.append((child.name, info.st_size, child))
             except FileNotFoundError:
                 continue
     # Always after every name kept so far, which the lock makes true across processes: Windows' clock
@@ -427,7 +461,7 @@ def save_details(path: Path, report: dict, max_bytes: int) -> str:
     # ASCII only: a result is never refused for text it cannot encode.
     data = json.dumps(report, ensure_ascii=True).encode("ascii")
     target = folder / f"{name}.json"
-    f = open(target, "xb", opener=opener)  # if this fails, nothing of ours was created
+    f = open(target, "xb", opener=_history_opener)
     try:
         with f:
             f.write(data)
@@ -459,7 +493,7 @@ def load_details(path: Path, name: str | None) -> tuple[dict | None, str]:
     if not DETAILS_ID.fullmatch(name):
         return None, "unreadable"
     try:
-        f = open(details_folder(path) / f"{name}.json", "rb", opener=_history_read_opener)
+        f = open(details_folder(path) / f"{name}.json", "rb", opener=_history_opener)
     except FileNotFoundError:
         return None, "removed"
     except OSError:
@@ -477,6 +511,7 @@ def load_details(path: Path, name: str | None) -> tuple[dict | None, str]:
 
 def append(path: Path, record: dict, details: dict | None = None, details_bytes: int = 0) -> None:
     with _lock:
+        _check_history_parent(path.parent)
         path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         with locked(path):
             # The older file is never opened for writing, so it and the file about to become it are checked here.
@@ -486,6 +521,7 @@ def append(path: Path, record: dict, details: dict | None = None, details_bytes:
                 except FileNotFoundError:
                     continue
                 if stat.S_ISREG(info.st_mode):
+                    _require_ownership_volume(name)
                     existing_acl(name)
                     if os.name == "nt" or info.st_mode & 0o077:
                         make_private(name)
@@ -498,7 +534,7 @@ def append(path: Path, record: dict, details: dict | None = None, details_bytes:
             except OSError:
                 # Missing, or on Windows open in a reader that could not take the lock: rotate on a later scan.
                 pass
-            with open(path, "ab", buffering=0, opener=opener) as f:
+            with open(path, "ab", buffering=0, opener=_history_opener) as f:
                 private(f.fileno())
                 f.write(line)
 
@@ -545,6 +581,7 @@ def parse(line: str) -> dict | None:
 
 def read(path: Path, limit: int) -> tuple[list[dict], int]:
     """The latest scans, oldest first, and how many damaged lines were skipped."""
+    _check_history_parent(path.parent)
     entries, skipped = deque(maxlen=limit), 0
     with contextlib.ExitStack() as stack:
         try:
@@ -556,7 +593,7 @@ def read(path: Path, limit: int) -> tuple[list[dict], int]:
         for name in (older(path), path):
             try:
                 # Links are not followed and a FIFO in place of a file cannot hold the command up.
-                f = open(name, encoding="utf-8", errors="replace", opener=_history_read_opener)
+                f = open(name, encoding="utf-8", errors="replace", opener=_history_opener)
             except FileNotFoundError:
                 continue
             with f:

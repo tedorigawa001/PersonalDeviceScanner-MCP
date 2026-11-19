@@ -210,8 +210,8 @@ MNT_LOCAL = 0x00001000
 MNT_IGNORE_OWNERSHIP = 0x00200000
 
 
-def darwin_mount_flags(fd):
-    """The f_flags of the macOS filesystem holding fd, or None when they cannot be read."""
+def darwin_mount_flags(location):
+    """The mount flags for a macOS file descriptor or path, or None on failure."""
     import ctypes as c
     # __DARWIN_STRUCT_STATFS64 prefix.
     class Prefix(c.Structure):
@@ -219,20 +219,23 @@ def darwin_mount_flags(fd):
                     ("blocks", c.c_uint64 * 5), ("fsid", c.c_int32 * 2),
                     ("owner", c.c_uint32), ("type", c.c_uint32), ("flags", c.c_uint32)]
     lib = c.CDLL(None)
-    func = getattr(lib, "fstatfs$INODE64", None) or getattr(lib, "fstatfs64", None)
+    is_fd = isinstance(location, int)
+    entry = "fstatfs" if is_fd else "statfs"
+    func = getattr(lib, entry + "$INODE64", None) or getattr(lib, entry + "64", None)
     if func is None:
         return None
-    func.argtypes, func.restype = [c.c_int, c.c_void_p], c.c_int
+    func.argtypes, func.restype = [c.c_int if is_fd else c.c_char_p, c.c_void_p], c.c_int
     buffer = c.create_string_buffer(4096)
-    return Prefix.from_buffer(buffer).flags if func(fd, buffer) == 0 else None
+    value = location if is_fd else os.fsencode(location)
+    return Prefix.from_buffer(buffer).flags if func(value, buffer) == 0 else None
 
 
-def ownership_ignored(fd):
+def ownership_ignored(location):
     """True on a macOS volume that ignores ownership, the default for external drives. Every file there looks owned by
     whoever asks, so the owner checks would pass while other accounts can change it. Fails closed."""
     if sys.platform != "darwin":
         return False
-    flags = darwin_mount_flags(fd)
+    flags = darwin_mount_flags(location)
     return flags is None or bool(flags & MNT_IGNORE_OWNERSHIP)
 
 

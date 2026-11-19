@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from pc_scanner import history, malware_batch, checkpoints, coverage, dashboard
+from pc_scanner import history, malware_batch, checkpoints, coverage, dashboard, process_store
 from pc_scanner.core import Scanner, ScannerError
 
 
@@ -185,6 +185,72 @@ class HistoryACLTests(unittest.TestCase):
         self.acl(self.path)
         with self.assertRaises(OSError):
             open(os.fsencode(self.path), 'rb', opener=history.opener)
+
+    def test_normal_volume_reads_writes_and_rotates_history_with_details(self):
+        record = {'started_at': '2026-11-19T00:00:00+00:00', 'seconds': 1, 'via': 'cli',
+                  'operation': 'malware', 'target': {}, 'status': 'completed', 'findings': {}, 'warnings': 0}
+        first, second = {'synthetic': 'older detail'}, {'synthetic': 'current detail'}
+        history.append(self.path, record, first, 4096)
+        with patch.object(history, 'FILE_BYTES', 1):
+            history.append(self.path, record, second, 4096)
+        records, skipped = history.read(self.path, 10)
+        self.assertEqual((len(records), skipped), (2, 0))
+        self.assertEqual([history.load_details(self.path, row['details']) for row in records],
+                         [(first, ''), (second, '')])
+        self.assertEqual(history.older(self.path).stat().st_mode & 0o777, 0o600)
+
+    def test_ignored_or_unknown_volume_refuses_history_and_details(self):
+        name = history.save_details(self.path, {'synthetic': 'original detail'}, 4096)
+        details = history.details_folder(self.path)
+        current, rotated = self.path, history.older(self.path)
+        detail = details / (name + '.json')
+        for file in (current, rotated):
+            file.write_bytes(b'synthetic original\n')
+            file.chmod(0o600)
+        watched = (current, rotated, detail)
+        original = [(file.read_bytes(), file.stat().st_mode) for file in watched]
+        before_names = set(self.folder.rglob('*'))
+        missing = self.folder / 'missing' / 'nested' / 'history.jsonl'
+        for flags in (process_store.MNT_LOCAL | process_store.MNT_IGNORE_OWNERSHIP, None):
+            with self.subTest(flags=flags), patch.object(process_store, 'darwin_mount_flags', return_value=flags):
+                for write in (lambda: history.append(missing, {}),
+                              lambda: history.append(current, {}, {'synthetic': 'new'}, 1),
+                              lambda: history.save_details(current, {'synthetic': 'new'}, 1)):
+                    with self.assertRaisesRegex(OSError, 'ownership'):
+                        write()
+                with self.assertRaisesRegex(OSError, 'ownership'):
+                    history.read(current, 10)
+                self.assertEqual(history.load_details(current, name), (None, 'unreadable'))
+                self.assertEqual(set(self.folder.rglob('*')), before_names)
+                self.assertEqual([(file.read_bytes(), file.stat().st_mode) for file in watched], original)
+
+    def test_details_folder_on_a_different_ignored_volume_is_refused(self):
+        name = history.save_details(self.path, {'synthetic': 'original detail'}, 4096)
+        folder = history.details_folder(self.path)
+        folder.chmod(0o750)
+        real_flags = process_store.darwin_mount_flags
+
+        def flags(location):
+            if location == folder:
+                return process_store.MNT_LOCAL | process_store.MNT_IGNORE_OWNERSHIP
+            return real_flags(location)
+
+        with patch.object(process_store, 'darwin_mount_flags', side_effect=flags):
+            with self.assertRaisesRegex(OSError, 'ownership'):
+                history.save_details(self.path, {'synthetic': 'new'}, 1)
+            self.assertEqual(history.load_details(self.path, name), (None, 'unreadable'))
+        self.assertEqual(folder.stat().st_mode & 0o777, 0o750)
+        self.assertEqual([p.stem for p in folder.iterdir()], [name])
+
+    def test_readers_recheck_the_open_file_volume(self):
+        history.append(self.path, {})
+        name = history.save_details(self.path, {'synthetic': 'original detail'}, 4096)
+        real_flags = process_store.darwin_mount_flags
+        with patch.object(process_store, 'darwin_mount_flags', side_effect=lambda location:
+                          process_store.MNT_IGNORE_OWNERSHIP if isinstance(location, int) else real_flags(location)):
+            with self.assertRaisesRegex(OSError, 'ownership'):
+                history.read(self.path, 10)
+            self.assertEqual(history.load_details(self.path, name), (None, 'unreadable'))
 
 
 if __name__ == '__main__':
