@@ -34,9 +34,48 @@
       "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests"
     ]
   },
+  "linux_follow_up": {
+    "status": "passed",
+    "tested_commit": "5cb7a28b95c8c4c9918b590e39c36f9311036fb1",
+    "environment": {
+      "host": "Docker Desktop on this Mac",
+      "os": "Ubuntu 24.04",
+      "architecture": "aarch64",
+      "python": "3.12.3",
+      "local_image": "sha256:3e1c98126c919e08f2a14906645d63c849612d776f6425c46938c7c9602c5b6c",
+      "reader_uid_gid": [10001, 10001],
+      "foreign_fixture_creator_uid_gid": [10002, 10002],
+      "mounts": [],
+      "published_ports": [],
+      "network": "none",
+      "effective_capabilities": 0,
+      "privileged": false,
+      "no_new_privileges": true
+    },
+    "method": "Streamed only committed package source and the three related test modules into a new container. Created every fixture inside the container. Both fixture users and the reader were non-root. Foreign-owned files were created by the second UID, and link counts were verified on real filesystem entries. All target files had mode 0644. Each case checked UID, GID, link count and mode again after the calls.",
+    "case_columns": ["file", "uid", "link_count", "read", "history_cli_exit", "dashboard_cli_exit", "detail_visible"],
+    "cases": [
+      ["current history", 10001, 1, "accepted", 0, 0, null],
+      ["current history", 10002, 1, "refused", 2, 2, null],
+      ["current history", 10001, 2, "refused", 2, 2, null],
+      ["rotated history (.1)", 10001, 1, "accepted", 0, 0, null],
+      ["rotated history (.1)", 10002, 1, "refused", 2, 2, null],
+      ["rotated history (.1)", 10001, 2, "refused", 2, 2, null],
+      ["kept detail", 10001, 1, "accepted", null, 0, true],
+      ["kept detail", 10002, 1, "unreadable", null, 0, false],
+      ["kept detail", 10001, 2, "unreadable", null, 0, false]
+    ],
+    "case_summary": "All nine cases passed. Current and rotated history failures produced a read error and no dashboard page. Kept detail failures left the summary page available, showed the unreadable notice, and omitted the detail contents. Target file metadata matched before and after every case.",
+    "focused_suites": {
+      "test_history*.py": {"total": 42, "passed": 27, "skipped": 15, "failed": 0, "skip_reason": "Native macOS extended ACLs"},
+      "test_dashboard.py": {"total": 36, "passed": 36, "skipped": 0, "failed": 0}
+    },
+    "cleanup": "Removed the temporary container with its fixtures and verified it was absent.",
+    "scope": "The Linux follow-up ran the ownership matrix and focused suites. The full Python suites above are from the earlier macOS run."
+  },
   "remaining": [
-    "Linux runtime checks were not run because the local Docker daemon was unavailable. Native Windows CI was not run.",
-    "The regression simulates a foreign owner and uses real hard links. It does not require a second macOS account or administrator access.",
+    "Native Windows CI for the fix commit was not run.",
+    "The macOS regression simulates a foreign owner and uses real hard links. The Linux follow-up uses different real UIDs inside the container.",
     "The history storage caveat for macOS volumes that ignore ownership remains separately tracked in vulnerability-check-2026-11-18.json."
   ]
 }
