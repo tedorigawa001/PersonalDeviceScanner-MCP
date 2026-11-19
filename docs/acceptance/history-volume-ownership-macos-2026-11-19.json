@@ -39,5 +39,29 @@
   "remaining": [
     "The ignored-ownership flag and an unavailable query were simulated. No real external volume or disk image was mounted or reconfigured.",
     "Native Windows CI and a new Linux run were outside this verification. The earlier Linux ownership and hard-link verification is recorded separately."
-  ]
+  ],
+  "ci_follow_up": {
+    "date": "2026-11-19",
+    "first_run": {
+      "run": 44520001932,
+      "url": "https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/runs/44520001932",
+      "commit": "bcf0510",
+      "covers": "this fix 1372be4 together with 5cb7a28, acd15cd, e46fa06 and bcf0510, which were pushed together",
+      "result": "21 of 22 jobs passed; the macOS job with Python 3.11 ran 794 tests with 3 errors and 17 skipped",
+      "failure": "3 tests in tests/test_windows_owner.py simulate Windows on macOS by setting os.name to nt. They reached the new volume check, which keys on sys.platform, and its ctypes.CDLL call imported the missing nt module, because Python 3.11 reads os.name when a library is loaded. Python 3.14 and 3.15 decide this when ctypes is imported, so those jobs passed. Real Windows reports sys.platform win32 and real macOS reports os.name posix, so only the simulation was affected"
+    },
+    "fix": "63da24e skips the macOS volume check when os.name is nt, as directory_acl and existing_acl in the same module already do, and adds a test that fails without that condition on any Python version",
+    "run": 44523041975,
+    "url": "https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/runs/44523041975",
+    "commit": "63da24e",
+    "started_at": "2026-11-19T12:20:56Z",
+    "finished_at": "2026-11-19T12:23:52Z",
+    "result": "22 of 22 jobs passed",
+    "python_tests": "795 tests run per Python (3.11, 3.14, 3.15) on each OS, with no failures or errors: macOS 778 passed and 17 skipped, Ubuntu 752 passed and 43 skipped, Windows 605 passed and 190 skipped",
+    "fix_tests": "the 4 tests of this fix passed on macOS with each Python and were skipped on Ubuntu and Windows as 'Native macOS extended ACLs'; the 3 Windows simulation tests that failed in the first run and the new test passed on macOS with Python 3.11",
+    "windows_security_descriptors": "the separate ownership step with real Windows security descriptors ran 12 tests, the new one included, and passed on each Python",
+    "npm_launcher": "12 of 12 jobs passed (Node 22, 24, 26): macOS and Ubuntu 34 of 34, Windows 32 of 34 with 2 skipped",
+    "distributions": "verified",
+    "limit": "CI simulates the mount flags; no real volume that ignores ownership was mounted"
+  }
 }
