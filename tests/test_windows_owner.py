@@ -58,6 +58,15 @@ class OwnershipTests(unittest.TestCase):
                 history.save_details(self.path, {}, 100)
         self.assertEqual(list(history.details_folder(self.path).iterdir()), [])
 
+    def test_windows_paths_skip_the_macos_volume_check(self):
+        # Windows has its own ownership checks. The macOS check loads libc through ctypes, which on Python 3.11
+        # reads os.name at call time and fails under the simulated "nt" these tests use on macOS.
+        from pc_scanner import process_store
+        with patch.object(history.os, "name", "nt"), \
+                patch.object(process_store, "ownership_ignored", side_effect=AssertionError("macOS volume check ran")):
+            history._require_ownership_volume(self.path)
+            history._check_history_parent(self.path.parent)
+
     def test_windows_owner_api_error_closes_file_and_ignores_cache(self):
         from pc_scanner import windows_owner
         with patch.object(history.os, "name", "nt"), \

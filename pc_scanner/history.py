@@ -237,7 +237,8 @@ def _require_owned_file(fd: int) -> os.stat_result:
 
 
 def _require_ownership_volume(location: Path | int) -> None:
-    if sys.platform != "darwin":
+    # Windows checks ownership with its own opener and security descriptors, as _history_opener does.
+    if os.name == "nt" or sys.platform != "darwin":
         return
     from .process_store import ownership_ignored
     if ownership_ignored(location):
@@ -246,7 +247,7 @@ def _require_ownership_volume(location: Path | int) -> None:
 
 def _check_history_parent(folder: Path) -> None:
     """Check the volume before creating anything, even below missing directories."""
-    if sys.platform != "darwin":
+    if os.name == "nt" or sys.platform != "darwin":
         return
     while True:
         try:
