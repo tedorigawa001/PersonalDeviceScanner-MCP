@@ -1,5 +1,6 @@
 """Owner maintenance contracts using synthetic stores only; never contact providers."""
 import copy
+import errno
 import hashlib
 from datetime import datetime, timezone
 import json
@@ -13,6 +14,7 @@ import tempfile
 import time
 from types import SimpleNamespace
 import unittest
+from contextlib import contextmanager
 from unittest.mock import patch
 
 from pc_scanner import core, history, signature_update as update, signature_maintenance as maintenance
@@ -35,9 +37,12 @@ class MaintenanceTests(unittest.TestCase):
         self.active = self.generation()
         self.previous = self.generation()
         self.removable = self.generation()
-        manifest = update.digest_directory(self.root / self.active, time.monotonic() + 30)
-        update.write_json(self.root / "current.json", dict(generation=self.active, **manifest))
+        update.write_json(self.root / "current.json", dict(self.record(self.active), schema=2,
+                          previous=[self.record(self.previous), self.record(self.removable)], legacy_untracked=[]))
         update.write_json(self.root / "attempt.json", {"pending": False, "next_attempt": time.time() + 86400})
+
+    def record(self, name):
+        return dict(generation=name, **update.digest_directory(self.root / name, time.monotonic() + 30))
 
     def generation(self):
         name = secrets.token_hex(16)
@@ -65,14 +70,15 @@ class MaintenanceTests(unittest.TestCase):
     def test_inventory_current_and_selected_delete_preserve_wait_and_pointer(self):
         info = self.listing()
         self.assertTrue(next(r for r in info["entries"] if r["id"] == self.active)["current"])
-        before = {n: (self.root / n).read_bytes() for n in ("current.json", "attempt.json")}
+        reference = update.pointer(self.root)
+        wait = (self.root / "attempt.json").read_bytes()
         entry = self.entry(self.removable)
         result = maintenance.manage(self.scanner, "delete", self.removable, entry["revision"])
         self.assertEqual(result["status"], "completed")
         self.assertFalse((self.root / self.removable).exists())
         self.assertFalse((self.root / (self.removable + ".lease")).exists())  # never accumulates toward the limit
-        for name, data in before.items():
-            self.assertEqual((self.root / name).read_bytes(), data)
+        self.assertEqual((self.root / "attempt.json").read_bytes(), wait)
+        self.assertEqual(update.pointer(self.root), dict(reference, previous=reference["previous"][:1]))
         self.assertEqual(self.entry(self.previous)["reason"], "last_previous")
         row = self.entry(self.previous)
         with self.assertRaises(core.ScannerError):
@@ -132,7 +138,7 @@ class MaintenanceTests(unittest.TestCase):
             with self.subTest(label):
                 folder = self.root / secrets.token_hex(16)
                 make(folder)
-                self.assertTrue(maintenance.complete(folder))
+                self.assertTrue(all((folder / database).is_file() for database in update.DATABASES))
                 real = self.entry(self.previous)
                 self.assertEqual((real["deletable"], real["reason"]), (False, "last_previous"))
                 with self.assertRaises(core.ScannerError):
@@ -158,6 +164,149 @@ class MaintenanceTests(unittest.TestCase):
         with self.assertRaisesRegex(core.ScannerError, "Signature maintenance could not complete"):
             maintenance.manage(self.scanner, "delete", self.removable, row["revision"])
         self.assertTrue((self.root / self.removable).exists())
+
+    def test_published_order_and_full_hash_choose_verified_predecessor(self):
+        orphan = self.generation()
+        record = self.record(orphan)
+        update.write_json(update.verification_file(self.root / orphan),
+                          dict(schema=1, content=record["content"], versions=record["versions"],
+                               detached_signatures=dict.fromkeys(update.DATABASES, "verified")))
+        self.assertEqual(self.entry(self.previous)["reason"], "last_previous")
+        self.assertTrue(self.entry(orphan)["deletable"])
+        self.assertTrue(self.entry(self.removable)["deletable"])
+        main = self.root / self.previous / "main.cvd"
+        history.replace_private(main, main.read_bytes()[:512] + b"body damage")
+        listing = self.listing()["previous_protection"]
+        self.assertEqual(listing["generation"], self.removable)
+        self.assertEqual([r["status"] for r in listing["checks"]], ["invalid", "last_previous"])
+        row = self.entry(self.previous)
+        self.assertTrue(row["deletable"])
+        self.assertEqual(maintenance.manage(self.scanner, "delete", self.previous, row["revision"])["status"], "completed")
+        self.assertFalse(main.exists())
+        self.assertTrue((self.root / orphan).is_dir())
+        self.assertEqual(self.entry(self.removable)["reason"], "last_previous")
+
+    def test_no_valid_published_predecessor_holds_orphan_deletion(self):
+        orphan = self.generation()
+        for generation in (self.previous, self.removable):
+            history.replace_private(self.root / generation / "main.cvd", b"invalid database")
+        row = self.entry(orphan)
+        self.assertEqual((row["deletable"], row["reason"]), (False, "no_valid_previous"))
+        with self.assertRaisesRegex(core.ScannerError, "no_valid_previous"):
+            maintenance.manage(self.scanner, "delete", orphan, row["revision"])
+        self.assertTrue((self.root / orphan).is_dir())
+
+    def test_duplicate_current_content_and_mismatched_recorded_version_do_not_count(self):
+        duplicate = secrets.token_hex(16)
+        shutil.copytree(self.root / self.active, self.root / duplicate)
+        wrong_version = self.record(self.previous)
+        wrong_version["versions"]["daily.cvd"] += 1
+        reference = update.pointer(self.root)
+        update.write_json(self.root / "current.json", dict(reference, previous=[
+            self.record(duplicate), wrong_version, self.record(self.removable)]))
+        result = self.listing()["previous_protection"]
+        self.assertEqual(result["generation"], self.removable)
+        self.assertEqual([check["status"] for check in result["checks"]], ["duplicate", "invalid", "last_previous"])
+
+    def test_legacy_and_corrupt_publication_history_hold_deletion(self):
+        reference = self.root / "current.json"
+        active = self.record(self.active)
+        update.write_json(reference, active)
+        self.assertEqual(update.current(self.root, time.monotonic() + 30), active)
+        revision = self.entry(self.removable)["revision"]
+        self.assertEqual(self.entry(self.removable)["reason"], "legacy_history")
+        with self.assertRaisesRegex(core.ScannerError, "legacy_history"):
+            maintenance.manage(self.scanner, "delete", self.removable, revision)
+        for raw in (b"{", json.dumps(active).replace('"generation":', '"generation": null, "generation":').encode(),
+                    json.dumps(dict(active, schema=2, previous=[active], legacy_untracked=[])).encode(),
+                    json.dumps(dict(active, schema=2, previous=[], legacy_untracked=[self.active])).encode(),
+                    json.dumps(dict(active, schema=2, previous=[], legacy_untracked=[None])).encode(),
+                    json.dumps(dict(active, schema=True, previous=[], legacy_untracked=[])).encode(),
+                    json.dumps(dict(active, schema=2, previous=[dict(self.record(self.previous), content="x")],
+                                    legacy_untracked=[])).encode()):
+            with self.subTest(raw=raw):
+                history.replace_private(reference, raw)
+                row = self.entry(self.removable)
+                self.assertEqual(row["reason"], "history_unavailable")
+                with self.assertRaisesRegex(core.ScannerError, "publication history unavailable"):
+                    maintenance.manage(self.scanner, "delete", self.removable, row["revision"])
+                self.assertEqual(reference.read_bytes(), raw)
+        reference.unlink()
+        self.assertEqual(self.entry(self.removable)["reason"], "missing_history")
+        self.assertTrue((self.root / self.removable).is_dir())
+
+    def test_newer_published_read_failure_does_not_fall_back(self):
+        reference = (self.root / "current.json").read_bytes()
+        attempt = (self.root / "attempt.json").read_bytes()
+        orphan = self.generation()
+        revision = self.entry(orphan)["revision"]
+        digest = update.digest_directory
+        for problem in (OSError(errno.EIO, "synthetic read failure"),
+                        core.ScannerError("Signature operation timed out")):
+            def interrupted(folder, *args):
+                if folder.name == self.previous:
+                    raise problem
+                return digest(folder, *args)
+            with self.subTest(problem=problem), patch.object(update, "digest_directory", side_effect=interrupted):
+                listing = self.listing()
+                self.assertEqual(listing["previous_protection"], {"status": "previous_unavailable", "generation": None,
+                                 "checks": [{"id": self.previous, "status": "unavailable"}]})
+                row = self.entry(orphan)
+                self.assertNotEqual(row["revision"], revision)
+                self.assertEqual((row["deletable"], row["reason"]), (False, "previous_unavailable"))
+                with self.assertRaises(core.ScannerError):
+                    maintenance.manage(self.scanner, "delete", orphan, row["revision"])
+                self.assertTrue((self.root / orphan).is_dir())
+                self.assertEqual((self.root / "current.json").read_bytes(), reference)
+                self.assertEqual((self.root / "attempt.json").read_bytes(), attempt)
+                self.assertFalse((self.root / (orphan + ".lease")).exists())
+
+    def test_replaced_predecessor_after_selected_lease_leaves_target_and_sidecar(self):
+        target = self.root / self.removable
+        sidecar = update.verification_file(target)
+        update.write_json(sidecar, {"schema": 1})
+        revision = self.entry(self.removable)["revision"]
+        lease = self.root / (self.removable + ".lease")
+        with update.generation_lease(lease):
+            pass
+        exclusive = maintenance.exclusive_lease
+        calls = 0
+
+        @contextmanager
+        def replace_predecessor(path):
+            nonlocal calls
+            with exclusive(path) as leased:
+                if path == lease:
+                    calls += 1
+                    if calls == 2:  # after inventory, before the selected entry can be removed
+                        file = self.root / self.previous / "main.cvd"
+                        history.replace_private(file, file.read_bytes())
+                yield leased
+
+        with patch.object(maintenance, "exclusive_lease", side_effect=replace_predecessor):
+            with self.assertRaisesRegex(core.ScannerError, "maintenance could not complete"):
+                maintenance.manage(self.scanner, "delete", self.removable, revision)
+        self.assertTrue(sidecar.is_file())
+        self.assertTrue(lease.is_file())
+        self.assertTrue(target.is_dir())
+
+    def test_transient_short_read_of_published_header_holds_deletion(self):
+        orphan = self.generation()
+        identity = (self.root / self.previous / "main.cvd").stat()
+        read = os.read
+
+        def short_read(fd, size):
+            info = os.fstat(fd)
+            if size == 512 and (info.st_dev, info.st_ino) == (identity.st_dev, identity.st_ino):
+                return read(fd, 511)
+            return read(fd, size)
+
+        with patch.object(os, "read", side_effect=short_read):
+            row = self.entry(orphan)
+            self.assertEqual(row["reason"], "previous_unavailable")
+            with self.assertRaises(core.ScannerError):
+                maintenance.manage(self.scanner, "delete", orphan, row["revision"])
+        self.assertTrue((self.root / orphan).is_dir())
 
     def test_unmanaged_stage_names_are_counted_and_reported(self):
         listing = maintenance.manage(self.scanner, "list")

@@ -1,0 +1,43 @@
+{
+  "date": "2026-11-19",
+  "kind": "clamav_previous_generation_protection_regression",
+  "base_commit": "bcf0510",
+  "design": "../clamav-previous-generation-protection-design.md",
+  "scope": "Owner maintenance and private definition publication on macOS using synthetic CVDs and controlled I/O failures.",
+  "checks": [
+    "Initial publication writes the reference and empty history atomically. An unchanged update preserves the reference.",
+    "A complete candidate stranded before the reference switch stays outside publication history even when its version is lower than the later active version and its detached evidence remains on disk.",
+    "Failures after replacing the reference report uncertainty. The reference that survives contains the current generation and its full predecessor history together.",
+    "Protection follows publication order and compares all CVD bytes and all three version numbers. Body corruption, version mismatch and a copy of the current content cannot serve as the protected predecessor.",
+    "A confirmed mismatch permits checking older published generations. Missing history, no intact predecessor, a timeout, a short read or an I/O error prevent generation deletion. A change after taking the selected lease leaves the selected directory, sidecar and lease intact.",
+    "The legacy reference is readable by scans and stays in place on unchanged updates. The first changed publication, including a change at the same version, records the former current generation and keeps other existing generation IDs protected as legacy untracked.",
+    "Current, last verified and leased generations stay protected. Selected deletion removes only the chosen entry and preserves the stored wait. A failed history rewrite leaves the record for a later verified cleanup behind an intact predecessor."
+  ],
+  "verification": {
+    "regression_methods_added": 10,
+    "focused_command": "env PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -p 'test_signature*.py'",
+    "focused": {"total": 103, "passed": 103, "skipped": 0, "failed": 0},
+    "python_3_14_command": "env PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests",
+    "python_3_14": {"version": "3.14.10", "total": 804, "passed": 787, "skipped": 17, "failed": 0, "seconds": 105.266},
+    "python_3_15_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests",
+    "python_3_15": {"version": "3.15.2", "total": 804, "passed": 787, "skipped": 17, "failed": 0, "seconds": 104.740},
+    "python_skips": "All 17 skipped cases require Windows. Both suites ran the Android and SDK-backed MCP tests.",
+    "multi_block_digest": "Compared the generation digest with the original SHA-256 formula using three synthetic files exceeding two read blocks each.",
+    "android_command": "env PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -p test_android.py",
+    "android": {"total": 38, "passed": 38, "skipped": 0, "failed": 0},
+    "mcp_command": "env PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -p test_mcp.py",
+    "mcp": {"sdk": "1.30.0", "total": 8, "passed": 8, "skipped": 0, "failed": 0},
+    "npm_command": "env PYTHONDONTWRITEBYTECODE=1 npm test",
+    "npm": {"total": 34, "passed": 33, "skipped": 1, "failed": 0},
+    "npm_skip_reason": "Optional PyPI installation end-to-end test requires an explicit opt-in."
+  },
+  "preservation": {
+    "synthetic_definition_stores_used": true,
+    "real_clamav_or_freshclam_invoked": false,
+    "existing_definition_stores_and_waits_used": false
+  },
+  "remaining": [
+    "Real CVD timing in a full private store with four slots and concurrent scan startup.",
+    "Linux native acceptance, Windows CI and physical power interruption."
+  ]
+}

@@ -465,13 +465,15 @@ To reclaim a selected entry, list again and run `clamav-signature-store delete E
 Current/in-use generations, the last previous generation, unrecovered failed stages, changed revisions and unsafe
 storage are refused. There is no arbitrary path or force-delete option. At most four generations/failed stages are
 retained; use selected cleanup before reaching this limit. No automatic deletion or disk quota is implemented.
-A folder without all three definition files is listed as `incomplete`: it counts toward the limit and can be deleted.
-Only a folder holding exactly the three private databases, with valid headers and sizes, content different from
-the current generation, and no database version newer than the current one counts as the last previous generation;
-linked, unknown-file, malformed or duplicate folders never do, nor does a newer generation that was never published
-(for example, one left by a crash before the switch). Database bodies are not checked against a record, so damage after a valid header is not detected there.
-One left that way that is not newer than the current generation still counts, so it can take the place of the last
-previous generation that was actually published.
+A folder without all three definition files is listed as `incomplete` and counts toward the limit.
+The CLI protects the latest published predecessor whose three full CVD hashes and versions match its publication record
+and whose content differs from the current generation. Confirmed corruption, duplicates of the current content and
+folders left before publication cannot serve as that predecessor. `previous_protection` in the listing shows the result.
+An unreadable candidate, missing history or the absence of an intact recorded predecessor holds generation deletion.
+The old reference format remains usable for scanning and updating. The first update that changes the bytes records the
+verified former current generation and marks other existing generation IDs as `legacy_untracked`, which the CLI keeps.
+If these fill the store, generation deletion stays on hold. Update all CLI and MCP installations that share the store
+before migration. Older releases cannot read the new reference format.
 Folders named `stage-*` that the CLI cannot manage also count toward the limit; the listing reports their number as
 `unrecognized_entries` with a warning, so inspect them manually.
 Deletion may be partial after an I/O failure; list again to inspect the remainder. Invalid permissions, unknown

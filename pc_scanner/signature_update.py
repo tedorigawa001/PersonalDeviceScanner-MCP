@@ -17,6 +17,10 @@ from . import core, history, process_store
 DEFAULTS = dict(enabled=False, directory="", freshclam_binary="", sigtool_binary="", timeout_seconds=1800)
 DATABASES = ("main.cvd", "daily.cvd", "bytecode.cvd")
 GEN = re.compile(r"[0-9a-f]{32}\Z")
+CONTENT = re.compile(r"[0-9a-f]{64}\Z")
+RECORD_KEYS = {"generation", "content", "versions"}
+METADATA_LIMIT = 65536
+INVENTORY_LIMIT = 128
 MAX_BYTES = 2 * 1024 ** 3
 MAX_GENERATIONS = 4  # No automatic deletion in phase one; never remove a pinned generation.
 # FreshClam also prints each database header's "builder" name on its normal update lines, so that name can match
@@ -98,22 +102,23 @@ def verification_file(generation):
 
 def verification_snapshot(file):
     """Private, bounded evidence bytes and identity; missing evidence supports legacy stores."""
-    if not file.exists() and not file.is_symlink():
+    try:
+        listed = os.lstat(file)
+    except FileNotFoundError:
         return None
-    if core.cloud_placeholder(file):
-        raise OSError("Cloud signature verification record refused")
+    if getattr(listed, "st_flags", 0) & core.SF_DATALESS:
+        raise OSError("Cloud signature metadata refused")
     fd = os.open(file, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     try:
         before = process_store.Store({}).private(fd)
-        if before.st_size > 65536:
-            raise OSError("Signature verification record size limit")
-        raw = os.read(fd, 65537)
-        after = os.fstat(fd)
-        fields = ("st_dev", "st_ino", "st_mode", "st_uid", "st_nlink", "st_size", "st_mtime_ns", "st_ctime_ns")
-        identity = [getattr(before, k) for k in fields]
-        if len(raw) != before.st_size or identity != [getattr(after, k) for k in fields]:
-            raise OSError("Signature verification record changed")
-        return raw, identity
+        if before.st_size > METADATA_LIMIT:
+            raise OSError("Signature metadata size limit")
+        raw = os.read(fd, METADATA_LIMIT + 1)
+        snapshot = identity(before)
+        if (len(raw) != before.st_size or snapshot != identity(listed)
+                or snapshot != identity(os.fstat(fd)) or snapshot != identity(os.lstat(file))):
+            raise OSError("Signature metadata changed")
+        return raw, snapshot
     finally:
         os.close(fd)
 
@@ -149,65 +154,170 @@ def sync_dir(path):
 
 
 def private_dir(path):
+    listed = os.lstat(path)
+    if getattr(listed, "st_flags", 0) & core.SF_DATALESS:
+        raise OSError("Cloud signature directory refused")
     fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     try:
-        process_store.Store({}).private(fd, True)
+        before = process_store.Store({}).private(fd, True)
+        if identity(before) != identity(listed):
+            raise OSError("Signature directory changed")
+        return before
     finally:
         os.close(fd)
 
 
+def identity(info):
+    return [info.st_dev, info.st_ino, info.st_mode, info.st_uid, info.st_nlink,
+            info.st_size, info.st_mtime_ns, info.st_ctime_ns]
+
+
+class InvalidGeneration(OSError):
+    """A stable read established that this generation cannot match its publication."""
+
+
+def check_deadline(deadline, cancel=None):
+    core.check_cancel(cancel)
+    if time.monotonic() >= deadline:
+        raise core.ScannerError("Signature operation timed out")
+
+
+def store_names(path, deadline, cancel=None):
+    names = []
+    with os.scandir(path) as entries:
+        for entry in entries:
+            check_deadline(deadline, cancel)
+            if len(names) == INVENTORY_LIMIT:
+                raise OSError("Signature inventory limit")
+            names.append(entry.name)
+    return names
+
+
 def digest_directory(path, deadline, cancel=None):
-    private_dir(path)
-    names = sorted(p.name for p in path.iterdir())
-    if names != sorted(DATABASES):
-        raise OSError("Only the three official complete CVD databases are allowed")
-    total, versions, hashes = 0, {}, {}
+    check_deadline(deadline, cancel)
+    folder = identity(private_dir(path))
+    names = set()
+    with os.scandir(path) as entries:
+        for entry in entries:
+            names.add(entry.name)
+            if entry.name not in DATABASES:
+                break
+    if names != set(DATABASES):
+        if identity(os.lstat(path)) != folder:
+            raise OSError("Database directory changed")
+        raise InvalidGeneration("Only the three official complete CVD databases are allowed")
+    total, versions, hashes, snapshots = 0, {}, {}, {}
     for name in DATABASES:
+        check_deadline(deadline, cancel)
         file = path / name
-        if core.cloud_placeholder(file):
+        listed = os.lstat(file)
+        if getattr(listed, "st_flags", 0) & core.SF_DATALESS:
             raise OSError("Cloud database refused")
         fd = os.open(file, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
         try:
             before = process_store.Store({}).private(fd)
-            if not 512 <= before.st_size <= MAX_BYTES:
-                raise OSError("Database size limit")
-            total += before.st_size
-            if total > MAX_BYTES:
-                raise OSError("Database size limit")
-            try:
-                header = os.read(fd, 512).decode("ascii").split(":")
-            except UnicodeDecodeError:
-                # A damaged header is invalid data like any other, so callers fail closed instead of crashing.
-                raise OSError("Invalid CVD header") from None
-            if len(header) < 4 or header[0] != "ClamAV-VDB" or not header[2].isdigit():
-                raise OSError("Invalid CVD header")
-            versions[name] = int(header[2])
-            os.lseek(fd, 0, os.SEEK_SET)
-            h = hashlib.sha256()
-            while True:
-                core.check_cancel(cancel)
-                if time.monotonic() >= deadline:
-                    raise core.ScannerError("Signature operation timed out")
-                chunk = os.read(fd, 1024 * 1024)
-                if not chunk:
-                    break
-                h.update(chunk)
-            after = os.fstat(fd)
-            if (before.st_ino, before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (after.st_ino, after.st_size, after.st_mtime_ns, after.st_ctime_ns):
+            snapshot = identity(before)
+            if snapshot != identity(listed):
                 raise OSError("Database changed")
+            total += before.st_size
+            if before.st_size < 512 or total > MAX_BYTES:
+                if snapshot != identity(os.fstat(fd)) or snapshot != identity(os.lstat(file)):
+                    raise OSError("Database changed")
+                raise InvalidGeneration("Database size limit")
+            raw = os.read(fd, 512)
+            if len(raw) != 512:
+                raise OSError("Short database header read")
+            h = hashlib.sha256(raw)
+            size = len(raw)
+            while size < before.st_size:
+                check_deadline(deadline, cancel)
+                requested = min(1024 * 1024, before.st_size - size)
+                chunk = os.read(fd, requested)
+                if len(chunk) != requested:
+                    raise OSError("Short database read")
+                size += len(chunk)
+                h.update(chunk)
+            check_deadline(deadline, cancel)
+            if snapshot != identity(os.fstat(fd)) or snapshot != identity(os.lstat(file)):
+                raise OSError("Database changed")
+            try:
+                header = raw.decode("ascii").split(":")
+            except UnicodeDecodeError:
+                raise InvalidGeneration("Invalid CVD header") from None
+            if len(header) < 4 or header[0] != "ClamAV-VDB" or not header[2].isdigit():
+                raise InvalidGeneration("Invalid CVD header")
+            versions[name] = int(header[2])
             hashes[name] = h.hexdigest()
+            snapshots[name] = snapshot
         finally:
             os.close(fd)
+    if identity(os.lstat(path)) != folder or any(identity(os.lstat(path / name)) != snap for name, snap in snapshots.items()):
+        raise OSError("Database generation changed")
+    check_deadline(deadline, cancel)
     return dict(content=hashlib.sha256(json.dumps(hashes, sort_keys=True).encode()).hexdigest(), versions=versions)
+
+
+def strict_object(pairs):
+    values = dict(pairs)
+    if len(values) != len(pairs):
+        raise ValueError("Duplicate signature metadata key")
+    return values
+
+
+def valid_generation_id(value):
+    return isinstance(value, str) and GEN.fullmatch(value) is not None
+
+
+def valid_record(record):
+    return (valid_generation_id(record["generation"]) and isinstance(record["content"], str)
+            and CONTENT.fullmatch(record["content"]) is not None
+            and isinstance(record["versions"], dict) and set(record["versions"]) == set(DATABASES)
+            and all(type(v) is int and v >= 0 for v in record["versions"].values()))
+
+
+def validate_pointer(obj):
+    if not isinstance(obj, dict) or set(obj) not in (RECORD_KEYS, RECORD_KEYS | {"schema", "previous", "legacy_untracked"}):
+        raise OSError("Invalid current generation")
+    if not valid_record(obj):
+        raise OSError("Invalid current generation")
+    if "schema" not in obj:
+        return
+    previous, legacy = obj["previous"], obj["legacy_untracked"]
+    if (type(obj["schema"]) is not int or obj["schema"] != 2 or not isinstance(previous, list)
+            or not isinstance(legacy, list) or 1 + len(previous) + len(legacy) > INVENTORY_LIMIT
+            or any(not isinstance(r, dict) or set(r) != RECORD_KEYS or not valid_record(r) for r in previous)
+            or not all(valid_generation_id(g) for g in legacy)):
+        raise OSError("Invalid signature publication history")
+    ids = [obj["generation"], *(r["generation"] for r in previous), *legacy]
+    if len(ids) != len(set(ids)):
+        raise OSError("Duplicate signature publication ID")
+
+
+def pointer_snapshot(path):
+    saved = verification_snapshot(path / "current.json")
+    if saved is None:
+        return None, None
+    raw, snapshot = saved
+    try:
+        obj = json.loads(raw, object_pairs_hook=strict_object)
+    except (ValueError, RecursionError):
+        raise OSError("Invalid signature publication history") from None
+    validate_pointer(obj)
+    return obj, snapshot
 
 
 def pointer(path):
     """The published reference only; contents are verified separately."""
-    obj = read_json(path / "current.json")
-    if obj is None:
-        return None
-    if not isinstance(obj, dict) or set(obj) != {"generation", "content", "versions"} or not GEN.fullmatch(str(obj["generation"])):
-        raise OSError("Invalid current generation")
+    return pointer_snapshot(path)[0]
+
+
+def publication(old, generation, observed, previous, legacy):
+    if old:
+        previous = [{k: old[k] for k in RECORD_KEYS}, *previous]
+    obj = dict(generation=generation, **observed, schema=2, previous=previous, legacy_untracked=legacy)
+    validate_pointer(obj)
+    if len(json.dumps(obj, sort_keys=True).encode()) > METADATA_LIMIT:
+        raise OSError("Signature publication history size limit")
     return obj
 
 
@@ -353,9 +463,10 @@ def update(scanner, cancel=None, progress=None):
                 if now < until:
                     data.update(update_status="rate_limited", next_attempt_at=until)
                     return core.result("clamav", "partial", data=data, warnings=["Update retry interval has not elapsed"])
-            generations = [p for p in path.iterdir() if counts_toward_capacity(p.name)]
+            generations = [name for name in store_names(path, deadline, cancel) if counts_toward_capacity(name)]
             if len(generations) >= MAX_GENERATIONS or shutil.disk_usage(path).free < MAX_BYTES * 2:
-                raise core.ScannerError("Private signature store capacity exhausted; owner maintenance is required")
+                return core.result("clamav", "error", data=data, warnings=[
+                    "Private signature store capacity exhausted; list the store to review protected entries and owner maintenance options"])
             # Persist a conservative 24h guard before any network call. Includes failures/cancellation/429.
             write_json(path / "attempt.json", {"next_attempt": now + 86400, "pending": True})
             stage = path / ("stage-" + secrets.token_hex(16))
@@ -456,6 +567,14 @@ def update(scanner, cancel=None, progress=None):
                 data.update(update_status="unchanged")
             else:
                 generation = secrets.token_hex(16)
+                if old and "schema" in old:
+                    previous = signature_maintenance.prune_missing_history(path, old, deadline, cancel)
+                    legacy = old["legacy_untracked"]
+                else:
+                    previous = []
+                    legacy = sorted(name for name in generations if GEN.fullmatch(name)
+                                    and (not old or name != old["generation"]))
+                reference = publication(old, generation, observed, previous, legacy)
                 write_json(stage / "verification.json", evidence)
                 if progress:
                     progress.update(stage="publishing")
@@ -468,20 +587,20 @@ def update(scanner, cancel=None, progress=None):
                         os.close(fd)
                 sync_dir(candidate)
                 with history.locked(path / "publish"):
-                    core.check_cancel(cancel)
-                    if time.monotonic() >= deadline:
-                        raise core.ScannerError("Signature update timed out")
+                    check_deadline(deadline, cancel)
+                    if pointer(path) != old:
+                        raise OSError("Signature publication reference changed")
                     os.rename(candidate, path / generation)
                     os.rename(stage / "verification.json", verification_file(path / generation))
                     sync_dir(path)
                     # Once this write starts, cancellation cannot roll back an already published generation.
                     try:
-                        write_json(path / "current.json", dict(generation=generation, **observed))
+                        write_json(path / "current.json", reference)
                     except OSError:
                         data["update_status"] = "unknown"
                         raise
                     published = True
-                    if read_json(path / "current.json") != dict(generation=generation, **observed):
+                    if pointer(path) != reference:
                         raise OSError("Published generation could not be confirmed")
                 data.update(update_status="updated", published=True, resume_recheck_required=old is not None)
             # No recursive cleanup of unknown paths; failed stages remain private for owner maintenance.

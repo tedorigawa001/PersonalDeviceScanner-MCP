@@ -5,6 +5,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import shutil
 import stat
 import subprocess
 import sys
@@ -15,7 +16,7 @@ import unittest
 from unittest.mock import patch
 from datetime import datetime, timezone
 
-from pc_scanner import core, history, process_store, signature_update as update
+from pc_scanner import core, history, process_store, signature_maintenance as maintenance, signature_update as update
 
 
 @unittest.skipUnless(os.name == "posix" and os.geteuid() != 0, "non-root POSIX private updater")
@@ -84,6 +85,7 @@ class UpdateTests(unittest.TestCase):
         first = self.do_update()
         self.assertEqual(first["data"]["update_status"], "updated", first)
         old = update.read_json(self.root / "current.json")
+        self.assertEqual((old["schema"], old["previous"], old["legacy_untracked"]), (2, [], []))
         generation = self.root / old["generation"]
         self.assertEqual(sorted(p.name for p in generation.iterdir()), sorted(update.DATABASES))
         self.assertEqual(generation.stat().st_mode & 0o777, 0o700)
@@ -97,6 +99,102 @@ class UpdateTests(unittest.TestCase):
         configs = [a for call in self.calls for a in call if a.startswith("--config-file=")]
         self.assertTrue(configs)
         self.assertNotIn("sudo", repr(self.calls))
+
+    def test_later_publication_excludes_generation_left_before_switch(self):
+        self.assertEqual(self.do_update()["data"]["update_status"], "updated")
+        first = update.pointer(self.root)
+        original = update.write_json
+
+        def fail_switch(path, obj):
+            if path.name == "current.json":
+                raise OSError("synthetic publication failure")
+            original(path, obj)
+
+        self.allow_next()
+        self.version = 2
+        with patch.object(update, "write_json", side_effect=fail_switch):
+            self.assertEqual(self.do_update()["data"]["update_status"], "unknown")
+        self.assertEqual(update.pointer(self.root), first)
+        orphan, = [p for p in self.root.iterdir() if update.GEN.fullmatch(p.name) and p.name != first["generation"]]
+        self.assertTrue(update.verification_file(orphan).is_file())
+        self.allow_next()
+        self.version = 3
+        self.assertEqual(self.do_update()["data"]["update_status"], "updated")
+        new = update.pointer(self.root)
+        self.assertEqual(new["previous"], [{k: first[k] for k in update.RECORD_KEYS}])
+        self.assertEqual(new["legacy_untracked"], [])
+        rows = {r["id"]: r for r in maintenance.manage(self.scanner(), "list")["data"]["entries"]}
+        self.assertEqual(rows[first["generation"]]["reason"], "last_previous")
+        self.assertTrue(rows[orphan.name]["deletable"])
+
+    def test_legacy_migrates_only_on_changed_publication_at_the_same_versions(self):
+        self.assertEqual(self.do_update()["data"]["update_status"], "updated")
+        reference = self.root / "current.json"
+        old = {k: update.pointer(self.root)[k] for k in update.RECORD_KEYS}
+        update.write_json(reference, old)
+        older = self.root / ("0" * 32)
+        shutil.copytree(self.root / old["generation"], older)
+        self.allow_next()
+        self.assertEqual(self.do_update()["data"]["update_status"], "unchanged")
+        self.assertEqual(update.pointer(self.root), old)
+        with update.pin(self.scanner()) as pinned:
+            self.assertEqual(pinned.local["clamav_database_directory"], str(self.root / old["generation"]))
+
+        def changed_content(argv, *args, **kwargs):
+            reply = self.engine(argv, *args, **kwargs)
+            db = next((arg.partition("=")[2] for arg in argv if arg.startswith("--datadir=")), None)
+            if db:
+                with (Path(db) / "daily.cvd").open("ab") as file:
+                    file.write(b"changed synthetic content at the same version")
+            return reply
+
+        self.allow_next()
+        self.assertEqual(self.do_update(changed_content)["data"]["update_status"], "updated")
+        new = update.pointer(self.root)
+        self.assertEqual((new["previous"], new["legacy_untracked"], new["versions"]), ([old], [older.name], old["versions"]))
+        self.assertNotEqual(new["content"], old["content"])
+        rows = {r["id"]: r for r in maintenance.manage(self.scanner(), "list")["data"]["entries"]}
+        self.assertEqual(rows[old["generation"]]["reason"], "last_previous")
+        self.assertEqual((rows[older.name]["deletable"], rows[older.name]["reason"]), (False, "legacy_untracked"))
+        with self.assertRaisesRegex(core.ScannerError, "legacy_untracked"):
+            maintenance.manage(self.scanner(), "delete", older.name, rows[older.name]["revision"])
+
+    def test_publication_prunes_only_confirmed_absence_behind_verified_predecessor(self):
+        refs = []
+        for version in (1, 2, 3):
+            self.version = version
+            if refs:
+                self.allow_next()
+            self.assertEqual(self.do_update()["data"]["update_status"], "updated")
+            refs.append(update.pointer(self.root)["generation"])
+        old = update.pointer(self.root)
+        revision = next(r["revision"] for r in maintenance.manage(self.scanner(), "list")["data"]["entries"]
+                        if r["id"] == refs[0])
+        original = update.write_json
+
+        def fail_history_rewrite(path, obj):
+            if path.name == "current.json":
+                raise OSError("synthetic history rewrite failure")
+            original(path, obj)
+
+        with patch.object(update, "write_json", side_effect=fail_history_rewrite):
+            with self.assertRaisesRegex(core.ScannerError, "maintenance could not complete"):
+                maintenance.manage(self.scanner(), "delete", refs[0], revision)
+        self.assertEqual(update.pointer(self.root), old)
+        self.assertFalse((self.root / refs[0]).exists())
+        self.allow_next()
+        self.version = 4
+        self.assertEqual(self.do_update()["data"]["update_status"], "updated")
+        self.assertEqual([r["generation"] for r in update.pointer(self.root)["previous"]], [refs[2], refs[1]])
+
+        reference = update.pointer(self.root)
+        shutil.rmtree(self.root / refs[2])
+        update.verification_file(self.root / refs[2]).unlink()
+        self.allow_next()
+        self.version = 5
+        self.assertEqual(self.do_update()["data"]["update_status"], "updated")
+        self.assertEqual([r["generation"] for r in update.pointer(self.root)["previous"]],
+                         [reference["generation"], refs[2], refs[1]])
 
     def test_failures_preserve_current_and_block_automatic_retries(self):
         self.do_update()
@@ -786,7 +884,9 @@ class UpdateTests(unittest.TestCase):
             report = self.do_update()
         self.assertEqual(report["data"]["update_status"], "unknown")
         self.assertIsNone(report["data"]["published"])
-        self.assertEqual(update.read_json(self.root / "current.json")["versions"]["daily.cvd"], 2)
+        second = update.pointer(self.root)
+        self.assertEqual(second["versions"]["daily.cvd"], 2)
+        self.assertEqual([r["versions"]["daily.cvd"] for r in second["previous"]], [1])
         self.allow_next()
         self.version = 3
         def interrupted(path, obj):
@@ -797,7 +897,9 @@ class UpdateTests(unittest.TestCase):
         with patch.object(update, "write_json", side_effect=interrupted):
             report = self.do_update()
         self.assertEqual((report["data"]["update_status"], report["data"]["published"]), ("unknown", None), report)
-        self.assertEqual(update.read_json(self.root / "current.json")["versions"]["daily.cvd"], 3)
+        third = update.pointer(self.root)
+        self.assertEqual(third["versions"]["daily.cvd"], 3)
+        self.assertEqual([r["versions"]["daily.cvd"] for r in third["previous"]], [2, 1])
 
     def test_real_updater_child_is_reaped_on_timeout_and_cancel(self):
         self.do_update()

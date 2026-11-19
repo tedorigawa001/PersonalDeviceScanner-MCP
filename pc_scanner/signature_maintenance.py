@@ -117,11 +117,6 @@ def recover_provider(path, entries):
         raise OSError("Legacy canonical wait state lacks synchronization evidence")
 
 
-def identity(info):
-    return [info.st_dev, info.st_ino, info.st_mode, info.st_uid, info.st_nlink,
-            info.st_size, info.st_mtime_ns, info.st_ctime_ns]
-
-
 def tree(path, deadline):
     """Metadata-only bounded snapshot, checked through descriptors before a single deletion."""
     rows = []
@@ -129,7 +124,7 @@ def tree(path, deadline):
         if depth > 3 or len(rows) > 128 or time.monotonic() >= deadline:
             raise OSError("Signature maintenance enumeration limit")
         process_store.Store({}).private(fd, True)
-        rows.append([prefix, identity(os.fstat(fd))])
+        rows.append([prefix, update.identity(os.fstat(fd))])
         for name in sorted(os.listdir(fd)):
             if len(rows) >= 128 or time.monotonic() >= deadline:
                 raise OSError("Signature maintenance enumeration limit")
@@ -151,12 +146,20 @@ def tree(path, deadline):
                 if folder:
                     visit(child, prefix + name + "/", depth + 1)
                 else:
-                    rows.append([prefix + name, identity(os.fstat(child))])
+                    snapshot = update.identity(os.fstat(child))
+                    if snapshot != update.identity(info):
+                        raise OSError("Signature maintenance entry changed")
+                    rows.append([prefix + name, snapshot])
             finally:
                 os.close(child)
+    listed = os.lstat(path)
+    if getattr(listed, "st_flags", 0) & core.SF_DATALESS:
+        raise OSError("Cloud signature directory refused")
     fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     try:
         visit(fd)
+        if rows[0][1] != update.identity(listed) or rows[0][1] != update.identity(os.lstat(path)):
+            raise OSError("Signature maintenance directory changed")
     finally:
         os.close(fd)
     return rows
@@ -165,72 +168,134 @@ def tree(path, deadline):
 @contextmanager
 def exclusive_lease(path):
     import fcntl
-    fd = os.open(path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600)
+    # Only the current generation can get a new scan lease. The updater lock prevents a switch.
+    # An old generation that never had a lease needs no new file just to list or recheck it.
+    try:
+        fd = os.open(path, os.O_RDWR | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except FileNotFoundError:
+        yield False
+        return
     try:
         process_store.Store({}).private(fd)
         try:
             fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             raise history.Busy("Generation is in use") from None
-        yield
+        yield True
     finally:
         os.close(fd)
 
 
-def complete(folder):
-    """Only a folder holding every database can be rolled back to; an empty one must not count as a generation."""
-    try:
-        return all(stat.S_ISREG(os.lstat(folder / name).st_mode) for name in update.DATABASES)
-    except OSError:
-        return False
+def previous_protection(path, current, deadline, cancel=None):
+    """Return a verdict and identities of every past generation the verdict relied on."""
+    if current is None:
+        return "missing_history", []
+    if "schema" not in current:
+        return "legacy_history", []
+    if not current["previous"]:
+        return "no_previous", []
+    checks = []
+    for record in current["previous"]:
+        name = record["generation"]
+        folder = path / name
+        try:
+            metadata = tree(folder, deadline)
+            try:
+                observed = update.digest_directory(folder, deadline, cancel)
+            except update.InvalidGeneration:
+                observed = None
+            if tree(folder, deadline) != metadata:
+                raise OSError("Previous generation changed")
+            update.check_deadline(deadline, cancel)
+        except (OSError, core.ScannerError):
+            checks.append((name, "unavailable", None))
+            return "previous_unavailable", checks
+        matches = observed == {k: record[k] for k in ("content", "versions")}
+        if matches and observed["content"] != current["content"]:
+            checks.append((name, "last_previous", metadata))
+            return "protected", checks
+        checks.append((name, "duplicate" if matches else "invalid", metadata))
+    return "no_valid_previous", checks
 
 
-def usable(folder, deadline, current=None):
-    """Count a folder as a rollback only if digest_directory accepts its structure (private folder, exactly the three
-    databases, sizes and CVD headers) and its content differs from the current generation. Otherwise a linked,
-    unknown-file, malformed or duplicate folder could stand beside the last real rollback and let it be deleted.
-    Publication refuses version rollback, so every real earlier generation is at or below the current versions; a
-    newer one was never published (left by a crash before the switch) and does not count either.
-    Bodies are hashed but not validated against anything, so damage after a valid header still passes."""
+def absent(path):
     try:
-        observed = update.digest_directory(folder, deadline)
-    except OSError:
-        return False
-    if not current:
+        os.lstat(path)
+    except FileNotFoundError:
         return True
-    # A damaged pointer counts nothing; deletion then stops anyway, because it verifies the current generation first.
-    limit = current["versions"] if isinstance(current["versions"], dict) else {}
-    return observed["content"] != current["content"] and all(
-        type(limit.get(k)) is int and observed["versions"][k] <= limit[k] for k in update.DATABASES)
+    except OSError:
+        pass
+    return False
+
+
+def prune_missing_history(path, current, deadline, cancel):
+    """Prune crash leftovers only behind a predecessor we can still prove."""
+    previous = current["previous"]
+    missing = set()
+    for record in previous:
+        update.check_deadline(deadline, cancel)
+        name = record["generation"]
+        folder = path / name
+        if all(absent(p) for p in (folder, update.verification_file(folder), path / (name + ".lease"))):
+            missing.add(name)
+    if not missing:
+        return previous
+    status, checks = previous_protection(path, current, deadline, cancel)
+    if status != "protected":
+        return previous
+    for name in tuple(missing):
+        folder = path / name
+        if not all(absent(p) for p in (folder, update.verification_file(folder), path / (name + ".lease"))):
+            missing.remove(name)
+    return [record for index, record in enumerate(previous)
+            if index < len(checks) or record["generation"] not in missing]
 
 
 def inventory(path, deadline):
-    state, current = attempt(path), update.pointer(path)
-    names = []
-    for f in path.iterdir():
-        if len(names) >= 128:
-            raise OSError("Signature inventory limit")
-        names.append(f.name)
+    state = attempt(path)
+    names = update.store_names(path, deadline)
+    try:
+        reference = update.pointer_snapshot(path)
+    except OSError:
+        reference = None
+    current = reference[0] if reference is not None else None
+    status, checks = previous_protection(path, current, deadline) if reference is not None else ("history_unavailable", [])
+    protected = checks[-1][0] if status == "protected" else None
     managed = sorted(n for n in names if ENTRY.fullmatch(n))
-    previous = [n for n in managed if update.GEN.fullmatch(n) and (not current or n != current["generation"]) and usable(path / n, deadline, current)]
     # The updater counts these toward its limit, but this CLI neither lists nor deletes them.
     unrecognized = sum(1 for n in names if update.counts_toward_capacity(n) and not ENTRY.fullmatch(n))
-    rows = []
+    rows, revisions = [], {}
     for name in managed:
         row = dict(id=name, kind="stage" if name.startswith("stage-") else "generation", revision=None,
                    current=bool(current and name == current["generation"]), in_use=None, deletable=False)
         try:
             metadata = tree(path / name, deadline)
             evidence = update.verification_snapshot(update.verification_file(path / name)) if row["kind"] == "generation" else None
-            row["revision"] = entry_revision(metadata, evidence)
-            row["bytes"] = sum(r[1][5] for r in metadata if stat.S_ISREG(r[1][2]))
+            revisions[name] = entry_revision(metadata, evidence)
+            row["revision"] = revisions[name]
+            files = {name: info[5] for name, info in metadata if stat.S_ISREG(info[2])}
+            row["bytes"] = sum(files.values())
             if evidence is not None:
                 row["bytes"] += len(evidence[0])
             if row["kind"] == "generation":
-                row["incomplete"] = not complete(path / name)
-            row["reason"] = "current" if row["current"] else "pending_recovery" if state and state["pending"] and row["kind"] == "stage" else "last_previous" if current and name in previous and len(previous) == 1 else None
+                row["incomplete"] = not all(database in files for database in update.DATABASES)
+            row["reason"] = None
+            if reference is None:
+                row["reason"] = "history_unavailable"
+            elif row["kind"] == "stage" and state and state["pending"]:
+                row["reason"] = "pending_recovery"
+            elif row["kind"] == "generation":
+                row["revision"] = revision_for([revisions[name], reference, status, checks])
+                if row["current"]:
+                    row["reason"] = "current"
+                elif name == protected:
+                    row["reason"] = "last_previous"
+                elif current and name in current.get("legacy_untracked", ()):
+                    row["reason"] = "legacy_untracked"
+                elif status not in {"protected", "no_previous"}:
+                    row["reason"] = status
             # Scans lease only the current generation, which is protected anyway; probing it would fail their start.
-            if row["kind"] == "generation" and not row["current"]:
+            if row["kind"] == "generation" and current is not None and not row["current"]:
                 try:
                     with exclusive_lease(path / (name + ".lease")):
                         row["in_use"] = False
@@ -243,13 +308,19 @@ def inventory(path, deadline):
         rows.append(row)
     provider = path / "provider.dat"
     sync = provider_sync(path)
-    token = [state, current, rows, sync, hashlib.sha256(provider_bytes(provider)).hexdigest() if provider.exists() or provider.is_symlink() else None]
-    revision = hashlib.sha256(json.dumps(token, sort_keys=True).encode()).hexdigest()
-    return dict(entries=rows, unrecognized_entries=unrecognized, attempt=state, recovery_revision=revision,
+    token = [state, reference, rows, sync, hashlib.sha256(provider_bytes(provider)).hexdigest() if provider.exists() or provider.is_symlink() else None]
+    result = dict(entries=rows, unrecognized_entries=unrecognized, attempt=state, recovery_revision=revision_for(token),
+                previous_protection=dict(status=status, generation=protected,
+                                         checks=[dict(id=g, status=verdict) for g, verdict, _ in checks]),
                 next_attempt_at=state["next_attempt"] if state else None,
                 minimum_not_before=datetime.fromtimestamp(math.ceil(state["next_attempt"]), timezone.utc).isoformat() if state else None,
                 provider_sync=sync,
                 waiting=bool(state and time.time() < state["next_attempt"]))
+    return result, reference, checks, revisions
+
+
+def revision_for(data):
+    return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
 
 
 def entry_revision(metadata, evidence):
@@ -257,11 +328,14 @@ def entry_revision(metadata, evidence):
     return hashlib.sha256(json.dumps([metadata, proof]).encode()).hexdigest()
 
 
-def remove_tree(path, expected, deadline, *, generation=False):
+def remove_tree(path, expected, deadline, *, generation=False, check_reference=None):
     sidecar = update.verification_file(path) if generation else None
     evidence = update.verification_snapshot(sidecar) if sidecar is not None else None
     if entry_revision(tree(path, deadline), evidence) != expected:
         raise OSError("Selected signature entry changed; list again")
+    if check_reference is not None:
+        check_reference()
+    update.check_deadline(deadline)
     # Validate both before the first unlink. Removing proof first is safe if a later directory deletion
     # fails: the surviving generation becomes unverified, never a falsely fresh orphaned record.
     if evidence is not None:
@@ -291,6 +365,38 @@ def remove_tree(path, expected, deadline, *, generation=False):
     update.sync_dir(path.parent)
 
 
+def delete_generation(path, name, reference, checks, revision, deadline):
+    current = reference[0]
+    active = current["generation"]
+    active_metadata = tree(path / active, deadline)
+    update.verify(path, current, deadline)
+
+    def check_reference():
+        if update.pointer_snapshot(path) != reference or tree(path / active, deadline) != active_metadata:
+            raise OSError("Current generation changed; list again")
+        for generation, _, metadata in checks:
+            if tree(path / generation, deadline) != metadata:
+                raise OSError("Previous generation changed; list again")
+
+    lease = path / (name + ".lease")
+    with exclusive_lease(lease) as leased:
+        remove_tree(path / name, revision, deadline, generation=True, check_reference=check_reference)
+        if leased:
+            lease.unlink()
+    update.sync_dir(path)
+    previous = [record for record in current["previous"] if record["generation"] != name]
+    if previous != current["previous"]:
+        # A failure before the rewrite leaves an unconfirmed history entry. A later publication can
+        # prune it only after confirming absence behind an intact protected generation.
+        with history.locked(path / "publish"):
+            if update.pointer_snapshot(path) != reference:
+                raise OSError("Signature publication reference changed")
+            revised = dict(current, previous=previous)
+            update.write_json(path / "current.json", revised)
+            if update.pointer(path) != revised:
+                raise OSError("Signature history deletion could not be confirmed")
+
+
 def manage(scanner, action, entry_id=None, revision=None, not_before=None):
     if scanner.via != "cli":
         raise core.ScannerError("Signature maintenance is available only through the owner CLI")
@@ -305,11 +411,13 @@ def manage(scanner, action, entry_id=None, revision=None, not_before=None):
         # The updater lock freezes publication for this operation. Do not hold the short publication
         # lock while verifying large databases or deleting files: readers may still pin the current generation.
         with update.root(scanner) as path, history.locked(path / "update", attempts=1):
-            info = inventory(path, deadline)
+            info, reference, checks, revisions = inventory(path, deadline)
             if action == "list":
                 return core.result("clamav", "completed", data=info, warnings=[
                     "Entries named stage-* that this CLI cannot manage count toward the generation limit; inspect them manually"
                 ] if info["unrecognized_entries"] else [])
+            if reference is None:
+                raise core.ScannerError("Signature publication history unavailable; preserve the store and investigate")
             if action == "recover":
                 if revision != info["recovery_revision"]:
                     raise core.ScannerError("Signature recovery state changed; list again")
@@ -341,16 +449,10 @@ def manage(scanner, action, entry_id=None, revision=None, not_before=None):
                 raise core.ScannerError("Selected signature entry is missing or changed; list again")
             if not row["deletable"]:
                 raise core.ScannerError("Selected entry is protected: " + row["reason"])
-            update.current(path, deadline)
             if row["kind"] == "generation":
-                lease = path / (entry_id + ".lease")
-                with exclusive_lease(lease):
-                    remove_tree(path / entry_id, revision, deadline, generation=True)
-                    # IDs are never reused and only the current generation is ever leased, so nothing can lock
-                    # this file again; removing it keeps the store under the inventory limit.
-                    lease.unlink()
-                update.sync_dir(path)
+                delete_generation(path, entry_id, reference, checks, revisions[entry_id], deadline)
             else:
+                update.current(path, deadline)
                 remove_tree(path / entry_id, revision, deadline)
             return core.result("clamav", "completed", data={"deleted": entry_id, "update_performed": False})
     except history.Busy:
