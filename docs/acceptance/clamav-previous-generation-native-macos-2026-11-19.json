@@ -1,0 +1,94 @@
+{
+  "date": "2026-11-19",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "native_clamav_previous_generation_protection_acceptance",
+  "status": "passed on macOS for four-slot listing and selected deletion, and scan execution during predecessor verification",
+  "source_commit": "dd3c0d2f66796b29f8e880f2460dff2ea3f81d8c",
+  "design": "../clamav-previous-generation-protection-design.md",
+  "regression_record": "clamav-previous-generation-protection-2026-11-19.json",
+  "environment": {
+    "platform": "macOS 27.2.1 (26B131), arm64",
+    "python": "3.15.2",
+    "engine": "Native clamscan and sigtool 1.5.4",
+    "maintenance_limit_seconds": 30,
+    "network": "No CDN or other external network requests. Two public CVD copies were read from a stopped local Docker fixture using the local daemon."
+  },
+  "fixtures": {
+    "public_archive_sources": [
+      "Daily 28172 and 28174 came from the seed and standalone public CVD copies used in freshclam-tls-recovery-linux-2026-11-11.json.",
+      "Daily 28180, main 63 and bytecode 339 came from the local mirror used in clamav-detached-signature-native-macos-2026-11-19.json."
+    ],
+    "embedded_signatures_reverified_with_sigtool": 5,
+    "detached_signatures_reverified_with_sigtool": 3,
+    "cvd_sha256": {
+      "main-63": "0b2182d229f46981ec8f535382222f7c9dfdd656b250ad47988b910a8d302365",
+      "bytecode-339": "6d4aa01f219e988060fc419f495d07f27e0cdf1a2cccc065971da922c76f7ffb",
+      "daily-28172": "e20ea9523d0f1812a98baaecc4ac84776650b338f02ef70610dc5080a62ab84c",
+      "daily-28174": "40b9c404e7a3d443b3a517b39aa76b789912cc1b3913f025ce537954609170bf",
+      "daily-28180": "80d80ef32f10f168154df52114c39735e057500bb45a495eba9db2f5496e1437"
+    },
+    "four_slot_total_cvd_bytes": 451208679,
+    "slots": [
+      {"role": "current", "daily_version": 28180},
+      {"role": "published protected predecessor", "daily_version": 28174},
+      {"role": "older published generation", "daily_version": 28172},
+      {"role": "unpublished generation with a distinct ID and the same bytes as the protected predecessor", "daily_version": 28174}
+    ],
+    "setup": "Seeded the schema 2 publication reference from verified CVD copies in new private stores. The unpublished generation also contained a content-bound detached-evidence record and was absent from publication history. FreshClam publication boundaries are covered by the separate regression record. The test deleted selected entries only in the new stores."
+  },
+  "wall_clock_measurements": {
+    "method": "Uninstrumented CLI subprocess, monotonic wall time from launch through exit, including CLI startup. Fixture copies and prior verification were outside the timed runs. Filesystem caches were not evicted. Both selected deletes began with four slots in use.",
+    "list_command": "python -m pc_scanner.cli --config TEST_CONFIG clamav-signature-store list",
+    "delete_command": "python -m pc_scanner.cli --config TEST_CONFIG clamav-signature-store delete ENTRY_ID --revision ENTRY_REVISION",
+    "list_seconds_before_older_delete": [0.116671, 0.108395, 0.109822, 0.109433, 0.109561],
+    "list_seconds_before_unpublished_delete": [0.11697, 0.119894, 0.121153, 0.117635, 0.114025],
+    "older_delete_seconds": 0.183942,
+    "unpublished_delete_seconds": 0.17098,
+    "results": [
+      "All ten lists succeeded, with the current generation marked current and daily 28174 from the publication history marked last_previous. Deleting that protected entry with its exact revision was refused.",
+      "Selecting published daily 28172 removed that generation, its sidecar and its lease. Only that record was pruned from the publication history.",
+      "Selecting the unpublished copy removed that slot and sidecar and left the publication history unchanged.",
+      "Both stores returned to three slots. The current and protected CVDs still matched their publication digests, and the fixture wait file was byte-identical."
+    ]
+  },
+  "concurrent_scan": {
+    "method": "In a separate run for each action, a temporary test hook paused maintenance after a real 1 MiB read from the protected predecessor's main CVD. A separate scan CLI passed the exact current-generation directory and synthetic input to an observer that execs the native clamscan with unchanged arguments. The controller received the real scan result while maintenance was still paused, released the read and verified that maintenance succeeded. The hook returned all original bytes. These pauses were outside the performance runs.",
+    "scan_command": "python -m pc_scanner.cli --config TEST_CONFIG malware test",
+    "timing_origin": "First read from the preceding generation. The launch time is recorded immediately before exec of the native clamscan.",
+    "seconds_columns": ["maintenance_action", "native_scan_launch", "scan_result_received", "predecessor_verification_completed"],
+    "seconds": [
+      ["list", 0.413127, 5.960076, 6.008168],
+      ["delete", 0.408693, 5.91824, 5.968924]
+    ],
+    "result_per_scan": {
+      "generation": "Current daily 28180, matching the reference digest",
+      "engine_exit": 0,
+      "cli_exit": 2,
+      "cli_status": "partial",
+      "synthetic_files_scanned": 1,
+      "findings": 0,
+      "diagnostic": "LibClamAV emitted its warning for a database older than seven days. The about 8.3-day fixture had verified freshness under the test-only 14-day scanner setting."
+    },
+    "observer_retry": "The initial process-name probe was blocked by local execution permissions. The repeated cases used the native scan result before gate release as the observation. Successful uninstrumented timings were retained."
+  },
+  "preservation": {
+    "source_cvd_and_signature_hashes_matched_before_and_after": true,
+    "source_container_remained_stopped": true,
+    "prior_stores_waits_and_os_managed_definitions_modified": false,
+    "actual_scan_targets": "One benign synthetic file per scan in the new trial directory.",
+    "evidence": "Test harness, copied inputs, stores and raw CLI results retained in a private local trial directory.",
+    "summary_sha256": "76799b7b5e8986658cf0ba56c87058fec42c558e081268cdf243e7f357adec41"
+  },
+  "verification": {
+    "signature_tests_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
+    "signature_tests": {"total": 103, "passed": 103, "skipped": 0, "failed": 0},
+    "record_format_tests_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -p test_compliance.py -k AcceptanceRecordTests -q",
+    "record_format_tests": {"total": 4, "passed": 4, "skipped": 0, "failed": 0},
+    "raw_result_cross_check": "Timing, CVD hashes, observation ordering and the summary checksum match the retained local evidence."
+  },
+  "limits": [
+    "The latency measurements apply to this Mac and these real production-sized CVD copies under the observed cache conditions.",
+    "The current fixture was already older than seven days. This acceptance establishes scan concurrency, without testing a new definition download or a scan with newly dated definitions.",
+    "The four slots were seeded from validated inputs with known lineage for maintenance acceptance. No existing wait was exercised."
+  ]
+}

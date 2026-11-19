@@ -1741,8 +1741,12 @@
   - Python 3.14.10／3.15.2ともに **804 total, 787 passed, 17 skipped**（Windows専用）。Android・実MCP SDKを含む。
     npmは34件中33件成功、PyPIからの初回導入を試す任意の1件をスキップ。
     [設計書](clamav-previous-generation-protection-design.md)／[検証記録](acceptance/clamav-previous-generation-protection-2026-11-19.json)
-- [ ] **ClamAVの過去世代保護を実CVDで受け入れる**
-  - 独立した4枠の試験保存先で、一覧と選択削除が30秒の制限内に収まり、照合中も現行世代を使う検査を開始できることを確認する。
+- [x] **ClamAVの過去世代保護を実CVDで受け入れる**（2026-11-19、macOS arm64／ClamAV 1.5.4）
+  - 実CVDで4枠（約451 MB）を使用。一覧10回は約0.11～0.12秒、古い公開済み世代・未公開世代の選択削除はそれぞれ約0.184秒・0.171秒で、全て30秒以内。
+    保護対象の削除は拒否し、選択した世代だけを削除。現行、最後の正常な過去世代、試験用の待機情報を保持した。
+  - 一覧・選択削除の両方で過去世代の照合を一時停止させた状態で、別のCLIが現行世代を使って実ClamAVの検査を開始し、合成ファイル1件を検査した。
+    エンジン終了0・検出0件。使用した定義は約8.3日前で、ClamAV自身の7日超過警告によりCLIの結果は `partial` だった。
+    [受入記録](acceptance/clamav-previous-generation-native-macos-2026-11-19.json)
 - [x] **分離署名の確認結果を保存世代・後続のCLI／MCPへ引き継ぐ**（2026-11-17）
   - `fbcfc6f` の独立再レビューで、更新時は `partial`／`unverified` でも、後続の確認・検査が `completed`／`fresh` に戻ることを再現。
     世代ごとに私有の確認記録を保存し、CVDの内容ハッシュと版が一致する記録だけを使うよう修正した。
