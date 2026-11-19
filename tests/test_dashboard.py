@@ -199,6 +199,23 @@ class DetailsTests(unittest.TestCase):
             (self.folder / "20261016T000000.000000Z-00000010.json").symlink_to(other)
             self.assertEqual(history.load_details(self.file, "20261016T000000.000000Z-00000010"), (None, "unreadable"))
 
+    @unittest.skipUnless(os.name == "posix", "POSIX ownership and hard links")
+    def test_details_require_the_owner_and_a_single_link(self):
+        report = self.scan(self.scanner(details=True), result("clamav", "completed", findings=[
+            {"kind": "malware", "severity": "high", "path": "synthetic-detail-only.txt"}]))
+        [kept] = self.kept()
+        kept.chmod(0o644)
+        self.assertEqual(history.load_details(self.file, kept.stem), (report, ""))
+        self.assertEqual(kept.stat().st_mode & 0o777, 0o644)
+        with patch.object(history, "owned", return_value=False):
+            self.assertEqual(history.load_details(self.file, kept.stem), (None, "unreadable"))
+        alias = self.root / "another-name.json"
+        os.link(kept, alias)
+        self.assertEqual(history.load_details(self.file, kept.stem), (None, "unreadable"))
+        page, _ = dashboard.build(self.file, 5, True, True, 50)
+        self.assertNotIn("synthetic-detail-only.txt", page.read_text(encoding="utf-8"))
+        self.assertEqual(alias.stat().st_mode & 0o777, 0o644)
+
     def test_an_edited_details_reference_is_ignored(self):
         self.file.parent.mkdir()
         line = {"version": 1, "started_at": "2026-10-16T00:00:00+00:00", "seconds": 1, "via": "cli",

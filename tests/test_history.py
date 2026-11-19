@@ -230,6 +230,34 @@ class HistoryTests(unittest.TestCase):
             history.read(self.file, 5)
         self.assertLess(time.monotonic() - started, 5)
 
+    @unittest.skipUnless(os.name == "posix", "POSIX ownership and hard links")
+    def test_reading_checks_owner_and_link_count_for_both_history_files(self):
+        self.file.parent.mkdir()
+        record = {"started_at": "2026-11-19T00:00:00+00:00", "seconds": 1, "via": "cli",
+                  "operation": "malware", "target": {}, "status": "completed", "findings": {}, "warnings": 0}
+        for path in (self.file, history.older(self.file)):
+            with self.subTest(path=path.name):
+                path.write_text(json.dumps(record) + "\n", encoding="utf-8")
+                path.chmod(0o644)
+                try:
+                    entries, skipped = history.read(self.file, 5)
+                    self.assertEqual((len(entries), skipped), (1, 0))
+                    self.assertEqual(path.stat().st_mode & 0o777, 0o644)
+                    with patch.object(history, "owned", return_value=False):
+                        # A rejected lock is allowed to fall back only to an independently safe read.
+                        with self.assertRaisesRegex(OSError, "another user"):
+                            history.read(self.file, 5)
+                    alias = self.root / "another-name.jsonl"
+                    os.link(path, alias)
+                    try:
+                        with self.assertRaisesRegex(OSError, "hard links"):
+                            history.read(self.file, 5)
+                        self.assertEqual(alias.stat().st_mode & 0o777, 0o644)
+                    finally:
+                        alias.unlink()
+                finally:
+                    path.unlink()
+
     def test_a_time_that_cannot_be_shown_is_a_damaged_line(self):
         self.file.parent.mkdir()
         line = {"version": 1, "started_at": "0001-01-01T00:00:00+14:00", "seconds": 1, "via": "cli",

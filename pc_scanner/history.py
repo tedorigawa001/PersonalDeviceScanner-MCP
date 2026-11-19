@@ -224,13 +224,8 @@ def opener(name, flags: int) -> int:
     return fd
 
 
-def private(fd: int) -> None:
-    """Also for a file that already existed, as the 0600 given to open applies only when it creates one.
-
-    The file must be this user's, with no other name: in a folder other users can write to, a hard
-    link could otherwise point it at one of the owner's files (a shell profile, say) and have the
-    history appended there.
-    """
+def _require_owned_file(fd: int) -> os.stat_result:
+    """Check the opened file's type, owner and link count without changing it."""
     info = os.fstat(fd)
     if not stat.S_ISREG(info.st_mode):
         raise OSError("The history file is not a regular file")
@@ -238,6 +233,24 @@ def private(fd: int) -> None:
         raise OSError("The history file belongs to another user")
     if info.st_nlink != 1:
         raise OSError("The history file has other names (hard links)")
+    return info
+
+
+def _history_read_opener(name, flags: int) -> int:
+    fd = opener(name, flags)
+    # The Windows opener already checks file type, ownership and links.
+    if os.name != "nt":
+        try:
+            _require_owned_file(fd)
+        except BaseException:
+            os.close(fd)
+            raise
+    return fd
+
+
+def private(fd: int) -> None:
+    """Protect an owned file before writing, even if it already existed with wider permissions."""
+    info = _require_owned_file(fd)
     if os.name != "nt":
         require_private_acl(fd)
         if info.st_mode & 0o077:
@@ -446,14 +459,13 @@ def load_details(path: Path, name: str | None) -> tuple[dict | None, str]:
     if not DETAILS_ID.fullmatch(name):
         return None, "unreadable"
     try:
-        f = open(details_folder(path) / f"{name}.json", "rb", opener=opener)
+        f = open(details_folder(path) / f"{name}.json", "rb", opener=_history_read_opener)
     except FileNotFoundError:
         return None, "removed"
     except OSError:
         return None, "unreadable"
     with f:
-        info = os.fstat(f.fileno())
-        if not stat.S_ISREG(info.st_mode) or info.st_size > MAX_DETAILS_BYTES:
+        if os.fstat(f.fileno()).st_size > MAX_DETAILS_BYTES:
             return None, "unreadable"
         data = f.read(MAX_DETAILS_BYTES + 1)
     try:
@@ -544,12 +556,10 @@ def read(path: Path, limit: int) -> tuple[list[dict], int]:
         for name in (older(path), path):
             try:
                 # Links are not followed and a FIFO in place of a file cannot hold the command up.
-                f = open(name, encoding="utf-8", errors="replace", opener=opener)
+                f = open(name, encoding="utf-8", errors="replace", opener=_history_read_opener)
             except FileNotFoundError:
                 continue
             with f:
-                if not stat.S_ISREG(os.fstat(f.fileno()).st_mode):
-                    raise OSError("The history file is not a regular file")
                 for line in f:
                     if not line.strip():
                         continue

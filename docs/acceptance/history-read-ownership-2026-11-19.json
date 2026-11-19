@@ -1,0 +1,42 @@
+{
+  "date": "2026-11-19",
+  "kind": "security_fix_regression_verification",
+  "base_commit": "dd38e49587e26e60db6ab5c6672509ce06239c61",
+  "finding": {
+    "severity": "low",
+    "affected": "POSIX reads of the current history, rotated history and kept details",
+    "before": "The POSIX history readers checked file type and, on macOS, ACLs, but accepted readable regular files owned by another user or with multiple hard links. If another user could place such a file in the configured location, local history and dashboard reports could include untrusted records. The Windows opener already checked ownership and link count."
+  },
+  "fix": {
+    "implementation": "pc_scanner/history.py",
+    "invariant": "Validate regular-file type, current user ownership and exactly one link on the opened descriptor before parsing bytes. The current and rotated history and kept details use the same read opener. The ownership and link check is shared with write validation, without its permission changes.",
+    "behavior": "An unsafe history file causes a read error. Unsafe details are reported as unreadable and are omitted from the dashboard. The same validation applies if the history lock cannot be taken. Existing Windows ownership checks, POSIX ACL checks and symlink and FIFO protections are retained."
+  },
+  "regressions": {
+    "added": 2,
+    "before": "Both new test methods failed on dd38e49 when ownership was simulated as foreign. The current and rotated logs were both accepted and kept details were returned.",
+    "after": "Both tests passed. They cover current and rotated summaries, simulated foreign ownership, real hard links to synthetic files, the history lock fallback, and omission of unsafe details from the dashboard. Valid single-link files remain readable and mode 0644 remains unchanged on read."
+  },
+  "verification": {
+    "platform": "macOS",
+    "syntax_and_imports": "Passed AST parsing of the three changed Python files and imports of history, dashboard and CLI.",
+    "focused": {
+      "history_and_acl": {"total": 42, "passed": 42, "skipped": 0, "failed": 0},
+      "dashboard": {"total": 36, "passed": 36, "skipped": 0, "failed": 0},
+      "windows_owner_module": {"total": 11, "passed": 8, "skipped": 3, "failed": 0}
+    },
+    "full_python_3_14": {"version": "3.14.10", "total": 790, "passed": 773, "skipped": 17, "failed": 0, "seconds": 101.721},
+    "full_python_3_15": {"version": "3.15.2", "total": 790, "passed": 773, "skipped": 17, "failed": 0, "seconds": 100.697},
+    "full_suite_coverage": "Both runs included Android and real MCP SDK 1.30.0 tests. The 17 skips were Windows-specific tests.",
+    "npm": {"node": "26.12.1", "total": 34, "passed": 33, "skipped": 1, "failed": 0, "skip_reason": "Optional first-install test from PyPI", "cache": "Temporary cache"},
+    "full_suite_commands": [
+      "env PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests",
+      "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests"
+    ]
+  },
+  "remaining": [
+    "Linux runtime checks were not run because the local Docker daemon was unavailable. Native Windows CI was not run.",
+    "The regression simulates a foreign owner and uses real hard links. It does not require a second macOS account or administrator access.",
+    "The history storage caveat for macOS volumes that ignore ownership remains separately tracked in vulnerability-check-2026-11-18.json."
+  ]
+}
