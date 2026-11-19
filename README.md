@@ -470,10 +470,14 @@ The CLI protects the latest published predecessor whose three full CVD hashes an
 and whose content differs from the current generation. Confirmed corruption, duplicates of the current content and
 folders left before publication cannot serve as that predecessor. `previous_protection` in the listing shows the result.
 An unreadable candidate, missing history or the absence of an intact recorded predecessor holds generation deletion.
-The old reference format remains usable for scanning and updating. The first update that changes the bytes records the
-verified former current generation and marks other existing generation IDs as `legacy_untracked`, which the CLI keeps.
-If these fill the store, generation deletion stays on hold. Update all CLI and MCP installations that share the store
-before migration. Older releases cannot read the new reference format.
+The old reference format remains usable for scanning and updating. Until the first update that records history, the
+earlier rule applies, so a store that is already full can free a slot: a generation with valid headers and sizes, no
+version newer than the current one and different content is a rollback, and when exactly one exists it is kept.
+An unreadable generation holds generation deletion. The first update that changes the bytes records the verified
+former current generation and marks other existing generation IDs as `legacy_untracked`. They predate that record or
+were never published, so they can be deleted once an intact recorded predecessor is protected, and are held otherwise.
+Update all CLI and MCP installations that share the store before migration. Older releases cannot read the new
+reference format.
 Folders named `stage-*` that the CLI cannot manage also count toward the limit; the listing reports their number as
 `unrecognized_entries` with a warning, so inspect them manually.
 Deletion may be partial after an I/O failure; list again to inspect the remainder. Invalid permissions, unknown

@@ -569,7 +569,7 @@ def update(scanner, cancel=None, progress=None):
                 generation = secrets.token_hex(16)
                 if old and "schema" in old:
                     previous = signature_maintenance.prune_missing_history(path, old, deadline, cancel)
-                    legacy = old["legacy_untracked"]
+                    legacy = signature_maintenance.prune_missing_legacy(path, old, deadline, cancel)
                 else:
                     previous = []
                     legacy = sorted(name for name in generations if GEN.fullmatch(name)

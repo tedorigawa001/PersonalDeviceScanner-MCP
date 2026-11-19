@@ -208,15 +208,69 @@ class MaintenanceTests(unittest.TestCase):
         self.assertEqual(result["generation"], self.removable)
         self.assertEqual([check["status"] for check in result["checks"]], ["duplicate", "invalid", "last_previous"])
 
-    def test_legacy_and_corrupt_publication_history_hold_deletion(self):
+    def test_earlier_reference_format_keeps_one_rollback_and_lets_a_full_store_free_a_slot(self):
+        # Before the first publication with history, the earlier release's rule applies, so a store that was
+        # already full when upgraded can still free a slot and migrate. The reference keeps its earlier format.
         reference = self.root / "current.json"
         active = self.record(self.active)
         update.write_json(reference, active)
         self.assertEqual(update.current(self.root, time.monotonic() + 30), active)
-        revision = self.entry(self.removable)["revision"]
-        self.assertEqual(self.entry(self.removable)["reason"], "legacy_history")
-        with self.assertRaisesRegex(core.ScannerError, "legacy_history"):
-            maintenance.manage(self.scanner, "delete", self.removable, revision)
+        raw = reference.read_bytes()
+        result = self.listing()["previous_protection"]
+        self.assertEqual((result["status"], result["generation"]), ("legacy_history", None))
+        for name in (self.previous, self.removable):
+            self.assertEqual((self.entry(name)["reason"], self.entry(name)["deletable"]), (None, True))
+        row = self.entry(self.removable)
+        self.assertEqual(maintenance.manage(self.scanner, "delete", self.removable, row["revision"])["status"], "completed")
+        self.assertFalse((self.root / self.removable).exists())
+        self.assertEqual(reference.read_bytes(), raw)
+        # The only remaining rollback is kept. Folders that cannot be one stay deletable beside it.
+        broken, newer, duplicate = self.generation(), self.generation(), secrets.token_hex(16)
+        history.replace_private(self.root / broken / "main.cvd", b"invalid database")
+        for db in update.DATABASES:
+            history.replace_private(self.root / newer / db, b"ClamAV-VDB:date:2:10:90:hash:sig".ljust(512, b" ") + newer.encode())
+        shutil.copytree(self.root / self.active, self.root / duplicate)
+        result = self.listing()["previous_protection"]
+        self.assertEqual(result["generation"], self.previous)
+        self.assertEqual(sorted(c["status"] for c in result["checks"]), ["invalid", "invalid", "invalid", "last_previous"])
+        for name in (broken, newer, duplicate):
+            self.assertTrue(self.entry(name)["deletable"], name)
+        with self.assertRaisesRegex(core.ScannerError, "last_previous"):
+            maintenance.manage(self.scanner, "delete", self.previous, self.entry(self.previous)["revision"])
+        # A folder that cannot be read completely holds every generation deletion.
+        os.chmod(self.root / broken, 0o755)
+        try:
+            self.assertEqual(self.listing()["previous_protection"]["status"], "previous_unavailable")
+            row = self.entry(newer)
+            self.assertEqual((row["reason"], row["deletable"]), ("previous_unavailable", False))
+        finally:
+            os.chmod(self.root / broken, 0o700)
+        self.assertEqual(reference.read_bytes(), raw)
+
+    def test_unrecorded_earlier_generations_are_released_once_a_recorded_predecessor_is_protected(self):
+        # Migration marks pre-history generations legacy_untracked. They predate the recorded predecessor or were never
+        # published, so once that predecessor is verified they guard nothing and can be deleted, leaving the history.
+        older, orphan = self.generation(), self.generation()
+        reference = update.pointer(self.root)
+        update.write_json(self.root / "current.json", dict(reference, legacy_untracked=sorted([older, orphan])))
+        self.assertEqual(self.entry(self.previous)["reason"], "last_previous")
+        row = self.entry(older)
+        self.assertEqual((row["reason"], row["deletable"]), (None, True))
+        self.assertEqual(maintenance.manage(self.scanner, "delete", older, row["revision"])["status"], "completed")
+        after = update.pointer(self.root)
+        self.assertEqual((after["legacy_untracked"], after["previous"]), ([orphan], reference["previous"]))
+        # Without an intact recorded predecessor they stay held.
+        for generation in (self.previous, self.removable):
+            history.replace_private(self.root / generation / "main.cvd", b"invalid database")
+        row = self.entry(orphan)
+        self.assertEqual((row["reason"], row["deletable"]), ("legacy_untracked", False))
+        with self.assertRaisesRegex(core.ScannerError, "legacy_untracked"):
+            maintenance.manage(self.scanner, "delete", orphan, row["revision"])
+        self.assertTrue((self.root / orphan).is_dir())
+
+    def test_corrupt_publication_history_holds_deletion(self):
+        reference = self.root / "current.json"
+        active = self.record(self.active)
         for raw in (b"{", json.dumps(active).replace('"generation":', '"generation": null, "generation":').encode(),
                     json.dumps(dict(active, schema=2, previous=[active], legacy_untracked=[])).encode(),
                     json.dumps(dict(active, schema=2, previous=[], legacy_untracked=[self.active])).encode(),

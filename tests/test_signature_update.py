@@ -155,9 +155,46 @@ class UpdateTests(unittest.TestCase):
         self.assertNotEqual(new["content"], old["content"])
         rows = {r["id"]: r for r in maintenance.manage(self.scanner(), "list")["data"]["entries"]}
         self.assertEqual(rows[old["generation"]]["reason"], "last_previous")
-        self.assertEqual((rows[older.name]["deletable"], rows[older.name]["reason"]), (False, "legacy_untracked"))
-        with self.assertRaisesRegex(core.ScannerError, "legacy_untracked"):
-            maintenance.manage(self.scanner(), "delete", older.name, rows[older.name]["revision"])
+        # The recorded predecessor is verified, so the unrecorded copy guards nothing and leaves the history.
+        self.assertEqual((rows[older.name]["deletable"], rows[older.name]["reason"]), (True, None))
+        self.assertEqual(maintenance.manage(self.scanner(), "delete", older.name, rows[older.name]["revision"])["status"],
+                         "completed")
+        after = update.pointer(self.root)
+        self.assertEqual((after["previous"], after["legacy_untracked"]), ([old], []))
+
+    def test_a_store_left_full_by_an_earlier_release_frees_a_slot_migrates_and_releases_old_generations(self):
+        names = []
+        for version in (1, 2, 3, 4):
+            self.version = version
+            if names:
+                self.allow_next()
+            self.assertEqual(self.do_update()["data"]["update_status"], "updated")
+            names.append(update.pointer(self.root)["generation"])
+        # The earlier release kept only the current reference, and four generations fill the store.
+        old = {k: update.pointer(self.root)[k] for k in update.RECORD_KEYS}
+        update.write_json(self.root / "current.json", old)
+        self.allow_next()
+        self.version = 5
+        full = self.do_update()
+        self.assertEqual((full["status"], full["data"]["update_status"]), ("error", "failed"))
+        rows = {r["id"]: r for r in maintenance.manage(self.scanner(), "list")["data"]["entries"]}
+        self.assertEqual([rows[n]["deletable"] for n in names], [True, True, True, False])
+        self.assertEqual(maintenance.manage(self.scanner(), "delete", names[0], rows[names[0]]["revision"])["status"],
+                         "completed")
+        self.allow_next()
+        self.assertEqual(self.do_update()["data"]["update_status"], "updated")
+        new = update.pointer(self.root)
+        self.assertEqual((new["previous"], new["legacy_untracked"]), ([old], sorted(names[1:3])))
+        rows = {r["id"]: r for r in maintenance.manage(self.scanner(), "list")["data"]["entries"]}
+        self.assertEqual(rows[names[3]]["reason"], "last_previous")
+        self.assertEqual([rows[n]["deletable"] for n in names[1:3]], [True, True])
+        # An unrecorded ID whose folder, record and lease are all gone leaves the history at the next publication.
+        shutil.rmtree(self.root / names[1])
+        update.verification_file(self.root / names[1]).unlink()
+        self.allow_next()
+        self.version = 6
+        self.assertEqual(self.do_update()["data"]["update_status"], "updated")
+        self.assertEqual(update.pointer(self.root)["legacy_untracked"], [names[2]])
 
     def test_publication_prunes_only_confirmed_absence_behind_verified_predecessor(self):
         refs = []

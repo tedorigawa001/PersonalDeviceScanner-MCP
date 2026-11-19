@@ -186,27 +186,56 @@ def exclusive_lease(path):
         os.close(fd)
 
 
-def previous_protection(path, current, deadline, cancel=None):
+def checked_generation(path, name, deadline, cancel=None):
+    """Metadata around a full digest; None means a stable read proved the folder cannot be a valid generation."""
+    folder = path / name
+    metadata = tree(folder, deadline)
+    try:
+        observed = update.digest_directory(folder, deadline, cancel)
+    except update.InvalidGeneration:
+        observed = None
+    if tree(folder, deadline) != metadata:
+        raise OSError("Previous generation changed")
+    update.check_deadline(deadline, cancel)
+    return metadata, observed
+
+
+def legacy_protection(path, current, names, deadline, cancel=None):
+    """Before the first publication that records history, keep the earlier release's rule so a full store can still
+    free a slot and migrate. A structurally valid generation whose versions are not newer than the current ones and
+    whose content differs counts as a rollback, and when exactly one does, it is kept. Bodies cannot be checked against
+    a record yet. A read that cannot be completed holds every generation deletion."""
+    checks, rollbacks = [], []
+    for name in sorted(n for n in names if update.GEN.fullmatch(n) and n != current["generation"]):
+        try:
+            metadata, observed = checked_generation(path, name, deadline, cancel)
+        except (OSError, core.ScannerError):
+            checks.append((name, "unavailable", None))
+            return "previous_unavailable", checks
+        rollback = (observed is not None and observed["content"] != current["content"]
+                    and all(observed["versions"][k] <= current["versions"][k] for k in update.DATABASES))
+        if rollback:
+            rollbacks.append(len(checks))
+        checks.append((name, "usable" if rollback else "invalid", metadata))
+    if len(rollbacks) == 1:
+        name, _, metadata = checks[rollbacks[0]]
+        checks[rollbacks[0]] = (name, "last_previous", metadata)
+    return "legacy_history", checks
+
+
+def previous_protection(path, current, deadline, cancel=None, names=()):
     """Return a verdict and identities of every past generation the verdict relied on."""
     if current is None:
         return "missing_history", []
     if "schema" not in current:
-        return "legacy_history", []
+        return legacy_protection(path, current, names, deadline, cancel)
     if not current["previous"]:
         return "no_previous", []
     checks = []
     for record in current["previous"]:
         name = record["generation"]
-        folder = path / name
         try:
-            metadata = tree(folder, deadline)
-            try:
-                observed = update.digest_directory(folder, deadline, cancel)
-            except update.InvalidGeneration:
-                observed = None
-            if tree(folder, deadline) != metadata:
-                raise OSError("Previous generation changed")
-            update.check_deadline(deadline, cancel)
+            metadata, observed = checked_generation(path, name, deadline, cancel)
         except (OSError, core.ScannerError):
             checks.append((name, "unavailable", None))
             return "previous_unavailable", checks
@@ -228,24 +257,37 @@ def absent(path):
     return False
 
 
+def gone(path, name):
+    """The generation, its record and its lease are all confirmed absent."""
+    folder = path / name
+    return all(absent(p) for p in (folder, update.verification_file(folder), path / (name + ".lease")))
+
+
+def prune_missing_legacy(path, current, deadline, cancel):
+    """An unrecorded ID only holds its own folder; once everything under it is gone, it holds nothing."""
+    legacy = []
+    for name in current["legacy_untracked"]:
+        update.check_deadline(deadline, cancel)
+        if not gone(path, name):
+            legacy.append(name)
+    return legacy
+
+
 def prune_missing_history(path, current, deadline, cancel):
     """Prune crash leftovers only behind a predecessor we can still prove."""
     previous = current["previous"]
     missing = set()
     for record in previous:
         update.check_deadline(deadline, cancel)
-        name = record["generation"]
-        folder = path / name
-        if all(absent(p) for p in (folder, update.verification_file(folder), path / (name + ".lease"))):
-            missing.add(name)
+        if gone(path, record["generation"]):
+            missing.add(record["generation"])
     if not missing:
         return previous
     status, checks = previous_protection(path, current, deadline, cancel)
     if status != "protected":
         return previous
     for name in tuple(missing):
-        folder = path / name
-        if not all(absent(p) for p in (folder, update.verification_file(folder), path / (name + ".lease"))):
+        if not gone(path, name):
             missing.remove(name)
     return [record for index, record in enumerate(previous)
             if index < len(checks) or record["generation"] not in missing]
@@ -259,8 +301,8 @@ def inventory(path, deadline):
     except OSError:
         reference = None
     current = reference[0] if reference is not None else None
-    status, checks = previous_protection(path, current, deadline) if reference is not None else ("history_unavailable", [])
-    protected = checks[-1][0] if status == "protected" else None
+    status, checks = previous_protection(path, current, deadline, names=names) if reference is not None else ("history_unavailable", [])
+    protected = next((g for g, verdict, _ in checks if verdict == "last_previous"), None)
     managed = sorted(n for n in names if ENTRY.fullmatch(n))
     # The updater counts these toward its limit, but this CLI neither lists nor deletes them.
     unrecognized = sum(1 for n in names if update.counts_toward_capacity(n) and not ENTRY.fullmatch(n))
@@ -290,9 +332,11 @@ def inventory(path, deadline):
                     row["reason"] = "current"
                 elif name == protected:
                     row["reason"] = "last_previous"
-                elif current and name in current.get("legacy_untracked", ()):
+                elif status != "protected" and current and name in current.get("legacy_untracked", ()):
+                    # These predate the first recorded switch. Once an intact recorded predecessor is protected, they
+                    # are older or were never published, so they no longer guard anything.
                     row["reason"] = "legacy_untracked"
-                elif status not in {"protected", "no_previous"}:
+                elif status not in {"protected", "no_previous", "legacy_history"}:
                     row["reason"] = status
             # Scans lease only the current generation, which is protected anyway; probing it would fail their start.
             if row["kind"] == "generation" and current is not None and not row["current"]:
@@ -384,14 +428,17 @@ def delete_generation(path, name, reference, checks, revision, deadline):
         if leased:
             lease.unlink()
     update.sync_dir(path)
+    if "schema" not in current:
+        return  # the earlier reference format has no history to revise
     previous = [record for record in current["previous"] if record["generation"] != name]
-    if previous != current["previous"]:
-        # A failure before the rewrite leaves an unconfirmed history entry. A later publication can
-        # prune it only after confirming absence behind an intact protected generation.
+    legacy = [generation for generation in current["legacy_untracked"] if generation != name]
+    if previous != current["previous"] or legacy != current["legacy_untracked"]:
+        # A failure before the rewrite leaves the entry. A later publication prunes a recorded predecessor only after
+        # confirming absence behind an intact protected generation, and an unrecorded ID once everything under it is gone.
         with history.locked(path / "publish"):
             if update.pointer_snapshot(path) != reference:
                 raise OSError("Signature publication reference changed")
-            revised = dict(current, previous=previous)
+            revised = dict(current, previous=previous, legacy_untracked=legacy)
             update.write_json(path / "current.json", revised)
             if update.pointer(path) != revised:
                 raise OSError("Signature history deletion could not be confirmed")

@@ -39,5 +39,50 @@
   "remaining": [
     "Real CVD timing in a full private store with four slots and concurrent scan startup.",
     "Linux native acceptance, Windows CI and physical power interruption."
-  ]
+  ],
+  "follow_up_2026_11_19": {
+    "kind": "review_of_the_implementation_commit",
+    "reviewed_commit": "dd3c0d2",
+    "record_correction": "this record names bcf0510 as its base and 804 tests, which matches the run before the change was committed; dd3c0d2 was committed on 87ec576, which adds 1 test, and its full suites on Python 3.14.10 and 3.15.2 gave 805 total, 788 passed, 17 skipped",
+    "findings": [
+      {
+        "id": 1,
+        "severity": "high for availability",
+        "summary": "after migration, every generation recorded as legacy_untracked stayed undeletable, so a store that kept 2 earlier generations reached the 4 slot limit with the first recorded publication and every later update stopped on capacity with nothing the CLI could delete; with 1 earlier generation it permanently took 1 of the 4 slots",
+        "reproduced": "with fake engines: 0.11.2 published versions 100, 101 and 102; dd3c0d2 then published 103, after which the listing showed the current generation, the protected predecessor and 2 legacy_untracked rows, none deletable, and the update to 104 ended with the capacity error. Under 0.11.2 the 2 older generations were deletable",
+        "fix": "once previous_protection is protected, legacy_untracked generations are deletable, and a deletion also removes the ID from legacy_untracked; while no intact recorded predecessor is confirmed they stay held. They predate the recorded former current generation or were never published, so they cannot be the latest published predecessor"
+      },
+      {
+        "id": 2,
+        "severity": "high for availability",
+        "summary": "a store that 0.11.2 had filled to 4 generations, which happens right after its fourth publication, could not migrate: the update stopped on capacity and every non-current generation was listed as legacy_history and could not be deleted",
+        "reproduced": "with fake engines: 0.11.2 published versions 100 to 103; dd3c0d2 ended the update to 104 with the capacity error and listed the 3 earlier generations as legacy_history, none deletable. Under 0.11.2 all 3 were deletable",
+        "decision": "option A chosen by the owner: until the first publication that records history, use the earlier release's rule",
+        "fix": "with the earlier reference format, a generation with valid headers and sizes, no version newer than the current one and different content is a rollback; when exactly one exists it is kept as last_previous and the others are deletable, as in 0.11.2; a generation that cannot be read completely holds every generation deletion; the reference file is not rewritten by such a deletion"
+      },
+      {
+        "id": 3,
+        "severity": "documentation",
+        "summary": "clamav-signature-update-design.md still described the version rule for previous generations, unchecked bodies and the lineage approach as backlog work",
+        "fix": "the passage now points to the protection design and states the earlier-format rule and the release of legacy_untracked generations"
+      }
+    ],
+    "also_changed": "a publication drops a legacy_untracked ID once its folder, its signature record and its lease are all absent, as it already did for recorded predecessors behind a protected one, so a failed history rewrite after a deletion does not keep the ID",
+    "tests": "3 new tests (the earlier reference format keeping one rollback and freeing others, legacy_untracked released only behind a protected predecessor, and a store left full by an earlier release that frees a slot, migrates and releases old generations) and 2 changed tests that expected the earlier hold",
+    "mutation_checks": {
+      "total": 10,
+      "detected": 10,
+      "including": "legacy_untracked held even when protected, the earlier format holding every deletion, no kept single rollback, an unreadable folder not holding, newer versions or a copy of the current content counted as a rollback, the deleted ID left in legacy_untracked, a history rewrite for the earlier format, and publication keeping gone IDs or dropping present ones"
+    },
+    "after_fix_reproductions": "the same two stores now list their earlier generations as deletable: after migration the 2 legacy_untracked rows beside the protected predecessor, and before migration the 3 earlier generations of the full store",
+    "local_full_suites": {
+      "python_3_14": "808 total, 791 passed, 17 skipped",
+      "python_3_15": "808 total, 791 passed, 17 skipped"
+    },
+    "preservation": "synthetic stores and fake engines only; the real history, definition stores and retained containers were not used",
+    "remaining": [
+      "while the earlier reference format is in use, a generation left by a crash before a switch can still count as the rollback, as in 0.11.2; this ends with the first recorded publication",
+      "CI on the fix commit"
+    ]
+  }
 }
