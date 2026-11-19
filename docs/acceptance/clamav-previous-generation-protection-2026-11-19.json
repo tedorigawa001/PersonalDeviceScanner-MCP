@@ -84,5 +84,21 @@
       "while the earlier reference format is in use, a generation left by a crash before a switch can still count as the rollback, as in 0.11.2; this ends with the first recorded publication",
       "CI on the fix commit"
     ]
+  },
+  "ci_follow_up": {
+    "date": "2026-11-19",
+    "run": 44534062841,
+    "url": "https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/runs/44534062841",
+    "commit": "2c2c01a",
+    "covers": "the implementation dd3c0d2 and the review fix 48e9e57, together with 87ec576, 62baf3b, b05de41, 55cf581 and 2c2c01a; these were pushed together, so dd3c0d2 and 48e9e57 had no runs of their own",
+    "started_at": "2026-11-19T13:30:09Z",
+    "finished_at": "2026-11-19T13:33:24Z",
+    "result": "22 of 22 jobs passed",
+    "python_tests": "808 tests run per Python (3.11, 3.14, 3.15) on each OS, with no failures or errors: macOS 791 passed and 17 skipped, Ubuntu 765 passed and 43 skipped, Windows 605 passed and 203 skipped",
+    "fix_tests": "dd3c0d2 added 10 test methods, 1 of which 48e9e57 renamed, and 48e9e57 added 3; all 13 passed on macOS and Ubuntu with each Python and were skipped on Windows as POSIX-only, which is why Windows skips rose from 190 to 203",
+    "windows_security_descriptors": "the separate ownership step with real Windows security descriptors ran 12 tests and passed on each Python",
+    "npm_launcher": "12 of 12 jobs passed (Node 22, 24, 26): macOS and Ubuntu 34 of 34, Windows 32 of 34 with 2 skipped",
+    "distributions": "verified",
+    "limit": "CI reruns repository tests with synthetic CVDs and fake engines; real CVDs and engines are covered by the macOS and Linux acceptance records, and the private updater is not exercised on Windows"
   }
 }
