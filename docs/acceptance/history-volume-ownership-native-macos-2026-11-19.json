@@ -1,0 +1,74 @@
+{
+  "date": "2026-11-19",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "native_macos_history_volume_ownership_acceptance",
+  "status": "passed for current and rotated history and kept details on a real APFS disk image",
+  "source_commit": "55cf5813ca89d3044018936c603a512f7dc525be",
+  "regression_record": "history-volume-ownership-macos-2026-11-19.json",
+  "environment": {
+    "platform": "macOS 27.2.1 (26B131), arm64",
+    "python": "3.15.2",
+    "account": "Standard effective user ID 501",
+    "filesystem": "New 128 MB writable APFS disk image, mounted under a private trial directory",
+    "data": "Synthetic history summaries and detail results only"
+  },
+  "mount_verification": {
+    "same_apfs_volume_uuid_in_all_three_phases": true,
+    "kernel_flag": {"name": "MNT_IGNORE_OWNERSHIP", "mask": "0x00200000"},
+    "checks": "Confirmed the disk image and its owner setting with diskutil, and compared the live Darwin statfs and fstatfs flags on the current history, rotated history and kept detail files.",
+    "phase_columns": ["ignore_ownership", "diskutil_owners", "observed_mount_flags"],
+    "phases": [[false, "Enabled", "0x4909218"], [true, "Disabled", "0x4b09218"], [false, "Enabled", "0x4909218"]]
+  },
+  "owners_enabled_before": {
+    "rotation_threshold_bytes": 1048576,
+    "current_size_bytes": 1048870,
+    "rotated_size_bytes": 1048869,
+    "checks": [
+      "Saved two summaries and their linked details. Normal rotation moved the first history file to the rotated path, preserving its inode.",
+      "Read both summaries separately and together, with zero skipped lines. Both detail files returned the expected data.",
+      "The history CLI and dashboard generation both exited 0. The generated local HTML included both synthetic targets."
+    ]
+  },
+  "ownership_ignored": {
+    "history_cli_exit": 2,
+    "dashboard_cli_exit": 2,
+    "current_and_rotated_read_and_write_opens_refused": 4,
+    "detail_reads_marked_unreadable": 2,
+    "other_denied_operations": [
+      "Read the history through the regular reader.",
+      "Append a summary that would create a detail, trigger retention and rotate the current file.",
+      "Save a detail directly with a retention limit that would remove existing details.",
+      "Create a history file under a missing nested directory."
+    ],
+    "snapshot_items": 8,
+    "snapshot_unchanged": "All relative names, file hashes, reported owners, modes, inode and link counts, and modification and change times in the trial data matched before and after the denied operations. No new history directory or detail was created."
+  },
+  "owners_enabled_again": {
+    "history_cli_exit": 0,
+    "dashboard_cli_exit": 0,
+    "checks": [
+      "The original current and rotated entries and both detail files were readable again on the same volume.",
+      "A new append saved a new detail and rotated the previous current file. The rotated file matched that previous current file by hash and inode.",
+      "A separate detail save succeeded and its contents were readable. Current and rotated histories and the checked detail files were owner-owned, mode 0600 and single-linked.",
+      "The history CLI and dashboard returned the expected pair of retained summaries."
+    ]
+  },
+  "diagnostics_and_preservation": {
+    "remount_recovery": "One reattach output listed the mount point but the volume was subsequently attached without a live mount. No restore operation ran before the mount check passed. The trial volume was identified by UUID and mounted at the intended path with owners enabled.",
+    "existing_history_or_other_volumes_used": false,
+    "runtime_source_changed": false,
+    "final_state": "The trial image was detached and retained locally together with the synthetic data and raw outputs. A post-eject check confirmed that the image was absent from the attached-image inventory."
+  },
+  "verification": {
+    "history_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -p 'test_history*.py' -q",
+    "history": {"total": 36, "passed": 36, "skipped": 0, "failed": 0},
+    "dashboard_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -p test_dashboard.py -q",
+    "dashboard": {"total": 46, "passed": 46, "skipped": 0, "failed": 0},
+    "evidence_sha256": "3ec0d2a13d683ba2995cc2afc889eb71f197fb35778766fbda0166edc983e90a",
+    "harness_sha256": "44658c90c9bd3fc029160a3ca583e0b6a66645ce78bef81f2b44f2d460737dec"
+  },
+  "limits": [
+    "This native acceptance used one APFS disk image and the history and details on the same volume.",
+    "Separate-volume detail paths and unavailable mount flag queries remain covered by the earlier synthetic regressions."
+  ]
+}
