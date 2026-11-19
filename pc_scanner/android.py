@@ -314,22 +314,32 @@ def parse_device_policy(text: str) -> tuple[dict[int, list[dict]], list[dict], i
     admins: dict[int, list[dict]] = {}
     owners: list[dict] = []
     unread_owners = 0
-    section, section_indent, owner = None, 0, None
-    for line in text.splitlines():
+    section, section_indent, entry_indent, owner = None, 0, None, None
+    # Only "\n" separates lines: splitlines() would also break at Unicode separators an app can put in its class name.
+    for line in text.split("\n"):
         stripped = line.strip()
         indent = len(line) - len(line.lstrip())
         header = re.match(r"Enabled Device Admins \(User (\d+)", stripped)
         if header:
             unread_owners += owner is not None
-            section, section_indent, owner = int(header.group(1)), indent, None
+            section, section_indent, entry_indent, owner = int(header.group(1)), indent, None, None
             admins.setdefault(section, [])
             continue
         if section is not None and stripped and indent <= section_indent:
             section = None
         if section is not None:
+            if not stripped:
+                continue
+            if entry_indent is None:
+                entry_indent = indent
+            if indent > entry_indent:
+                continue  # the details of the admin above: uid, policies
             entry = re.fullmatch(r"([^\s{}:/]+/[^\s{}:]+):", stripped)
-            if entry:
-                admins[section].append(parse_component(entry.group(1)))
+            # An admin is printed as "package/class:", but the app names its own class. Any such line at this level
+            # is an admin: an odd class name keeps the package and makes the result incomplete, and one naming no
+            # readable package is kept as unattributed. Fields such as "mPasswordOwner=-1" share this level.
+            if entry or ("/" in stripped and stripped.endswith(":")):
+                admins[section].append(parse_component(entry.group(1) if entry else stripped[:-1]))
             continue
         if stripped.startswith("Device Owner") and not stripped.startswith("Device Owner Type"):
             unread_owners += owner is not None

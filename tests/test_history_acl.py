@@ -252,6 +252,55 @@ class HistoryACLTests(unittest.TestCase):
                 history.read(self.path, 10)
             self.assertEqual(history.load_details(self.path, name), (None, 'unreadable'))
 
+    def test_files_kept_beside_the_history_are_refused_on_an_ignored_volume(self):
+        # Checkpoints and saved release information sit beside the history and are trusted like it.
+        from pc_scanner import updates
+        kept = self.folder / 'kept.json'
+        cache = history.releases_file(self.path)
+        history.replace_private(kept, b'{"synthetic": "original"}')
+        history.replace_private(cache, b'{"version": 1, "clamav": {"synthetic": true}}')
+        before = set(self.folder.rglob('*'))
+        missing = self.folder / 'missing' / 'nested' / 'kept.json'
+        real_flags = process_store.darwin_mount_flags
+        ignoring = process_store.MNT_LOCAL | process_store.MNT_IGNORE_OWNERSHIP
+        cases = {'ignoring volume': lambda location: ignoring, 'unknown volume': lambda location: None,
+                 'opened file only': lambda location: ignoring if isinstance(location, int) else real_flags(location)}
+        for label, flags in cases.items():
+            with self.subTest(label), patch.object(process_store, 'darwin_mount_flags', side_effect=flags):
+                self.assertIsNone(history.read_private(kept, 4096))
+                self.assertEqual(updates.load(cache), {})
+                with self.assertRaisesRegex(OSError, 'ownership'):
+                    history.replace_private(kept, b'{"synthetic": "new"}')
+                # Below missing folders the volume is checked first; with only the opened file refused, the
+                # missing folder itself stops the write.
+                with self.assertRaises(OSError):
+                    history.replace_private(missing, b'{"synthetic": "new"}')
+                self.assertEqual(set(self.folder.rglob('*')), before)
+                self.assertEqual(kept.read_bytes(), b'{"synthetic": "original"}')
+        self.assertEqual(history.read_private(kept, 4096), b'{"synthetic": "original"}')
+
+    def test_checkpoint_folder_on_an_ignored_volume_is_refused_before_anything_is_created(self):
+        folder, path = self.checkpoint()
+        original = path.read_bytes()
+        real_flags = process_store.darwin_mount_flags
+        ignoring = process_store.MNT_LOCAL | process_store.MNT_IGNORE_OWNERSHIP
+        for label, flags in (('ignoring volume', lambda location: ignoring),
+                             ('opened folder only', lambda location: ignoring if isinstance(location, int)
+                              else real_flags(location))):
+            with self.subTest(label), patch.object(process_store, 'darwin_mount_flags', side_effect=flags):
+                for call in (lambda: malware_batch.checkpoint_directory(self.scanner()),
+                             lambda: malware_batch.checkpoint_directory(self.scanner(), create=True),
+                             lambda: checkpoints.list_checkpoints(self.scanner())):
+                    with self.assertRaisesRegex(ScannerError, 'honors ownership'):
+                        call()
+        self.assertEqual(path.read_bytes(), original)
+        other = self.base / 'elsewhere' / 'history.jsonl'
+        with patch.object(process_store, 'darwin_mount_flags', return_value=ignoring), \
+                self.assertRaisesRegex(ScannerError, 'honors ownership'):
+            malware_batch.checkpoint_directory(Scanner({'history': {'file': str(other)},
+                                                        'scan_roots': {'fixture': str(self.base)}}), create=True)
+        self.assertFalse(other.parent.exists())
+
 
 if __name__ == '__main__':
     unittest.main()

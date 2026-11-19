@@ -220,6 +220,20 @@ class ParserTests(unittest.TestCase):
         odd_owner = "  Device Owner: \n    name=x\n  Enabled Device Admins (User 0, provisioningState: 0):\n"
         self.assertEqual(android.parse_device_policy(odd_owner)[2], 1)
 
+    def test_device_admins_with_odd_class_names_are_kept(self):
+        # The app names its own class: spaces (allowed in DEX names since Android 11), colons and braces once made
+        # its line unreadable and silently dropped, and a Unicode line separator also hid every admin after it.
+        for cls in (".Admin Receiver", ".Admin:Receiver", ".Admin{Receiver}", ".Admin\x85Receiver", ".Admin\u2028Receiver"):
+            policy = POLICY.replace("    com.vendor.preloaded.watch/.Admin:\n",
+                                    f"    com.example.quiet/{cls}:\n      uid=10300\n    com.vendor.preloaded.watch/.Admin:\n")
+            with self.subTest(cls=cls):
+                admins = android.parse_device_policy(policy)[0]
+                self.assertEqual([(a["package"], a["class_valid"]) for a in admins[0]],
+                                 [("com.example.quiet", False), ("com.vendor.preloaded.watch", True)])
+        # A line at the admin level that names no readable package is kept as unattributed.
+        policy = POLICY.replace("    com.vendor.preloaded.watch/.Admin:\n", "    1bad/.X Y:\n")
+        self.assertEqual(android.parse_device_policy(policy)[0][0], [{"package": None, "component": "1bad/.X Y"}])
+
     def test_properties_are_limited_to_the_chosen_ones(self):
         props = android.parse_properties("[ro.build.version.release]: [16]\n[ro.serialno]: [SECRET]\n"
                                          "[ro.build.version.security_patch]: [2025-07-05]\n")
@@ -414,6 +428,21 @@ class DeviceTests(unittest.TestCase):
         text = json.dumps(report)
         for secret in ("Taro", "R58TEST", "SECRET123", "Work MDM"):
             self.assertNotIn(secret, text)
+
+    def test_device_admin_with_an_odd_class_name_is_reviewed_and_the_result_incomplete(self):
+        # It was dropped before: the check completed with no finding for an app whose only privilege is device admin.
+        device = answers()
+        device["pm list packages -i -U --show-versioncode --user 0"] += (
+            "package:com.example.quiet versionCode:1  installer=com.google.android.packageinstaller uid:10300\n")
+        for cls, status in ((".AdminReceiver", "completed"), (".Admin Receiver", "partial")):
+            device["dumpsys device_policy"] = POLICY.replace(
+                "  Enabled Device Admins (User 0, provisioningState: 0):\n",
+                f"  Enabled Device Admins (User 0, provisioningState: 0):\n    com.example.quiet/{cls}:\n      uid=10300\n")
+            with self.subTest(cls=cls):
+                report = self.run_with(FakeDevice(device), "android_check")
+                self.assertEqual(report["status"], status, report["warnings"])
+                self.assertIn(("review", ["device_admin"]), [(f["kind"], f.get("access")) for f in report["findings"]
+                                                            if f.get("package") == "com.example.quiet"])
 
     def test_work_profile_accessibility_is_the_parents(self):
         fake = FakeDevice(answers())

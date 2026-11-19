@@ -476,6 +476,10 @@ version newer than the current one and different content is a rollback, and when
 An unreadable generation holds generation deletion. The first update that changes the bytes records the verified
 former current generation and marks other existing generation IDs as `legacy_untracked`. They predate that record or
 were never published, so they can be deleted once an intact recorded predecessor is protected, and are held otherwise.
+A store that never had a reference records none: folders left by failed first switches can be deleted after the first
+publication. If a deletion removes a generation but cannot update the publication history (for example while scans
+keep the publication lock busy), the result is `partial` with `history_updated: false`; a later publication removes
+the record, and until then generation deletion may stay held.
 Update all CLI and MCP installations that share the store before migration. Older releases cannot read the new
 reference format.
 Folders named `stage-*` that the CLI cannot manage also count toward the limit; the listing reports their number as
@@ -856,7 +860,8 @@ TIME                 VIA  OPERATION      SOURCE         STATUS     FINDINGS    S
   files, `.1` included, are kept readable only by you (0600, also when one already existed with wider permissions). A
   history file must be a regular file of yours with no other name (hard link), and the lock file and details folder must be
   yours; anything else, or a link in their place, is refused. Keep the history in a folder only you can write to, as the
-  default is. On macOS, allow ACL entries (including inherited or owner-specific entries) or failed ACL checks
+  default is. On macOS a volume set to ignore ownership, as external drives are by default, is refused for the history,
+  its details, the batch checkpoints and the saved release information beside it. On macOS, allow ACL entries (including inherited or owner-specific entries) or failed ACL checks
   refuse access to history, rotated history, details, locks and checkpoints. Deny-only ACLs remain usable. ACLs are
   never stripped automatically: choose a private local folder or have its ACL reviewed by the owner. Unsafe existing
   regular files are preserved rather than replaced or removed by rotation/retention. A history-write failure adds a

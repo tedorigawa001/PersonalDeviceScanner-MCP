@@ -127,6 +127,65 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual(rows[first["generation"]]["reason"], "last_previous")
         self.assertTrue(rows[orphan.name]["deletable"])
 
+    def test_folders_left_by_failed_first_switches_stay_deletable_after_the_first_publication(self):
+        # They were recorded as legacy_untracked and held with no recorded predecessor to protect: three of them and
+        # the first current generation filled all four slots, and every later update stopped on capacity.
+        original = update.write_json
+
+        def fail_first_switch(path, obj):
+            if path.name == "current.json":
+                raise OSError("synthetic failure while writing the first reference")
+            original(path, obj)
+
+        for version in (10, 11, 12):
+            self.version = version
+            with patch.object(update, "write_json", side_effect=fail_first_switch):
+                self.assertEqual(self.do_update()["data"]["update_status"], "unknown")
+            self.allow_next()
+            for row in maintenance.manage(self.scanner(), "list")["data"]["entries"]:
+                if row["kind"] == "stage":
+                    maintenance.manage(self.scanner(), "delete", row["id"], row["revision"])
+        leftovers = sorted(p.name for p in self.root.iterdir() if update.GEN.fullmatch(p.name))
+        self.assertEqual(len(leftovers), 3)
+        self.version = 20
+        self.assertEqual(self.do_update()["data"]["update_status"], "updated")
+        first = update.pointer(self.root)
+        self.assertEqual((first["previous"], first["legacy_untracked"]), ([], []))
+        rows = {r["id"]: r for r in maintenance.manage(self.scanner(), "list")["data"]["entries"]}
+        self.assertEqual([(rows[n]["reason"], rows[n]["deletable"]) for n in leftovers], [(None, True)] * 3)
+        maintenance.manage(self.scanner(), "delete", leftovers[0], rows[leftovers[0]]["revision"])
+        self.allow_next()
+        self.version = 21
+        self.assertEqual(self.do_update()["data"]["update_status"], "updated")
+        self.assertEqual(update.pointer(self.root)["previous"], [{k: first[k] for k in update.RECORD_KEYS}])
+
+    def test_deletion_reports_the_removed_generation_when_the_history_rewrite_is_busy(self):
+        refs = []
+        for version in (1, 2, 3):
+            self.version = version
+            if refs:
+                self.allow_next()
+            self.assertEqual(self.do_update()["data"]["update_status"], "updated")
+            refs.append(update.pointer(self.root)["generation"])
+        damaged = self.root / refs[1] / "daily.cvd"
+        damaged.write_bytes(damaged.read_bytes()[:-1] + b"X")
+        rows = {r["id"]: r for r in maintenance.manage(self.scanner(), "list")["data"]["entries"]}
+        self.assertEqual((rows[refs[0]]["reason"], rows[refs[1]]["deletable"]), ("last_previous", True))
+        reference = update.pointer(self.root)
+        # Scans starting one after another can hold the publication lock for the whole wait.
+        import fcntl
+        holder = os.open(history.lock_file(self.root / "publish"), os.O_RDWR)
+        try:
+            fcntl.flock(holder, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            result = maintenance.manage(self.scanner(), "delete", refs[1], rows[refs[1]]["revision"])
+        finally:
+            os.close(holder)
+        self.assertEqual((result["status"], result["data"]["deleted"], result["data"]["history_updated"]),
+                         ("partial", refs[1], False))
+        self.assertNotIn("no maintenance completed", " ".join(result["warnings"]))
+        self.assertFalse((self.root / refs[1]).exists())
+        self.assertEqual(update.pointer(self.root), reference)
+
     def test_legacy_migrates_only_on_changed_publication_at_the_same_versions(self):
         self.assertEqual(self.do_update()["data"]["update_status"], "updated")
         reference = self.root / "current.json"
@@ -215,8 +274,11 @@ class UpdateTests(unittest.TestCase):
             original(path, obj)
 
         with patch.object(update, "write_json", side_effect=fail_history_rewrite):
-            with self.assertRaisesRegex(core.ScannerError, "maintenance could not complete"):
-                maintenance.manage(self.scanner(), "delete", refs[0], revision)
+            # The folder is already gone, so the report says so instead of "no maintenance completed".
+            result = maintenance.manage(self.scanner(), "delete", refs[0], revision)
+        self.assertEqual((result["status"], result["data"]["deleted"], result["data"]["history_updated"]),
+                         ("partial", refs[0], False))
+        self.assertRegex(result["warnings"][0], "Generation deleted, but its publication history entry")
         self.assertEqual(update.pointer(self.root), old)
         self.assertFalse((self.root / refs[0]).exists())
         self.allow_next()

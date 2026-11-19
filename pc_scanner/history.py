@@ -236,7 +236,11 @@ def _require_owned_file(fd: int) -> os.stat_result:
     return info
 
 
-def _require_ownership_volume(location: Path | int) -> None:
+def require_ownership_volume(location: Path | int) -> None:
+    """On macOS, refuse a volume that ignores ownership: every file there looks like the owner's.
+
+    Used for the history, its details and the files kept beside it (checkpoints, saved release information).
+    """
     # Windows checks ownership with its own opener and security descriptors, as _history_opener does.
     if os.name == "nt" or sys.platform != "darwin":
         return
@@ -245,7 +249,7 @@ def _require_ownership_volume(location: Path | int) -> None:
         raise OSError("History volume ignores ownership or could not be verified")
 
 
-def _check_history_parent(folder: Path) -> None:
+def check_parent_volume(folder: Path) -> None:
     """Check the volume before creating anything, even below missing directories."""
     if os.name == "nt" or sys.platform != "darwin":
         return
@@ -257,7 +261,7 @@ def _check_history_parent(folder: Path) -> None:
                 raise
             folder = folder.parent
         else:
-            _require_ownership_volume(folder)
+            require_ownership_volume(folder)
             return
 
 
@@ -266,10 +270,10 @@ def _history_opener(name, flags: int) -> int:
     if os.name == "nt":
         return opener(name, flags)
     if sys.platform == "darwin":
-        _check_history_parent(Path(os.fsdecode(name)).parent)
+        check_parent_volume(Path(os.fsdecode(name)).parent)
     fd = opener(name, flags)
     try:
-        _require_ownership_volume(fd)
+        require_ownership_volume(fd)
         if (flags & os.O_ACCMODE) == os.O_RDONLY:
             _require_owned_file(fd)
     except BaseException:
@@ -319,6 +323,7 @@ def replace_private(path: Path, data: bytes, durable: bool = False) -> None:
     The new file gets a fresh name, so a link put in the old one's place is replaced, never written through.
     With durable, the new data reaches the disk before the rename, so a power loss cannot leave the name
     pointing at a file whose data was never written. The caller still syncs the folder to keep the rename.
+    Nothing is kept on a volume that ignores ownership, where others could replace it.
     """
     directory_acl(path.parent)
     existing_acl(path)
@@ -327,6 +332,7 @@ def replace_private(path: Path, data: bytes, durable: bool = False) -> None:
     try:
         with f:
             require_private_acl(f.fileno())
+            require_ownership_volume(f.fileno())
             f.write(data)
             if durable:
                 f.flush()
@@ -342,7 +348,8 @@ def replace_private(path: Path, data: bytes, durable: bool = False) -> None:
 def read_private(path: Path, max_bytes: int) -> bytes | None:
     """The file's contents if it is the owner's own regular file of at most max_bytes, otherwise None.
 
-    Another user's file, or one with other names, could have been put there to be taken as ours.
+    Another user's file, or one with other names, could have been put there to be taken as ours. On a volume
+    that ignores ownership every file looks like ours, so nothing there is read.
     """
     try:
         f = open(path, "rb", opener=opener)
@@ -354,6 +361,7 @@ def read_private(path: Path, max_bytes: int) -> bytes | None:
             if (not stat.S_ISREG(info.st_mode) or info.st_size > max_bytes
                     or not owned(f.fileno(), info) or info.st_nlink != 1):
                 return None
+            require_ownership_volume(f.fileno())
             data = f.read(max_bytes + 1)
     except OSError:
         return None
@@ -425,12 +433,12 @@ def grouping_fields(data):
 
 def save_details(path: Path, report: dict, max_bytes: int) -> str:
     """Keeps a full result, then removes the oldest ones until all fit in max_bytes; the newest always stays."""
-    _check_history_parent(path.parent)
+    check_parent_volume(path.parent)
     directory_acl(path.parent)
     folder = details_folder(path)
     folder.mkdir(exist_ok=True, mode=0o700)
     info = folder.lstat()
-    _require_ownership_volume(folder)
+    require_ownership_volume(folder)
     directory_acl(folder)
     if os.name == "nt":
         from .windows_owner import owns_directory
@@ -447,7 +455,7 @@ def save_details(path: Path, report: dict, max_bytes: int) -> str:
             try:
                 info = child.lstat()
                 if stat.S_ISREG(info.st_mode):
-                    _require_ownership_volume(child)
+                    require_ownership_volume(child)
                 existing_acl(child)
                 kept.append((child.name, info.st_size, child))
             except FileNotFoundError:
@@ -512,7 +520,7 @@ def load_details(path: Path, name: str | None) -> tuple[dict | None, str]:
 
 def append(path: Path, record: dict, details: dict | None = None, details_bytes: int = 0) -> None:
     with _lock:
-        _check_history_parent(path.parent)
+        check_parent_volume(path.parent)
         path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         with locked(path):
             # The older file is never opened for writing, so it and the file about to become it are checked here.
@@ -522,7 +530,7 @@ def append(path: Path, record: dict, details: dict | None = None, details_bytes:
                 except FileNotFoundError:
                     continue
                 if stat.S_ISREG(info.st_mode):
-                    _require_ownership_volume(name)
+                    require_ownership_volume(name)
                     existing_acl(name)
                     if os.name == "nt" or info.st_mode & 0o077:
                         make_private(name)
@@ -582,7 +590,7 @@ def parse(line: str) -> dict | None:
 
 def read(path: Path, limit: int) -> tuple[list[dict], int]:
     """The latest scans, oldest first, and how many damaged lines were skipped."""
-    _check_history_parent(path.parent)
+    check_parent_volume(path.parent)
     entries, skipped = deque(maxlen=limit), 0
     with contextlib.ExitStack() as stack:
         try:

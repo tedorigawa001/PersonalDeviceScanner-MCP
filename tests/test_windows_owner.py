@@ -64,8 +64,8 @@ class OwnershipTests(unittest.TestCase):
         from pc_scanner import process_store
         with patch.object(history.os, "name", "nt"), \
                 patch.object(process_store, "ownership_ignored", side_effect=AssertionError("macOS volume check ran")):
-            history._require_ownership_volume(self.path)
-            history._check_history_parent(self.path.parent)
+            history.require_ownership_volume(self.path)
+            history.check_parent_volume(self.path.parent)
 
     def test_windows_owner_api_error_closes_file_and_ignores_cache(self):
         from pc_scanner import windows_owner

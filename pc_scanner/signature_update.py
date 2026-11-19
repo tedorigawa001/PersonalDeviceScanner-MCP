@@ -572,8 +572,11 @@ def update(scanner, cancel=None, progress=None):
                     legacy = signature_maintenance.prune_missing_legacy(path, old, deadline, cancel)
                 else:
                     previous = []
+                    # Migration records what the earlier format's store held. With no reference at all nothing was
+                    # ever published: folders left by failed first switches are orphans to tidy, not legacy to keep,
+                    # or three of them would fill the store for good.
                     legacy = sorted(name for name in generations if GEN.fullmatch(name)
-                                    and (not old or name != old["generation"]))
+                                    and name != old["generation"]) if old else []
                 reference = publication(old, generation, observed, previous, legacy)
                 write_json(stage / "verification.json", evidence)
                 if progress:

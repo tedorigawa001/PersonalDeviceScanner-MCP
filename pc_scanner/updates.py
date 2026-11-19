@@ -272,6 +272,8 @@ def releases(scanner, engine: str, cancel: threading.Event | None, now: datetime
             scanner.release_info[engine] = entry
             if path is not None:
                 try:
+                    # Like the history beside it, never on a volume that ignores ownership; checked before creating.
+                    history.check_parent_volume(path.parent)
                     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
                     saved = {key: value for key, value in saved.items() if key in NAMES}
                     history.replace_private(path, json.dumps({**saved, "version": 1, engine: entry}).encode("ascii"))

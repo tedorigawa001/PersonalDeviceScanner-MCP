@@ -549,6 +549,24 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual(other.read_text(), before)
         self.assertEqual(self.cache.stat().st_nlink, 1)
 
+    @unittest.skipUnless(sys.platform == "darwin", "macOS volumes that ignore ownership")
+    def test_a_cache_on_a_volume_that_ignores_ownership_is_not_read_or_written(self):
+        # Every file there looks like ours: a planted cache could hide an outdated engine.
+        from pc_scanner import process_store
+        self.write_cache(osquery={"checked_at": self.ago(hours=1), "latest": "1.0.0"})
+        before = self.cache.read_bytes()
+        nested = self.folder / "missing" / "nested" / "history.jsonl"
+        ignoring = process_store.MNT_LOCAL | process_store.MNT_IGNORE_OWNERSHIP
+        for scanner in (self.scanner(), self.scanner(history={"file": str(nested)})):
+            network = Network()
+            with patch.object(process_store, "darwin_mount_flags", return_value=ignoring):
+                report = self.check(scanner, network=network)
+            self.assertEqual((len(network.urls), report["data"]["engine_update"]["latest"]), (1, "5.23.1"))
+            self.assertIn("The latest-release information could not be saved; it is looked up again on the next scan",
+                          report["warnings"])
+        self.assertEqual(self.cache.read_bytes(), before)
+        self.assertFalse((self.folder / "missing").exists())
+
     def test_an_unwritable_cache_is_said_and_this_process_remembers(self):
         self.cache.mkdir()
         scanner = self.scanner()
