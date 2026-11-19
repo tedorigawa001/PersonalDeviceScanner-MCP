@@ -1,0 +1,61 @@
+{
+  "date": "2026-11-19",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "native_detached_signature_evidence_acceptance",
+  "status": "passed for the initial signed and unsigned publications and three unchanged updates over a loopback private mirror",
+  "source_commit": "1372be45cd3d1f299224d141ed61a4e783928a1e",
+  "environment": {
+    "os": "macOS 27.2.1 (26B131)",
+    "arch": "arm64",
+    "python": "3.15.2",
+    "mcp_sdk": "1.30.0 over local stdio with a separate server process",
+    "engines": "Native freshclam, sigtool and clamscan 1.5.4",
+    "transport": "Loopback HTTP only. A test adapter replaced the generated mirror line in new test stages with PrivateMirror and passed the no DNS option to real freshclam. It retained engine stdout, stderr and exit status. CVD header ranges were served with HTTP 206.",
+    "mirror_documentation": "https://docs.clamav.net/appendix/CvdPrivateMirror.html",
+    "synthetic_scan_files_per_call": 1
+  },
+  "inputs": {
+    "source": "The six public distribution files in the stopped offline rehearsal container mirror. The file transfer was a read-only copy of that mirror into a new host fixture directory.",
+    "source_record": "clamav-cvd-offline-rehearsal-linux-2026-11-12.json",
+    "acquisition_record": "clamav-readmission-cvd-inputs-2026-11-12.json",
+    "versions": {"main.cvd": 63, "daily.cvd": 28180, "bytecode.cvd": 339},
+    "daily_built_at": "2026-11-11T06:24:27+00:00",
+    "file_hashes_match_acquisition_record": 6,
+    "native_embedded_signatures_verified": 3,
+    "native_detached_signatures_verified": 3,
+    "test_max_signature_age_days": 14,
+    "default_max_signature_age_days_control": 7,
+    "age_note": "The daily fixture was about eight days old. The new stores used the project's 14-day setting to isolate the effect of signature evidence. The signed generation returned partial and stale at the default seven-day setting in both CLI and MCP. The engine clock and definition bytes were unchanged."
+  },
+  "case_columns": ["case", "update_status", "update_exit", "http_requests", "signature_get_statuses", "full_cvd_gets", "saved_detached_status_for_all_three", "cli_and_mcp_definition_check"],
+  "cases": [
+    ["initial with signatures", "updated", 0, 12, [200, 200, 200], 3, "verified", "completed/fresh"],
+    ["initial without signatures", "updated", 2, 12, [404, 404, 404], 3, "absent", "partial/unverified"],
+    ["same version with signatures and prior proof", "unchanged", 0, 9, [200, 200, 200], 0, "verified", "completed/fresh"],
+    ["same version with signatures after initial absence", "unchanged", 0, 9, [200, 200, 200], 0, "verified", "completed/fresh"],
+    ["same version with signatures now unavailable", "unchanged", 0, 9, [404, 404, 404], 0, "verified", "completed/fresh"]
+  ],
+  "storage_and_retries": {
+    "publication": "The private generation contains exactly the three CVDs and has mode 0700. Each CVD and its separate evidence record has mode 0600, the current owner and one link. The record binds the version and content digest from the current pointer and each published CVD matches the known input hash.",
+    "unchanged": "Freshclam reported all three versions up to date and requested all three signature paths. It transferred no full CVD. The published pointer stayed the same in all three cases. Verified evidence was retained whether the server returned HTTP 200 or 404. When signatures became available for the previously unverified generation, the same generation gained verified evidence.",
+    "separate_seeded_stores": "The unchanged cases used new fixture stores seeded with only the synthetic publication's generation, current pointer and evidence, with the provider metadata also copied for the additional signature-unavailable case. They represent a store eligible for an update. The wait file of each initial publication was not copied or edited. A direct retry on the initial signed store returned rate_limited, issued no request and left its wait bytes unchanged. No claim is made that 24 hours elapsed during this test."
+  },
+  "real_scan": {
+    "calls": "The CLI and MCP each scanned one benign file with each of the two initial publications. All four clamscan runs exited 0 and reported no findings.",
+    "signed": "The scan signature_check reported fresh with verified evidence under the 14-day setting in both interfaces. Both scan reports were partial with diagnostic because LibClamAV itself warned that the definitions exceeded seven days.",
+    "unsigned": "Both scan signature_check values were unverified. Both scan reports were partial with diagnostic and unknown_definitions.",
+    "harness_correction": "The initial trial assumed that a fresh definition check also implied a completed scan. Its native seven-day warning disproved that assumption. The final harness checked the native diagnostic, scan status, and definition freshness separately."
+  },
+  "preservation": {
+    "os_managed_definition_files": "Names, ownership, permissions, sizes, inodes and modification and change timestamps matched before and after. All validation and scan database arguments pointed to test files or the new private generations.",
+    "earlier_stores_and_waits": "No earlier stored generation, deadline or settings were modified. The earlier mirror container stayed stopped. Copies of all six input files matched their hashes before and after.",
+    "other_acceptance": "The previous 429 history of six successes and two unfinished cases is unchanged. The separate two-version input preparation remains incomplete. No official CDN download or new 429 wait was started in this trial.",
+    "local_evidence": "Synthetic private stores, CLI and engine logs, request logs and structured summaries retained in a private temporary trial directory. The trial mirror servers were closed."
+  },
+  "regressions": {"command": ".venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py'", "total": 93, "passed": 93, "skipped": 0, "failed": 0},
+  "remaining": [
+    "The repeated signature requests are established for freshclam 1.5.4 against a PrivateMirror using the no DNS option. Official CDN and DNS-assisted update behavior were not tested.",
+    "The older fixture exercised the native age warning. A clean scan with freshly acquired definitions was not part of this acceptance.",
+    "The distinct-version update and any behavior following a failed signature check are separate cases."
+  ]
+}
