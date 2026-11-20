@@ -480,7 +480,13 @@ A store that never had a reference records none: folders left by failed first sw
 publication. After generation removal, unconfirmed cleanup or history writes produce `partial` with the `deleted` ID.
 The result identifies whether the parent directory sync (`directory_synced`), lease file removal (`lease_removed`)
 and publication history update (`history_updated`) were confirmed. A lease that was already absent counts as removed,
-and `history_updated` is `null` when no matching history entry needs removal. List the store again to confirm its state.
+and `history_updated` is `null` when no matching history entry needs removal. A stage deletion whose parent directory
+sync cannot be confirmed is reported the same way, with `directory_synced: false`. List the store again to confirm its
+state. A remaining history entry is removed by a later publication once the generation, its verification record
+(`<ID>.verification.json`) and its lease file are all absent and an intact recorded predecessor is protected; until
+then generation deletion may stay held. The listing does not show a lease file left behind (`lease_removed: false`),
+so remove `<deleted ID>.lease` from the store folder by hand. Scans take leases only on the current generation, so
+nothing uses that file any more.
 Update all CLI and MCP installations that share the store before migration. Older releases cannot read the new
 reference format.
 Folders named `stage-*` that the CLI cannot manage also count toward the limit; the listing reports their number as

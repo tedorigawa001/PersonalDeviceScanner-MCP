@@ -182,6 +182,27 @@ class MaintenanceTests(unittest.TestCase):
         self.assertEqual(update.pointer(self.root), revised)
         self.assertIn("could not be confirmed", result["warnings"][0])
 
+    def test_stage_parent_sync_failure_reports_the_deleted_stage(self):
+        stage = self.stage()
+        row = self.entry(stage)
+        reference = (self.root / "current.json").read_bytes()
+        wait = (self.root / "attempt.json").read_bytes()
+        sync = update.sync_dir
+
+        def fail_after_rmdir(folder):
+            if folder == self.root and not (self.root / stage).exists():
+                raise OSError(errno.EIO, "synthetic parent sync failure")
+            sync(folder)
+
+        with patch.object(update, "sync_dir", side_effect=fail_after_rmdir):
+            result = maintenance.manage(self.scanner, "delete", stage, row["revision"])
+        self.assertEqual(result["status"], "partial")
+        self.assertEqual(result["data"], {"deleted": stage, "update_performed": False, "directory_synced": False})
+        self.assertIn("parent directory sync", result["warnings"][0])
+        self.assertFalse((self.root / stage).exists())
+        self.assertEqual((self.root / "current.json").read_bytes(), reference)
+        self.assertEqual((self.root / "attempt.json").read_bytes(), wait)
+
     def test_an_incomplete_folder_never_stands_in_for_the_last_previous_generation(self):
         # Empty folders once counted as generations: the real previous one could go, leaving only an empty "previous".
         maintenance.manage(self.scanner, "delete", self.removable, self.entry(self.removable)["revision"])

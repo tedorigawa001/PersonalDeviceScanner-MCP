@@ -40,5 +40,28 @@
   "limits": [
     "I/O faults were injected in synthetic stores. Power interruption and real filesystem failure were outside this run.",
     "No existing definition store, retained container or wait state was used."
-  ]
+  ],
+  "review_follow_up": {
+    "reviewed_commit": "fd73200c1fa76dded0df7601fae50ad08447453b",
+    "findings": [
+      "After a failed lease unlink, the listing showed neither the leftover lease file nor the deleted ID, and a later publication kept the history entry while the lease remained. Reproduced in a synthetic store: after the lease was removed by hand, the pruning removed the entry.",
+      "The documentation no longer said that a later publication removes a remaining history entry and that generation deletion may stay held until then.",
+      "A stage deletion whose parent directory sync failed still raised the generic maintenance error without the deleted ID."
+    ],
+    "changes": [
+      "README and design notes tell the owner to remove a leftover lease file by hand and say when a later publication removes a remaining history entry.",
+      "A stage deletion with an unconfirmed parent directory sync reports partial with the deleted ID and directory_synced false."
+    ],
+    "regression": "The new stage sync fault test failed on the reviewed commit with the generic maintenance error and passes after the change.",
+    "verification": {
+      "python_3_14_command": "env PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests",
+      "python_3_14": {"version": "3.14.10", "total": 821, "passed": 804, "skipped": 17, "failed": 0},
+      "python_3_15_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests",
+      "python_3_15": {"version": "3.15.2", "total": 821, "passed": 804, "skipped": 17, "failed": 0},
+      "focused_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py'",
+      "focused": {"total": 113, "passed": 113, "skipped": 0, "failed": 0},
+      "python_skip_reason": "All 17 skipped tests require Windows.",
+      "npm": "Not rerun: no JavaScript or packaging file changed."
+    }
+  }
 }

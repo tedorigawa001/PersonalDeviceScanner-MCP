@@ -532,8 +532,15 @@ def manage(scanner, action, entry_id=None, revision=None, not_before=None):
                 return delete_generation(path, entry_id, reference, checks, revisions[entry_id], deadline)
             update.current(path, deadline)
             remove_tree(path / entry_id, revision, deadline)
-            update.sync_dir(path)
-            return core.result("clamav", "completed", data={"deleted": entry_id, "update_performed": False})
+            data = {"deleted": entry_id, "update_performed": False}
+            try:
+                update.sync_dir(path)
+            except OSError:
+                # The stage is already gone, so this must not read as a failed deletion.
+                return core.result("clamav", "partial", data=dict(data, directory_synced=False), warnings=[
+                    "The parent directory sync could not be confirmed",
+                    "List the signature store again before further maintenance"])
+            return core.result("clamav", "completed", data=data)
     except history.Busy:
         return core.result("clamav", "partial", warnings=["Signature update, publication or selected generation is busy; no maintenance completed"])
     except OSError:
