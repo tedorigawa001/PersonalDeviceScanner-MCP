@@ -63,5 +63,20 @@
       "python_skip_reason": "All 17 skipped tests require Windows.",
       "npm": "Not rerun: no JavaScript or packaging file changed."
     }
+  },
+  "ci_follow_up": {
+    "date": "2026-11-20",
+    "run": 44652976263,
+    "url": "https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/runs/44652976263",
+    "commit": "342ee8f",
+    "covers": "fd73200 and its review follow-up 342ee8f",
+    "started_at": "2026-11-20T01:21:08Z",
+    "finished_at": "2026-11-20T01:24:53Z",
+    "result": "22 of 22 jobs passed",
+    "python_tests": "821 tests run per Python (3.11, 3.14, 3.15) on each OS, with no failures or errors: macOS 804 passed and 17 skipped, Ubuntu 774 passed and 47 skipped, Windows 607 passed and 214 skipped",
+    "delete_report_tests": "the 4 new tests of fd73200, the new stage test of 342ee8f and the extended busy publication lock test passed on macOS and Ubuntu with each Python, and were skipped on Windows as POSIX-only",
+    "npm_launcher": "12 of 12 jobs passed (Node 22, 24, 26): macOS and Ubuntu 34 of 34, Windows 32 of 34 with 2 skipped",
+    "distributions": "verified",
+    "limit": "CI injects I/O faults into synthetic stores; power interruption and real file system failure are not exercised"
   }
 }
