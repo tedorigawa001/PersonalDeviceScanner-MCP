@@ -1,0 +1,44 @@
+{
+  "date": "2026-11-20",
+  "kind": "clamav_generation_delete_cleanup_regression",
+  "base_commit": "f665d9034c12c4cb1bca34c87198d075a868a6bc",
+  "scope": "The local owner signature store CLI and synthetic definition stores on macOS.",
+  "reporting": {
+    "deleted": "The generation directory was removed during the operation. The directory_synced field records confirmation of the deletion's durability.",
+    "directory_synced": "The parent directory sync after removal of the generation and any lease file is confirmed.",
+    "lease_removed": "The lease file was removed or was already absent.",
+    "history_updated": "In a partial response, false when the update was skipped for incomplete cleanup or cannot be confirmed, and null when there was no matching history entry to remove.",
+    "history_preservation": "Cleanup must be confirmed before attempting to prune the publication record. A failure after replacing the reference may leave the new history visible, with durability unconfirmed. The result asks the owner to list the store again."
+  },
+  "regressions": {
+    "added": 4,
+    "baseline_check": "The parent sync fault test failed on the base behavior with the generic maintenance error after generation removal.",
+    "cases": [
+      "A parent directory sync fault after generation and lease removal reports partial and the deleted ID, with sync and history update unconfirmed. The wait and publication reference are retained.",
+      "A failed lease unlink reports partial and the deleted ID, confirms the successful parent sync, keeps the lease file and reference, and releases the lease lock.",
+      "When the generation directory removal fails, the command takes the error path. The directory, lease and publication reference remain, with no deleted ID.",
+      "A parent sync fault during the later publication history rewrite reports history unconfirmed even if the new reference is already visible.",
+      "Existing busy publication lock and history write failure regressions still report the deleted ID. The busy case confirms completed parent sync and lease cleanup."
+    ]
+  },
+  "verification": {
+    "focused_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py'",
+    "focused": {"total": 112, "passed": 112, "skipped": 0, "failed": 0},
+    "android_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -p test_android.py -q",
+    "android": {"total": 40, "passed": 40, "skipped": 0, "failed": 0},
+    "mcp_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -p test_mcp.py -q",
+    "mcp": {"sdk": "1.30.0", "total": 8, "passed": 8, "skipped": 0, "failed": 0},
+    "npm_command": "env PYTHONDONTWRITEBYTECODE=1 npm test",
+    "npm": {"total": 34, "passed": 33, "skipped": 1, "failed": 0},
+    "npm_skip_reason": "Optional PyPI first-install test.",
+    "python_3_14_command": "env PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests",
+    "python_3_14": {"version": "3.14.10", "total": 820, "passed": 803, "skipped": 17, "failed": 0, "seconds": 107.498},
+    "python_3_15_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests",
+    "python_3_15": {"version": "3.15.2", "total": 820, "passed": 803, "skipped": 17, "failed": 0, "seconds": 106.630},
+    "python_skip_reason": "All 17 skipped tests require Windows. Both runs included Android and real MCP SDK tests."
+  },
+  "limits": [
+    "I/O faults were injected in synthetic stores. Power interruption and real filesystem failure were outside this run.",
+    "No existing definition store, retained container or wait state was used."
+  ]
+}

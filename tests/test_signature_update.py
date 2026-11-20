@@ -182,6 +182,8 @@ class UpdateTests(unittest.TestCase):
             os.close(holder)
         self.assertEqual((result["status"], result["data"]["deleted"], result["data"]["history_updated"]),
                          ("partial", refs[1], False))
+        self.assertTrue(result["data"]["directory_synced"])
+        self.assertTrue(result["data"]["lease_removed"])
         self.assertNotIn("no maintenance completed", " ".join(result["warnings"]))
         self.assertFalse((self.root / refs[1]).exists())
         self.assertEqual(update.pointer(self.root), reference)

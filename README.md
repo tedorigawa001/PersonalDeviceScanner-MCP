@@ -477,9 +477,10 @@ An unreadable generation holds generation deletion. The first update that change
 former current generation and marks other existing generation IDs as `legacy_untracked`. They predate that record or
 were never published, so they can be deleted once an intact recorded predecessor is protected, and are held otherwise.
 A store that never had a reference records none: folders left by failed first switches can be deleted after the first
-publication. If a deletion removes a generation but cannot update the publication history (for example while scans
-keep the publication lock busy), the result is `partial` with `history_updated: false`; a later publication removes
-the record, and until then generation deletion may stay held.
+publication. After generation removal, unconfirmed cleanup or history writes produce `partial` with the `deleted` ID.
+The result identifies whether the parent directory sync (`directory_synced`), lease file removal (`lease_removed`)
+and publication history update (`history_updated`) were confirmed. A lease that was already absent counts as removed,
+and `history_updated` is `null` when no matching history entry needs removal. List the store again to confirm its state.
 Update all CLI and MCP installations that share the store before migration. Older releases cannot read the new
 reference format.
 Folders named `stage-*` that the CLI cannot manage also count toward the limit; the listing reports their number as

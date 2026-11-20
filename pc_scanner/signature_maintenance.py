@@ -406,11 +406,10 @@ def remove_tree(path, expected, deadline, *, generation=False, check_reference=N
     finally:
         os.close(fd)
     path.rmdir()
-    update.sync_dir(path.parent)
 
 
 def delete_generation(path, name, reference, checks, revision, deadline):
-    """Delete the selected generation; False when it is gone but its history entry could not be removed."""
+    """Report the removed directory separately from the cleanup and history checks that follow."""
     current = reference[0]
     active = current["generation"]
     active_metadata = tree(path / active, deadline)
@@ -424,30 +423,57 @@ def delete_generation(path, name, reference, checks, revision, deadline):
                 raise OSError("Previous generation changed; list again")
 
     lease = path / (name + ".lease")
-    with exclusive_lease(lease) as leased:
-        remove_tree(path / name, revision, deadline, generation=True, check_reference=check_reference)
-        if leased:
-            lease.unlink()
-    update.sync_dir(path)
-    if "schema" not in current:
-        return True  # the earlier reference format has no history to revise
-    previous = [record for record in current["previous"] if record["generation"] != name]
-    legacy = [generation for generation in current["legacy_untracked"] if generation != name]
-    if previous != current["previous"] or legacy != current["legacy_untracked"]:
-        # A failure before the rewrite leaves the entry. A later publication prunes a recorded predecessor only after
-        # confirming absence behind an intact protected generation, and an unrecorded ID once everything under it is gone.
-        try:
-            with history.locked(path / "publish"):
-                if update.pointer_snapshot(path) != reference:
-                    raise OSError("Signature publication reference changed")
-                revised = dict(current, previous=previous, legacy_untracked=legacy)
-                update.write_json(path / "current.json", revised)
-                if update.pointer(path) != revised:
-                    raise OSError("Signature history deletion could not be confirmed")
-        except OSError:
-            # Busy included: the folder is already gone, so this must not read as "nothing was done".
-            return False
-    return True
+    removed, lease_removed = False, False
+    warnings = []
+    try:
+        with exclusive_lease(lease) as leased:
+            remove_tree(path / name, revision, deadline, generation=True, check_reference=check_reference)
+            removed = True
+            if leased:
+                lease.unlink()
+            lease_removed = True
+    except OSError:
+        if not removed:
+            raise
+        warnings.append("The lease release could not be confirmed" if lease_removed else
+                        "The lease file removal could not be confirmed")
+    # One sync covers both changes to the parent directory. Try it even if lease removal failed.
+    directory_synced = False
+    try:
+        update.sync_dir(path)
+        directory_synced = True
+    except OSError:
+        warnings.append("The parent directory sync could not be confirmed")
+
+    history_updated = None
+    if "schema" in current:
+        previous = [record for record in current["previous"] if record["generation"] != name]
+        legacy = [generation for generation in current["legacy_untracked"] if generation != name]
+        if previous != current["previous"] or legacy != current["legacy_untracked"]:
+            history_updated = False
+            # Keep the publication record until cleanup is confirmed. Release the lease before taking
+            # the publication lock, even when the generation itself is already gone.
+            if not warnings:
+                try:
+                    with history.locked(path / "publish"):
+                        if update.pointer_snapshot(path) != reference:
+                            raise OSError("Signature publication reference changed")
+                        revised = dict(current, previous=previous, legacy_untracked=legacy)
+                        update.write_json(path / "current.json", revised)
+                        if update.pointer(path) != revised:
+                            raise OSError("Signature history deletion could not be confirmed")
+                    history_updated = True
+                except OSError:
+                    pass  # Busy, write and readback failures all leave the history update unconfirmed.
+            if not history_updated:
+                warnings.append("Generation deleted, but its publication history entry removal could not be confirmed")
+
+    data = {"deleted": name, "update_performed": False}
+    if warnings:
+        warnings.append("List the signature store again before further maintenance")
+        data.update(directory_synced=directory_synced, lease_removed=lease_removed, history_updated=history_updated)
+        return core.result("clamav", "partial", data=data, warnings=warnings)
+    return core.result("clamav", "completed", data=data)
 
 
 def manage(scanner, action, entry_id=None, revision=None, not_before=None):
@@ -503,14 +529,10 @@ def manage(scanner, action, entry_id=None, revision=None, not_before=None):
             if not row["deletable"]:
                 raise core.ScannerError("Selected entry is protected: " + row["reason"])
             if row["kind"] == "generation":
-                if not delete_generation(path, entry_id, reference, checks, revisions[entry_id], deadline):
-                    return core.result("clamav", "partial", data={"deleted": entry_id, "update_performed": False,
-                                                                  "history_updated": False}, warnings=[
-                        "Generation deleted, but its publication history entry could not be removed now; a later "
-                        "publication removes it, and until then generation deletion may stay held"])
-            else:
-                update.current(path, deadline)
-                remove_tree(path / entry_id, revision, deadline)
+                return delete_generation(path, entry_id, reference, checks, revisions[entry_id], deadline)
+            update.current(path, deadline)
+            remove_tree(path / entry_id, revision, deadline)
+            update.sync_dir(path)
             return core.result("clamav", "completed", data={"deleted": entry_id, "update_performed": False})
     except history.Busy:
         return core.result("clamav", "partial", warnings=["Signature update, publication or selected generation is busy; no maintenance completed"])

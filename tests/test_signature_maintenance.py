@@ -84,6 +84,104 @@ class MaintenanceTests(unittest.TestCase):
         with self.assertRaises(core.ScannerError):
             maintenance.manage(self.scanner, "delete", self.previous, row["revision"])
 
+    def test_parent_sync_failure_reports_deleted_generation_and_unconfirmed_sync(self):
+        target = self.root / self.removable
+        lease = self.root / (self.removable + ".lease")
+        with update.generation_lease(lease):
+            pass
+        entry = self.entry(self.removable)
+        reference = (self.root / "current.json").read_bytes()
+        wait = (self.root / "attempt.json").read_bytes()
+        sync = update.sync_dir
+
+        def fail_after_rmdir(folder):
+            if folder == self.root and not target.exists():
+                raise OSError(errno.EIO, "synthetic parent sync failure")
+            sync(folder)
+
+        with patch.object(update, "sync_dir", side_effect=fail_after_rmdir):
+            result = maintenance.manage(self.scanner, "delete", self.removable, entry["revision"])
+        self.assertEqual(result["status"], "partial")
+        self.assertEqual(result["data"], {"deleted": self.removable, "update_performed": False,
+                                          "directory_synced": False, "lease_removed": True,
+                                          "history_updated": False})
+        self.assertFalse(target.exists())
+        self.assertFalse(lease.exists())
+        self.assertEqual((self.root / "current.json").read_bytes(), reference)
+        self.assertEqual((self.root / "attempt.json").read_bytes(), wait)
+        self.assertEqual(self.entry(self.previous)["reason"], "last_previous")
+
+    def test_lease_unlink_failure_reports_deleted_generation_and_preserves_history(self):
+        target = self.root / self.removable
+        lease = self.root / (self.removable + ".lease")
+        with update.generation_lease(lease):
+            pass
+        entry = self.entry(self.removable)
+        reference = (self.root / "current.json").read_bytes()
+        wait = (self.root / "attempt.json").read_bytes()
+        unlink = Path.unlink
+
+        def fail_lease_only(path, *args, **kwargs):
+            if path == lease:
+                raise OSError(errno.EIO, "synthetic lease unlink failure")
+            return unlink(path, *args, **kwargs)
+
+        with patch.object(Path, "unlink", fail_lease_only):
+            result = maintenance.manage(self.scanner, "delete", self.removable, entry["revision"])
+        self.assertEqual(result["status"], "partial")
+        self.assertEqual(result["data"], {"deleted": self.removable, "update_performed": False,
+                                          "directory_synced": True, "lease_removed": False,
+                                          "history_updated": False})
+        self.assertTrue(any("lease file removal" in warning for warning in result["warnings"]))
+        self.assertFalse(target.exists())
+        with maintenance.exclusive_lease(lease) as leased:
+            self.assertTrue(leased)
+        self.assertEqual((self.root / "current.json").read_bytes(), reference)
+        self.assertEqual((self.root / "attempt.json").read_bytes(), wait)
+        self.assertEqual(self.entry(self.previous)["reason"], "last_previous")
+
+    def test_generation_rmdir_failure_does_not_report_it_as_deleted(self):
+        target = self.root / self.removable
+        lease = self.root / (self.removable + ".lease")
+        with update.generation_lease(lease):
+            pass
+        entry = self.entry(self.removable)
+        reference = update.pointer(self.root)
+        rmdir = Path.rmdir
+
+        def fail_rmdir(path):
+            if path == target:
+                raise OSError(errno.EIO, "synthetic generation rmdir failure")
+            return rmdir(path)
+
+        with patch.object(Path, "rmdir", fail_rmdir):
+            with self.assertRaisesRegex(core.ScannerError, "maintenance could not complete"):
+                maintenance.manage(self.scanner, "delete", self.removable, entry["revision"])
+        self.assertTrue(target.is_dir())
+        self.assertTrue(lease.is_file())
+        self.assertEqual(update.pointer(self.root), reference)
+
+    def test_history_sync_failure_reports_unconfirmed_even_if_reference_has_changed(self):
+        entry = self.entry(self.removable)
+        reference = update.pointer(self.root)
+        revised = dict(reference, previous=reference["previous"][:1])
+        sync = update.sync_dir
+
+        def fail_history_sync(folder):
+            if folder == self.root and update.pointer(self.root) == revised:
+                raise OSError(errno.EIO, "synthetic publication sync failure after replacing the pointer")
+            sync(folder)
+
+        with patch.object(update, "sync_dir", side_effect=fail_history_sync):
+            result = maintenance.manage(self.scanner, "delete", self.removable, entry["revision"])
+        self.assertEqual(result["status"], "partial")
+        self.assertEqual(result["data"], {"deleted": self.removable, "update_performed": False,
+                                          "directory_synced": True, "lease_removed": True,
+                                          "history_updated": False})
+        self.assertFalse((self.root / self.removable).exists())
+        self.assertEqual(update.pointer(self.root), revised)
+        self.assertIn("could not be confirmed", result["warnings"][0])
+
     def test_an_incomplete_folder_never_stands_in_for_the_last_previous_generation(self):
         # Empty folders once counted as generations: the real previous one could go, leaving only an empty "previous".
         maintenance.manage(self.scanner, "delete", self.removable, self.entry(self.removable)["revision"])
