@@ -1412,7 +1412,7 @@
     {
       "aggregate": "incomplete",
       "assemblies": [
-        "pkg:pypi/personal-pc-scanner@0.11.4"
+        "pkg:pypi/personal-pc-scanner@0.12.0"
       ]
     }
   ],
@@ -1521,7 +1521,7 @@
         "pkg:pypi/cryptography@50.0.2",
         "pkg:pypi/mcp@1.30.0"
       ],
-      "ref": "pkg:pypi/personal-pc-scanner@0.11.4"
+      "ref": "pkg:pypi/personal-pc-scanner@0.12.0"
     },
     {
       "dependsOn": [],
@@ -1612,7 +1612,7 @@
   ],
   "metadata": {
     "component": {
-      "bom-ref": "pkg:pypi/personal-pc-scanner@0.11.4",
+      "bom-ref": "pkg:pypi/personal-pc-scanner@0.12.0",
       "licenses": [
         {
           "expression": "MIT"
@@ -1625,9 +1625,9 @@
           "value": "declared in pyproject.toml"
         }
       ],
-      "purl": "pkg:pypi/personal-pc-scanner@0.11.4",
+      "purl": "pkg:pypi/personal-pc-scanner@0.12.0",
       "type": "application",
-      "version": "0.11.4"
+      "version": "0.12.0"
     },
     "properties": [
       {
@@ -1648,7 +1648,7 @@
       }
     ]
   },
-  "serialNumber": "urn:uuid:8d6fc133-5cda-5c36-9f60-597d2af22f22",
+  "serialNumber": "urn:uuid:386d1b5f-2807-5a17-a5e1-2bad4f9af194",
   "specVersion": "1.6",
   "version": 1
 }
