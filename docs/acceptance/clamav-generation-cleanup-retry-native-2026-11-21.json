@@ -1,0 +1,102 @@
+{
+  "date": "2026-11-21",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "native_clamav_deleted_generation_cleanup_retry_acceptance",
+  "status": "passed on macOS and Linux Docker",
+  "source_commit": "58b2a3cbff43ede17ba99c4791113a1d0428c62d",
+  "design": "../clamav-manual-recovery-design.md",
+  "regression_record": "clamav-generation-cleanup-retry-2026-11-21.json",
+  "environment": {
+    "macos": {"platform": "macOS 27.2.1 (26B131), arm64", "python": "3.15.2", "engine": "ClamAV 1.5.4", "effective_uid": 501},
+    "linux": {
+      "platform": "Ubuntu 24.04.5 LTS, aarch64, on Docker for Mac",
+      "python": "3.15.2",
+      "engine": "ClamAV 1.5.4",
+      "uid_gid": "10001:10001",
+      "image": "sha256:20fd8ed13f28e2b3e10a54c9b2fe018c8e8d5a2549a79fc3b55fc1ea82021ada",
+      "container_id": "eb955a6bd958accf6019ac3d7327f5a24f9559a0474784df5385f016351f82e2",
+      "cpus": 2,
+      "memory_bytes": 3221225472,
+      "network": "none",
+      "mounts": [],
+      "ports_published": false,
+      "capabilities_dropped": "ALL",
+      "no_new_privileges": true
+    },
+    "source_files_verified_against_commit": 28,
+    "source_and_harness_hashes_matched_after_transfer": 29
+  },
+  "fixtures": {
+    "source": "Read-only copies of eight archived public CVD and signature files from the stopped fixture of clamav-previous-generation-migration-linux-2026-11-19.json. No runtime store, attempt file or provider state was copied.",
+    "hashes_matched_prior_records_per_platform": 8,
+    "native_sigtool_verified_per_platform": {"embedded": 5, "detached": 3},
+    "main_version": 63,
+    "bytecode_version": 339,
+    "daily_built_at": "2026-11-11T06:24:27+00:00",
+    "daily_28180_sha256": "80d80ef32f10f168154df52114c39735e057500bb45a495eba9db2f5496e1437",
+    "initial_slots_by_role": {"current": 28180, "protected_predecessor": 28174, "older_published": 28172, "unpublished_duplicate": 28174},
+    "initial_slots_per_store": 4,
+    "initial_cvd_bytes_per_store": 451208679,
+    "setup": "New private stores were seeded from the validated CVD copies and known publication records. The failure probes injected an I/O error only at the selected lease unlink or the parent sync after the selected directory had been deleted.",
+    "signature_log_diagnostic": "The initial harness expected adjacent words in the detached verification message. Native sigtool included both file paths between those words. After correcting the assertion, all signatures and both full trials passed in fresh trial directories."
+  },
+  "selected_retries": {
+    "limit_seconds": 30,
+    "method": "Uninstrumented CLI subprocess wall time from launch to exit, including startup and validation. Fixture setup and fault injection were outside the timed commands. Filesystem caches were not evicted.",
+    "list_command": "python -m pc_scanner.cli --config TEST_CONFIG clamav-signature-store list",
+    "retry_command": "python -m pc_scanner.cli --config TEST_CONFIG clamav-signature-store cleanup GENERATION_ID --revision CLEANUP_REVISION",
+    "list_seconds": {"macos": [0.180244, 0.155659, 0.187008, 0.1532], "linux": [0.30534, 0.276953, 0.308115, 0.361035]},
+    "retry_seconds": {
+      "macos": {"lease_and_history": 0.231443, "directory_sync_only": 0.21403},
+      "linux": {"lease_and_history": 0.334259, "directory_sync_only": 0.350597}
+    },
+    "checks": [
+      "Both faulted deletes reported partial with the deleted ID. A lease failure held the older generation's history entry. The unpublished generation needed only parent sync.",
+      "Two candidates appeared in each listing. The first selected retry confirmed lease removal, parent sync and history update. The second candidate remained, required a new revision, and its retry confirmed parent sync without a history change.",
+      "On each platform exact-revision deletion of the current and last intact previous generations was refused. Cleanup of the selected older generation was deferred while its lease was held. The stale cleanup revision was also rejected.",
+      "The final listing had no cleanup candidates or journals. Only the selected older history record had been removed."
+    ]
+  },
+  "concurrent_native_scan": {
+    "method": "Separate trial from wall-time measurement. A hook paused the cleanup process after it read a real 1 MiB block of the protected predecessor's main CVD, then returned the original bytes after release. A separate scan CLI invoked native clamscan with the exact current-generation database path and a benign synthetic target. The controller verified receipt of the scan result before releasing the read.",
+    "scan_command": "python -m pc_scanner.cli --config TEST_CONFIG malware synthetic",
+    "seconds_since_first_predecessor_read": {
+      "macos": {"native_launch": 0.371563, "native_exit": 6.491556, "scan_result": 6.506236, "verification_resumed": 6.509984, "cleanup_exit": 6.64361},
+      "linux": {"native_launch": 0.420824, "native_exit": 6.049937, "scan_result": 6.069823, "verification_resumed": 6.085378, "cleanup_exit": 6.244591}
+    },
+    "gated_cleanup_wall_seconds": {"macos": 6.76164, "linux": 6.597114},
+    "scan_result_per_platform": {
+      "current_daily_version": 28180,
+      "engine_exit": 0,
+      "files_scanned": 1,
+      "findings": 0,
+      "errors": 0,
+      "cli_exit": 2,
+      "cli_status": "partial",
+      "definition_freshness": "stale",
+      "diagnostic": "The fixture was about 10.2 days old under the standard seven-day threshold. Both the CLI and native ClamAV reported the age warning."
+    }
+  },
+  "preservation": {
+    "checked_files_per_store": 10,
+    "checks": "The current and protected predecessor CVDs, the current verification record, and the trial wait, provider and synchronization files kept their SHA-256 values, owner, mode, link count, inode, and modification and change times.",
+    "existing_stores_and_waits_modified": false,
+    "os_managed_definitions_modified": false,
+    "freshclam_run": false,
+    "official_provider_requests": 0,
+    "source_container_remained_stopped": true,
+    "trial_container": "Only the idle entrypoint remained before stop. The dedicated container was stopped and kept. Its summary matched the byte sequence copied before stop.",
+    "local_evidence": "Private trial directories hold the synthetic data, engine and CLI outputs, harness and summaries. The Linux store and raw logs remain in the stopped trial container."
+  },
+  "verification": {
+    "focused_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
+    "focused": {"total": 121, "passed": 121, "skipped": 0, "failed": 0, "seconds": 21.302},
+    "harness_sha256": "a915a3990b61e1f015000b95c50b70cf2b1e88c8422f6d10f9ede3811a06e47d",
+    "macos_summary_sha256": "797a3dacc310f72b68984528d995573bac8d770dc48087200b37e28cd59b8dcc",
+    "linux_summary_sha256": "53a0e9660c9a3a52b3a7e7440f4a4414ca776a64a64f9e82a9958549bbdc6a2f"
+  },
+  "limits": [
+    "Timing applies to these trials on this Mac and Docker using the archived production-sized CVDs. Restart recovery, a new definition acquisition and a scan with fresh definitions were outside this acceptance.",
+    "Runtime source was unchanged. The full suite was not repeated for this acceptance-only documentation change."
+  ]
+}
