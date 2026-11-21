@@ -481,12 +481,14 @@ publication. After generation removal, unconfirmed cleanup or history writes pro
 The result identifies whether the parent directory sync (`directory_synced`), lease file removal (`lease_removed`)
 and publication history update (`history_updated`) were confirmed. A lease that was already absent counts as removed,
 and `history_updated` is `null` when no matching history entry needs removal. A stage deletion whose parent directory
-sync cannot be confirmed is reported the same way, with `directory_synced: false`. List the store again to confirm its
-state. A remaining history entry is removed by a later publication once the generation, its verification record
-(`<ID>.verification.json`) and its lease file are all absent and an intact recorded predecessor is protected; until
-then generation deletion may stay held. The listing does not show a lease file left behind (`lease_removed: false`),
-so remove `<deleted ID>.lease` from the store folder by hand. Scans take leases only on the current generation, so
-nothing uses that file any more.
+sync cannot be confirmed is reported the same way, with `directory_synced: false`.
+List the store again and look for the generation ID in `data.cleanup`. To retry one listed generation, run
+`clamav-signature-store cleanup GENERATION_ID --revision CLEANUP_REVISION` with that row's revision.
+The command checks that the generation and verification record are absent, removes a remaining private lease only
+after locking it exclusively, syncs the parent directory, and confirms any necessary history update. The current
+generation and the last intact predecessor remain protected. A new listing is required after the reference or
+selected items change. If the ID cannot be listed as a cleanup candidate, preserve the remaining files for investigation.
+Cleanup leaves the saved update deadline and provider state in place.
 Update all CLI and MCP installations that share the store before migration. Older releases cannot read the new
 reference format.
 Folders named `stage-*` that the CLI cannot manage also count toward the limit; the listing reports their number as

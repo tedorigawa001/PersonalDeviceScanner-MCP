@@ -1,0 +1,45 @@
+{
+  "date": "2026-11-21",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "clamav_deleted_generation_cleanup_retry_verification",
+  "status": "passed with synthetic stores on macOS",
+  "base_commit": "ec44bcc",
+  "environment": {
+    "platform": "macOS 27.2.1 (26B131), arm64",
+    "node": "26.12.1",
+    "npm": "11.20.0"
+  },
+  "implementation": [
+    "List includes cleanup candidates with the generation ID, outstanding checks and a revision. The owner CLI retries one generation selected by ID and revision.",
+    "A private record persisted before deletion binds the generation ID to the reference hashes before and after history removal. A valid older publication entry can also identify a leftover when an intact newer predecessor is protected.",
+    "The retry confirms the generation and its verification record are absent, checks the current reference and predecessor, acquires any remaining lease exclusively, syncs the parent, and verifies any history update. An unconfirmed step leaves a partial result.",
+    "No update download or promotion occurs. Maintenance remains local to the owner CLI."
+  ],
+  "checks": [
+    "Added eight regression tests and extended four existing tests with recovery assertions.",
+    "Retried lease removal, directory sync, publication lock contention, history write failure and failed read-back after reference replacement.",
+    "Recovered an unrecorded generation with a deletion record and a known invalid newer generation whose missing directory temporarily held history review. A journal sync failure before deletion left the generation in place.",
+    "Retried two older leftovers one at a time. A stale revision, arbitrary path, reappearing directory, remaining verification record, busy lease, link, unsafe mode, simulated foreign owner, and simulated permissive ACL did not allow cleanup.",
+    "Kept the current and intact predecessor protected and allowed a new scan to pin the current generation while cleanup verified it. The pending wait, canonical provider state, synchronization record and stage data matched byte for byte.",
+    "Verified the selected retry through the CLI subprocess and the unchanged MCP tool list through the packed npm first installation."
+  ],
+  "verification": {
+    "focused_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
+    "focused": {"total": 121, "passed": 121, "skipped": 0, "failed": 0, "seconds": 20.717},
+    "android_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -p test_android.py -q",
+    "android": {"total": 40, "passed": 40, "skipped": 0, "failed": 0},
+    "mcp_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -p test_mcp.py -q",
+    "mcp": {"total": 8, "passed": 8, "skipped": 0, "failed": 0},
+    "python_3_14_command": "env PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -q",
+    "python_3_14": {"version": "3.14.10", "total": 829, "passed": 812, "skipped": 17, "failed": 0, "seconds": 126.832},
+    "python_3_15_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -q",
+    "python_3_15": {"version": "3.15.2", "total": 829, "passed": 812, "skipped": 17, "failed": 0, "seconds": 125.663},
+    "npm_command": "npm_config_cache=\"$(mktemp -d)\" PC_SCANNER_NPM_E2E=1 PC_SCANNER_NPM_EXPECT_HASHED=1 PC_SCANNER_PYTHON=\"$PWD/.venv/bin/python\" npm test",
+    "npm": {"total": 34, "passed": 34, "skipped": 0, "failed": 0}
+  },
+  "limits": [
+    "The first run of the new CLI test omitted two required paths in its fixture configuration. Both full runs passed after correcting the fixture.",
+    "Real CVD cleanup timing and restart behavior on macOS and Linux, plus Windows and CI, remain unverified for this change.",
+    "Initial publication capacity recovery is a separate pending design item. Existing definition stores, frozen stages, provider waits and the earlier trial outcomes were preserved."
+  ]
+}

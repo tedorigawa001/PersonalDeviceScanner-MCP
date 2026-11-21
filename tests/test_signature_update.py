@@ -187,6 +187,11 @@ class UpdateTests(unittest.TestCase):
         self.assertNotIn("no maintenance completed", " ".join(result["warnings"]))
         self.assertFalse((self.root / refs[1]).exists())
         self.assertEqual(update.pointer(self.root), reference)
+        row, = maintenance.manage(self.scanner(), "list")["data"]["cleanup"]
+        self.assertEqual(row["id"], refs[1])
+        finished = maintenance.manage(self.scanner(), "cleanup", refs[1], row["revision"])
+        self.assertTrue(finished["data"]["history_updated"])
+        self.assertEqual([r["generation"] for r in update.pointer(self.root)["previous"]], refs[:1])
 
     def test_legacy_migrates_only_on_changed_publication_at_the_same_versions(self):
         self.assertEqual(self.do_update()["data"]["update_status"], "updated")

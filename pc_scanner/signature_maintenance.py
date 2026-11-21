@@ -13,6 +13,7 @@ from . import core, history, process_store, signature_update as update
 
 ENTRY = re.compile(r"(?:stage-)?[0-9a-f]{32}\Z")
 REV = re.compile(r"[0-9a-f]{64}\Z")
+CLEANUP_SUFFIX = ".cleanup.json"
 PROVIDER_LIMIT = 65536
 
 
@@ -166,24 +167,35 @@ def tree(path, deadline):
 
 
 @contextmanager
+def open_lease(path, flags):
+    try:
+        listed = os.lstat(path)
+    except FileNotFoundError:
+        yield None, None
+        return
+    if not stat.S_ISREG(listed.st_mode) or getattr(listed, "st_flags", 0) & core.SF_DATALESS:
+        raise OSError("Invalid signature lease")
+    fd = os.open(path, flags | os.O_NOFOLLOW | os.O_NONBLOCK)
+    try:
+        observed = update.identity(process_store.Store({}).private(fd))
+        if observed != update.identity(listed) or observed != update.identity(os.lstat(path)):
+            raise OSError("Signature lease changed")
+        yield fd, observed
+    finally:
+        os.close(fd)
+
+
+@contextmanager
 def exclusive_lease(path):
     import fcntl
     # Only the current generation can get a new scan lease. The updater lock prevents a switch.
-    # An old generation that never had a lease needs no new file just to list or recheck it.
-    try:
-        fd = os.open(path, os.O_RDWR | os.O_NOFOLLOW | os.O_NONBLOCK)
-    except FileNotFoundError:
-        yield False
-        return
-    try:
-        process_store.Store({}).private(fd)
-        try:
-            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            raise history.Busy("Generation is in use") from None
-        yield True
-    finally:
-        os.close(fd)
+    with open_lease(path, os.O_RDWR) as (fd, observed):
+        if fd is not None:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                raise history.Busy("Generation is in use") from None
+        yield observed
 
 
 def checked_generation(path, name, deadline, cancel=None):
@@ -293,7 +305,7 @@ def prune_missing_history(path, current, deadline, cancel):
             if index < len(checks) or record["generation"] not in missing]
 
 
-def inventory(path, deadline):
+def inventory(path, deadline, *, list_cleanup=False):
     state = attempt(path)
     names = update.store_names(path, deadline)
     try:
@@ -360,6 +372,8 @@ def inventory(path, deadline):
                 minimum_not_before=datetime.fromtimestamp(math.ceil(state["next_attempt"]), timezone.utc).isoformat() if state else None,
                 provider_sync=sync,
                 waiting=bool(state and time.time() < state["next_attempt"]))
+    if list_cleanup:
+        result["cleanup"] = cleanup_inventory(path, names, reference, status, checks, deadline)
     return result, reference, checks, revisions
 
 
@@ -408,12 +422,10 @@ def remove_tree(path, expected, deadline, *, generation=False, check_reference=N
     path.rmdir()
 
 
-def delete_generation(path, name, reference, checks, revision, deadline):
-    """Report the removed directory separately from the cleanup and history checks that follow."""
-    current = reference[0]
-    active = current["generation"]
+def storage_check(path, reference, checks, deadline):
+    active = reference[0]["generation"]
     active_metadata = tree(path / active, deadline)
-    update.verify(path, current, deadline)
+    update.verify(path, reference[0], deadline)
 
     def check_reference():
         if update.pointer_snapshot(path) != reference or tree(path / active, deadline) != active_metadata:
@@ -421,82 +433,230 @@ def delete_generation(path, name, reference, checks, revision, deadline):
         for generation, _, metadata in checks:
             if tree(path / generation, deadline) != metadata:
                 raise OSError("Previous generation changed; list again")
+    return check_reference
 
+
+def without_generation(current, name):
+    if "schema" not in current:
+        return current
+    return dict(current, previous=[record for record in current["previous"] if record["generation"] != name],
+                legacy_untracked=[generation for generation in current["legacy_untracked"] if generation != name])
+
+
+def cleanup_record(file, name):
+    saved = update.verification_snapshot(file)
+    if saved is None:
+        return None, None
+    try:
+        record = json.loads(saved[0], object_pairs_hook=update.strict_object)
+        if (set(record) == {"generation", "before", "after"} and record["generation"] == name
+                and all(REV.fullmatch(record[key]) for key in ("before", "after"))):
+            return record, saved[1]
+    except (ValueError, TypeError, KeyError, RecursionError):
+        pass
+    raise OSError("Invalid signature cleanup record")
+
+
+def record_cleanup(file, name, current, revised):
+    record = dict(generation=name, before=revision_for(current), after=revision_for(revised))
+    update.write_json(file, record)
+    return record
+
+
+def cleanup_plan(path, name, reference, status, checks, deadline):
+    """Only a durable delete record or an older publication entry can identify a removed generation."""
+    current = reference[0] if reference is not None else None
+    folder = path / name
+    if (current is None or current["generation"] == name or not absent(folder)
+            or not absent(update.verification_file(folder))):
+        return None
+    record_file = path / (name + CLEANUP_SUFFIX)
+    record, record_identity = cleanup_record(record_file, name)
+    revised = without_generation(current, name)
+    current_hash = revision_for(current)
+    matches_record = record is not None and (
+        (record["before"], record["after"]) == (current_hash, revision_for(revised))
+        or (record["after"] == current_hash and revised == current))
+    if not matches_record:
+        # With a different reference, independently verify the current predecessor. Older versions also
+        # need a publication entry, since they left no deletion record.
+        if (status != "protected" or any(generation == name for generation, _, _ in checks)
+                or (record is None and revised == current)):
+            return None
+    elif status == "previous_unavailable" and checks[-1][:2] == (name, "unavailable"):
+        # A known deletion can have removed a corrupt entry ahead of the intact predecessor.
+        status, checks = previous_protection(path, revised, deadline)
+    if (status not in {"protected", "no_previous", "legacy_history"}
+            or any(generation == name and verdict == "last_previous" for generation, verdict, _ in checks)):
+        return None
+    if revised != current and status != "protected":
+        return None
+    with open_lease(path / (name + ".lease"), os.O_RDONLY) as (_, lease):
+        pass
+    pending = ["directory_sync"]
+    if lease is not None:
+        pending.insert(0, "lease_removal")
+    if revised != current or (record is not None and record["before"] != record["after"]):
+        pending.append("history_update")
+    row = dict(id=name, pending=pending, revision=revision_for([name, reference, checks, record, record_identity, lease]))
+    return row, revised, checks, (record, record_identity), lease
+
+
+def cleanup_inventory(path, store_names, reference, status, checks, deadline):
+    names = {n.removesuffix(CLEANUP_SUFFIX) for n in store_names if n.endswith(CLEANUP_SUFFIX)}
+    current = reference[0] if reference is not None else None
+    if current and "schema" in current:
+        names.update(record["generation"] for record in current["previous"])
+        names.update(current["legacy_untracked"])
+    rows = []
+    for name in sorted(n for n in names if update.GEN.fullmatch(n)):
+        update.check_deadline(deadline)
+        try:
+            plan = cleanup_plan(path, name, reference, status, checks, deadline)
+        except OSError:
+            continue  # Unreadable or unsafe evidence cannot authorize a cleanup.
+        if plan is not None:
+            rows.append(plan[0])
+    return rows
+
+
+def remove_lease(lease, observed):
+    if observed is not None:
+        if update.identity(os.lstat(lease)) != observed:
+            raise OSError("Signature lease changed")
+        lease.unlink()
+    elif not absent(lease):
+        raise OSError("Signature lease changed")
+
+
+def finish_cleanup(path, name, reference, revised, record, lease_removed, warnings, deadline, *, retry=False):
+    """Report the removed generation separately from the remaining cleanup."""
+    directory_synced = False
+    try:
+        update.check_deadline(deadline)
+        update.sync_dir(path)
+        directory_synced = True
+    except (OSError, core.ScannerError):
+        warnings.append("The parent directory sync could not be confirmed")
+
+    history_updated = None
+    if record["before"] != record["after"]:
+        history_updated = False
+        if not warnings:
+            try:
+                # Only the short reference update needs the publication lock.
+                with history.locked(path / "publish", check_wait=lambda: update.check_deadline(deadline)):
+                    if update.pointer_snapshot(path) != reference or not gone(path, name):
+                        raise OSError("Signature cleanup state changed")
+                    if revised != reference[0]:
+                        update.write_json(path / "current.json", revised)
+                    if update.pointer(path) != revised:
+                        raise OSError("Signature history deletion could not be confirmed")
+                history_updated = True
+            except (OSError, core.ScannerError):
+                pass
+        if not history_updated:
+            warnings.append("Generation deleted, but its publication history entry removal could not be confirmed")
+    if not warnings:
+        try:
+            file = path / (name + CLEANUP_SUFFIX)
+            if cleanup_record(file, name)[0] != record:
+                raise OSError("Signature cleanup record changed")
+            file.unlink()
+            update.sync_dir(path)
+        except OSError:
+            warnings.append("The cleanup record removal could not be confirmed")
+    data = {"deleted": name, "update_performed": False}
+    if warnings:
+        warnings.append("List the signature store again before further maintenance")
+    if warnings or retry:
+        data.update(directory_synced=directory_synced, lease_removed=lease_removed, history_updated=history_updated)
+    return core.result("clamav", "partial" if warnings else "completed", data=data, warnings=warnings)
+
+
+def delete_generation(path, name, reference, checks, revision, deadline):
+    current = reference[0]
+    check_reference = storage_check(path, reference, checks, deadline)
+    revised = without_generation(current, name)
+    record_file = path / (name + CLEANUP_SUFFIX)
     lease = path / (name + ".lease")
     removed, lease_removed = False, False
     warnings = []
     try:
-        with exclusive_lease(lease) as leased:
+        with exclusive_lease(lease) as observed:
+            check_reference()
+            cleanup_record(record_file, name)  # Preserve a malformed or unsafe record for investigation.
+            update.check_deadline(deadline)
+            record = record_cleanup(record_file, name, current, revised)
             remove_tree(path / name, revision, deadline, generation=True, check_reference=check_reference)
             removed = True
-            if leased:
-                lease.unlink()
+            remove_lease(lease, observed)
             lease_removed = True
     except OSError:
         if not removed:
             raise
         warnings.append("The lease release could not be confirmed" if lease_removed else
                         "The lease file removal could not be confirmed")
-    # One sync covers both changes to the parent directory. Try it even if lease removal failed.
-    directory_synced = False
+    return finish_cleanup(path, name, reference, revised, record, lease_removed, warnings, deadline)
+
+
+def retry_cleanup(path, name, revision, reference, status, checks, deadline):
+    plan = cleanup_plan(path, name, reference, status, checks, deadline)
+    if plan is None or plan[0]["revision"] != revision:
+        raise core.ScannerError("Selected signature cleanup is unavailable or changed; list again")
+    _, revised, checks, saved, expected_lease = plan
+    check_reference = storage_check(path, reference, checks, deadline)
+    lease = path / (name + ".lease")
+    file = path / (name + CLEANUP_SUFFIX)
+    lease_removed, warnings = False, []
     try:
-        update.sync_dir(path)
-        directory_synced = True
+        with exclusive_lease(lease) as observed:
+            check_reference()
+            folder = path / name
+            if (observed != expected_lease or cleanup_record(file, name) != saved
+                    or not absent(folder) or not absent(update.verification_file(folder))):
+                raise core.ScannerError("Selected signature cleanup changed; list again")
+            update.check_deadline(deadline)
+            record = saved[0]
+            if record is None or (revised != reference[0] and record["before"] != revision_for(reference[0])):
+                record = record_cleanup(file, name, reference[0], revised)
+            try:
+                remove_lease(lease, observed)
+                lease_removed = True
+            except OSError:
+                warnings.append("The lease file removal could not be confirmed")
     except OSError:
-        warnings.append("The parent directory sync could not be confirmed")
-
-    history_updated = None
-    if "schema" in current:
-        previous = [record for record in current["previous"] if record["generation"] != name]
-        legacy = [generation for generation in current["legacy_untracked"] if generation != name]
-        if previous != current["previous"] or legacy != current["legacy_untracked"]:
-            history_updated = False
-            # Keep the publication record until cleanup is confirmed. Release the lease before taking
-            # the publication lock, even when the generation itself is already gone.
-            if not warnings:
-                try:
-                    with history.locked(path / "publish"):
-                        if update.pointer_snapshot(path) != reference:
-                            raise OSError("Signature publication reference changed")
-                        revised = dict(current, previous=previous, legacy_untracked=legacy)
-                        update.write_json(path / "current.json", revised)
-                        if update.pointer(path) != revised:
-                            raise OSError("Signature history deletion could not be confirmed")
-                    history_updated = True
-                except OSError:
-                    pass  # Busy, write and readback failures all leave the history update unconfirmed.
-            if not history_updated:
-                warnings.append("Generation deleted, but its publication history entry removal could not be confirmed")
-
-    data = {"deleted": name, "update_performed": False}
-    if warnings:
-        warnings.append("List the signature store again before further maintenance")
-        data.update(directory_synced=directory_synced, lease_removed=lease_removed, history_updated=history_updated)
-        return core.result("clamav", "partial", data=data, warnings=warnings)
-    return core.result("clamav", "completed", data=data)
+        if not lease_removed:
+            raise
+        warnings.append("The lease release could not be confirmed")
+    return finish_cleanup(path, name, reference, revised, record, lease_removed, warnings, deadline, retry=True)
 
 
 def manage(scanner, action, entry_id=None, revision=None, not_before=None):
     if scanner.via != "cli":
         raise core.ScannerError("Signature maintenance is available only through the owner CLI")
-    if action not in {"list", "recover", "delete"}:
+    if action not in {"list", "recover", "delete", "cleanup"}:
         raise core.ScannerError("Invalid signature maintenance action")
     if action != "list" and (not isinstance(revision, str) or not REV.fullmatch(revision)):
         raise core.ScannerError("Exact revision from the signature store list is required")
-    if action == "delete" and (not isinstance(entry_id, str) or not ENTRY.fullmatch(entry_id)):
+    if action in {"delete", "cleanup"} and (
+            not isinstance(entry_id, str) or not (ENTRY if action == "delete" else update.GEN).fullmatch(entry_id)):
         raise core.ScannerError("Invalid signature entry ID")
     deadline = time.monotonic() + 30
     try:
         # The updater lock freezes publication for this operation. Do not hold the short publication
         # lock while verifying large databases or deleting files: readers may still pin the current generation.
         with update.root(scanner) as path, history.locked(path / "update", attempts=1):
-            info, reference, checks, revisions = inventory(path, deadline)
+            info, reference, checks, revisions = inventory(path, deadline, list_cleanup=action == "list")
+            status = info["previous_protection"]["status"]
             if action == "list":
                 return core.result("clamav", "completed", data=info, warnings=[
                     "Entries named stage-* that this CLI cannot manage count toward the generation limit; inspect them manually"
                 ] if info["unrecognized_entries"] else [])
             if reference is None:
                 raise core.ScannerError("Signature publication history unavailable; preserve the store and investigate")
+            if action == "cleanup":
+                return retry_cleanup(path, entry_id, revision, reference, status, checks, deadline)
             if action == "recover":
                 if revision != info["recovery_revision"]:
                     raise core.ScannerError("Signature recovery state changed; list again")

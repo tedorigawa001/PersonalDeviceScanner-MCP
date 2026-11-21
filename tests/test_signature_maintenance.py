@@ -67,6 +67,10 @@ class MaintenanceTests(unittest.TestCase):
     def entry(self, name):
         return next(r for r in self.listing()["entries"] if r["id"] == name)
 
+    def cleanup(self, name):
+        row = next(r for r in self.listing()["cleanup"] if r["id"] == name)
+        return maintenance.manage(self.scanner, "cleanup", name, row["revision"])
+
     def test_inventory_current_and_selected_delete_preserve_wait_and_pointer(self):
         info = self.listing()
         self.assertTrue(next(r for r in info["entries"] if r["id"] == self.active)["current"])
@@ -110,6 +114,13 @@ class MaintenanceTests(unittest.TestCase):
         self.assertEqual((self.root / "current.json").read_bytes(), reference)
         self.assertEqual((self.root / "attempt.json").read_bytes(), wait)
         self.assertEqual(self.entry(self.previous)["reason"], "last_previous")
+        self.assertEqual(self.listing()["cleanup"][0]["pending"], ["directory_sync", "history_update"])
+        report = self.cleanup(self.removable)
+        self.assertEqual(report["status"], "completed")
+        self.assertEqual(report["data"], {"deleted": self.removable, "update_performed": False,
+                                         "directory_synced": True, "lease_removed": True, "history_updated": True})
+        self.assertEqual(self.listing()["cleanup"], [])
+        self.assertEqual((self.root / "attempt.json").read_bytes(), wait)
 
     def test_lease_unlink_failure_reports_deleted_generation_and_preserves_history(self):
         target = self.root / self.removable
@@ -139,6 +150,197 @@ class MaintenanceTests(unittest.TestCase):
         self.assertEqual((self.root / "current.json").read_bytes(), reference)
         self.assertEqual((self.root / "attempt.json").read_bytes(), wait)
         self.assertEqual(self.entry(self.previous)["reason"], "last_previous")
+        self.assertEqual(self.listing()["cleanup"][0]["pending"], ["lease_removal", "directory_sync", "history_update"])
+        with patch.object(Path, "unlink", fail_lease_only):
+            self.assertEqual(self.cleanup(self.removable)["status"], "partial")
+        self.assertEqual(self.cleanup(self.removable)["status"], "completed")
+        self.assertFalse(lease.exists())
+        self.assertEqual(self.listing()["cleanup"], [])
+
+    def test_cleanup_removes_only_the_selected_legacy_leftover_and_preserves_wait_and_scans(self):
+        # Simulate the older CLI, which left no deletion record.
+        second = self.generation()
+        reference = update.pointer(self.root)
+        reference["previous"].append(self.record(second))
+        update.write_json(self.root / "current.json", reference)
+        for name in (self.removable, second):
+            shutil.rmtree(self.root / name)
+            with update.generation_lease(self.root / (name + ".lease")):
+                pass
+        stage = self.stage()
+        maintenance.begin_provider_sync(self.root, stage)
+        maintenance.finish_provider_sync(self.root, stage)
+        update.write_json(self.root / "attempt.json", {"pending": True, "next_attempt": time.time() + 172800})
+        protected = ("attempt.json", "provider.dat", "provider-sync.json", stage + "/db/freshclam.dat")
+        before = {name: (self.root / name).read_bytes() for name in protected}
+        candidates = {row["id"]: row["revision"] for row in self.listing()["cleanup"]}
+        self.assertEqual(set(candidates), {self.removable, second})
+        verify = update.verify
+
+        def start_scan_then_verify(*args):
+            # pin also verifies the active definitions.
+            with patch.object(update, "verify", verify):
+                with update.pin(self.scanner) as pinned:
+                    self.assertEqual(pinned.local["clamav_database_directory"], str(self.root / self.active))
+            return verify(*args)
+
+        with patch.object(update, "verify", side_effect=start_scan_then_verify):
+            self.assertEqual(self.cleanup(self.removable)["status"], "completed")
+        self.assertTrue((self.root / (second + ".lease")).exists())
+        self.assertEqual(self.entry(self.previous)["reason"], "last_previous")
+        with self.assertRaisesRegex(core.ScannerError, "unavailable or changed"):
+            maintenance.manage(self.scanner, "cleanup", second, candidates[second])
+        self.assertEqual(self.cleanup(second)["status"], "completed")
+        self.assertEqual(self.listing()["cleanup"], [])
+        self.assertEqual(update.pointer(self.root)["previous"], reference["previous"][:1])
+        self.assertEqual({name: (self.root / name).read_bytes() for name in protected}, before)
+
+    def test_cleanup_recovers_an_unrecorded_generation_after_directory_sync_failure(self):
+        name = self.generation()
+        original = update.sync_dir
+
+        def fail_after_delete(path):
+            if path == self.root and not (self.root / name).exists():
+                raise OSError("synthetic sync failure")
+            original(path)
+
+        reference = update.pointer(self.root)
+        with patch.object(update, "sync_dir", side_effect=fail_after_delete):
+            report = maintenance.manage(self.scanner, "delete", name, self.entry(name)["revision"])
+        self.assertIsNone(report["data"]["history_updated"])
+        self.assertEqual(self.listing()["cleanup"][0]["pending"], ["directory_sync"])
+        self.assertEqual(self.cleanup(name)["data"]["history_updated"], None)
+        self.assertEqual(update.pointer(self.root), reference)
+        self.assertEqual(self.listing()["cleanup"], [])
+
+    def test_cleanup_retries_history_write_and_readback_after_a_corrupt_newer_generation(self):
+        # This damaged generation appeared before the protected predecessor and its absence holds deletion
+        # until we can match the durable deletion record to this reference.
+        reference = update.pointer(self.root)
+        reference["previous"].reverse()
+        update.write_json(self.root / "current.json", reference)
+        (self.root / self.removable / "main.cvd").write_bytes(b"corrupt synthetic data")
+        original_write, original_read = update.write_json, update.pointer
+
+        def fail_history_write(path, obj):
+            if path == self.root / "current.json":
+                raise OSError("synthetic history write failure")
+            original_write(path, obj)
+
+        with patch.object(update, "write_json", side_effect=fail_history_write):
+            report = maintenance.manage(self.scanner, "delete", self.removable, self.entry(self.removable)["revision"])
+            self.assertFalse(report["data"]["history_updated"])
+            self.assertFalse(self.cleanup(self.removable)["data"]["history_updated"])
+        self.assertEqual(self.listing()["previous_protection"]["status"], "previous_unavailable")
+        self.assertEqual(original_read(self.root), reference)
+        with patch.object(update, "pointer", side_effect=OSError("synthetic readback failure")):
+            self.assertFalse(self.cleanup(self.removable)["data"]["history_updated"])
+        self.assertEqual(original_read(self.root)["previous"], reference["previous"][1:])
+        self.assertTrue(self.cleanup(self.removable)["data"]["history_updated"])
+        self.assertEqual(self.entry(self.previous)["reason"], "last_previous")
+        self.assertEqual(self.listing()["cleanup"], [])
+
+    def test_cleanup_keeps_protected_and_unproven_generations_and_rejects_non_owner_entrypoint(self):
+        unknown = "f" * 32
+        for name in (self.active, self.previous, unknown):
+            with update.generation_lease(self.root / (name + ".lease")):
+                pass
+            with self.assertRaisesRegex(core.ScannerError, "unavailable or changed"):
+                maintenance.manage(self.scanner, "cleanup", name, "0" * 64)
+        shutil.rmtree(self.root / self.previous)
+        self.assertEqual(self.listing()["cleanup"], [])
+        for name in (self.active, self.previous, unknown):
+            self.assertTrue((self.root / (name + ".lease")).is_file())
+        self.scanner.via = "mcp"
+        with self.assertRaisesRegex(core.ScannerError, "owner CLI"):
+            maintenance.manage(self.scanner, "cleanup", self.removable, "0" * 64)
+
+    def test_cleanup_rejects_busy_unsafe_or_reappeared_target(self):
+        target = self.root / self.removable
+        shutil.rmtree(target)
+        lease = self.root / (self.removable + ".lease")
+        with update.generation_lease(lease):
+            result = self.cleanup(self.removable)
+            self.assertEqual(result["status"], "partial")
+            self.assertTrue(lease.is_file())
+
+        row = self.listing()["cleanup"][0]
+        original = update.pointer(self.root)
+        target.mkdir(mode=0o700)
+        with self.assertRaisesRegex(core.ScannerError, "unavailable or changed"):
+            maintenance.manage(self.scanner, "cleanup", self.removable, row["revision"])
+        target.rmdir()
+        sidecar = update.verification_file(target)
+        history.replace_private(sidecar, b"synthetic evidence")
+        self.assertEqual(self.listing()["cleanup"], [])
+        sidecar.unlink()
+        hardlink = self.root / "other"
+        os.link(lease, hardlink)
+        self.assertEqual(self.listing()["cleanup"], [])
+        hardlink.unlink()
+        lease.chmod(0o644)
+        self.assertEqual(self.listing()["cleanup"], [])
+        lease.unlink()
+        lease.symlink_to(self.root / "current.json")
+        self.assertEqual(self.listing()["cleanup"], [])
+        self.assertTrue(lease.is_symlink())
+        self.assertEqual(update.pointer(self.root), original)
+
+    def test_cleanup_rejects_other_owner_and_acl_on_the_lease(self):
+        from pc_scanner import process_store
+
+        shutil.rmtree(self.root / self.removable)
+        lease = self.root / (self.removable + ".lease")
+        with update.generation_lease(lease):
+            pass
+        inode = lease.stat().st_ino
+        fstat = os.fstat
+
+        def foreign_owner(fd):
+            info = fstat(fd)
+            if info.st_ino == inode:
+                values = list(info)
+                values[4] = os.geteuid() + 1
+                return os.stat_result(values)
+            return info
+
+        self.assertEqual(self.listing()["cleanup"][0]["id"], self.removable)
+        with patch.object(os, "fstat", side_effect=foreign_owner):
+            self.assertEqual(self.listing()["cleanup"], [])
+        acl_allows = process_store.acl_allows
+        with patch.object(process_store, "acl_allows", side_effect=lambda fd: fstat(fd).st_ino == inode or acl_allows(fd)):
+            self.assertEqual(self.listing()["cleanup"], [])
+        self.assertTrue(lease.is_file())
+
+    def test_delete_keeps_the_generation_when_the_cleanup_record_cannot_be_synced(self):
+        entry = self.entry(self.removable)
+        with patch.object(update, "sync_dir", side_effect=OSError("synthetic journal sync failure")):
+            with self.assertRaisesRegex(core.ScannerError, "maintenance could not complete"):
+                maintenance.manage(self.scanner, "delete", self.removable, entry["revision"])
+        self.assertTrue((self.root / self.removable).is_dir())
+        self.assertEqual(self.listing()["cleanup"], [])
+        self.assertEqual(maintenance.manage(self.scanner, "delete", self.removable, entry["revision"])["status"], "completed")
+
+    def test_real_cli_lists_and_retries_a_selected_cleanup(self):
+        shutil.rmtree(self.root / self.removable)
+        config = self.base / "scanner.toml"
+        config.write_text("[clamav_updates]\nenabled=true\ndirectory=" + json.dumps(str(self.root)) +
+                          "\nfreshclam_binary=" + json.dumps(sys.executable) + "\nsigtool_binary=" + json.dumps(sys.executable))
+
+        def cli(*args):
+            return subprocess.run([sys.executable, "-m", "pc_scanner.cli", "--config", str(config),
+                                   "clamav-signature-store", *args], capture_output=True, text=True, timeout=15)
+
+        listing = cli("list")
+        self.assertEqual(listing.returncode, 0, listing.stderr)
+        row, = json.loads(listing.stdout)["data"]["cleanup"]
+        self.assertEqual(row["id"], self.removable)
+        invalid = cli("cleanup", str(self.root / self.removable), "--revision", row["revision"])
+        self.assertEqual(invalid.returncode, 2)
+        retried = cli("cleanup", row["id"], "--revision", row["revision"])
+        self.assertEqual(retried.returncode, 0, retried.stdout + retried.stderr)
+        self.assertTrue(json.loads(retried.stdout)["data"]["history_updated"])
+        self.assertEqual(json.loads(cli("list").stdout)["data"]["cleanup"], [])
 
     def test_generation_rmdir_failure_does_not_report_it_as_deleted(self):
         target = self.root / self.removable
@@ -181,6 +383,9 @@ class MaintenanceTests(unittest.TestCase):
         self.assertFalse((self.root / self.removable).exists())
         self.assertEqual(update.pointer(self.root), revised)
         self.assertIn("could not be confirmed", result["warnings"][0])
+        report = self.cleanup(self.removable)
+        self.assertTrue(report["data"]["history_updated"])
+        self.assertEqual(self.listing()["cleanup"], [])
 
     def test_stage_parent_sync_failure_reports_the_deleted_stage(self):
         stage = self.stage()
