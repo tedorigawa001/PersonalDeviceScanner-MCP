@@ -107,6 +107,23 @@
     "limits": [
       "Faults were injected in synthetic stores on macOS. Existing definition stores, provider wait deadlines and operating system definitions were not used or modified.",
       "Power interruption, real storage failure, Linux and Windows native runs and remote CI were outside this follow-up."
-    ]
+    ],
+    "ci_follow_up": {
+      "date": "2026-11-21",
+      "run": 44912792680,
+      "url": "https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/runs/44912792680",
+      "commit": "4523bb1",
+      "covers": "7241921, its review follow-up 79b1da6 and its native reacceptance record 4523bb1",
+      "started_at": "2026-11-21T14:13:14Z",
+      "finished_at": "2026-11-21T14:16:27Z",
+      "result": "22 of 22 jobs passed",
+      "python_tests": "843 tests run per Python (3.11, 3.14, 3.15) on each OS, with no failures or errors: macOS 826 passed and 17 skipped, Ubuntu 796 passed and 47 skipped, Windows 607 passed and 236 skipped",
+      "fix_tests": "the 2 new tests of 7241921 passed on macOS and Ubuntu with each Python. The macOS and Ubuntu skip counts did not change, so neither was skipped there. The record command check that failed before 79b1da6 also passed.",
+      "skip_changes": "against the CI of 33b1499 (run 44905389606: 841 tests per job; skips macOS 17, Ubuntu 47, Windows 234), the Windows skips rose by the 2 new POSIX-only tests",
+      "windows_security_descriptors": "12 of 12 passed in each Windows job",
+      "npm_launcher": "12 of 12 jobs passed (Node 22, 24, 26): macOS and Ubuntu 34 of 34, Windows 32 of 34 with 2 skipped",
+      "distributions": "verified",
+      "limit": "CI uses synthetic stores and injected I/O faults. Windows does not run these POSIX-only tests, and power interruption and real storage failure are not exercised."
+    }
   }
 }
