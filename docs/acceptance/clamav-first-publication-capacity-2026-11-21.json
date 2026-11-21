@@ -95,11 +95,11 @@
       "A missing canonical file, different canonical bytes, a canonical file whose absence was recorded, and a missing synchronization record each blocked deletion. The old revision was refused and a fresh listing showed the protection reason. The candidate, wait, journal, sync record and source stage were unchanged by the blocked commands, with zero engine starts. With a matching canonical file and synchronization record restored, selected deletion completed."
     ],
     "verification": {
-      "focused_command": "bdo proxy env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -p test_signature_update.py -k first_tracked -v",
+      "focused_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -p test_signature_update.py -k first_tracked -v",
       "focused": {"total": 13, "passed": 13, "skipped": 0, "failed": 0, "seconds": 2.593},
-      "python_3_14_command": "bdo proxy env PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -v",
+      "python_3_14_command": "env PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -v",
       "python_3_14": {"version": "3.14.10", "total": 843, "passed": 826, "skipped": 17, "failed": 0, "seconds": 113.243},
-      "python_3_15_command": "bdo proxy env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -v",
+      "python_3_15_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -v",
       "python_3_15": {"version": "3.15.2", "total": 843, "passed": 826, "skipped": 17, "failed": 0, "seconds": 112.086},
       "suite_coverage": "The macOS full suite included 135 ClamAV definition tests, 40 Android tests, and all 8 tests in test_mcp.py, plus MCP SDK tests in other modules. All 17 skips were Windows-only.",
       "npm": {"total": 34, "passed": 34, "skipped": 0, "failed": 0, "coverage": "First installation with integrity hashes and MCP stdio from the installed package."}

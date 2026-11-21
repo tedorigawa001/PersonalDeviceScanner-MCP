@@ -473,7 +473,9 @@ freshclam起動前に保存未完了を記録し、永続保存と内容ハッ�
 `unpublished_before_first_switch` かつ `deletable: true` の世代は、一覧を毎回取り直し、
 `clamav-signature-store delete GENERATION_ID --revision ENTRY_REVISION` で1件ずつ整理できます。
 この削除が途中で止まった場合、更新は保存先の保全ではなく、選んだ整理が未完了であることを示します。
-一覧にはその世代が引き続き出るので、削除をやり直してください。作業用stage、配布元状態、待機期限は維持します。保存先を共有するCLIとMCPは対応版にそろえてください。
+一覧にはその世代が引き続き出るので、削除をやり直してください。
+配布元の同期記録がないか、保存済みの配布元状態と合わない場合、候補は `provider_state_mismatch` として保護されます。
+保存先と配布元状態を保全して調べてください。作業用stage、配布元状態、待機期限は維持します。保存先を共有するCLIとMCPは対応版にそろえてください。
 [初回公開前の容量復旧設計](docs/clamav-manual-recovery-design.md#優先2-初回公開前の容量不足)
 
 世代削除後の後片付けや公開履歴の更新を確認できない場合は、`partial` と削除済みID（`deleted`）を返します。
