@@ -1,0 +1,74 @@
+{
+  "date": "2026-11-21",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "native_macos_checkpoint_release_cache_volume_ownership_acceptance",
+  "status": "passed",
+  "source_commit": "8ecd7bb3ba81b317bcea859bce1ac236568b7a17",
+  "change_under_test": "f665d90",
+  "environment": {
+    "platform": "macOS 27.2.1 (26B131), arm64",
+    "python": "3.15.2",
+    "account": "Standard effective user ID 501",
+    "filesystem": "New 128 MB writable APFS disk image in a private trial directory",
+    "data": "Two benign synthetic text files, generated checkpoints, and a generated osquery release cache",
+    "fixtures": "The CLI ran in separate processes. The ClamAV and osquery commands were stand-ins, and the release HTTPS transport returned a local fixture. The filesystem, macOS mount flags, and application storage checks were real."
+  },
+  "mount_verification": {
+    "same_apfs_volume_uuid_in_all_three_phases": true,
+    "kernel_flag": {"name": "MNT_IGNORE_OWNERSHIP", "mask": "0x00200000"},
+    "checks": "Confirmed the owner setting with diskutil and compared live Darwin statfs flags for the trial directory with fstatfs flags from both storage files.",
+    "phase_columns": ["ignore_ownership", "diskutil_owners", "mount_flags", "checkpoint_flags", "cache_flags"],
+    "phases": [
+      [false, "Enabled", "0x4909218", "0x4909218", "0x4909218"],
+      [true, "Disabled", "0x4b09218", "0x4b09218", "0x4b09218"],
+      [false, "Enabled", "0x4909218", "0x4909218", "0x4909218"]
+    ]
+  },
+  "owners_enabled_before": {
+    "batch": {"cli_exit": 0, "file_scans": 2, "reused": 0},
+    "resume": {"cli_exit": 0, "file_scans": 0, "reused": 2},
+    "checkpoint_list": {"cli_exit": 0, "entries": 1},
+    "cache": "The first inventory call saved fixture release 5.23.1 after one lookup. The next call returned the cached version with zero lookups, with a different version available from the fixture."
+  },
+  "ownership_ignored": {
+    "batch": {"cli_exit": 2, "file_scans": 0},
+    "resume": {"cli_exit": 2, "file_scans": 0},
+    "batch_with_missing_storage_parent": {"cli_exit": 2, "file_scans": 0},
+    "checkpoint_list": {"cli_exit": 2},
+    "checkpoint_read_refused": true,
+    "checkpoint_reuse_observed": false,
+    "cache_read_refused": true,
+    "cache": "With either an existing cache or a missing cache parent, inventory exited 0, returned fixture release 5.24.0 after one lookup, and warned that the latest release information could not be saved.",
+    "snapshot_items": 11,
+    "snapshot_unchanged": "Relative paths, file hashes and sizes, owners, modes, inodes, link counts, and modification and change times matched before and after the denied operations.",
+    "new_storage_parents_created": false
+  },
+  "owners_enabled_again": {
+    "resume_unchanged": {"cli_exit": 0, "file_scans": 0, "reused": 2},
+    "resume_after_one_change": {"cli_exit": 0, "file_scans": 1, "reused": 1},
+    "checkpoint_list": {"cli_exit": 0, "entries": 1},
+    "checkpoint_updated": true,
+    "cache": "The original cache returned 5.23.1 with zero lookups. The previously absent cache was created with release 5.24.0 after one lookup, then read by a separate CLI process with zero lookups.",
+    "storage_permissions": "The checkpoint and both caches were owned by the effective user, mode 0600, with one link each."
+  },
+  "preservation": {
+    "personal_data_or_existing_storage_used": false,
+    "external_network_used": false,
+    "runtime_source_changed": false,
+    "final_state": "The trial disk image was detached and retained locally with its synthetic data, the harness, and raw outputs.",
+    "trial_harness_correction": "The first fixture wrapper returned a harness error after printing a successful release reply. After correcting the wrapper's exit, all three phases passed using a fresh synthetic fixture directory on the same trial image."
+  },
+  "verification": {
+    "batch_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -p test_malware_batch.py -q",
+    "batch": {"total": 34, "passed": 34, "skipped": 0, "failed": 0},
+    "release_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -p test_updates.py -q",
+    "release": {"total": 42, "passed": 42, "skipped": 0, "failed": 0},
+    "history_acl_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -p test_history_acl.py -q",
+    "history_acl": {"total": 21, "passed": 21, "skipped": 0, "failed": 0},
+    "evidence_sha256": "9fec36cb458f1110d870769780c9b30b04a584705fd1014eb9ef4bff2a657aea",
+    "harness_sha256": "da291f84f3eb441a4407816f1c42bdc715381c15507f9d39cb1ecdea33abaf36"
+  },
+  "limits": [
+    "Native acceptance covered the local CLI and storage helpers on one APFS image. It did not exercise MCP clients, real engine execution, release service connectivity, or network volumes."
+  ]
+}
