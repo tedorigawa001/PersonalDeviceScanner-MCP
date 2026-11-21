@@ -132,11 +132,15 @@ def published(path, journal):
     save(path, dict(journal, phase="published", entries={}))
 
 
+def unfinished_deletion(journal):
+    return journal is not None and any(row["deleting"] is not None for row in journal["entries"].values())
+
+
 def unknown_generations(path, names, journal, deadline, cancel):
     candidates = generation_names(names)
     if journal is None:
         return bool(candidates)
-    if any(row["deleting"] is not None for row in journal["entries"].values()):
+    if unfinished_deletion(journal):
         return True
     try:
         for name in sorted(candidates):

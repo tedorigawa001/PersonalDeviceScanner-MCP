@@ -41,5 +41,28 @@
   "limits": [
     "Fault probes used synthetic CVD files, engine replies and disk errors. No existing signature store, deadline, provider state or operating system definitions were used or changed.",
     "Native acceptance with signed CVDs and restart fault tests on macOS and Linux remain pending. Windows and the remote CI jobs were outside this local verification."
-  ]
+  ],
+  "review_follow_up": {
+    "reviewed_commit": "c9138e249234e4c130d6677455929f74f58c2c52",
+    "also_reviewed": ["3326025"],
+    "findings": [
+      "Reproduced in a synthetic tracked store: after a selected candidate deletion stopped partway, an update stopped with zero engine starts but told the owner to preserve the store. The listing still offered the candidate as deletable, and retrying its deletion allowed the first publication.",
+      "The backlog line for the native acceptance said the CVDs were retrieved by native FreshClam without saying that a local test mirror served them, while the record shows no official provider requests."
+    ],
+    "changes": [
+      "When the only remaining blocker is an unfinished selected deletion, the update reports that cleanup and asks the owner to list the store and retry it. Unknown or unconfirmed publication still asks the owner to preserve the store.",
+      "README in English and Japanese explains the message. A new test covers the message, the unchanged store and wait, zero engine starts, the retried deletion and the first publication.",
+      "The backlog line names the local test mirror and zero official provider requests."
+    ],
+    "regression": "The new test failed on the reviewed commit with the preserve message and passes after the change.",
+    "verification": {
+      "python_3_14_command": "env PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -q",
+      "python_3_14": {"version": "3.14.10", "total": 841, "passed": 824, "skipped": 17, "failed": 0},
+      "python_3_15_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -q",
+      "python_3_15": {"version": "3.15.2", "total": 841, "passed": 824, "skipped": 17, "failed": 0},
+      "focused_command": "env PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
+      "focused": {"total": 133, "passed": 133, "skipped": 0, "failed": 0},
+      "npm": "Not rerun: no JavaScript or packaging file changed."
+    }
+  }
 }

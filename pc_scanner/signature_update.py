@@ -487,10 +487,18 @@ def update(scanner, cancel=None, progress=None):
             store_entries = store_names(path, deadline, cancel)
             journal, _ = signature_first_publication.load(path, cfg["store_format"])
             phase = signature_first_publication.phase(journal, old)
-            if phase == "unavailable" or (old is None and signature_first_publication.unknown_generations(
-                    path, store_entries, journal, deadline, cancel)):
-                return core.result("clamav", "error", data=data, warnings=[
-                    "First publication cannot be confirmed; preserve the signature store and its wait state"])
+            held = "First publication cannot be confirmed; preserve the signature store and its wait state"
+            if phase == "unavailable":
+                blocked = held
+            elif old is None and signature_first_publication.unfinished_deletion(journal):
+                # The listing still offers this candidate, so the owner can finish it instead of abandoning the store.
+                blocked = "A selected first-publication cleanup is unfinished; list the store and retry that deletion"
+            elif old is None and signature_first_publication.unknown_generations(path, store_entries, journal, deadline, cancel):
+                blocked = held
+            else:
+                blocked = None
+            if blocked:
+                return core.result("clamav", "error", data=data, warnings=[blocked])
             generations = [name for name in store_entries if counts_toward_capacity(name)]
             reserved = 2 if old is None else 1
             if (signature_first_publication.used_slots(store_entries, journal) + reserved > MAX_GENERATIONS

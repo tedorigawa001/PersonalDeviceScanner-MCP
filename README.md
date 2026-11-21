@@ -483,7 +483,8 @@ record the first publication boundary. An initial update requires two free slots
 In the owner CLI listing, `data.capacity` shows the used, maximum and required slots. An entry marked
 `unpublished_before_first_switch` and `deletable: true` can be removed with
 `clamav-signature-store delete GENERATION_ID --revision ENTRY_REVISION`. Use a fresh listing for each selection.
-Cleanup preserves the work stages, provider state and wait deadline. Use compatible CLI and MCP versions when sharing
+If such a deletion stops partway, the update reports an unfinished selected cleanup instead of asking you to preserve
+the store; the listing still offers that entry, so retry its deletion. Cleanup preserves the work stages, provider state and wait deadline. Use compatible CLI and MCP versions when sharing
 the new store. [First-publication recovery design](docs/clamav-manual-recovery-design.md#優先2-初回公開前の容量不足)
 
 After generation removal, unconfirmed cleanup or history writes produce `partial` with the `deleted` ID.

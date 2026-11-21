@@ -421,6 +421,35 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual(self.first_list()["capacity"]["used_slots"], 1)
         self.assertFalse(any(row["kind"] == "generation" for row in self.first_list()["entries"]))
 
+    def test_first_tracked_update_points_to_an_unfinished_selected_deletion(self):
+        # The store is not lost: the listing still offers the candidate, and finishing it allows the first publication.
+        self.stop_before_first_switch()
+        row = self.first_row()
+        unlink = os.unlink
+
+        def stop_on_first_cvd(path, *args, **kwargs):
+            if path in update.DATABASES and kwargs.get("dir_fd") is not None:
+                raise OSError("synthetic interrupted deletion")
+            return unlink(path, *args, **kwargs)
+
+        with patch.object(os, "unlink", side_effect=stop_on_first_cvd):
+            self.assertEqual(self.first_delete(row)["status"], "partial")
+        self.allow_next()
+        snapshot = set(self.root.iterdir())
+        wait = (self.root / "attempt.json").read_bytes()
+        self.calls.clear()
+        report = self.do_update()
+        self.assertEqual(report["status"], "error")
+        self.assertEqual(report["warnings"], [
+            "A selected first-publication cleanup is unfinished; list the store and retry that deletion"])
+        self.assertEqual(self.calls, [])
+        self.assertEqual(snapshot, set(self.root.iterdir()))
+        self.assertEqual(wait, (self.root / "attempt.json").read_bytes())
+        retry = self.first_row(row["id"])
+        self.assertEqual((retry["reason"], retry["deletable"]), (first.UNPUBLISHED, True))
+        self.assertEqual(self.first_delete(retry)["status"], "completed")
+        self.assertTrue(self.do_update()["data"]["published"])
+
     def test_deletion_reports_the_removed_generation_when_the_history_rewrite_is_busy(self):
         refs = []
         for version in (1, 2, 3):
