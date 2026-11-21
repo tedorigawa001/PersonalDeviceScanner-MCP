@@ -1,0 +1,89 @@
+{
+  "date": "2026-11-21",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "native_clamav_first_publication_capacity_recovery_acceptance",
+  "status": "passed for restart preservation, selected cleanup under 30 seconds, and real first publication",
+  "source_commit": "c9138e249234e4c130d6677455929f74f58c2c52",
+  "design": "../clamav-manual-recovery-design.md",
+  "regression_record": "clamav-first-publication-capacity-2026-11-21.json",
+  "environment": {
+    "macos": {"platform": "macOS 27.2.1 (26B131), arm64", "python": "3.15.2", "uid": 501,
+      "storage": "New owner-enabled APFS trial image, 8 GB virtual size"},
+    "linux": {"platform": "Ubuntu 24.04.5 LTS, aarch64, on Docker for Mac", "python": "3.15.2", "uid_gid": "10001:10001",
+      "image": "sha256:20fd8ed13f28e2b3e10a54c9b2fe018c8e8d5a2549a79fc3b55fc1ea82021ada",
+      "container_id": "a5d99208ccec006b63218887611e93fc383fe429c65798f47cff39e008ec662d", "cpus": 2,
+      "memory_bytes": 3221225472, "network": "none", "mounts": [], "ports_published": false,
+      "capabilities_dropped": "ALL", "no_new_privileges": true},
+    "engines": "Native FreshClam, sigtool and clamscan 1.5.4 on both platforms",
+    "source_files_verified_against_commit": 29,
+    "transferred_source_and_harness_hashes_matched": 30
+  },
+  "inputs_and_wait_control": {
+    "source": "Archived public CVD and detached-signature copies from the previous acceptance input bundle. Six file hashes matched the acquisition record and stayed unchanged on both platforms.",
+    "acquisition_record": "clamav-readmission-cvd-inputs-2026-11-12.json",
+    "versions": {"main": 63, "daily": 28180, "bytecode": 339},
+    "sigtool_confirmations_per_platform": {"embedded": 3, "detached": 3},
+    "native_mirror": "A test wrapper preserved the product's generated config and the native engine's outputs, except that it set the mirror to local loopback and added --no-dns. CLD requests received 404. The three CVD header ranges and the complete three CVDs and three detached signatures were served locally.",
+    "wait_control": "The interrupted trials used a controlled application clock only in the new dedicated test processes to exercise the daily interval without waiting two days. Wait files kept the deadlines they were created with; explicit owner recovery changed pending to false after the test deadline. OS and native FreshClam clocks were unchanged. The final publication used real application time and recorded a new normal wait.",
+    "preliminary_run": "The engine environment filtered the first harness's mirror variables. That attempt made no mirror request and its trial wait was retained. The corrected wrapper read the loopback port from a private file outside the store and ran in fresh test directories."
+  },
+  "restart_preservation": {
+    "preparation": "Two real update processes exited immediately before recording switch intent, after CVD validation, placement and staging sync. A separate process exited just after durably recording switch intent but before writing the current pointer.",
+    "occupied_before_restart": {"stage": 2, "verified_unpublished_generations": 2, "total": 4},
+    "macos_restart": "Unmounted and mounted the same dedicated APFS trial volume with owners enabled. Continued in new CLI processes. The host Mac was not rebooted.",
+    "linux_restart": "Stopped and started the dedicated container through Docker restart. The start timestamp advanced, and the isolation settings remained unchanged.",
+    "matching_manifest_entries_per_platform": {"four_slot_store": 32, "uncertain_switch_store": 19},
+    "manifest_fields": "Matching relative paths, file hashes and sizes, inode, mode, owner, link count, and modification and change times. Device number and access time were outside the manifest.",
+    "result": "The pre-switch store still listed both candidates and the pending wait. The control store remained unavailable with no current reference. Its selected deletion was refused and its entire manifest stayed unchanged through the trial."
+  },
+  "cleanup_and_publication": {
+    "maintenance_limit_seconds": 30,
+    "method": "Monotonic wall time from CLI subprocess launch through exit. Listings and selection used the normal CLI without hooks. Publication observations included native retrieval, signature verification and database load. No filesystem cache was evicted.",
+    "maintenance_seconds": {
+      "macos": {"list_before_restart": 0.354189, "list_after_restart": 5.202162, "list_uncertain": 0.545168,
+        "recover_after_restart": 1.165381, "list_at_four_slots": 0.632081, "list_at_three_slots": 0.437186,
+        "delete_at_four_slots": 0.632759, "delete_at_three_slots": 0.619484, "list_at_two_slots": 0.351963},
+      "linux": {"list_before_restart": 0.680958, "list_after_restart": 1.371188, "list_uncertain": 2.815585,
+        "recover_after_restart": 0.932159, "list_at_four_slots": 0.968309, "list_at_three_slots": 1.016652,
+        "delete_at_four_slots": 1.265187, "delete_at_three_slots": 0.701608, "list_at_two_slots": 1.550404}
+    },
+    "checks": [
+      "The elapsed deadline alone did not clear pending. Owner recovery was required. With four or three slots occupied, the update refused before starting FreshClam, creating a stage or changing the stored wait.",
+      "The two selections removed their own CVD directory and verification record in order. The remaining candidate required a new revision. Both earlier stages and the saved wait and provider state were unchanged during selection.",
+      "With two slots occupied, the final local update fetched all three CVDs and detached signatures, validated and loaded them, reached four slots at the switch, and published its first current reference. The journal reached published and the original two stages were preserved. The result used three slots after the successful work stage was removed."
+    ],
+    "publication_seconds_parallel": {"macos": 40.188899, "linux": 38.461378},
+    "isolated_publication": {
+      "method": "Ran the same real publication sequentially across platforms in additional new private stores. Each started with two synthetic empty stage directories, and no older wait or provider state. The switch was observed at four slots, with three slots after publication.",
+      "seconds": {"macos": 16.500869, "linux": 13.211473},
+      "result": "Both published the archived CVDs, with six complete local CVD or signature responses per run. The CLI reported partial and stale because of the age of the signed inputs."
+    },
+    "scan_seconds_after_publication": {"macos": 21.50039, "linux": 21.830986},
+    "scan_result": "Native clamscan scanned one benign synthetic file on each platform using the published daily version, with zero findings and zero engine errors. The CLI reported partial with stale definitions because the archived daily was past the standard seven-day threshold."
+  },
+  "preservation": {
+    "existing_stores_and_waits_changed": false,
+    "existing_source_container_restarted": false,
+    "os_managed_definitions_changed": false,
+    "official_provider_requests": 0,
+    "host_folders_mounted_in_docker": false,
+    "synthetic_scan_targets_only": true,
+    "trial_retention": "The APFS trial image was detached and retained. Only the idle entrypoint remained in the dedicated Linux container before it was stopped and retained. The Linux summary was copied again after stop and matched byte for byte. The source container's start and finish timestamps were unchanged."
+  },
+  "verification": {
+    "focused_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
+    "focused": {"total": 132, "passed": 132, "skipped": 0, "failed": 0, "seconds": 23.759},
+    "harness_sha256": "680d759cf9e50d97feec4605bf0a244495df172dc96c52ff55ea412d65aab18a",
+    "isolated_publication_harness_sha256": "9d6dc61a57c37555734371c6f932c0811aeddd744a98a77c0fec441e212cc860",
+    "macos_summary_sha256": "1ee1d4e8c9a29da7dd59a662f15aa0747edb7292e26cba41c494e40f61c0dae0",
+    "linux_summary_sha256": "d204f462212c3dfa69c253e5a7a167c28bd3955ef9cda8f682bd373b4d4e0711",
+    "macos_isolated_publication_sha256": "761a3261460b42fa817b9c07873546ee73207ad240062133497b22c9d8be5429",
+    "linux_isolated_publication_sha256": "937a6332c9e3721ad51c28c355f883befefea47bc9a3cbfb8bf9558edcdcbdcc",
+    "macos_before_restart_sha256": "74e5a860f213afe249f8b3d4dbd91c3bba728168a1140832fd000aa515f1ae43",
+    "linux_before_restart_sha256": "4bfb22abaff91d9a2bc568fc8391f1518971ed202e3fe8c1b6c09426d2ead74b"
+  },
+  "limits": [
+    "The maintenance time limit applies to existing operations such as listing and selected cleanup. The end-to-end update includes data transfer and engine validation, and exceeded 30 seconds in the parallel runs.",
+    "The test did not cover official download behavior or verify a real-world waiting period. Runtime source was unchanged and the full suite was not repeated for this acceptance-only documentation change."
+  ]
+}
