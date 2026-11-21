@@ -466,7 +466,15 @@ freshclam起動前に保存未完了を記録し、永続保存と内容ハッ�
 読み取れない世代があれば世代削除を保留します。内容が変わる最初の更新で、照合した旧現行は履歴に入り、他の既存世代は
 `legacy_untracked` になります。これらは記録した旧現行より前か未公開の世代なので、記録と一致する過去世代を保護できるときは
 削除でき、確認できないときは保留します。
-参照が一度もなかった保存先では何も記録しないので、初回の切替の失敗で残ったフォルダーは、最初の公開のあとで削除できます。
+現行参照がなく公開の有無を確認できない世代が残る場合は、freshclamの起動や新しい待機記録の書き込みより前に更新を保留します。
+その保存先を保全し、配布元の指示を含む待機期限がすべて経過してから新しい専用パスを検討してください。
+まだ存在しない新規パスに `store_format = "tracked-first-v1"` を指定すると、初回公開の境界を記録します。
+初回更新にはstageと世代の空き2枠が必要です。一覧の `data.capacity` に使用・上限・必要枠数を表示します。
+`unpublished_before_first_switch` かつ `deletable: true` の世代は、一覧を毎回取り直し、
+`clamav-signature-store delete GENERATION_ID --revision ENTRY_REVISION` で1件ずつ整理できます。
+作業用stage、配布元状態、待機期限は維持します。保存先を共有するCLIとMCPは対応版にそろえてください。
+[初回公開前の容量復旧設計](docs/clamav-manual-recovery-design.md#優先2-初回公開前の容量不足)
+
 世代削除後の後片付けや公開履歴の更新を確認できない場合は、`partial` と削除済みID（`deleted`）を返します。
 `directory_synced` は親ディレクトリの同期、`lease_removed` はleaseファイルの除去、`history_updated` は公開履歴の更新の確認結果です。
 leaseが元からなければ `lease_removed` は `true`、削除対象の履歴がなければ `history_updated` は `null` です。

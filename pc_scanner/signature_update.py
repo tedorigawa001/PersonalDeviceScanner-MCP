@@ -14,7 +14,8 @@ import time
 
 from . import core, history, process_store
 
-DEFAULTS = dict(enabled=False, directory="", freshclam_binary="", sigtool_binary="", timeout_seconds=1800)
+TRACKED_FIRST = "tracked-first-v1"
+DEFAULTS = dict(enabled=False, directory="", freshclam_binary="", sigtool_binary="", timeout_seconds=1800, store_format="")
 DATABASES = ("main.cvd", "daily.cvd", "bytecode.cvd")
 GEN = re.compile(r"[0-9a-f]{32}\Z")
 CONTENT = re.compile(r"[0-9a-f]{64}\Z")
@@ -42,6 +43,8 @@ def configure(scanner):
     cfg = {**DEFAULTS, **raw}
     if type(cfg["enabled"]) is not bool or type(cfg["timeout_seconds"]) is not int or not 1 <= cfg["timeout_seconds"] <= 3600:
         raise core.ScannerError("Invalid clamav_updates settings")
+    if cfg["store_format"] not in ("", TRACKED_FIRST):
+        raise core.ScannerError("Invalid clamav_updates store format")
     for key in ("directory", "freshclam_binary", "sigtool_binary"):
         v = cfg[key]
         if not isinstance(v, str) or any(c in v for c in '\0\r\n"') or (v and (not Path(v).is_absolute() or ".." in Path(v).parts)):
@@ -72,6 +75,14 @@ def root(scanner, create=False):
         if store is None:
             raise core.ScannerError("Private signature store is not initialized; run the owner update CLI")
         path = store.path
+        if store.created and cfg["store_format"] == TRACKED_FIRST:
+            from . import signature_first_publication
+
+            with history.locked(path / "update", attempts=1):
+                if set(store.names()) != {"update.lock"}:
+                    raise OSError("New signature store is no longer empty")
+                history.flush_to_disk(store.parent)
+                signature_first_publication.initialize(path)
     yield path
 
 
@@ -193,21 +204,25 @@ def store_names(path, deadline, cancel=None):
     return names
 
 
-def digest_directory(path, deadline, cancel=None):
+def content_hash(hashes):
+    return hashlib.sha256(json.dumps(hashes, sort_keys=True).encode()).hexdigest()
+
+
+def digest_files(path, deadline, cancel=None, *, expected=DATABASES):
     check_deadline(deadline, cancel)
     folder = identity(private_dir(path))
     names = set()
     with os.scandir(path) as entries:
         for entry in entries:
             names.add(entry.name)
-            if entry.name not in DATABASES:
+            if entry.name not in expected:
                 break
-    if names != set(DATABASES):
+    if names != set(expected):
         if identity(os.lstat(path)) != folder:
             raise OSError("Database directory changed")
         raise InvalidGeneration("Only the three official complete CVD databases are allowed")
     total, versions, hashes, snapshots = 0, {}, {}, {}
-    for name in DATABASES:
+    for name in expected:
         check_deadline(deadline, cancel)
         file = path / name
         listed = os.lstat(file)
@@ -254,7 +269,11 @@ def digest_directory(path, deadline, cancel=None):
     if identity(os.lstat(path)) != folder or any(identity(os.lstat(path / name)) != snap for name, snap in snapshots.items()):
         raise OSError("Database generation changed")
     check_deadline(deadline, cancel)
-    return dict(content=hashlib.sha256(json.dumps(hashes, sort_keys=True).encode()).hexdigest(), versions=versions)
+    return dict(content=content_hash(hashes), versions=versions), hashes
+
+
+def digest_directory(path, deadline, cancel=None):
+    return digest_files(path, deadline, cancel)[0]
 
 
 def strict_object(pairs):
@@ -463,10 +482,25 @@ def update(scanner, cancel=None, progress=None):
                 if now < until:
                     data.update(update_status="rate_limited", next_attempt_at=until)
                     return core.result("clamav", "partial", data=data, warnings=["Update retry interval has not elapsed"])
-            generations = [name for name in store_names(path, deadline, cancel) if counts_toward_capacity(name)]
-            if len(generations) >= MAX_GENERATIONS or shutil.disk_usage(path).free < MAX_BYTES * 2:
+            from . import signature_first_publication, signature_maintenance
+
+            store_entries = store_names(path, deadline, cancel)
+            journal, _ = signature_first_publication.load(path, cfg["store_format"])
+            phase = signature_first_publication.phase(journal, old)
+            if phase == "unavailable" or (old is None and signature_first_publication.unknown_generations(
+                    path, store_entries, journal, deadline, cancel)):
+                return core.result("clamav", "error", data=data, warnings=[
+                    "First publication cannot be confirmed; preserve the signature store and its wait state"])
+            generations = [name for name in store_entries if counts_toward_capacity(name)]
+            reserved = 2 if old is None else 1
+            if (signature_first_publication.used_slots(store_entries, journal) + reserved > MAX_GENERATIONS
+                    or shutil.disk_usage(path).free < MAX_BYTES * 2):
                 return core.result("clamav", "error", data=data, warnings=[
                     "Private signature store capacity exhausted; list the store to review protected entries and owner maintenance options"])
+            if phase == "confirm_published":
+                # The pointer from an interrupted switch must be durable before advancing the journal.
+                sync_dir(path)
+                signature_first_publication.published(path, journal)
             # Persist a conservative 24h guard before any network call. Includes failures/cancellation/429.
             write_json(path / "attempt.json", {"next_attempt": now + 86400, "pending": True})
             stage = path / ("stage-" + secrets.token_hex(16))
@@ -489,7 +523,6 @@ def update(scanner, cancel=None, progress=None):
             history.replace_private(config, b"DatabaseMirror database.clamav.net\nScriptedUpdates no\nTestDatabases yes\nBytecode yes\nMaxAttempts 1\nConnectTimeout 30\nReceiveTimeout 120\n")
             if progress:
                 progress.update(stage="running", checkpoint="not_applicable")
-            from . import signature_maintenance
             provider = path / "provider.dat"
             if provider.exists() or provider.is_symlink():
                 history.replace_private(db / "freshclam.dat", signature_maintenance.provider_bytes(provider))
@@ -572,9 +605,8 @@ def update(scanner, cancel=None, progress=None):
                     legacy = signature_maintenance.prune_missing_legacy(path, old, deadline, cancel)
                 else:
                     previous = []
-                    # Migration records what the earlier format's store held. With no reference at all nothing was
-                    # ever published: folders left by failed first switches are orphans to tidy, not legacy to keep,
-                    # or three of them would fill the store for good.
+                    # Migration applies to an existing legacy reference. With no reference, preflight
+                    # already refused any generation whose publication status could not be confirmed.
                     legacy = sorted(name for name in generations if GEN.fullmatch(name)
                                     and name != old["generation"]) if old else []
                 reference = publication(old, generation, observed, previous, legacy)
@@ -589,13 +621,23 @@ def update(scanner, cancel=None, progress=None):
                     finally:
                         os.close(fd)
                 sync_dir(candidate)
+                first = old is None and journal is not None
+                if first:
+                    journal = signature_first_publication.prepare(path, journal, store_entries, generation, stage, observed)
                 with history.locked(path / "publish"):
                     check_deadline(deadline, cancel)
                     if pointer(path) != old:
                         raise OSError("Signature publication reference changed")
+                    if not signature_maintenance.absent(path / generation) or not signature_maintenance.absent(
+                            verification_file(path / generation)):
+                        raise OSError("Signature generation destination already exists")
                     os.rename(candidate, path / generation)
                     os.rename(stage / "verification.json", verification_file(path / generation))
+                    if first:
+                        sync_dir(stage)
                     sync_dir(path)
+                    if first:
+                        journal = signature_first_publication.start_switch(path, journal, generation)
                     # Once this write starts, cancellation cannot roll back an already published generation.
                     try:
                         write_json(path / "current.json", reference)
@@ -605,6 +647,8 @@ def update(scanner, cancel=None, progress=None):
                     published = True
                     if pointer(path) != reference:
                         raise OSError("Published generation could not be confirmed")
+                    if first:
+                        signature_first_publication.published(path, journal)
                 data.update(update_status="updated", published=True, resume_recheck_required=old is not None)
             # No recursive cleanup of unknown paths; failed stages remain private for owner maintenance.
             data["next_attempt_at"] = now + 86400

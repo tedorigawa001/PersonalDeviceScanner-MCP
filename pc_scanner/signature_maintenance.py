@@ -10,6 +10,7 @@ import stat
 import time
 
 from . import core, history, process_store, signature_update as update
+from . import signature_first_publication as first
 
 ENTRY = re.compile(r"(?:stage-)?[0-9a-f]{32}\Z")
 REV = re.compile(r"[0-9a-f]{64}\Z")
@@ -305,7 +306,7 @@ def prune_missing_history(path, current, deadline, cancel):
             if index < len(checks) or record["generation"] not in missing]
 
 
-def inventory(path, deadline, *, list_cleanup=False):
+def inventory(path, deadline, *, store_format="", list_cleanup=False):
     state = attempt(path)
     names = update.store_names(path, deadline)
     try:
@@ -313,16 +314,46 @@ def inventory(path, deadline, *, list_cleanup=False):
     except OSError:
         reference = None
     current = reference[0] if reference is not None else None
+    snapshot = (None, None)
+    try:
+        snapshot = first.load(path, store_format)
+        first_phase = first.phase(snapshot[0], current) if reference is not None else "unavailable"
+    except OSError:
+        first_phase = "unavailable"
+    journal = snapshot[0]
+    entries = journal["entries"] if first_phase == "open" else {}
+    provider = path / "provider.dat"
+    sync = provider_sync(path)
+    provider_hash = hashlib.sha256(provider_bytes(provider)).hexdigest() if not absent(provider) else None
+    provider_state = [state, sync, provider_hash]
     status, checks = previous_protection(path, current, deadline, names=names) if reference is not None else ("history_unavailable", [])
     protected = next((g for g, verdict, _ in checks if verdict == "last_previous"), None)
-    managed = sorted(n for n in names if ENTRY.fullmatch(n))
+    managed = {n for n in names if ENTRY.fullmatch(n)}
+    managed.update(name for name, entry in entries.items() if entry["deleting"] is not None)
     # The updater counts these toward its limit, but this CLI neither lists nor deletes them.
     unrecognized = sum(1 for n in names if update.counts_toward_capacity(n) and not ENTRY.fullmatch(n))
-    rows, revisions = [], {}
-    for name in managed:
+    rows, revisions, plans = [], {}, {}
+    for name in sorted(managed):
         row = dict(id=name, kind="stage" if name.startswith("stage-") else "generation", revision=None,
                    current=bool(current and name == current["generation"]), in_use=None, deletable=False)
         try:
+            if first_phase == "open" and name in entries:
+                if not absent(path / (name + ".lease")):
+                    row["reason"] = "lease_present"
+                elif first.unexpected_sidecars(names, name):
+                    row["reason"] = "unknown_publication"
+                else:
+                    plan = first.inspect_candidate(path, name, entries[name], deadline)
+                    metadata, evidence, _ = plan
+                    target = entry_revision(metadata, evidence)
+                    row.update(reason=first.UNPUBLISHED, deletable=True, in_use=False,
+                               revision=revision_for([name, target, snapshot, reference, "no_lease", provider_state]),
+                               bytes=sum(info[5] for key, info in (metadata or []) if stat.S_ISREG(info[2]))
+                               + (len(evidence[0]) if evidence is not None else 0),
+                               incomplete=not metadata or len(metadata) != len(update.DATABASES) + 1)
+                    plans[name] = plan
+                rows.append(row)
+                continue
             metadata = tree(path / name, deadline)
             evidence = update.verification_snapshot(update.verification_file(path / name)) if row["kind"] == "generation" else None
             revisions[name] = entry_revision(metadata, evidence)
@@ -334,8 +365,12 @@ def inventory(path, deadline, *, list_cleanup=False):
             if row["kind"] == "generation":
                 row["incomplete"] = not all(database in files for database in update.DATABASES)
             row["reason"] = None
-            if reference is None:
-                row["reason"] = "history_unavailable"
+            if first_phase == "unavailable":
+                row["reason"] = "history_unavailable" if reference is None else "first_publication_unavailable"
+            elif first_phase == "open" and current is None and row["kind"] == "generation":
+                row["reason"] = "unknown_publication"
+            elif first_phase == "open" and sync and name == sync["stage"]:
+                row["reason"] = "provider_sync_stage"
             elif row["kind"] == "stage" and state and state["pending"]:
                 row["reason"] = "pending_recovery"
             elif row["kind"] == "generation":
@@ -362,10 +397,12 @@ def inventory(path, deadline, *, list_cleanup=False):
         except OSError:
             row["reason"] = "unavailable"
         rows.append(row)
-    provider = path / "provider.dat"
-    sync = provider_sync(path)
-    token = [state, reference, rows, sync, hashlib.sha256(provider_bytes(provider)).hexdigest() if provider.exists() or provider.is_symlink() else None]
+    token = [reference, rows, provider_state, snapshot]
+    used = first.used_slots(names, journal)
+    required = None if reference is None else (2 if current is None else 1)
     result = dict(entries=rows, unrecognized_entries=unrecognized, attempt=state, recovery_revision=revision_for(token),
+                first_publication=first_phase,
+                capacity=dict(used_slots=used, max_slots=update.MAX_GENERATIONS, required_slots=required),
                 previous_protection=dict(status=status, generation=protected,
                                          checks=[dict(id=g, status=verdict) for g, verdict, _ in checks]),
                 next_attempt_at=state["next_attempt"] if state else None,
@@ -373,8 +410,8 @@ def inventory(path, deadline, *, list_cleanup=False):
                 provider_sync=sync,
                 waiting=bool(state and time.time() < state["next_attempt"]))
     if list_cleanup:
-        result["cleanup"] = cleanup_inventory(path, names, reference, status, checks, deadline)
-    return result, reference, checks, revisions
+        result["cleanup"] = cleanup_inventory(path, names, reference, status, checks, deadline) if first_phase != "unavailable" else []
+    return result, reference, checks, revisions, (snapshot, plans)
 
 
 def revision_for(data):
@@ -647,13 +684,14 @@ def manage(scanner, action, entry_id=None, revision=None, not_before=None):
         # The updater lock freezes publication for this operation. Do not hold the short publication
         # lock while verifying large databases or deleting files: readers may still pin the current generation.
         with update.root(scanner) as path, history.locked(path / "update", attempts=1):
-            info, reference, checks, revisions = inventory(path, deadline, list_cleanup=action == "list")
+            info, reference, checks, revisions, (journal_snapshot, first_plans) = inventory(
+                path, deadline, store_format=scanner.signature_update_settings["store_format"], list_cleanup=action == "list")
             status = info["previous_protection"]["status"]
             if action == "list":
                 return core.result("clamav", "completed", data=info, warnings=[
                     "Entries named stage-* that this CLI cannot manage count toward the generation limit; inspect them manually"
                 ] if info["unrecognized_entries"] else [])
-            if reference is None:
+            if reference is None or info["first_publication"] == "unavailable":
                 raise core.ScannerError("Signature publication history unavailable; preserve the store and investigate")
             if action == "cleanup":
                 return retry_cleanup(path, entry_id, revision, reference, status, checks, deadline)
@@ -688,6 +726,8 @@ def manage(scanner, action, entry_id=None, revision=None, not_before=None):
                 raise core.ScannerError("Selected signature entry is missing or changed; list again")
             if not row["deletable"]:
                 raise core.ScannerError("Selected entry is protected: " + row["reason"])
+            if entry_id in first_plans:
+                return first.delete(path, entry_id, journal_snapshot, first_plans[entry_id], deadline)
             if row["kind"] == "generation":
                 return delete_generation(path, entry_id, reference, checks, revisions[entry_id], deadline)
             update.current(path, deadline)

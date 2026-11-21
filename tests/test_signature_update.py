@@ -17,6 +17,7 @@ from unittest.mock import patch
 from datetime import datetime, timezone
 
 from pc_scanner import core, history, process_store, signature_maintenance as maintenance, signature_update as update
+from pc_scanner import signature_first_publication as first
 
 
 @unittest.skipUnless(os.name == "posix" and os.geteuid() != 0, "non-root POSIX private updater")
@@ -127,9 +128,7 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual(rows[first["generation"]]["reason"], "last_previous")
         self.assertTrue(rows[orphan.name]["deletable"])
 
-    def test_folders_left_by_failed_first_switches_stay_deletable_after_the_first_publication(self):
-        # They were recorded as legacy_untracked and held with no recorded predecessor to protect: three of them and
-        # the first current generation filled all four slots, and every later update stopped on capacity.
+    def test_legacy_first_switch_leftovers_are_held_even_with_space_and_no_wait(self):
         original = update.write_json
 
         def fail_first_switch(path, obj):
@@ -137,27 +136,290 @@ class UpdateTests(unittest.TestCase):
                 raise OSError("synthetic failure while writing the first reference")
             original(path, obj)
 
-        for version in (10, 11, 12):
-            self.version = version
-            with patch.object(update, "write_json", side_effect=fail_first_switch):
-                self.assertEqual(self.do_update()["data"]["update_status"], "unknown")
-            self.allow_next()
-            for row in maintenance.manage(self.scanner(), "list")["data"]["entries"]:
-                if row["kind"] == "stage":
-                    maintenance.manage(self.scanner(), "delete", row["id"], row["revision"])
-        leftovers = sorted(p.name for p in self.root.iterdir() if update.GEN.fullmatch(p.name))
-        self.assertEqual(len(leftovers), 3)
-        self.version = 20
-        self.assertEqual(self.do_update()["data"]["update_status"], "updated")
-        first = update.pointer(self.root)
-        self.assertEqual((first["previous"], first["legacy_untracked"]), ([], []))
-        rows = {r["id"]: r for r in maintenance.manage(self.scanner(), "list")["data"]["entries"]}
-        self.assertEqual([(rows[n]["reason"], rows[n]["deletable"]) for n in leftovers], [(None, True)] * 3)
-        maintenance.manage(self.scanner(), "delete", leftovers[0], rows[leftovers[0]]["revision"])
+        with patch.object(update, "write_json", side_effect=fail_first_switch):
+            self.assertEqual(self.do_update()["data"]["update_status"], "unknown")
         self.allow_next()
-        self.version = 21
+        snapshot = set(self.root.iterdir())
+        wait = (self.root / "attempt.json").read_bytes()
+        self.calls.clear()
+        report = self.do_update()
+        self.assertEqual(report["status"], "error")
+        self.assertIn("First publication cannot be confirmed", report["warnings"][0])
+        self.assertEqual(self.calls, [])
+        self.assertEqual(snapshot, set(self.root.iterdir()))
+        self.assertEqual(wait, (self.root / "attempt.json").read_bytes())
+        info = self.first_list()
+        row, = [row for row in info["entries"] if row["kind"] == "generation"]
+        self.assertEqual(row["reason"], "missing_history")
+        self.assertFalse(row["deletable"])
+        with self.assertRaisesRegex(core.ScannerError, "missing_history"):
+            self.first_delete(row)
+        self.assertIsNone(update.pointer(self.root))
+        self.assertFalse((self.root / first.JOURNAL).exists())
+
+    def first_list(self):
+        return maintenance.manage(self.scanner(), "list")["data"]
+
+    def first_delete(self, row):
+        return maintenance.manage(self.scanner(), "delete", row["id"], row["revision"])
+
+    def first_row(self, name=None):
+        rows = self.first_list()["entries"]
+        return next(row for row in rows if row["id"] == name or (name is None and row["kind"] == "generation"))
+
+    def stop_before_first_switch(self, engine=None):
+        self.config["clamav_updates"]["store_format"] = update.TRACKED_FIRST
+        with patch.object(first, "start_switch", side_effect=OSError("synthetic stop before switch")):
+            self.assertEqual(self.do_update(engine)["status"], "error")
+
+    def test_first_tracked_store_does_not_adopt_an_existing_directory(self):
+        self.root.mkdir(mode=0o700)
+        self.config["clamav_updates"]["store_format"] = update.TRACKED_FIRST
+        self.assertEqual(self.do_update()["status"], "error")
+        self.assertFalse((self.root / first.JOURNAL).exists())
+        self.assertFalse((self.root / "attempt.json").exists())
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.first_list()["first_publication"], "unavailable")
+
+    def test_first_tracked_store_requires_two_slots_and_frees_only_selected_generations(self):
+        self.stop_before_first_switch()
+        self.allow_next()
+        self.stop_before_first_switch()
+        self.allow_next()
+        status = self.first_list()
+        eligible = [row for row in status["entries"] if row["reason"] == first.UNPUBLISHED]
+        self.assertEqual(status["capacity"], {"used_slots": 4, "max_slots": 4, "required_slots": 2})
+        self.assertEqual(len(eligible), 2)
+        stages = set(self.root.glob("stage-*"))
+        wait = (self.root / "attempt.json").read_bytes()
+        self.calls.clear()
+        for used in (4, 3):
+            snapshot = set(self.root.iterdir())
+            self.assertIn("capacity exhausted", self.do_update()["warnings"][0])
+            self.assertEqual(self.calls, [])
+            self.assertEqual(snapshot, set(self.root.iterdir()))
+            self.assertEqual(wait, (self.root / "attempt.json").read_bytes())
+            if used == 4:
+                self.assertEqual(self.first_delete(eligible[0])["status"], "completed")
+        self.assertEqual(self.first_list()["capacity"]["used_slots"], 3)
+        self.assertFalse((self.root / eligible[0]["id"]).exists())
+        self.assertTrue((self.root / eligible[1]["id"]).is_dir())
+        with self.assertRaisesRegex(core.ScannerError, "changed"):
+            self.first_delete(eligible[1])
+        self.assertEqual(self.first_delete(self.first_row(eligible[1]["id"]))["status"], "completed")
+        self.assertEqual(self.first_list()["capacity"]["used_slots"], 2)
+        self.assertEqual(stages, set(self.root.glob("stage-*")))
+        self.assertEqual(wait, (self.root / "attempt.json").read_bytes())
+        start = first.start_switch
+
+        def confirm_reservation(path, journal, generation):
+            self.assertEqual(first.used_slots(update.store_names(path, time.monotonic() + 30), journal), 4)
+            self.assertIsNone(update.pointer(path))
+            return start(path, journal, generation)
+
+        with patch.object(first, "start_switch", side_effect=confirm_reservation):
+            self.assertTrue(self.do_update()["data"]["published"])
+        current = update.pointer(self.root)["generation"]
+        self.assertEqual(self.first_row(current)["reason"], "current")
+        self.assertEqual(self.first_list()["first_publication"], "published")
+
+    def test_first_tracked_selection_preserves_stage_wait_provider_and_unknown_generation(self):
+        def with_provider(argv, *args, **kwargs):
+            db = next((Path(arg.split("=", 1)[1]) for arg in argv if arg.startswith("--datadir=")), None)
+            if db:
+                history.replace_private(db / "freshclam.dat", b"test provider state")
+            return self.engine(argv, *args, **kwargs)
+
+        self.stop_before_first_switch(with_provider)
+        known = self.first_row()
+        unknown = self.root / ("f" * 32)
+        unknown.mkdir(mode=0o700)
+        sync = maintenance.provider_sync(self.root)
+        unchanged = [self.root / name for name in ("attempt.json", "provider.dat", "provider-sync.json",
+                                                   sync["stage"] + "/db/freshclam.dat")]
+        snapshot = {path: path.read_bytes() for path in unchanged}
+        with self.assertRaisesRegex(core.ScannerError, "provider_sync_stage"):
+            self.first_delete(next(row for row in self.first_list()["entries"] if row["id"] == sync["stage"]))
+        with self.assertRaisesRegex(core.ScannerError, "unknown_publication"):
+            self.first_delete(self.first_row(unknown.name))
+        self.assertEqual(self.first_delete(known)["status"], "completed")
+        self.assertEqual({path: path.read_bytes() for path in unchanged}, snapshot)
+        self.assertTrue(unknown.exists())
+        self.allow_next()
+        self.calls.clear()
+        self.assertIn("First publication cannot be confirmed", self.do_update()["warnings"][0])
+        self.assertEqual(self.calls, [])
+
+    def test_first_tracked_candidates_are_held_after_switch_intent_is_visible(self):
+        for fault in ("intent_sync", "reference_write", "reference_readback"):
+            with self.subTest(fault=fault):
+                self.root = self.base / fault
+                self.config["clamav_updates"].update(directory=str(self.root), store_format=update.TRACKED_FIRST)
+                real_write, real_pointer = update.write_json, update.pointer
+
+                def write(path, obj):
+                    if path.name == "current.json" and fault == "reference_write":
+                        raise OSError("synthetic reference write failure")
+                    real_write(path, obj)
+                    if path.name == first.JOURNAL and obj["phase"] == "switch_started" and fault == "intent_sync":
+                        raise OSError("synthetic intent sync failure")
+
+                def pointer(path):
+                    obj = real_pointer(path)
+                    if obj is not None and fault == "reference_readback":
+                        raise OSError("synthetic reference read-back failure")
+                    return obj
+
+                with patch.object(update, "write_json", side_effect=write), patch.object(update, "pointer", side_effect=pointer):
+                    self.assertEqual(self.do_update()["status"], "error")
+                journal, _ = first.load(self.root, update.TRACKED_FIRST)
+                self.assertEqual(journal["phase"], "switch_started")
+                if fault == "reference_readback":
+                    self.assertEqual(self.first_list()["first_publication"], "confirm_published")
+                    (self.root / "current.json").unlink()
+                else:
+                    self.assertIsNone(update.pointer(self.root))
+                self.assertEqual(self.first_row()["reason"], "first_publication_unavailable")
+                self.allow_next()
+                self.calls.clear()
+                self.assertEqual(self.do_update()["status"], "error")
+                self.assertFalse(self.calls)
+                self.assertEqual(first.load(self.root, update.TRACKED_FIRST)[0], journal)
+
+    def test_first_tracked_restart_can_advance_a_verified_published_reference(self):
+        self.config["clamav_updates"]["store_format"] = update.TRACKED_FIRST
+        with patch.object(first, "published", side_effect=OSError("synthetic journal completion failure")):
+            report = self.do_update()
+        self.assertTrue(report["data"]["published"])
+        current = update.pointer(self.root)
+        self.assertEqual(self.first_list()["first_publication"], "confirm_published")
+        self.allow_next()
+        self.version += 1
         self.assertEqual(self.do_update()["data"]["update_status"], "updated")
-        self.assertEqual(update.pointer(self.root)["previous"], [{k: first[k] for k in update.RECORD_KEYS}])
+        self.assertEqual(first.load(self.root, update.TRACKED_FIRST)[0]["target"], current["generation"])
+        (self.root / "current.json").unlink()
+        self.assertEqual(self.first_list()["first_publication"], "unavailable")
+        self.allow_next()
+        self.calls.clear()
+        self.assertEqual(self.do_update()["status"], "error")
+        self.assertEqual(self.calls, [])
+
+    def test_first_tracked_stop_between_candidate_and_sidecar_moves(self):
+        self.config["clamav_updates"]["store_format"] = update.TRACKED_FIRST
+        rename = os.rename
+
+        def fail_sidecar(source, dest, *args, **kwargs):
+            if Path(dest).name.endswith(".verification.json"):
+                raise OSError("synthetic sidecar move failure")
+            return rename(source, dest, *args, **kwargs)
+
+        with patch.object(os, "rename", side_effect=fail_sidecar):
+            self.assertEqual(self.do_update()["status"], "error")
+        row = self.first_row()
+        self.assertTrue(row["deletable"])
+        self.assertFalse(update.verification_file(self.root / row["id"]).exists())
+        self.assertEqual(self.first_delete(row)["status"], "completed")
+
+    def test_first_tracked_candidate_is_unselectable_until_its_directory_moves(self):
+        self.config["clamav_updates"]["store_format"] = update.TRACKED_FIRST
+        rename = os.rename
+
+        def stop_before_move(source, dest, *args, **kwargs):
+            if Path(source).name == "candidate":
+                raise OSError("synthetic candidate move failure")
+            return rename(source, dest, *args, **kwargs)
+
+        with patch.object(os, "rename", side_effect=stop_before_move):
+            self.assertEqual(self.do_update()["status"], "error")
+        journal, _ = first.load(self.root, update.TRACKED_FIRST)
+        self.assertEqual(len(journal["entries"]), 1)
+        self.assertEqual(self.first_list()["capacity"]["used_slots"], 1)
+        self.assertTrue(all(row["kind"] == "stage" for row in self.first_list()["entries"]))
+        self.allow_next()
+        self.assertTrue(self.do_update()["data"]["published"])
+
+    def test_first_tracked_owner_cli_selects_by_id_and_revision(self):
+        self.stop_before_first_switch()
+        conf = self.base / "scanner.toml"
+        settings = self.config["clamav_updates"]
+        conf.write_text("[clamav_updates]\n" + "\n".join(f"{key}={json.dumps(value)}" for key, value in settings.items()))
+
+        def invoke(*args):
+            return subprocess.run([sys.executable, "-m", "pc_scanner.cli", "--config", str(conf),
+                                   "clamav-signature-store", *args], capture_output=True, text=True, timeout=15)
+
+        listed = invoke("list")
+        self.assertEqual(listed.returncode, 0, listed.stdout + listed.stderr)
+        row, = [row for row in json.loads(listed.stdout)["data"]["entries"] if row["reason"] == first.UNPUBLISHED]
+        deleted = invoke("delete", row["id"], "--revision", row["revision"])
+        self.assertEqual(deleted.returncode, 0, deleted.stdout + deleted.stderr)
+        self.assertEqual(json.loads(deleted.stdout)["data"]["deleted"], row["id"])
+        self.assertEqual(self.first_list()["capacity"]["used_slots"], 1)
+
+    def test_first_tracked_candidates_reject_lease_link_corruption_and_stale_wait(self):
+        self.stop_before_first_switch()
+        row = self.first_row()
+        generation = self.root / row["id"]
+        lease_path = generation.with_name(generation.name + ".lease")
+        with update.generation_lease(lease_path):
+            self.assertEqual(self.first_row()["reason"], "lease_present")
+            with self.assertRaises(core.ScannerError):
+                self.first_delete(row)
+        lease_path.unlink()
+        self.allow_next()
+        with self.assertRaisesRegex(core.ScannerError, "changed"):
+            self.first_delete(row)
+        cvd = generation / "main.cvd"
+        data = cvd.read_bytes()
+        cvd.unlink()
+        cvd.symlink_to(generation / "daily.cvd")
+        self.assertFalse(self.first_row()["deletable"])
+        cvd.unlink()
+        history.replace_private(cvd, data + b"corrupted")
+        self.assertFalse(self.first_row()["deletable"])
+        journal = self.root / first.JOURNAL
+        history.replace_private(journal, b'{"schema":1,"schema":1}')
+        self.assertEqual(self.first_list()["first_publication"], "unavailable")
+        self.assertEqual(self.do_update()["status"], "error")
+        self.assertTrue(generation.is_dir())
+
+    def test_first_tracked_deletion_can_resume_and_holds_the_slot_until_sync(self):
+        self.stop_before_first_switch()
+        row = self.first_row()
+        generation = self.root / row["id"]
+        unlink = os.unlink
+        calls = []
+
+        def stop_on_second_cvd(path, *args, **kwargs):
+            if path in update.DATABASES and kwargs.get("dir_fd") is not None:
+                calls.append(path)
+                if len(calls) == 2:
+                    raise OSError("synthetic interrupted deletion")
+            return unlink(path, *args, **kwargs)
+
+        with patch.object(os, "unlink", side_effect=stop_on_second_cvd):
+            partial = self.first_delete(row)
+        self.assertEqual(partial["status"], "partial")
+        self.assertNotIn("deleted", partial["data"])
+        self.assertEqual(len(list(generation.iterdir())), 2)
+        self.assertEqual(self.first_list()["capacity"]["used_slots"], 2)
+        self.assertTrue(self.first_row()["deletable"])
+        sync = update.sync_dir
+
+        def stop_at_directory_sync(path):
+            if path == self.root and not generation.exists():
+                raise OSError("synthetic parent sync failure")
+            return sync(path)
+
+        with patch.object(update, "sync_dir", side_effect=stop_at_directory_sync):
+            partial = self.first_delete(self.first_row())
+        self.assertEqual(partial["status"], "partial")
+        self.assertEqual(partial["data"], {"deleted": row["id"], "directory_synced": False, "update_performed": False})
+        self.assertFalse(generation.exists())
+        self.assertEqual(self.first_list()["capacity"]["used_slots"], 2)
+        self.assertEqual(self.first_delete(self.first_row())["status"], "completed")
+        self.assertEqual(self.first_list()["capacity"]["used_slots"], 1)
+        self.assertFalse(any(row["kind"] == "generation" for row in self.first_list()["entries"]))
 
     def test_deletion_reports_the_removed_generation_when_the_history_rewrite_is_busy(self):
         refs = []

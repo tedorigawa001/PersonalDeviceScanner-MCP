@@ -476,8 +476,17 @@ version newer than the current one and different content is a rollback, and when
 An unreadable generation holds generation deletion. The first update that changes the bytes records the verified
 former current generation and marks other existing generation IDs as `legacy_untracked`. They predate that record or
 were never published, so they can be deleted once an intact recorded predecessor is protected, and are held otherwise.
-A store that never had a reference records none: folders left by failed first switches can be deleted after the first
-publication. After generation removal, unconfirmed cleanup or history writes produce `partial` with the `deleted` ID.
+If the current reference is missing and a generation's publication status cannot be confirmed, the first update
+stops before starting freshclam or writing a new wait. Preserve that store and let all saved and provider deadlines
+elapse before adopting a new private path. On a new, absent directory, set `store_format = "tracked-first-v1"` to
+record the first publication boundary. An initial update requires two free slots for its stage and generation.
+In the owner CLI listing, `data.capacity` shows the used, maximum and required slots. An entry marked
+`unpublished_before_first_switch` and `deletable: true` can be removed with
+`clamav-signature-store delete GENERATION_ID --revision ENTRY_REVISION`. Use a fresh listing for each selection.
+Cleanup preserves the work stages, provider state and wait deadline. Use compatible CLI and MCP versions when sharing
+the new store. [First-publication recovery design](docs/clamav-manual-recovery-design.md#優先2-初回公開前の容量不足)
+
+After generation removal, unconfirmed cleanup or history writes produce `partial` with the `deleted` ID.
 The result identifies whether the parent directory sync (`directory_synced`), lease file removal (`lease_removed`)
 and publication history update (`history_updated`) were confirmed. A lease that was already absent counts as removed,
 and `history_updated` is `null` when no matching history entry needs removal. A stage deletion whose parent directory

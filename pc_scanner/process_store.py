@@ -329,6 +329,7 @@ class Store:
                 raise OSError("Store must be local")
             if not local_filesystem(self.parent):
                 raise OSError("Local parent filesystem could not be verified")
+            self.created = False
             try:
                 self.fd = os.open(self.path.name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=self.parent)
             except FileNotFoundError:
@@ -336,6 +337,7 @@ class Store:
                     yield None
                     return
                 os.mkdir(self.path.name, 0o700, dir_fd=self.parent)
+                self.created = True
                 self.fd = os.open(self.path.name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=self.parent)
             self.info = self.private(self.fd, True)
             if not local_filesystem(self.fd):

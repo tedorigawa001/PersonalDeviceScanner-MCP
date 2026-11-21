@@ -285,7 +285,7 @@ def excerpt(text: str) -> tuple[str, bool]:
 
 
 # Settings each section understands; None means free-form keys (scan root aliases).
-SETTINGS = {"clamav_updates": {"enabled", "directory", "freshclam_binary", "sigtool_binary", "timeout_seconds"},
+SETTINGS = {"clamav_updates": {"enabled", "directory", "freshclam_binary", "sigtool_binary", "timeout_seconds", "store_format"},
             "local": {"osquery_binary", "clamav_binary", "timeout_seconds", "max_output_bytes",
                       "max_signature_age_days", "batch_group_small_files", "clamav_database_directory"},
             "scan_roots": None,

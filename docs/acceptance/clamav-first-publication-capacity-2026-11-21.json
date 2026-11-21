@@ -1,0 +1,45 @@
+{
+  "date": "2026-11-21",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "clamav_first_publication_capacity_recovery_verification",
+  "status": "passed with synthetic private stores on macOS",
+  "base_commit": "b0fada1329f94865f6adfd52fac99e1a9eba88fb",
+  "design": "../clamav-manual-recovery-design.md",
+  "environment": {"platform": "macOS 27.2.1 (26B131), arm64", "node": "26.12.1", "npm": "11.20.0"},
+  "implementation": [
+    "Initial publication requires two free slots before starting FreshClam or recording a new wait. The pending deletion of a generation reserves its slot until directory sync is confirmed.",
+    "The tracked store format initializes its journal only on a newly created private directory. It records the candidate before moving it and durably records switch intent before replacing the current pointer.",
+    "Owner CLI listing and selected deletion use the generation ID and a revision bound to the journal, the checked target, and wait and provider state. Cleanup leaves stages, the provider state and the wait untouched.",
+    "When the current reference is absent and a generation has unknown publication history, a normal update also stops before creating an attempt or a stage, including in the earlier store format."
+  ],
+  "regression_checks": [
+    "Added ten tests and changed the earlier first publication regression to verify that unknown generations are held even below the capacity limit.",
+    "Two stopped attempts filled four slots. At four and three occupied slots the update refused with zero engine starts and unchanged wait. Each selected deletion freed exactly one slot, and the next update reached publication with two slots reserved.",
+    "An existing directory did not acquire a journal. Candidate and sidecar move interruptions, a recorded switch intent with no reference, failed reference write and read-back, and later loss of the published reference retained the expected protections.",
+    "The intact verified reference allowed a later ordinary update to finish the publication record. An unknown generation in the same store stayed protected while an independently verified candidate could be selected.",
+    "An actual CLI subprocess listed and selected a single candidate. A stale revision, linked or corrupt content, an active lease and a malformed journal refused selection. The wait, canonical provider data, synchronization file and referenced stage data remained byte-identical during selected cleanup.",
+    "An interrupted deletion was retried against surviving file identities and hashes. Parent sync failure retained the slot even after the directory disappeared. The final retry confirmed absence and released exactly one slot."
+  ],
+  "verification": {
+    "focused_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
+    "focused": {"total": 132, "passed": 132, "skipped": 0, "failed": 0, "seconds": 48.523},
+    "android_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -p test_android.py -q",
+    "android": {"total": 40, "passed": 40, "skipped": 0, "failed": 0},
+    "mcp_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -p test_mcp.py -q",
+    "mcp": {"total": 8, "passed": 8, "skipped": 0, "failed": 0},
+    "python_3_14_command": "env PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -q",
+    "python_3_14": {"version": "3.14.10", "total": 840, "passed": 823, "skipped": 17, "failed": 0, "seconds": 232.130},
+    "python_3_15_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -q",
+    "python_3_15": {"version": "3.15.2", "total": 840, "passed": 823, "skipped": 17, "failed": 0, "seconds": 225.576},
+    "npm_command": "npm_config_cache=\"$(mktemp -d)\" PC_SCANNER_NPM_E2E=1 PC_SCANNER_NPM_EXPECT_HASHED=1 PC_SCANNER_PYTHON=\"$PWD/.venv/bin/python\" npm test",
+    "npm": {"total": 34, "passed": 34, "skipped": 0, "failed": 0}
+  },
+  "development_diagnostics": [
+    "The four-slot regression caught a reused variable that lost an earlier generation record. The recorded generation set now comes from the store inventory.",
+    "The deletion retry regression showed that APFS changes the directory link count as a file is removed. The retry compares the directory device, inode, mode and owner, and separately checks each surviving file against its full identity and recorded hash."
+  ],
+  "limits": [
+    "Fault probes used synthetic CVD files, engine replies and disk errors. No existing signature store, deadline, provider state or operating system definitions were used or changed.",
+    "Native acceptance with signed CVDs and restart fault tests on macOS and Linux remain pending. Windows and the remote CI jobs were outside this local verification."
+  ]
+}

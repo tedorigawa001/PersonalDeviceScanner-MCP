@@ -24,8 +24,11 @@ directory = ""
 freshclam_binary = ""
 sigtool_binary = ""
 timeout_seconds = 1800
+# Only for a new path that does not exist yet. Keep CLI and MCP on compatible versions.
+# store_format = "tracked-first-v1"
 # Complete signed CVDs only; 24h retry interval. Failure/interruption requires owner recovery.
 # At most four generations/failed stages; no automatic deletion in this first phase.
+# An initial update requires two free slots. Only proven unpublished generations can be selected before it.
 # Use the owner-only `clamav-signature-store list/recover/delete` CLI for controlled cleanup.
 # Recovery preserves/extends deadlines and provider state; current/in-use/last previous generations stay protected.
 
