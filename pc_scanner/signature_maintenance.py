@@ -326,6 +326,7 @@ def inventory(path, deadline, *, store_format="", list_cleanup=False):
     sync = provider_sync(path)
     provider_hash = hashlib.sha256(provider_bytes(provider)).hexdigest() if not absent(provider) else None
     provider_state = [state, sync, provider_hash]
+    provider_mismatch = sync is None or (sync["status"] == "synced" and sync["provider_hash"] != provider_hash)
     status, checks = previous_protection(path, current, deadline, names=names) if reference is not None else ("history_unavailable", [])
     protected = next((g for g, verdict, _ in checks if verdict == "last_previous"), None)
     managed = {n for n in names if ENTRY.fullmatch(n)}
@@ -346,12 +347,14 @@ def inventory(path, deadline, *, store_format="", list_cleanup=False):
                     plan = first.inspect_candidate(path, name, entries[name], deadline)
                     metadata, evidence, _ = plan
                     target = entry_revision(metadata, evidence)
-                    row.update(reason=first.UNPUBLISHED, deletable=True, in_use=False,
+                    row.update(reason="provider_state_mismatch" if provider_mismatch else first.UNPUBLISHED,
+                               deletable=not provider_mismatch, in_use=False,
                                revision=revision_for([name, target, snapshot, reference, "no_lease", provider_state]),
                                bytes=sum(info[5] for key, info in (metadata or []) if stat.S_ISREG(info[2]))
                                + (len(evidence[0]) if evidence is not None else 0),
                                incomplete=not metadata or len(metadata) != len(update.DATABASES) + 1)
-                    plans[name] = plan
+                    if row["deletable"]:
+                        plans[name] = plan
                 rows.append(row)
                 continue
             metadata = tree(path / name, deadline)

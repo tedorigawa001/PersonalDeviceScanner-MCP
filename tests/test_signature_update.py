@@ -172,6 +172,12 @@ class UpdateTests(unittest.TestCase):
         with patch.object(first, "start_switch", side_effect=OSError("synthetic stop before switch")):
             self.assertEqual(self.do_update(engine)["status"], "error")
 
+    def engine_with_provider(self, argv, *args, **kwargs):
+        db = next((Path(arg.split("=", 1)[1]) for arg in argv if arg.startswith("--datadir=")), None)
+        if db:
+            history.replace_private(db / "freshclam.dat", b"test provider state")
+        return self.engine(argv, *args, **kwargs)
+
     def test_first_tracked_store_does_not_adopt_an_existing_directory(self):
         self.root.mkdir(mode=0o700)
         self.config["clamav_updates"]["store_format"] = update.TRACKED_FIRST
@@ -224,13 +230,7 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual(self.first_list()["first_publication"], "published")
 
     def test_first_tracked_selection_preserves_stage_wait_provider_and_unknown_generation(self):
-        def with_provider(argv, *args, **kwargs):
-            db = next((Path(arg.split("=", 1)[1]) for arg in argv if arg.startswith("--datadir=")), None)
-            if db:
-                history.replace_private(db / "freshclam.dat", b"test provider state")
-            return self.engine(argv, *args, **kwargs)
-
-        self.stop_before_first_switch(with_provider)
+        self.stop_before_first_switch(self.engine_with_provider)
         known = self.first_row()
         unknown = self.root / ("f" * 32)
         unknown.mkdir(mode=0o700)
@@ -249,6 +249,51 @@ class UpdateTests(unittest.TestCase):
         self.calls.clear()
         self.assertIn("First publication cannot be confirmed", self.do_update()["warnings"][0])
         self.assertEqual(self.calls, [])
+
+    def test_first_tracked_selection_holds_mismatched_provider_state(self):
+        self.stop_before_first_switch(self.engine_with_provider)
+        candidate = self.first_row()
+        canonical = self.root / "provider.dat"
+        sync_file = self.root / "provider-sync.json"
+        sync = maintenance.provider_sync(self.root)
+        self.assertEqual(sync["status"], "synced")
+        self.assertIsNotNone(sync["provider_hash"])
+        canonical_bytes, sync_bytes = canonical.read_bytes(), sync_file.read_bytes()
+        generation = self.root / candidate["id"]
+        protected = [self.root / "attempt.json", self.root / first.JOURNAL,
+                     self.root / sync["stage"] / "db/freshclam.dat", update.verification_file(generation)]
+        protected.extend(generation.iterdir())
+        snapshots = {path: path.read_bytes() for path in protected}
+        self.calls.clear()
+
+        for fault in ("missing_canonical", "different_canonical", "canonical_expected_absent", "missing_sync"):
+            with self.subTest(fault=fault):
+                history.replace_private(canonical, canonical_bytes)
+                history.replace_private(sync_file, sync_bytes)
+                if fault == "missing_canonical":
+                    canonical.unlink()
+                elif fault == "different_canonical":
+                    history.replace_private(canonical, b"different provider state")
+                elif fault == "canonical_expected_absent":
+                    update.write_json(sync_file, dict(sync, provider_hash=None))
+                else:
+                    sync_file.unlink()
+                provider_state = {path: path.read_bytes() if path.exists() else None for path in (canonical, sync_file)}
+
+                with self.assertRaisesRegex(core.ScannerError, "changed"):
+                    self.first_delete(candidate)
+                held = self.first_row(candidate["id"])
+                self.assertEqual((held["deletable"], held["reason"]), (False, "provider_state_mismatch"))
+                with self.assertRaisesRegex(core.ScannerError, "provider_state_mismatch"):
+                    self.first_delete(held)
+                self.assertEqual({path: path.read_bytes() for path in protected}, snapshots)
+                self.assertEqual({path: path.read_bytes() if path.exists() else None for path in provider_state}, provider_state)
+                self.assertEqual(self.first_list()["capacity"]["used_slots"], 2)
+                self.assertEqual(self.calls, [])
+
+        history.replace_private(canonical, canonical_bytes)
+        history.replace_private(sync_file, sync_bytes)
+        self.assertEqual(self.first_delete(self.first_row(candidate["id"]))["status"], "completed")
 
     def test_first_tracked_candidates_are_held_after_switch_intent_is_visible(self):
         for fault in ("intent_sync", "reference_write", "reference_readback"):
@@ -420,6 +465,55 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual(self.first_delete(self.first_row())["status"], "completed")
         self.assertEqual(self.first_list()["capacity"]["used_slots"], 1)
         self.assertFalse(any(row["kind"] == "generation" for row in self.first_list()["entries"]))
+
+    def test_first_tracked_deletion_retry_requires_durable_intent_before_removal(self):
+        self.stop_before_first_switch()
+        row = self.first_row()
+        name = row["id"]
+        generation = self.root / name
+        wait = (self.root / "attempt.json").read_bytes()
+        files = [*generation.iterdir(), update.verification_file(generation)]
+        snapshot = {file: file.read_bytes() for file in files}
+        sync = update.sync_dir
+
+        def fail_intent_sync(path):
+            if path == self.root and generation.is_dir():
+                journal, _ = first.load(path, update.TRACKED_FIRST)
+                self.assertIsNotNone(journal["entries"][name]["deleting"])
+                raise OSError("synthetic deletion intent sync failure")
+            return sync(path)
+
+        with patch.object(update, "sync_dir", side_effect=fail_intent_sync), \
+             patch.object(maintenance, "remove_tree", wraps=maintenance.remove_tree) as remove:
+            with self.assertRaisesRegex(core.ScannerError, "preserve state"):
+                self.first_delete(row)
+            retry = self.first_row(name)
+            with self.assertRaisesRegex(core.ScannerError, "preserve state"):
+                self.first_delete(retry)
+            remove.assert_not_called()
+        self.assertEqual({file: file.read_bytes() for file in files}, snapshot)
+        self.assertEqual((self.root / "attempt.json").read_bytes(), wait)
+        self.assertEqual(self.first_list()["capacity"]["used_slots"], 2)
+
+        synced = False
+        remove_tree = maintenance.remove_tree
+
+        def sync_intent(path):
+            nonlocal synced
+            sync(path)
+            if path == self.root and generation.is_dir():
+                synced = True
+
+        def require_synced_intent(*args, **kwargs):
+            self.assertTrue(synced)
+            return remove_tree(*args, **kwargs)
+
+        with patch.object(update, "sync_dir", side_effect=sync_intent), \
+             patch.object(maintenance, "remove_tree", side_effect=require_synced_intent):
+            self.assertEqual(self.first_delete(self.first_row(name))["status"], "completed")
+        self.assertFalse(generation.exists())
+        self.assertEqual((self.root / "attempt.json").read_bytes(), wait)
+        self.assertEqual(self.first_list()["capacity"]["used_slots"], 1)
 
     def test_first_tracked_update_points_to_an_unfinished_selected_deletion(self):
         # The store is not lost: the listing still offers the candidate, and finishing it allows the first publication.

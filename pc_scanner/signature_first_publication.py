@@ -218,6 +218,11 @@ def delete(path, name, journal_snapshot, plan, deadline):
         recorded = load(path, update.TRACKED_FIRST)
         if recorded[0] != saved:
             raise OSError("First publication deletion intent changed")
+    else:
+        # The record can be visible after a replacement whose directory sync failed.
+        update.check_deadline(deadline)
+        update.sync_dir(path)
+        check_reference()
 
     data = {"update_performed": False, "directory_synced": False}
     try:

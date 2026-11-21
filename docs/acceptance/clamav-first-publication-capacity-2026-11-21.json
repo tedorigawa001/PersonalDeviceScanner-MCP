@@ -81,5 +81,32 @@
     "npm_launcher": "12 of 12 jobs passed (Node 22, 24, 26): macOS and Ubuntu 34 of 34, Windows 32 of 34 with 2 skipped",
     "distributions": "verified",
     "limit": "CI uses synthetic stores, engine replies and injected I/O faults. Windows does not run these POSIX-only tests, and real downloads, power interruption and real file system failure are not exercised."
+  },
+  "independent_review_fixes": {
+    "date": "2026-11-21",
+    "base_commit": "7d3320c",
+    "reviewed_commit": "c9138e249234e4c130d6677455929f74f58c2c52",
+    "changes": [
+      "When a selected first-publication deletion already has an intent record, retry synchronizes the parent directory and rechecks the record and publication reference before removal. If synchronization still fails, the files and occupied slot are preserved.",
+      "If the provider synchronization record is missing, or its synced hash disagrees with the optional canonical provider.dat file, the first-publication candidate is listed as protected with provider_state_mismatch. Selected deletion rechecks the state under the updater lock. The wait, provider files and referenced stage are preserved."
+    ],
+    "regression_checks": [
+      "Both new tests failed before the fix. An injected directory sync failure left the deletion intent visible. A second failure blocked removal and kept the CVDs, verification record, wait and occupied slot. When sync succeeded, the selected deletion ran afterward and released one slot.",
+      "A missing canonical file, different canonical bytes, a canonical file whose absence was recorded, and a missing synchronization record each blocked deletion. The old revision was refused and a fresh listing showed the protection reason. The candidate, wait, journal, sync record and source stage were unchanged by the blocked commands, with zero engine starts. With a matching canonical file and synchronization record restored, selected deletion completed."
+    ],
+    "verification": {
+      "focused_command": "bdo proxy env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -p test_signature_update.py -k first_tracked -v",
+      "focused": {"total": 13, "passed": 13, "skipped": 0, "failed": 0, "seconds": 2.593},
+      "python_3_14_command": "bdo proxy env PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -v",
+      "python_3_14": {"version": "3.14.10", "total": 843, "passed": 826, "skipped": 17, "failed": 0, "seconds": 113.243},
+      "python_3_15_command": "bdo proxy env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -v",
+      "python_3_15": {"version": "3.15.2", "total": 843, "passed": 826, "skipped": 17, "failed": 0, "seconds": 112.086},
+      "suite_coverage": "The macOS full suite included 135 ClamAV definition tests, 40 Android tests, and all 8 tests in test_mcp.py, plus MCP SDK tests in other modules. All 17 skips were Windows-only.",
+      "npm": {"total": 34, "passed": 34, "skipped": 0, "failed": 0, "coverage": "First installation with integrity hashes and MCP stdio from the installed package."}
+    },
+    "limits": [
+      "Faults were injected in synthetic stores on macOS. Existing definition stores, provider wait deadlines and operating system definitions were not used or modified.",
+      "Power interruption, real storage failure, Linux and Windows native runs and remote CI were outside this follow-up."
+    ]
   }
 }
