@@ -65,5 +65,22 @@
       "focused": {"total": 122, "passed": 122, "skipped": 0, "failed": 0},
       "npm": "Not rerun: no JavaScript or packaging file changed."
     }
+  },
+  "ci_follow_up": {
+    "date": "2026-11-21",
+    "run": 44905389606,
+    "url": "https://github.com/tedorigawa001/PersonalDeviceScanner-MCP/actions/runs/44905389606",
+    "commit": "33b1499",
+    "covers": "58b2a3c, its native acceptance record a94c81d and its review follow-up 6d1538b, pushed together with the first-publication work up to 33b1499",
+    "started_at": "2026-11-21T12:44:23Z",
+    "finished_at": "2026-11-21T12:47:33Z",
+    "result": "22 of 22 jobs passed",
+    "python_tests": "841 tests run per Python (3.11, 3.14, 3.15) on each OS, with no failures or errors: macOS 824 passed and 17 skipped, Ubuntu 794 passed and 47 skipped, Windows 607 passed and 234 skipped",
+    "cleanup_tests": "the 8 new tests of 58b2a3c, the 4 extended tests and the older-leftover test of 6d1538b passed on macOS and Ubuntu with each Python. The macOS and Ubuntu skip counts did not change, so none of them was skipped there.",
+    "skip_changes": "against the CI of 8ecd7bb (run 44844993384: 821 tests per job; skips macOS 17, Ubuntu 47, Windows 214), the Windows skips rose by 20, the number of new tests in this push, because the maintenance and updater test classes are POSIX-only",
+    "windows_security_descriptors": "12 of 12 passed in each Windows job",
+    "npm_launcher": "12 of 12 jobs passed (Node 22, 24, 26): macOS and Ubuntu 34 of 34, Windows 32 of 34 with 2 skipped",
+    "distributions": "verified",
+    "limit": "CI injects I/O faults into synthetic stores. Windows does not run these POSIX-only tests, and power interruption and real file system failure are not exercised."
   }
 }
