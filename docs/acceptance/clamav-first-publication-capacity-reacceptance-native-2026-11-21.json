@@ -1,0 +1,63 @@
+{
+  "date": "2026-11-21",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "native_clamav_first_publication_cleanup_retry_reacceptance",
+  "source_commit": "724192164ef884bfd2914c893e0e585f377b57de",
+  "status": "passed on macOS and Linux Docker",
+  "previous_native_acceptance": "clamav-first-publication-capacity-native-2026-11-21.json",
+  "regression_record": "clamav-first-publication-capacity-2026-11-21.json",
+  "environment": {
+    "macos": "macOS 27.2.1 (26B131), arm64, Python 3.15.2, ordinary owner on a newly created APFS trial image with ownership enabled",
+    "linux": "Ubuntu 24.04.5 LTS, aarch64, Python 3.15.2, UID/GID 10001 on a new Docker container",
+    "linux_image": "sha256:20fd8ed13f28e2b3e10a54c9b2fe018c8e8d5a2549a79fc3b55fc1ea82021ada",
+    "linux_container": "c5fce464ea7cd8dbb97be98ea8a2723203f5ce2aaaad2e628ab170fadd633bc0",
+    "linux_isolation": "network none, no host mounts or published ports, all capabilities dropped, no new privileges",
+    "native_engine": "ClamAV 1.5.4 on both platforms",
+    "bundle_integrity": "Used 29 Python modules from the exact commit. The 37 intended files (source, CVDs, signatures and trial scripts) matched across the host and container. The macOS tar tool generated inert AppleDouble entries outside the stores; these were outside the mirror allowlist."
+  },
+  "fixture": {
+    "acquisition_record": "clamav-readmission-cvd-inputs-2026-11-12.json",
+    "versions": {"main": 63, "daily": 28180, "bytecode": 339},
+    "hashes": "All six archived CVD and detached signature files matched the original acquisition hashes before and after the trial.",
+    "signature_checks_per_platform": {"embedded": 3, "detached": 3},
+    "setup_per_platform": "Two native FreshClam runs through a loopback-only test mirror delivered 12 complete CVD or signature responses. After verified placement, each setup process exited before recording the switch, leaving two unpublished candidates and two stage directories. The first setup used a controlled clock only in that test process so the owner recovery path could prepare the second attempt. The second used real time and established the pending deadline preserved throughout the trial."
+  },
+  "restart_and_selected_retry": {
+    "failure_injection": "Injected EIO at the parent directory sync after the deletion-intent journal replacement, before any unlink. The CLI reported an error and the trace never entered removal. Only the intent journal changed; both generations, stage trees, and provider and wait state were preserved.",
+    "macos_restart": "Detached and reattached the same dedicated APFS image with ownership enabled, then used a new CLI process.",
+    "linux_restart": "Restarted the same dedicated container. StartedAt advanced from 2026-11-21T14:01:30.790706796Z to 2026-11-21T14:04:32.251208714Z with the same isolation settings.",
+    "identical_manifest_entries_after_restart_per_platform": 32,
+    "manifest_fields": "Relative paths, SHA-256 for files, inode, mode, owner, link count, size, mtime and ctime; access time excluded. Device numbers stayed the same on both platforms.",
+    "repeated_failure": "Injecting the same EIO in the new CLI process again stopped before removal. The preserved manifest and four occupied slots were unchanged.",
+    "slots_per_platform": {"after_initial_failure_and_restart": 4, "after_failed_retry": 4, "after_successful_retry": 3},
+    "successful_retry": "The parent directory synced before removal began. The CLI reported completed and directory_synced=true. The selected generation directory, three CVDs, and verification sidecar were absent. Only the selected journal entry was removed. The other candidate and both stages remained, with the pending deadline and its attempt file unchanged. No current pointer was created and FreshClam was not started during maintenance.",
+    "final_listing_seconds": {"macos": 0.184406, "linux": 0.287355}
+  },
+  "provider_controls": {
+    "cases_per_platform": ["canonical provider.dat missing", "canonical provider.dat bytes differ from recorded hash", "provider-sync.json missing"],
+    "result": "Both candidates were listed as protected with provider_state_mismatch in each case. The selected deletion refused both the prior revision and the fresh protected revision. The manifest was unchanged by the listing and delete calls, including the four occupied slots, attempt and deadline, and both stages with the referenced freshclam.dat.",
+    "control_restoration": "Only the deliberately altered files in the new trial stores were restored between controls. Their original bytes, mode, owner and link count were checked. Replacement can change inode and timestamps. The stage and attempt file matched the pre-restart manifest through the successful retry."
+  },
+  "preservation": {
+    "existing_stores_and_waits_changed": false,
+    "os_managed_definitions_changed": false,
+    "official_provider_requests": 0,
+    "host_folders_mounted_in_docker": false,
+    "retention": "The trial APFS image was detached and retained, and the trial Linux container was stopped and retained."
+  },
+  "evidence_sha256": {
+    "source_git_archive": "6fd75f9609e0f0651e29ca162d7553bcf9831df34e53e8089b257296a998bc4e",
+    "seed_and_mirror_helper": "680d759cf9e50d97feec4605bf0a244495df172dc96c52ff55ea412d65aab18a",
+    "followup_harness": "7f0c7e2cf7d27e9ce61eb9f3796026de9353db3348fe5aabce28c9d175264eb3",
+    "completed_trial_verifier": "03613623c6a1b0c8b63191e4923779dd46ec46a3eccbe455693ee4240f9c9d40",
+    "macos_before_restart": "d97af9d8469f5ba58172ac3c840e9e177655c7dac7a35e45ed0baaa99518cafd",
+    "linux_before_restart": "8da6e0a25d47935c8ab4b15dd6bd496668613c22e7b71378eaf9b8ce8c8eacbf",
+    "macos_result": "8f6da550301e84418a21a67601c084ad486886c08d31bdc55a74ab29fc3f2046",
+    "linux_result": "3776619edb3f88023cf8c46d1bad8b916a976dfe22b28f753a6d2b56817ddd70"
+  },
+  "limits": [
+    "The initial harness misclassified a later directory sync after verification-sidecar removal as another intent sync. It stopped after the successful CLI exit on both platforms. A separate verifier checked the saved exit results, event ordering, manifests and a fresh CLI inventory. The deletion was not repeated.",
+    "The storage fault was injected and the restarts were an APFS detach/reattach and a Docker restart. A physical power interruption, physical storage fault, filesystem device-number change and a host reboot were not exercised.",
+    "The archived CVDs were used to test deletion and preservation. This was not a fresh official download, an elapsed provider wait, another successful first publication, or a 429 trial. The full automated suite was not rerun for this acceptance-only change."
+  ]
+}
