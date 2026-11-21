@@ -41,5 +41,29 @@
     "The first run of the new CLI test omitted two required paths in its fixture configuration. Both full runs passed after correcting the fixture.",
     "Real CVD cleanup timing and restart behavior on macOS and Linux, plus Windows and CI, remain unverified for this change.",
     "Initial publication capacity recovery is a separate pending design item. Existing definition stores, frozen stages, provider waits and the earlier trial outcomes were preserved."
-  ]
+  ],
+  "review_follow_up": {
+    "reviewed_commit": "58b2a3cbff43ede17ba99c4791113a1d0428c62d",
+    "also_reviewed": ["86388d3", "ec44bcc", "a94c81d"],
+    "findings": [
+      "Deletions by 0.11.4 and earlier left no cleanup record. Reproduced in a synthetic store: when such a deleted generation had been ahead of the protected predecessor and its lease remained, the listing showed no cleanup candidate and held every generation deletion as previous_unavailable. After a later publication recorded the old current generation first, the ID was listed and its cleanup completed.",
+      "The documentation said only to preserve the files of an ID that is not listed, and no longer said that generation deletion may stay held until a later publication.",
+      "The backlog line for the native macOS storage ownership acceptance said the same trial APFS image, while its record describes a new image."
+    ],
+    "changes": [
+      "README and the recovery design say that such a leftover is listed only after the next publication and that generation deletion stays held until then.",
+      "A new test pins the held state, the rejected cleanup, and the candidate and completed cleanup after the next publication. Runtime source is unchanged.",
+      "The backlog line now says one new trial APFS image."
+    ],
+    "regression": "The new test failed when cleanup also recomputed protection for an unrecorded leftover ahead of the predecessor, and passes on the reviewed code.",
+    "verification": {
+      "python_3_14_command": "env PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -q",
+      "python_3_14": {"version": "3.14.10", "total": 830, "passed": 813, "skipped": 17, "failed": 0},
+      "python_3_15_command": "env PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m unittest discover -s tests -q",
+      "python_3_15": {"version": "3.15.2", "total": 830, "passed": 813, "skipped": 17, "failed": 0},
+      "focused_command": "env PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -p 'test_signature*.py' -q",
+      "focused": {"total": 122, "passed": 122, "skipped": 0, "failed": 0},
+      "npm": "Not rerun: no JavaScript or packaging file changed."
+    }
+  }
 }

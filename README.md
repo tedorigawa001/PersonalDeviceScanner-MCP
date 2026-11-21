@@ -487,8 +487,10 @@ List the store again and look for the generation ID in `data.cleanup`. To retry 
 The command checks that the generation and verification record are absent, removes a remaining private lease only
 after locking it exclusively, syncs the parent directory, and confirms any necessary history update. The current
 generation and the last intact predecessor remain protected. A new listing is required after the reference or
-selected items change. If the ID cannot be listed as a cleanup candidate, preserve the remaining files for investigation.
-Cleanup leaves the saved update deadline and provider state in place.
+selected items change. Deletions by 0.11.4 and earlier left no deletion record, so a generation they deleted ahead of
+the protected predecessor is listed only after the next publication; until then generation deletion stays held
+(`previous_unavailable`). Otherwise, if the ID cannot be listed as a cleanup candidate, preserve the remaining files
+for investigation. Cleanup leaves the saved update deadline and provider state in place.
 Update all CLI and MCP installations that share the store before migration. Older releases cannot read the new
 reference format.
 Folders named `stage-*` that the CLI cannot manage also count toward the limit; the listing reports their number as

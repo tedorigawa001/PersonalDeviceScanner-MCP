@@ -240,6 +240,38 @@ class MaintenanceTests(unittest.TestCase):
         self.assertEqual(self.entry(self.previous)["reason"], "last_previous")
         self.assertEqual(self.listing()["cleanup"], [])
 
+    def test_older_leftover_ahead_of_the_protected_predecessor_waits_for_the_next_publication(self):
+        # 0.11.4 and earlier left no deletion record. Without one, a missing entry ahead of the protected
+        # predecessor stays unproven until a publication records an intact predecessor before it.
+        reference = update.pointer(self.root)
+        reference["previous"].reverse()
+        update.write_json(self.root / "current.json", reference)
+        (self.root / self.removable / "main.cvd").write_bytes(b"corrupt synthetic data")
+        self.assertIsNone(self.entry(self.removable)["reason"])
+        shutil.rmtree(self.root / self.removable)
+        lease = self.root / (self.removable + ".lease")
+        with update.generation_lease(lease):
+            pass
+        info = self.listing()
+        self.assertEqual(info["previous_protection"]["status"], "previous_unavailable")
+        self.assertEqual(info["cleanup"], [])
+        self.assertEqual(self.entry(self.previous)["reason"], "previous_unavailable")
+        with self.assertRaisesRegex(core.ScannerError, "unavailable or changed"):
+            maintenance.manage(self.scanner, "cleanup", self.removable, "0" * 64)
+        self.assertTrue(lease.is_file())
+        self.assertEqual(update.pointer(self.root), reference)
+
+        newer = self.generation()
+        update.write_json(self.root / "current.json", dict(self.record(newer), schema=2, legacy_untracked=[],
+                          previous=[{k: reference[k] for k in update.RECORD_KEYS}, *reference["previous"]]))
+        row, = self.listing()["cleanup"]
+        self.assertEqual(row["id"], self.removable)
+        self.assertEqual(row["pending"], ["lease_removal", "directory_sync", "history_update"])
+        self.assertEqual(self.cleanup(self.removable)["status"], "completed")
+        self.assertFalse(lease.exists())
+        self.assertEqual([r["generation"] for r in update.pointer(self.root)["previous"]], [self.active, self.previous])
+        self.assertEqual(self.listing()["cleanup"], [])
+
     def test_cleanup_keeps_protected_and_unproven_generations_and_rejects_non_owner_entrypoint(self):
         unknown = "f" * 32
         for name in (self.active, self.previous, unknown):
