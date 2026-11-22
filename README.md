@@ -1234,9 +1234,10 @@ remain independent of this ephemeral progress state.
   appear there. Watchware matches may be apps you or your family installed knowingly.
 - Install sources are what the device recorded: `unknown` does not mean sideloaded. "No launcher activity" does not mean an
   app hides its icon.
-- Everything is read per user, including work profiles. A work profile shares accessibility with its parent user, which
-  `shared_settings` notes; each user's own list is still read, because a profile owner can shape its profile's name.
-  A user list that names a user twice or does not match its count makes the result `partial`.
+- Accessibility settings are read for every user, including work profiles. `shared_settings` identifies work profiles
+  that share their parent's setting. The scanner uses the parent's direct read to match the parent's apps. An unknown
+  parent, a failed read of the parent's setting or a nonempty work-profile value that differs from the parent's makes
+  the result `partial`. Duplicate users or a user count mismatch also make the result `partial`.
 - Anything that could not be read is listed in `data.unavailable` and makes the result `partial`; it is never treated as absent.
   A user named by `cmd user list` or the device policy whose entry cannot be read is listed there too.
   This includes output in an unexpected format, even when the command succeeded. If nothing at all can be read from the

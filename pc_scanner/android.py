@@ -522,7 +522,10 @@ def read_users(session: Session) -> list[dict]:
     if (len(pm_ids) != len(set(pm_ids)) or len(listed_ids) != len(listed)
             or (header is not None and int(header.group(1)) != len(listed_ids))):
         session.reject("users", None, "a user is listed twice or the user count does not match; user kinds may be wrong")
+    full_users = {user["user_id"] for user in users if user["kind"] == "full"}
     for user in users:
+        if user["kind"] == "managed_profile" and user["parent_user_id"] not in full_users:
+            user["parent_user_id"] = None
         if user["kind"] != "full" and user["parent_user_id"] is None:
             session.missing("profile_parent", user["user_id"], "the profile's parent user could not be determined")
     return users
@@ -564,20 +567,29 @@ def read_apps(session: Session, users: list[dict]) -> tuple[dict, list[str]]:
 def read_privileged(session: Session, users: list[dict]) -> tuple[list[dict], list[dict], list[dict]]:
     """Accessibility, notification access and device admin, per user; owners; shared settings."""
     entries, shared = [], []
+    accessibility: dict[int, list[dict] | None] = {}
     for user in users:
         uid = user["user_id"]
-        if user["kind"] == "managed_profile":
-            # Android shares accessibility between a work profile and its parent user.
-            shared.append({"user_id": uid, "setting": "accessibility", "shared_with_user_id": user["parent_user_id"]})
-        # The kind comes from text a profile owner can shape (its profile's name), so it only labels the result:
-        # every user's own list is read, and a misread kind cannot hide the main user's accessibility services.
+        # Always read, even if the user kinds parsed from shell text are unreliable.
         value = session.shell("accessibility", f"settings --user {uid} get secure enabled_accessibility_services", uid)
-        for component in parse_setting_components(value) if value is not None else []:
-            entries.append({"user_id": uid, "access": "accessibility", **component})
+        components = parse_setting_components(value) if value is not None else None
+        accessibility[uid] = components
+        if user["kind"] == "managed_profile":
+            shared.append({"user_id": uid, "setting": "accessibility", "shared_with_user_id": user["parent_user_id"]})
+        else:
+            entries.extend({"user_id": uid, "access": "accessibility", **component} for component in components or [])
         value = session.shell("notification_listeners",
                               f"settings --user {uid} get secure enabled_notification_listeners", uid)
         for component in parse_setting_components(value) if value is not None else []:
             entries.append({"user_id": uid, "access": "notification_listener", **component})
+    # A profile can return its parent's setting. Use the parent's direct read for attribution and flag conflicting
+    # nonempty profile results. Missing reads and unknown parents are already reported by the collection steps.
+    for setting in shared:
+        uid = setting["user_id"]
+        components = accessibility[uid]
+        parent_components = accessibility.get(setting["shared_with_user_id"])
+        if components and parent_components is not None and components != parent_components:
+            session.missing("accessibility", uid, "the work profile's accessibility setting differs from its parent's")
     owners = []
     policy = session.shell("device_admins", "dumpsys device_policy")
     if policy is not None:
@@ -701,8 +713,6 @@ def check(scanner, device_alias: str, cancel: threading.Event | None = None) -> 
     device, findings = read_device(session, scanner.max_patch_age)
     users = read_users(session)
     apps, invalid = read_apps(session, users)
-    # Each user's own lists are matched with that user's packages. A work profile shares accessibility with its
-    # parent user, which is noted in shared_settings (read_privileged).
     entries, owners, shared = read_privileged(session, users)
     privileged, unattributed, entry_issues = describe(entries, apps)
     issues += entry_issues

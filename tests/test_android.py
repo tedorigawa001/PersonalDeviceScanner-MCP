@@ -502,6 +502,54 @@ class DeviceTests(unittest.TestCase):
             self.assertIn(f"pm list packages -i -U --show-versioncode --user {uid}", commands)
             self.assertIn(android.LAUNCHER.format(user=uid), commands)
 
+    def test_shared_accessibility_uses_parent_install_source(self):
+        package = "com.example.reader"
+        play_store, package_installer = "com.android.vending", "com.google.android.packageinstaller"
+        for parent_installer, work_installer, expected_findings in (
+                (play_store, package_installer, []), (package_installer, play_store, [0])):
+            with self.subTest(parent_installer=parent_installer):
+                device = answers()
+                for uid, installer in ((0, parent_installer), (10, work_installer)):
+                    device[f"pm list packages -i -U --show-versioncode --user {uid}"] += (
+                        f"package:{package} versionCode:1 installer={installer} uid:10300\n")
+                    device[f"settings --user {uid} get secure enabled_accessibility_services"] = f"{package}/.Service\n"
+                fake = FakeDevice(device)
+                report = self.run_with(fake, "android_check")
+                self.assertEqual(report["status"], "completed", report["warnings"])
+                for uid in (0, 10):
+                    self.assertIn(f"settings --user {uid} get secure enabled_accessibility_services",
+                                  [argv[4] for argv in fake.calls])
+                self.assertEqual([f["user_id"] for f in report["findings"] if f.get("package") == package],
+                                 expected_findings)
+                access = self.run_with(FakeDevice(device), "android", query_id="privileged_access")
+                self.assertEqual([(row["user_id"], row["access"], row["installer_category"])
+                                  for row in access["data"]["privileged_access"] if row["package"] == package],
+                                 [(0, "accessibility", android.installer_category(parent_installer))])
+
+    def test_unconfirmed_shared_accessibility_reports_partial_without_work_profile_findings(self):
+        package = "com.example.reader"
+        for case, item, user_id in (("different", "accessibility", 10), ("parent_read_failed", "accessibility", 0),
+                                    ("unknown_parent", "profile_parent", 10)):
+            with self.subTest(case=case):
+                device = answers()
+                device["pm list packages -i -U --show-versioncode --user 10"] += (
+                    f"package:{package} versionCode:1 installer=com.google.android.packageinstaller uid:1010300\n")
+                work_query = "settings --user 10 get secure enabled_accessibility_services"
+                device[work_query] = f"{package}/.Service\n"
+                if case == "parent_read_failed":
+                    device["settings --user 0 get secure enabled_accessibility_services"] = (1, "", "error")
+                elif case == "unknown_parent":
+                    device["cmd user list -v"] = ANDROID_16_USER_LIST.replace("parentId=0", "parentId=99")
+                fake = FakeDevice(device)
+                report = self.run_with(fake, "android_check")
+                self.assertIn(work_query, [argv[4] for argv in fake.calls])
+                self.assertEqual(report["status"], "partial", report["warnings"])
+                self.assertIn((item, user_id), [(entry["item"], entry["user_id"]) for entry in report["data"]["unavailable"]])
+                self.assertFalse(any(f.get("package") == package for f in report["findings"]))
+                if case == "unknown_parent":
+                    self.assertEqual(report["data"]["shared_settings"],
+                                     [{"user_id": 10, "setting": "accessibility", "shared_with_user_id": None}])
+
     def test_apps_list_hides_system_apps_and_keeps_facts(self):
         report = self.run_with(FakeDevice(answers()), "android", query_id="apps")
         listed = {(a["user_id"], a["package"]): a for a in report["data"]["apps"]}
