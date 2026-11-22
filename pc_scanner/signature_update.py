@@ -24,6 +24,7 @@ METADATA_LIMIT = 65536
 INVENTORY_LIMIT = 128
 MAX_BYTES = 2 * 1024 ** 3
 MAX_GENERATIONS = 4  # No automatic deletion in phase one; never remove a pinned generation.
+UPDATE_SLOTS = 2  # Every update needs room for its work stage and the new generation.
 # FreshClam also prints each database header's "builder" name on its normal update lines, so that name can match
 # too. Such a match stops without publishing and keeps pending; missing a real 429 would be worse.
 PROVIDER_WAIT = re.compile(
@@ -79,7 +80,9 @@ def root(scanner, create=False):
             from . import signature_first_publication
 
             with history.locked(path / "update", attempts=1):
-                if set(store.names()) != {"update.lock"}:
+                # A scan or definition check that starts meanwhile leaves only the publication lock file, which holds
+                # no state; refusing it would let any MCP call in this moment make the new store unusable.
+                if set(store.names()) - {"publish.lock"} != {"update.lock"}:
                     raise OSError("New signature store is no longer empty")
                 history.flush_to_disk(store.parent)
                 signature_first_publication.initialize(path)
@@ -500,8 +503,8 @@ def update(scanner, cancel=None, progress=None):
             if blocked:
                 return core.result("clamav", "error", data=data, warnings=[blocked])
             generations = [name for name in store_entries if counts_toward_capacity(name)]
-            reserved = 2 if old is None else 1
-            if (signature_first_publication.used_slots(store_entries, journal) + reserved > MAX_GENERATIONS
+            # The work stage stays until the switch succeeds, so a failed switch leaves both it and the new generation.
+            if (signature_first_publication.used_slots(store_entries, journal) + UPDATE_SLOTS > MAX_GENERATIONS
                     or shutil.disk_usage(path).free < MAX_BYTES * 2):
                 return core.result("clamav", "error", data=data, warnings=[
                     "Private signature store capacity exhausted; list the store to review protected entries and owner maintenance options"])

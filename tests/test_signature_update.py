@@ -73,6 +73,23 @@ class UpdateTests(unittest.TestCase):
     def allow_next(self):
         update.write_json(self.root / "attempt.json", {"next_attempt": time.time() - 1, "pending": False})
 
+    def delete_stages(self):
+        """Selected deletion of the failed work stages, as the owner would do after recovery."""
+        for row in maintenance.manage(self.scanner(), "list")["data"]["entries"]:
+            if row["kind"] == "stage":
+                self.assertEqual(maintenance.manage(self.scanner(), "delete", row["id"], row["revision"])["status"],
+                                 "completed")
+
+    def make_room(self):
+        """Selected deletion, as the owner would do, until the next update has room for its stage and generation."""
+        while self.root.exists():
+            info = maintenance.manage(self.scanner(), "list")["data"]
+            if info["capacity"]["used_slots"] + update.UPDATE_SLOTS <= update.MAX_GENERATIONS:
+                return
+            row = next(r for r in info["entries"] if r["deletable"])
+            self.assertEqual(maintenance.manage(self.scanner(), "delete", row["id"], row["revision"])["status"],
+                             "completed")
+
     @unittest.skipUnless(sys.platform == "darwin", "macOS ACL entries apply regardless of the file mode")
     def test_ancestor_acl_letting_others_move_the_store_refuses_update_before_download(self):
         # Otherwise another account could move the store away, and the next update would start without its waits.
@@ -119,6 +136,7 @@ class UpdateTests(unittest.TestCase):
         orphan, = [p for p in self.root.iterdir() if update.GEN.fullmatch(p.name) and p.name != first["generation"]]
         self.assertTrue(update.verification_file(orphan).is_file())
         self.allow_next()
+        self.delete_stages()  # The failed switch left its stage too; the next update needs two free slots.
         self.version = 3
         self.assertEqual(self.do_update()["data"]["update_status"], "updated")
         new = update.pointer(self.root)
@@ -177,6 +195,55 @@ class UpdateTests(unittest.TestCase):
         if db:
             history.replace_private(db / "freshclam.dat", b"test provider state")
         return self.engine(argv, *args, **kwargs)
+
+    def test_a_scan_between_creating_a_new_store_and_its_setup_does_not_block_it(self):
+        # An MCP scan or definition check can pin the new folder first. It leaves only the publication lock, which
+        # once made setup refuse the folder for good.
+        self.config["clamav_updates"]["store_format"] = update.TRACKED_FIRST
+        locked = history.locked
+        scanned = []
+
+        def scan_first(path, *args, **kwargs):
+            if path.name == "update" and not scanned:
+                scanned.append(path)
+                with locked(path.with_name("publish")):
+                    pass
+            return locked(path, *args, **kwargs)
+
+        with patch.object(history, "locked", side_effect=scan_first):
+            report = self.do_update()
+        self.assertTrue(scanned)
+        self.assertTrue(report["data"]["published"], report)
+        self.assertEqual(first.load(self.root, update.TRACKED_FIRST)[0]["phase"], "published")
+
+    def test_every_update_reserves_its_stage_and_generation(self):
+        # A failed switch keeps both its work stage and the new generation. An update that started with one free
+        # slot once left five entries in a store documented to keep at most four.
+        for version in (1, 2, 3):
+            self.version = version
+            if version > 1:
+                self.allow_next()
+            self.assertEqual(self.do_update()["data"]["update_status"], "updated")
+        self.allow_next()
+        wait = (self.root / "attempt.json").read_bytes()
+        self.calls.clear()
+        self.version = 4
+        self.assertIn("capacity exhausted", self.do_update()["warnings"][0])
+        self.assertEqual((self.calls, (self.root / "attempt.json").read_bytes()), ([], wait))
+        self.assertEqual(maintenance.manage(self.scanner(), "list")["data"]["capacity"],
+                         {"used_slots": 3, "max_slots": 4, "required_slots": 2})
+        self.make_room()
+        original = update.write_json
+
+        def fail_switch(path, obj):
+            if path.name == "current.json":
+                raise OSError("synthetic switch failure")
+            original(path, obj)
+
+        with patch.object(update, "write_json", side_effect=fail_switch):
+            self.assertEqual(self.do_update()["data"]["update_status"], "unknown")
+        self.assertEqual(len([p for p in self.root.iterdir() if update.counts_toward_capacity(p.name)]),
+                         update.MAX_GENERATIONS)
 
     def test_first_tracked_store_does_not_adopt_an_existing_directory(self):
         self.root.mkdir(mode=0o700)
@@ -619,7 +686,9 @@ class UpdateTests(unittest.TestCase):
             self.version = version
             if names:
                 self.allow_next()
-            self.assertEqual(self.do_update()["data"]["update_status"], "updated")
+            # Earlier releases started an update with one free slot, so they could fill all four.
+            with patch.object(update, "UPDATE_SLOTS", 1):
+                self.assertEqual(self.do_update()["data"]["update_status"], "updated")
             names.append(update.pointer(self.root)["generation"])
         # The earlier release kept only the current reference, and four generations fill the store.
         old = {k: update.pointer(self.root)[k] for k in update.RECORD_KEYS}
@@ -630,22 +699,28 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual((full["status"], full["data"]["update_status"]), ("error", "failed"))
         rows = {r["id"]: r for r in maintenance.manage(self.scanner(), "list")["data"]["entries"]}
         self.assertEqual([rows[n]["deletable"] for n in names], [True, True, True, False])
-        self.assertEqual(maintenance.manage(self.scanner(), "delete", names[0], rows[names[0]]["revision"])["status"],
-                         "completed")
+        # The update needs two free slots: its work stage and the new generation. The earlier rule then keeps the
+        # single remaining rollback, so the owner deletes whichever two it allows.
+        for _ in range(2):
+            row = next(r for r in maintenance.manage(self.scanner(), "list")["data"]["entries"]
+                       if r["id"] in names[:3] and r["deletable"])
+            self.assertEqual(maintenance.manage(self.scanner(), "delete", row["id"], row["revision"])["status"],
+                             "completed")
+        kept, = [name for name in names[:3] if (self.root / name).exists()]
         self.allow_next()
         self.assertEqual(self.do_update()["data"]["update_status"], "updated")
         new = update.pointer(self.root)
-        self.assertEqual((new["previous"], new["legacy_untracked"]), ([old], sorted(names[1:3])))
+        self.assertEqual((new["previous"], new["legacy_untracked"]), ([old], [kept]))
         rows = {r["id"]: r for r in maintenance.manage(self.scanner(), "list")["data"]["entries"]}
         self.assertEqual(rows[names[3]]["reason"], "last_previous")
-        self.assertEqual([rows[n]["deletable"] for n in names[1:3]], [True, True])
+        self.assertEqual(rows[kept]["deletable"], True)
         # An unrecorded ID whose folder, record and lease are all gone leaves the history at the next publication.
-        shutil.rmtree(self.root / names[1])
-        update.verification_file(self.root / names[1]).unlink()
+        shutil.rmtree(self.root / kept)
+        update.verification_file(self.root / kept).unlink()
         self.allow_next()
         self.version = 6
         self.assertEqual(self.do_update()["data"]["update_status"], "updated")
-        self.assertEqual(update.pointer(self.root)["legacy_untracked"], [names[2]])
+        self.assertEqual(update.pointer(self.root)["legacy_untracked"], [])
 
     def test_publication_prunes_only_confirmed_absence_behind_verified_predecessor(self):
         refs = []
@@ -675,6 +750,13 @@ class UpdateTests(unittest.TestCase):
         self.assertFalse((self.root / refs[0]).exists())
         self.allow_next()
         self.version = 4
+        # Until its cleanup is confirmed, the deletion record keeps the slot: a crash could bring the folder back.
+        self.calls.clear()
+        self.assertIn("capacity exhausted", self.do_update()["warnings"][0])
+        self.assertEqual(self.calls, [])
+        self.assertEqual(maintenance.manage(self.scanner(), "list")["data"]["capacity"]["used_slots"], 3)
+        # Releases up to 0.11.4 left no record; such a leftover entry is pruned by the next publication.
+        (self.root / (refs[0] + maintenance.CLEANUP_SUFFIX)).unlink()
         self.assertEqual(self.do_update()["data"]["update_status"], "updated")
         self.assertEqual([r["generation"] for r in update.pointer(self.root)["previous"]], [refs[2], refs[1]])
 
@@ -874,6 +956,7 @@ class UpdateTests(unittest.TestCase):
                                           ("only_daily_present", ("main.cvd", "bytecode.cvd"), "fresh"),
                                           ("all_present", (), "fresh")):
             with self.subTest(label):
+                self.make_room()
                 self.version += 1
                 self.calls.clear()
                 report = self.do_update(withheld(missing))
@@ -1379,6 +1462,7 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual(second["versions"]["daily.cvd"], 2)
         self.assertEqual([r["versions"]["daily.cvd"] for r in second["previous"]], [1])
         self.allow_next()
+        self.delete_stages()  # The uncertain switch kept its stage; the next update needs two free slots.
         self.version = 3
         def interrupted(path, obj):
             original(path, obj)

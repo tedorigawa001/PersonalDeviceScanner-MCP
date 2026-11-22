@@ -402,7 +402,7 @@ def inventory(path, deadline, *, store_format="", list_cleanup=False):
         rows.append(row)
     token = [reference, rows, provider_state, snapshot]
     used = first.used_slots(names, journal)
-    required = None if reference is None else (2 if current is None else 1)
+    required = None if reference is None else update.UPDATE_SLOTS
     result = dict(entries=rows, unrecognized_entries=unrecognized, attempt=state, recovery_revision=revision_for(token),
                 first_publication=first_phase,
                 capacity=dict(used_slots=used, max_slots=update.MAX_GENERATIONS, required_slots=required),

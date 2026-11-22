@@ -100,7 +100,13 @@ def phase(journal, current):
 
 
 def used_slots(names, journal):
+    from .signature_maintenance import CLEANUP_SUFFIX
+
     occupied = {name for name in names if update.counts_toward_capacity(name)}
+    # A generation deletion keeps its record until the parent sync and the history update are confirmed. Until then
+    # a crash could bring the folder back, so its slot stays occupied.
+    occupied.update(name.removesuffix(CLEANUP_SUFFIX) for name in names
+                    if name.endswith(CLEANUP_SUFFIX) and valid_id(name.removesuffix(CLEANUP_SUFFIX)))
     if journal is not None:
         occupied.update(name for name, row in journal["entries"].items() if row["deleting"] is not None)
     return len(occupied)

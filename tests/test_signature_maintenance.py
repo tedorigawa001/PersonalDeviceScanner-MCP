@@ -71,6 +71,11 @@ class MaintenanceTests(unittest.TestCase):
         row = next(r for r in self.listing()["cleanup"] if r["id"] == name)
         return maintenance.manage(self.scanner, "cleanup", name, row["revision"])
 
+    def free_slot(self):
+        """Selected deletion of the unprotected generation, so an update has room for its stage and generation."""
+        self.assertEqual(maintenance.manage(self.scanner, "delete", self.removable,
+                                            self.entry(self.removable)["revision"])["status"], "completed")
+
     def test_inventory_current_and_selected_delete_preserve_wait_and_pointer(self):
         info = self.listing()
         self.assertTrue(next(r for r in info["entries"] if r["id"] == self.active)["current"])
@@ -194,6 +199,24 @@ class MaintenanceTests(unittest.TestCase):
         self.assertEqual(self.listing()["cleanup"], [])
         self.assertEqual(update.pointer(self.root)["previous"], reference["previous"][:1])
         self.assertEqual({name: (self.root / name).read_bytes() for name in protected}, before)
+
+    def test_an_unconfirmed_deletion_keeps_its_slot_until_cleanup(self):
+        target = self.root / self.removable
+        original = update.sync_dir
+
+        def fail_after_removal(path):
+            if path == self.root and not target.exists():
+                raise OSError("synthetic parent sync failure")
+            original(path)
+
+        with patch.object(update, "sync_dir", side_effect=fail_after_removal):
+            report = maintenance.manage(self.scanner, "delete", self.removable, self.entry(self.removable)["revision"])
+        self.assertEqual((report["status"], report["data"]["directory_synced"]), ("partial", False))
+        self.assertFalse(target.exists())
+        # A crash could still bring the folder back, so its slot stays occupied until cleanup confirms the deletion.
+        self.assertEqual(self.listing()["capacity"]["used_slots"], 3)
+        self.assertEqual(self.cleanup(self.removable)["status"], "completed")
+        self.assertEqual(self.listing()["capacity"]["used_slots"], 2)
 
     def test_cleanup_recovers_an_unrecorded_generation_after_directory_sync_failure(self):
         name = self.generation()
@@ -968,6 +991,7 @@ class MaintenanceTests(unittest.TestCase):
                 saved["failed"] = True
                 return 1, "", "synthetic network failure"
             self.fail("validation must not run after an updater failure")
+        self.free_slot()
         update.write_json(self.root / "attempt.json", {"pending": False, "next_attempt": time.time() - 1})
         with patch("pc_scanner.signature_update.executable", side_effect=lambda x: x), patch("pc_scanner.core.run_bounded", side_effect=engine), patch("pc_scanner.signature_update.shutil.disk_usage", return_value=SimpleNamespace(free=10*update.MAX_BYTES)):
             self.assertEqual(update.update(self.scanner)["status"], "error")
@@ -988,8 +1012,11 @@ class MaintenanceTests(unittest.TestCase):
                 self.assertTrue(update.read_json(self.root / "attempt.json")["pending"])
 
     def test_second_failure_recovers_from_preserved_provider_state(self):
-        row = self.entry(self.removable)
-        maintenance.manage(self.scanner, "delete", self.removable, row["revision"])
+        # Only the current generation is left, so a second update still has its two slots beside the first failed
+        # stage. With a protected predecessor too, the owner would have to delete that stage first.
+        for name in (self.previous, self.removable):
+            shutil.rmtree(self.root / name)
+        update.write_json(self.root / "current.json", dict(update.pointer(self.root), previous=[]))
         runs = []
         def engine(argv, *args, **kwargs):
             db = Path(next(a for a in argv if a.startswith("--datadir=")).split("=", 1)[1])
@@ -1016,6 +1043,7 @@ class MaintenanceTests(unittest.TestCase):
         self.assertEqual([r["deletable"] for r in stages], [True, True])
 
     def test_provider_persistence_failure_never_recovers_with_stale_canonical_state(self):
+        self.free_slot()
         history.replace_private(self.root / "provider.dat", b"older provider wait")
         # A previous successful sync must never serve as evidence for the next failed attempt.
         update.write_json(self.root / "provider-sync.json", {"stage": "stage-" + secrets.token_hex(16),
@@ -1042,6 +1070,7 @@ class MaintenanceTests(unittest.TestCase):
         self.assertFalse(update.read_json(self.root / "attempt.json")["pending"])
 
     def test_provider_replace_then_durability_failure_keeps_recovery_blocked_until_retry(self):
+        self.free_slot()
         history.replace_private(self.root / "provider.dat", b"old wait")
         update.write_json(self.root / "attempt.json", {"pending": False, "next_attempt": time.time()-1})
         def engine(argv, *args, **kwargs):

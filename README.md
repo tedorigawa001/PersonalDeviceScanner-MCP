@@ -464,8 +464,11 @@ have elapsed. Preserve the blocked store for investigation.
 To reclaim a selected entry, list again and run `clamav-signature-store delete ENTRY_ID --revision ENTRY_REVISION`.
 Current/in-use generations, the last previous generation, unrecovered failed stages, changed revisions and unsafe
 storage are refused. There is no arbitrary path or force-delete option. At most four generations/failed stages are
-retained; use selected cleanup before reaching this limit. No automatic deletion or disk quota is implemented.
-A folder without all three definition files is listed as `incomplete` and counts toward the limit.
+retained; use selected cleanup before reaching this limit. Every update needs two free slots, one for its work stage
+and one for the new generation, because a failed switch keeps both; it starts only when at most two are in use.
+No automatic deletion or disk quota is implemented.
+A folder without all three definition files is listed as `incomplete` and counts toward the limit, and so does a
+deleted generation until its cleanup is confirmed (its `<ID>.cleanup.json` is removed).
 The CLI protects the latest published predecessor whose three full CVD hashes and versions match its publication record
 and whose content differs from the current generation. Confirmed corruption, duplicates of the current content and
 folders left before publication cannot serve as that predecessor. `previous_protection` in the listing shows the result.
@@ -479,7 +482,7 @@ were never published, so they can be deleted once an intact recorded predecessor
 If the current reference is missing and a generation's publication status cannot be confirmed, the first update
 stops before starting freshclam or writing a new wait. Preserve that store and let all saved and provider deadlines
 elapse before adopting a new private path. On a new, absent directory, set `store_format = "tracked-first-v1"` to
-record the first publication boundary. An initial update requires two free slots for its stage and generation.
+record the first publication boundary. Like every update, the first one needs two free slots.
 In the owner CLI listing, `data.capacity` shows the used, maximum and required slots. An entry marked
 `unpublished_before_first_switch` and `deletable: true` can be removed with
 `clamav-signature-store delete GENERATION_ID --revision ENTRY_REVISION`. Use a fresh listing for each selection.
@@ -493,7 +496,8 @@ After generation removal, unconfirmed cleanup or history writes produce `partial
 The result identifies whether the parent directory sync (`directory_synced`), lease file removal (`lease_removed`)
 and publication history update (`history_updated`) were confirmed. A lease that was already absent counts as removed,
 and `history_updated` is `null` when no matching history entry needs removal. A stage deletion whose parent directory
-sync cannot be confirmed is reported the same way, with `directory_synced: false`.
+sync cannot be confirmed is reported the same way, with `directory_synced: false`; its slot is released at once, so
+list the store again before the next update, and after a crash check whether the stage came back.
 List the store again and look for the generation ID in `data.cleanup`. To retry one listed generation, run
 `clamav-signature-store cleanup GENERATION_ID --revision CLEANUP_REVISION` with that row's revision.
 The command checks that the generation and verification record are absent, removes a remaining private lease only
@@ -1230,8 +1234,9 @@ remain independent of this ephemeral progress state.
   appear there. Watchware matches may be apps you or your family installed knowingly.
 - Install sources are what the device recorded: `unknown` does not mean sideloaded. "No launcher activity" does not mean an
   app hides its icon.
-- Everything is read per user, including work profiles. A work profile shares accessibility with its parent user, so it is
-  matched with the parent's apps.
+- Everything is read per user, including work profiles. A work profile shares accessibility with its parent user, which
+  `shared_settings` notes; each user's own list is still read, because a profile owner can shape its profile's name.
+  A user list that names a user twice or does not match its count makes the result `partial`.
 - Anything that could not be read is listed in `data.unavailable` and makes the result `partial`; it is never treated as absent.
   A user named by `cmd user list` or the device policy whose entry cannot be read is listed there too.
   This includes output in an unexpected format, even when the command succeeded. If nothing at all can be read from the

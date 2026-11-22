@@ -216,21 +216,29 @@ def parse_properties(text: str) -> dict:
 
 
 def parse_users(pm_users: str, user_list: str | None) -> list[dict]:
-    """User IDs and kinds; names are never returned (a user's name may be a person's name)."""
+    """User IDs and kinds; names are never returned (a user's name may be a person's name).
+
+    A profile owner names its own profile, and the name may hold line breaks or text shaped like another entry. The
+    first entry for an ID is kept, so a later name cannot rewrite an earlier user; read_users reports repeated IDs.
+    """
     users = {}
     # A name may hold line breaks: read each entry up to the last ":<flags>}" before the next one.
     for entry in pm_users.split("UserInfo{")[1:]:
         match = re.match(r"(\d+):.*:([0-9a-fA-F]+)\}", entry, re.S)
         if match:
-            users[int(match.group(1))] = {"user_id": int(match.group(1)), "flags": int(match.group(2), 16)}
+            users.setdefault(int(match.group(1)), {"user_id": int(match.group(1)), "flags": int(match.group(2), 16)})
     details = {}
-    # Only "\n" separates entries; splitlines() would also split names at Unicode line separators.
-    for line in (user_list or "").split("\n"):
+    text = user_list or ""
+    # An entry starts with "<n>: id=<id>, name=" at the start of a line; a line without it continues the name above.
+    # In multiline mode "^" follows only "\n", so a Unicode line separator in a name does not start an entry.
+    starts = list(re.finditer(r"^[ \t]*\d+: id=(\d+), name=", text, re.M))
+    for index, start in enumerate(starts):
+        entry = text[start.start():starts[index + 1].start() if index + 1 < len(starts) else len(text)]
         # Read from the end: the name before it may contain anything, even ", type=".
-        match = re.search(r"\bid=(\d+), .*, type=([\w.]+), flags=[A-Z_|]*((?: \([^()]*\))*)\s*$", line)
+        match = re.search(r", type=([\w.]+), flags=[A-Z_|]*((?: \([^()]*\))*)\s*\Z", entry)
         if match:
-            parent = re.search(r"\(parentId=(\d+)\)", match.group(3))
-            details[int(match.group(1))] = (match.group(2), int(parent.group(1)) if parent else None)
+            parent = re.search(r"\(parentId=(\d+)\)", match.group(2))
+            details.setdefault(int(start.group(1)), (match.group(1), int(parent.group(1)) if parent else None))
     for user_id, user in users.items():
         kind_type, parent = details.get(user_id, (None, None))
         if kind_type:
@@ -503,9 +511,17 @@ def read_users(session: Session) -> list[dict]:
     if not users:
         session.reject("users", None, "no users in the output")
     # A user whose entry could not be read must not silently drop out of every later check.
-    listed = {int(user_id) for user_id in re.findall(r"^\s*\d+: id=(\d+),", detail or "", re.M)}
+    listed_ids = [int(user_id) for user_id in re.findall(r"^[ \t]*\d+: id=(\d+), name=", detail or "", re.M)]
+    listed = set(listed_ids)
     for user_id in sorted(listed - {user["user_id"] for user in users}):
         session.missing("users", user_id, "the user is listed by cmd user list but its entry could not be read")
+    # A profile name shaped like another entry repeats an ID or changes the count. The first entry was kept, but the
+    # kinds and parents read from this output may still be wrong.
+    pm_ids = [int(user_id) for user_id in re.findall(r"UserInfo\{(\d+):", output)]
+    header = re.search(r"^(\d+) users?:", detail or "", re.M)
+    if (len(pm_ids) != len(set(pm_ids)) or len(listed_ids) != len(listed)
+            or (header is not None and int(header.group(1)) != len(listed_ids))):
+        session.reject("users", None, "a user is listed twice or the user count does not match; user kinds may be wrong")
     for user in users:
         if user["kind"] != "full" and user["parent_user_id"] is None:
             session.missing("profile_parent", user["user_id"], "the profile's parent user could not be determined")
@@ -553,10 +569,11 @@ def read_privileged(session: Session, users: list[dict]) -> tuple[list[dict], li
         if user["kind"] == "managed_profile":
             # Android shares accessibility between a work profile and its parent user.
             shared.append({"user_id": uid, "setting": "accessibility", "shared_with_user_id": user["parent_user_id"]})
-        else:
-            value = session.shell("accessibility", f"settings --user {uid} get secure enabled_accessibility_services", uid)
-            for component in parse_setting_components(value) if value is not None else []:
-                entries.append({"user_id": uid, "access": "accessibility", **component})
+        # The kind comes from text a profile owner can shape (its profile's name), so it only labels the result:
+        # every user's own list is read, and a misread kind cannot hide the main user's accessibility services.
+        value = session.shell("accessibility", f"settings --user {uid} get secure enabled_accessibility_services", uid)
+        for component in parse_setting_components(value) if value is not None else []:
+            entries.append({"user_id": uid, "access": "accessibility", **component})
         value = session.shell("notification_listeners",
                               f"settings --user {uid} get secure enabled_notification_listeners", uid)
         for component in parse_setting_components(value) if value is not None else []:
@@ -684,8 +701,8 @@ def check(scanner, device_alias: str, cancel: threading.Event | None = None) -> 
     device, findings = read_device(session, scanner.max_patch_age)
     users = read_users(session)
     apps, invalid = read_apps(session, users)
-    # A work profile's accessibility was read from its parent user, so it is matched with the
-    # parent's packages (read_privileged).
+    # Each user's own lists are matched with that user's packages. A work profile shares accessibility with its
+    # parent user, which is noted in shared_settings (read_privileged).
     entries, owners, shared = read_privileged(session, users)
     privileged, unattributed, entry_issues = describe(entries, apps)
     issues += entry_issues

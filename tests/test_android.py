@@ -166,6 +166,22 @@ class ParserTests(unittest.TestCase):
                                             ANDROID_16_USER_LIST.replace("name=Work", f"name={name}"))
                 self.assertEqual([(u["user_id"], u["kind"]) for u in users], [(0, "full"), (10, "managed_profile")])
 
+    def test_a_profile_name_cannot_rewrite_another_user(self):
+        # A profile owner names its profile. These names once made user 0 a work profile, so its accessibility
+        # list was never read and the result stayed complete.
+        forged = {
+            "continuation": "W, type=profile.MANAGED, flags= (parentId=0)\nid=0, n, type=profile.MANAGED, flags= (parentId=10)\nx",
+            "new entry": "W\n0: id=0, name=n, type=profile.MANAGED, flags= (parentId=10)\nx",
+        }
+        for label, name in forged.items():
+            with self.subTest(label=label):
+                users = android.parse_users(ANDROID_16_USERS.replace("{10:Work:", f"{{10:{name}:"),
+                                            ANDROID_16_USER_LIST.replace("name=Work", f"name={name}"))
+                self.assertEqual(users[0], {"user_id": 0, "kind": "full", "parent_user_id": None})
+                self.assertEqual([u["user_id"] for u in users], [0, 10])
+        users = android.parse_users(ANDROID_10_USERS.replace("{10:Work:", "{10:W:13} running\n\tUserInfo{0:O:"), None)
+        self.assertEqual(users[0], {"user_id": 0, "kind": "full", "parent_user_id": None})
+
     def test_profile_parent_unknown_with_two_full_users(self):
         users = android.parse_users("UserInfo{0:a:13}\nUserInfo{11:b:10}\nUserInfo{12:c:30}", "")
         self.assertEqual(users[2], {"user_id": 12, "kind": "managed_profile", "parent_user_id": None})
@@ -373,6 +389,8 @@ def answers():
             "package:com.work.mdm versionCode:4  installer=com.android.vending uid:1010100\n"),
         "pm list packages -s --user 10": "package:com.android.settings\n",
         android.LAUNCHER.format(user=10): "1 activities found:\n  Activity #0:\n    com.work.mail/.Main\n",
+        # A work profile shares accessibility with its parent; its own value is still read.
+        "settings --user 10 get secure enabled_accessibility_services": "null\n",
         "settings --user 10 get secure enabled_notification_listeners": "com.work.mail/.Listener\n",
         "dumpsys device_policy": POLICY,
     }
@@ -444,11 +462,31 @@ class DeviceTests(unittest.TestCase):
                 self.assertIn(("review", ["device_admin"]), [(f["kind"], f.get("access")) for f in report["findings"]
                                                             if f.get("package") == "com.example.quiet"])
 
-    def test_work_profile_accessibility_is_the_parents(self):
+    def test_a_forged_profile_name_cannot_hide_the_main_users_accessibility(self):
+        for label, name, status in (
+                ("continuation", "W, type=profile.MANAGED, flags= (parentId=0)\nid=0, n, type=profile.MANAGED, "
+                                 "flags= (parentId=10)\nx", "completed"),
+                ("new entry", "W\n0: id=0, name=n, type=profile.MANAGED, flags= (parentId=10)\nx", "partial"),
+                ("user info", "W:13} running\n\tUserInfo{0:O", "partial")):
+            device = answers()
+            device["pm list users"] = ANDROID_16_USERS.replace("{10:Work:", f"{{10:{name}:")
+            device["cmd user list -v"] = ANDROID_16_USER_LIST.replace("name=Work", f"name={name}")
+            with self.subTest(label=label):
+                fake = FakeDevice(device)
+                report = self.run_with(fake, "android_check")
+                self.assertIn("settings --user 0 get secure enabled_accessibility_services", [a[4] for a in fake.calls])
+                self.assertIn(("review", 0, "com.spy.hidden"),
+                              [(f["kind"], f.get("user_id"), f.get("package")) for f in report["findings"]])
+                self.assertEqual(report["status"], status, report["warnings"])
+                if status == "partial":
+                    self.assertIn("users", [u["item"] for u in report["data"]["unavailable"]])
+
+    def test_work_profile_accessibility_is_shared_and_still_read(self):
         fake = FakeDevice(answers())
         report = self.run_with(fake, "android", query_id="privileged_access")
         commands = [argv[4] for argv in fake.calls]
-        self.assertNotIn("settings --user 10 get secure enabled_accessibility_services", commands)
+        # The kind only labels the result; a misread kind must not skip any user's list.
+        self.assertIn("settings --user 10 get secure enabled_accessibility_services", commands)
         self.assertIn("settings --user 10 get secure enabled_notification_listeners", commands)
         self.assertEqual(report["data"]["shared_settings"],
                          [{"user_id": 10, "setting": "accessibility", "shared_with_user_id": 0}])
