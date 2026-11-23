@@ -68,6 +68,7 @@
     - 確認範囲はLinux arm64コンテナ内。物理Linuxホスト全体の可視性、他ディストリビューション/CPU、Linux側freshclam更新、
       rootとの可視性比較は未確認で、各OS実機試験全体のチェックは完了にしない。
   - 対象: Windows / macOS / Linux。公式配布の osquery・ClamAV（定義更新済み）と、読み取り専用アカウントで接続する Wazuh indexer。
+  - 2026-11-22：0.12.0のWindows VM受入に向け、このMacの標準配置と稼働中の仮想化ソフトを確認した。接続可能なWindows VMは見つからず、内蔵ディスクの空きは約4.2 GiB。実ClamAVの日本語ファイル名・ジャンクション・定義鮮度、実osqueryの起動、チェックポイント削除保護の5項目は未実施。接続可能なWindows VMを用意できたら、専用作業領域と合成データだけで再開する。[受入準備記録](acceptance/windows-vm-0.12.0-readiness-2026-11-22.json)
   - 上記のmacOS・Wazuh・Linuxコンテナの受入試験以外の実環境・実エンジンでの動作は未確認です。
   - 実機でしか確認できない項目:
     - [ ] Windows: clamscan がジャンクションを辿るか（この基盤の深さ確認は除外済み。エンジン側の挙動と一致するか）

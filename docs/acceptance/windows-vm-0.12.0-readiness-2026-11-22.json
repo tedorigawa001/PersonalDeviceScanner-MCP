@@ -1,0 +1,55 @@
+{
+  "date": "2026-11-22",
+  "date_timezone": "Asia/Tokyo",
+  "kind": "windows_vm_native_engine_acceptance_readiness",
+  "status": "blocked_before_guest_execution",
+  "target": {
+    "scanner_version": "0.12.0",
+    "release_commit": "b62eae84abf2c5c5116148220ce2fd4f8a1e343c",
+    "test_data": "Only generated files, a standard antivirus test file, and reparse points and checkpoint fixtures created within a dedicated Windows test workspace."
+  },
+  "environment_checks": {
+    "host_architecture": "Apple silicon arm64",
+    "usable_windows_guest_found": false,
+    "local_discovery_scope": "Standard macOS application and VM locations, Spotlight VM bundle names, and running hypervisor process names. No remote hosts were probed.",
+    "available_host_storage_gib_approx": 4.2,
+    "new_vm_provisioned": false,
+    "windows_installation_reference": "https://www.microsoft.com/en-us/software-download/windows11arm64",
+    "blocker": "No accessible Windows VM was found in the checked locations. Current free space also prevents provisioning a fresh Windows VM on the internal disk. An existing accessible guest or a separate VM storage location is needed."
+  },
+  "acceptance_items": [
+    {
+      "id": "clamav_japanese_filename",
+      "status": "not_run",
+      "check": "Use benign and standard antivirus test files with Japanese names. Compare the real clamscan output to the scanner report and verify filename attribution and the observed output encoding on the guest."
+    },
+    {
+      "id": "clamav_junction",
+      "status": "not_run",
+      "check": "Use test junctions to synthetic directories outside the allowed scan root, including a legacy-layout fixture. Observe direct engine behavior in the isolated fixture and verify the scanner's exclusion and lack of findings from outside the permitted root."
+    },
+    {
+      "id": "clamav_signature_freshness",
+      "status": "not_run",
+      "check": "Record clamscan --version and the daily database build time, then compare 0.12.0 check-clamav-signatures version, timestamp and freshness to the installed signed definitions and the configured threshold."
+    },
+    {
+      "id": "osquery_launch",
+      "status": "not_run",
+      "check": "Under a standard guest account confirm that the released scanner starts the official osqueryi with its restricted environment and runs inventory os_version. Record the guest and engine architectures."
+    },
+    {
+      "id": "checkpoint_delete_protection",
+      "status": "not_run",
+      "check": "Verify a selected owner-owned checkpoint can be deleted with the listed ID and current revision. Verify refusals for a stale revision, foreign ownership, reparse points or hard links, a held reader, and an active scan lock, using guest-only fixtures. Compare the protected files and unrelated checkpoints before and after."
+    }
+  ],
+  "result_counts": {"requested": 5, "run": 0, "passed": 0, "failed": 0, "not_run": 5},
+  "prior_evidence": "The 0.12.0 release CI (run 44921697834) is recorded in the backlog. The Windows VM checks above remain pending.",
+  "preservation": {
+    "host_folders_shared_with_guest": false,
+    "existing_files_or_vm_settings_changed": false,
+    "engine_software_installed": false,
+    "pushed": false
+  }
+}
