@@ -670,6 +670,31 @@ class DeviceTests(unittest.TestCase):
         one = dict(failed, getprop=answers()["getprop"])
         self.assertEqual(self.run_with(FakeDevice(one), "android_check")["status"], "partial")
 
+    def test_truncated_user_list_preserves_readable_device_information(self):
+        failed = (1, "", "error")
+        device = {"getprop": "[ro.build.version.security_patch]: [2025-07-05]\n",
+                  "pm list users": "Users:\n\tUserInfo{",
+                  "cmd user list -v": failed,
+                  "dumpsys device_policy": failed}
+        report = self.run_with(FakeDevice(device), "android_check")
+        self.assertEqual(report["status"], "partial", report)
+        self.assertEqual(report["data"]["device"]["security_patch"], "2025-07-05")
+        self.assertEqual(report["data"]["users"], [])
+        unread = [item["item"] for item in report["data"]["unavailable"]]
+        self.assertEqual(unread.count("users"), 1)
+        self.assertIn("user_types", unread)
+        self.assertIn("device_admins", unread)
+
+    def test_two_unusable_user_list_responses_do_not_count_as_readable(self):
+        failed = (1, "", "error")
+        device = {"getprop": failed,
+                  "pm list users": "Users:\n\tUserInfo{",
+                  "cmd user list -v": "1 user:\n",
+                  "dumpsys device_policy": failed}
+        report = self.run_with(FakeDevice(device), "android_check")
+        self.assertEqual(report["status"], "error", report)
+        self.assertIn("Nothing could be read", report["error"])
+
     def test_malformed_indicator_file_does_not_stop_the_device_check(self):
         path = Path(self.scanner.android["indicators_file"])
         data = json.loads(path.read_text())

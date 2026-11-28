@@ -508,25 +508,28 @@ def read_users(session: Session) -> list[dict]:
         return []
     detail = session.shell("user_types", "cmd user list -v")
     users = parse_users(output, detail)
-    if not users:
-        session.reject("users", None, "no users in the output")
+    parsed_ids = {user["user_id"] for user in users}
     # A user whose entry could not be read must not silently drop out of every later check.
     listed_ids = [int(user_id) for user_id in re.findall(r"^[ \t]*\d+: id=(\d+), name=", detail or "", re.M)]
     listed = set(listed_ids)
-    for user_id in sorted(listed - {user["user_id"] for user in users}):
+    for user_id in sorted(listed - parsed_ids):
         session.missing("users", user_id, "the user is listed by cmd user list but its entry could not be read")
     # A profile name shaped like another entry repeats an ID or changes the count. The first entry was kept, but the
     # kinds and parents read from this output may still be wrong.
     pm_ids = [int(user_id) for user_id in re.findall(r"UserInfo\{(\d+):", output)]
     # A name holding "UserInfo{" cuts its own entry, or picks its own flags. On Android 10 no other list names the
     # user, so a user named by pm list users but not read must be reported, and any extra "UserInfo{" distrusts the list.
-    for user_id in sorted(set(pm_ids) - listed - {user["user_id"] for user in users}):
+    for user_id in sorted(set(pm_ids) - listed - parsed_ids):
         session.missing("users", user_id, "the user is listed by pm list users but its entry could not be read")
+    # Each successful shell command can lose at most one usable response.
+    if not users:
+        session.reject("users", None, "no users in the output")
+    elif len(pm_ids) != len(set(pm_ids)) or output.count("UserInfo{") != len(pm_ids):
+        session.reject("users", None, "unexpected entries in pm list users; user kinds may be wrong")
     header = re.search(r"^(\d+) users?:", detail or "", re.M)
-    if (len(pm_ids) != len(set(pm_ids)) or output.count("UserInfo{") != len(pm_ids)
-            or len(listed_ids) != len(listed)
+    if (len(listed_ids) != len(listed)
             or (header is not None and int(header.group(1)) != len(listed_ids))):
-        session.reject("users", None, "a user is listed twice or the user count does not match; user kinds may be wrong")
+        session.reject("users", None, "duplicate IDs or an unexpected count in cmd user list; user kinds may be wrong")
     full_users = {user["user_id"] for user in users if user["kind"] == "full"}
     for user in users:
         if user["kind"] == "managed_profile" and user["parent_user_id"] not in full_users:
