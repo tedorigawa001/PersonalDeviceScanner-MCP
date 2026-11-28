@@ -1,9 +1,5 @@
 # リリース手順（npm）
 
-## 次回リリースノートの冒頭に記載する変更
-
-- **Android**：`pm list users` に出るのに読み取れないユーザーは `data.unavailable` に示し、項目の始まりでない `UserInfo{`（ユーザー名に入りうる）を含むユーザー一覧は信頼せず、どちらも `partial` になります。Android 10 では、名前に `UserInfo{` を含むユーザーがすべての点検から消えたまま `completed` になっていました。
-
 ## npmでの公開
 
 npm パッケージ `personal-device-scanner-mcp`（0.1.2 までの旧名は `personal-pc-scanner-mcp`）は、GitHub のリリースを公開すると
