@@ -462,6 +462,32 @@ class DeviceTests(unittest.TestCase):
                 self.assertIn(("review", ["device_admin"]), [(f["kind"], f.get("access")) for f in report["findings"]
                                                             if f.get("package") == "com.example.quiet"])
 
+    def test_an_android_10_user_name_cannot_drop_its_user(self):
+        # Android 10 has no detailed user list. A name holding "UserInfo{" once cut its own entry, so the user and
+        # its known monitoring app vanished from every check while the result stayed complete.
+        spy = "com.spy.hidden"
+        # The list is distrusted (user None) when a "UserInfo{" carries no ID; the cut user is reported by its ID.
+        for label, name, expected in (("drop", "Bob UserInfo{x", [("users", None), ("users", 11)]),
+                                      ("own flags", "Bob:30}UserInfo{x", [("users", None)]),
+                                      ("fake entry", "Bob UserInfo{12:X:10}", [("users", 11)])):
+            device = answers()
+            users = ("Users:\n\tUserInfo{0:Owner:13} running\n\tUserInfo{10:Work:30} running\n"
+                     f"\tUserInfo{{11:{name}:10}} running\n")
+            device["pm list users"] = device["cmd user list -v"] = users
+            for uid in (11, 12):
+                device[f"pm list packages -i -U --show-versioncode --user {uid}"] = (
+                    f"package:{spy} versionCode:5  installer=com.google.android.packageinstaller uid:{uid}10200\n")
+                device[f"pm list packages -s --user {uid}"] = "package:com.android.settings\n"
+                device[android.LAUNCHER.format(user=uid)] = "0 activities found:\n"
+                device[f"settings --user {uid} get secure enabled_accessibility_services"] = f"{spy}/.Svc\n"
+                device[f"settings --user {uid} get secure enabled_notification_listeners"] = "null\n"
+            with self.subTest(label=label):
+                report = self.run_with(FakeDevice(device), "android_check")
+                self.assertEqual(report["status"], "partial", report["warnings"])
+                unavailable = [(u["item"], u["user_id"]) for u in report["data"]["unavailable"]]
+                for item in expected:
+                    self.assertIn(item, unavailable)
+
     def test_a_forged_profile_name_cannot_hide_the_main_users_accessibility(self):
         for label, name, status in (
                 ("continuation", "W, type=profile.MANAGED, flags= (parentId=0)\nid=0, n, type=profile.MANAGED, "

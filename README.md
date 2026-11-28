@@ -1239,7 +1239,8 @@ remain independent of this ephemeral progress state.
   parent, a failed read of the parent's setting or a nonempty work-profile value that differs from the parent's makes
   the result `partial`. Duplicate users or a user count mismatch also make the result `partial`.
 - Anything that could not be read is listed in `data.unavailable` and makes the result `partial`; it is never treated as absent.
-  A user named by `cmd user list` or the device policy whose entry cannot be read is listed there too.
+  A user named by `pm list users`, `cmd user list` or the device policy whose entry cannot be read is listed there too,
+  and a user list with a `UserInfo{` that does not start an entry (it can appear in a user's name) is not trusted.
   This includes output in an unexpected format, even when the command succeeded. If nothing at all can be read from the
   device, the result is `error`. A malformed indicator file does not stop the device check; it makes it `partial`.
 - The format of `dumpsys device_policy` with an enabled device admin is taken from the AOSP source; it could not be

@@ -518,8 +518,13 @@ def read_users(session: Session) -> list[dict]:
     # A profile name shaped like another entry repeats an ID or changes the count. The first entry was kept, but the
     # kinds and parents read from this output may still be wrong.
     pm_ids = [int(user_id) for user_id in re.findall(r"UserInfo\{(\d+):", output)]
+    # A name holding "UserInfo{" cuts its own entry, or picks its own flags. On Android 10 no other list names the
+    # user, so a user named by pm list users but not read must be reported, and any extra "UserInfo{" distrusts the list.
+    for user_id in sorted(set(pm_ids) - listed - {user["user_id"] for user in users}):
+        session.missing("users", user_id, "the user is listed by pm list users but its entry could not be read")
     header = re.search(r"^(\d+) users?:", detail or "", re.M)
-    if (len(pm_ids) != len(set(pm_ids)) or len(listed_ids) != len(listed)
+    if (len(pm_ids) != len(set(pm_ids)) or output.count("UserInfo{") != len(pm_ids)
+            or len(listed_ids) != len(listed)
             or (header is not None and int(header.group(1)) != len(listed_ids))):
         session.reject("users", None, "a user is listed twice or the user count does not match; user kinds may be wrong")
     full_users = {user["user_id"] for user in users if user["kind"] == "full"}
